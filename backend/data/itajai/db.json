@@ -1,0 +1,202 @@
+{
+  "drivers": [
+    {
+      "_id": "admin_27b5f054-4da7-4552-8cee-a97025dd0586",
+      "username": "admin",
+      "password": "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9",
+      "email": "admin@test.com",
+      "name": "Administrador",
+      "fullName": "Administrador",
+      "role": "admin",
+      "phoneNumber": "1199999999",
+      "cnh": "12345678901",
+      "isActive": true,
+      "createdAt": "2026-02-02T20:05:29.296Z"
+    },
+    {
+      "_id": "driver1_a34cb8fe-a377-49c6-a641-3384febc0337",
+      "username": "motorista1",
+      "password": "494d022492052a06f8f81949639a1d148c1051fa3d4e4688fbd96efe649cd382",
+      "email": "motorista1@test.com",
+      "name": "João Silva",
+      "fullName": "João Silva",
+      "role": "driver",
+      "phoneNumber": "11987654321",
+      "cnh": "ABC1234567",
+      "isActive": true,
+      "createdAt": "2026-02-02T20:05:29.296Z"
+    },
+    {
+      "_id": "driver2_8f4e5974-1dc8-4468-aa1e-b328dcb276d7",
+      "username": "motorista2",
+      "password": "494d022492052a06f8f81949639a1d148c1051fa3d4e4688fbd96efe649cd382",
+      "email": "motorista2@test.com",
+      "name": "Maria Santos",
+      "fullName": "Maria Santos",
+      "role": "driver",
+      "phoneNumber": "11987654322",
+      "cnh": "DEF1234567",
+      "isActive": true,
+      "createdAt": "2026-02-02T20:05:29.296Z"
+    },
+    {
+      "_id": "user_958e7316-093b-4203-9da6-d91fc774df69",
+      "username": "josinei vieira",
+      "email": "josineivieira21@gmail.com",
+      "name": "josinei vieira",
+      "fullName": "josinei vieira",
+      "password": "c08536bbbbf64ad2c8d81bd34dcdd5f131d31c03443d78cbcaf8d8dbdbbeff9f",
+      "role": "admin",
+      "phoneNumber": "",
+      "cnh": "",
+      "isActive": true,
+      "createdAt": "2026-02-03T12:27:11.565Z",
+      "updatedAt": "2026-02-03T12:27:11.565Z"
+    }
+  ],
+  "deliveries": [
+    {
+      "_id": "ent1_aff8ef41-4b15-418a-9007-60594f182b3a",
+      "userId": "driver1_a34cb8fe-a377-49c6-a641-3384febc0337",
+      "userName": "João Silva",
+      "driverName": "João Silva",
+      "deliveryNumber": "ENT001",
+      "vehiclePlate": "ABC1234",
+      "status": "submitted",
+      "documents": {
+        "canhotNF": "ENT001/NF.jpg"
+      },
+      "createdAt": "2026-01-31T20:05:29.296Z",
+      "submittedAt": "2026-01-31T20:05:29.296Z",
+      "updatedAt": "2026-01-31T20:05:29.296Z"
+    },
+    {
+      "_id": "ent2_3f763d9d-1d0d-4408-bc7e-da15a9d07ea0",
+      "userId": "driver1_a34cb8fe-a377-49c6-a641-3384febc0337",
+      "userName": "João Silva",
+      "driverName": "João Silva",
+      "deliveryNumber": "ENT002",
+      "vehiclePlate": "ABC1234",
+      "status": "draft",
+      "documents": {},
+      "createdAt": "2026-02-02T20:05:29.296Z",
+      "updatedAt": "2026-02-02T20:05:29.296Z"
+    },
+    {
+      "_id": "ent3_a52d3cff-014b-402a-bfd0-1bdafe58af2e",
+      "userId": "driver2_8f4e5974-1dc8-4468-aa1e-b328dcb276d7",
+      "userName": "Maria Santos",
+      "driverName": "Maria Santos",
+      "deliveryNumber": "ENT003",
+      "vehiclePlate": "XYZ9876",
+      "status": "submitted",
+      "documents": {
+        "canhotNF": "ENT003/NF.jpg"
+      },
+      "createdAt": "2026-02-01T20:05:29.296Z",
+      "submittedAt": "2026-02-01T20:05:29.296Z",
+      "updatedAt": "2026-02-01T20:05:29.296Z"
+    },
+    {
+      "_id": "ent4_bcf65846-d6c4-4dd4-8271-b94d4fa54bf1",
+      "userId": "driver2_8f4e5974-1dc8-4468-aa1e-b328dcb276d7",
+      "userName": "Maria Santos",
+      "driverName": "Maria Santos",
+      "deliveryNumber": "ENT004",
+      "vehiclePlate": "XYZ9876",
+      "status": "submitted",
+      "documents": {
+        "canhotNF": "ENT004/NF.jpg",
+        "canhotCTE": "ENT004/CTE.jpg"
+      },
+      "createdAt": "2026-02-02T17:05:29.296Z",
+      "submittedAt": "2026-02-02T17:05:29.296Z",
+      "updatedAt": "2026-02-02T17:05:29.296Z"
+    },
+    {
+      "_id": "f1d36090-4264-4d0a-806b-a3ddf725b155",
+      "deliveryNumber": "123",
+      "vehiclePlate": "",
+      "observations": "",
+      "driverName": "joao",
+      "userId": "user_958e7316-093b-4203-9da6-d91fc774df69",
+      "userName": "josinei vieira",
+      "status": "submitted",
+      "documents": {
+        "ricAbastecimento": [
+          "123/RIC_AB_1770122348309_0.png"
+        ],
+        "diarioBordo": [
+          "123/DIARIO_1770122353021_0.png"
+        ],
+        "ricBaixa": [
+          "123/RIC_BAIXA_1770122358896_0.png"
+        ],
+        "ricColeta": [
+          "123/RIC_COLETA_1770122364163_0.jpg"
+        ],
+        "discoTacografo": [
+          "123/DISCO_1770122368255_0.png"
+        ]
+      },
+      "city": "itajai",
+      "createdAt": "2026-02-03T12:38:45.052Z",
+      "updatedAt": "2026-02-03T12:39:29.612Z",
+      "submittedAt": "2026-02-03T12:39:29.612Z"
+    },
+    {
+      "_id": "1b8c53bd-63bd-4fca-b948-fb0948aa6117",
+      "deliveryNumber": "TESTE",
+      "vehiclePlate": "",
+      "observations": "",
+      "driverName": "alan",
+      "userId": "user_958e7316-093b-4203-9da6-d91fc774df69",
+      "userName": "josinei vieira",
+      "status": "submitted",
+      "documents": {
+        "ricAbastecimento": [
+          "TESTE/RIC_AB_1770124432835_0.png"
+        ]
+      },
+      "city": "itajai",
+      "createdAt": "2026-02-03T13:13:48.101Z",
+      "updatedAt": "2026-02-03T13:13:58.616Z",
+      "submittedAt": "2026-02-03T13:13:58.616Z",
+      "submissionObservation": "teste",
+      "submissionForce": true,
+      "missingDocumentsAtSubmit": [
+        "diarioBordo",
+        "ricBaixa",
+        "ricColeta",
+        "discoTacografo"
+      ]
+    },
+    {
+      "_id": "824a8312-17cb-49c8-af94-dcd2a7da72e7",
+      "deliveryNumber": "TESTE",
+      "vehiclePlate": "",
+      "observations": "",
+      "driverName": "alan",
+      "userId": "user_958e7316-093b-4203-9da6-d91fc774df69",
+      "userName": "josinei vieira",
+      "status": "submitted",
+      "documents": {
+        "discoTacografo": [
+          "TESTE/DISCO_1770125673491_0.jpg"
+        ]
+      },
+      "city": "itajai",
+      "createdAt": "2026-02-03T13:34:24.639Z",
+      "updatedAt": "2026-02-03T13:34:35.981Z",
+      "submittedAt": "2026-02-03T13:34:35.981Z",
+      "submissionObservation": "s",
+      "submissionForce": true,
+      "missingDocumentsAtSubmit": [
+        "ricAbastecimento",
+        "diarioBordo",
+        "ricBaixa",
+        "ricColeta"
+      ]
+    }
+  ]
+}

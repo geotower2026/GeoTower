@@ -1,0 +1,13 @@
+{
+  "slug": "manaus",
+  "name": "Manaus",
+  "brandColor": "#6B21A8",
+  "logo": "",
+  "documents": {
+    "canhotNF": "📄 Canhoto NF",
+    "canhotCTE": "📦 Canhoto CTE",
+    "diarioBordo": "📓 Diário de Bordo",
+    "devolucaoVazio": "🚛 Devolução Vazio",
+    "retiradaCheio": "🚚 Retirada Cheio"
+  }
+} 

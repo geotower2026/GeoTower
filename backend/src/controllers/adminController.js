@@ -1,0 +1,193 @@
+const Delivery = require('../models/Delivery');
+const Driver = require('../models/Driver');
+
+// Get all deliveries (admin only)
+exports.getAllDeliveries = async (req, res) => {
+  try {
+    const { driverId, startDate, endDate, searchTerm, status } = req.query;
+
+    let query = { status: { $in: ['submitted', 'completed'] } };
+
+    if (driverId) {
+      query.driverId = driverId;
+    }
+
+    if (searchTerm) {
+      query.$or = [
+        { deliveryNumber: { $regex: searchTerm, $options: 'i' } },
+        { driverName: { $regex: searchTerm, $options: 'i' } }
+      ];
+    }
+
+    if (startDate || endDate) {
+      query.submittedAt = {};
+      if (startDate) {
+        query.submittedAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query.submittedAt.$lte = end;
+      }
+    }
+
+    if (status) {
+      query.status = status;
+    }
+
+    const deliveries = await Delivery.find(query)
+      .populate('driverId', 'name username email')
+      .sort({ submittedAt: -1 });
+
+    res.json({ success: true, deliveries });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Erro no servidor', error: error.message });
+  }
+};
+
+// Get delivery statistics
+exports.getStatistics = async (req, res) => {
+  try {
+    const { period = 'month' } = req.query;
+
+    let dateFilter = {};
+    const now = new Date();
+
+    if (period === 'day') {
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      dateFilter = { $gte: startOfDay };
+    } else if (period === 'week') {
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay());
+      startOfWeek.setHours(0, 0, 0, 0);
+      dateFilter = { $gte: startOfWeek };
+    } else if (period === 'month') {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      dateFilter = { $gte: startOfMonth };
+    }
+
+    // Total deliveries
+    const totalDeliveries = await Delivery.countDocuments({
+      status: { $in: ['submitted', 'completed'] },
+      submittedAt: dateFilter
+    });
+
+    // Deliveries by driver
+    const deliveriesByDriver = await Delivery.aggregate([
+      {
+        $match: {
+          status: { $in: ['submitted', 'completed'] },
+          submittedAt: dateFilter
+        }
+      },
+      {
+        $group: {
+          _id: '$driverName',
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { count: -1 } }
+    ]);
+
+    // Daily deliveries (last 30 days)
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setDate(now.getDate() - 29);
+    thirtyDaysAgo.setHours(0, 0, 0, 0);
+
+    const dailyDeliveries = await Delivery.aggregate([
+      {
+        $match: {
+          status: { $in: ['submitted', 'completed'] },
+          submittedAt: { $gte: thirtyDaysAgo }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: '%Y-%m-%d', date: '$submittedAt' }
+          },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    res.json({
+      success: true,
+      statistics: {
+        totalDeliveries,
+        deliveriesByDriver,
+        dailyDeliveries,
+        period
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Erro no servidor', error: error.message });
+  }
+};
+
+// Get delivery details (admin)
+exports.getDeliveryDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const delivery = await Delivery.findById(id).populate('driverId', 'name username email phone');
+
+    if (!delivery) {
+      return res.status(404).json({ success: false, message: 'Entrega não encontrada' });
+    }
+
+    res.json({ success: true, delivery });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Erro no servidor', error: error.message });
+  }
+};
+
+// Download document
+exports.downloadDocument = async (req, res) => {
+  try {
+    const { id, documentType } = req.params;
+
+    const delivery = await Delivery.findById(id);
+
+    if (!delivery) {
+      return res.status(404).json({ success: false, message: 'Entrega não encontrada' });
+    }
+
+    const doc = delivery.documents[documentType];
+
+    if (!doc) {
+      return res.status(404).json({ success: false, message: 'Documento não encontrado' });
+    }
+
+    res.download(doc.path);
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Erro no servidor', error: error.message });
+  }
+};
+
+// Get driver details (admin)
+exports.getDriverDetails = async (req, res) => {
+  try {
+    const { driverId } = req.params;
+
+    const driver = await Driver.findById(driverId);
+
+    if (!driver) {
+      return res.status(404).json({ success: false, message: 'Motorista não encontrado' });
+    }
+
+    const deliveries = await Delivery.countDocuments({
+      driverId,
+      status: { $in: ['submitted', 'completed'] }
+    });
+
+    res.json({
+      success: true,
+      driver: driver.toJSON(),
+      totalDeliveries: deliveries
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Erro no servidor', error: error.message });
+  }
+};

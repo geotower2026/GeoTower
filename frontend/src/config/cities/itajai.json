@@ -1,0 +1,13 @@
+{
+  "slug": "itajai",
+  "name": "Itajaí",
+  "brandColor": "#1E40AF",
+  "logo": "",
+  "documents": {
+    "ricAbastecimento": "⛽ Ric de Abastecimento",
+    "diarioBordo": "📓 Diário de Bordo",
+    "ricBaixa": "📄 Ric da Baixa",
+    "ricColeta": "📥 Ric da Coleta",
+    "discoTacografo": "⏱️ Disco Tacógrafo / Relatório de Posições"
+  }
+} 

@@ -1,0 +1,25 @@
+{
+  "name": "delivery-docs-app",
+  "version": "1.0.0",
+  "description": "Delivery Documentation App for GeoTransportes",
+  "private": true,
+  "engines": {
+    "node": "18.x",
+    "npm": "9.x"
+  },
+  "scripts": {
+    "setup": "echo 'Instalando dependências...' && cd backend && npm install && cd ../frontend && npm install && echo '✓ Setup completo!'",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm start",
+    "build:frontend": "cd frontend && npm install && npm run build",
+    "start": "node start.js",
+    "clean": "node scripts/clean.js"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "googleapis": "^118.0.0"
+  }
+}
