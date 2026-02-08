@@ -6,6 +6,7 @@ const multer = require('multer');
 const os = require('os');
 const mockdb = require("../mockdb");
 const auth = require("../middleware/auth");
+const { normalizeDeliveryForResponse } = require("../utils/storageUtils");
 
 const router = express.Router();
 
@@ -251,7 +252,6 @@ router.get("/deliveries/:id/documents/:documentType/download", auth, onlyAdmin, 
     }
 
     // Normalize delivery first to ensure documents are properly parsed
-    const { normalizeDeliveryForResponse } = require('../utils/storageUtils');
     const normalized = normalizeDeliveryForResponse(delivery);
     const normalizedEntry = normalized.documents[documentType];
     let docArray = Array.isArray(normalizedEntry) ? normalizedEntry : (normalizedEntry ? [normalizedEntry] : []);

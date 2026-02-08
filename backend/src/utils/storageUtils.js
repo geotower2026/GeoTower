@@ -54,76 +54,55 @@ function normalizeDeliveryForResponse(delivery) {
   if (!delivery) return delivery;
   const d = JSON.parse(JSON.stringify(delivery));
   d.documents = d.documents || {};
+  
   for (const [k, v] of Object.entries(d.documents)) {
-    if (!v) { d.documents[k] = null; continue; }
-    if (Array.isArray(v)) {
-      // Normalize array elements which may be JSON strings or double-encoded
-      const out = [];
-      for (const el of v) {
-        if (!el && el !== 0) continue;
-        if (typeof el === 'string') {
-          let parsed = el;
-          for (let i = 0; i < 5; i++) {
-            if (typeof parsed !== 'string') break;
-            try { parsed = JSON.parse(parsed); } catch (e) { break; }
-          }
-          if (Array.isArray(parsed)) {
-            for (const sub of parsed) {
-              if (typeof sub === 'string') {
-                try { out.push(JSON.parse(sub)); } catch (e) { out.push(sub); }
-              } else out.push(sub);
-            }
-          } else if (parsed && typeof parsed === 'object') {
-            out.push(parsed);
-          } else {
-            out.push(parsed);
-          }
-        } else {
-          out.push(el);
-        }
-      }
-      d.documents[k] = out;
-      continue;
+    if (!v) { 
+      d.documents[k] = null; 
+      continue; 
     }
+    
+    let result = null;
+    
+    // Handle string (could be JSON)
     if (typeof v === 'string') {
-      // Try to robustly parse JSON strings, including nested/double-encoded JSON.
       try {
-        let parsed = v;
-        // attempt repeated JSON.parse if the value is nested-encoded
-        for (let i = 0; i < 5; i++) {
-          if (typeof parsed !== 'string') break;
-          try {
-            parsed = JSON.parse(parsed);
-          } catch (err) {
-            break;
-          }
-        }
-
-        if (Array.isArray(parsed)) {
-          // If array elements are themselves JSON strings, parse them
-          d.documents[k] = parsed.map((el) => {
-            if (typeof el === 'string') {
-              try {
-                return JSON.parse(el);
-              } catch (e) {
-                return el;
-              }
-            }
-            return el;
-          });
-        } else if (parsed && typeof parsed === 'object') {
-          d.documents[k] = [parsed];
-        } else {
-          // Fallback: comma-separated or single string entry
-          if (v.indexOf(',') !== -1) d.documents[k] = v.split(',').map(s => s.trim()).filter(Boolean);
-          else d.documents[k] = [v];
-        }
+        result = JSON.parse(v);
       } catch (e) {
-        if (v.indexOf(',') !== -1) d.documents[k] = v.split(',').map(s => s.trim()).filter(Boolean);
-        else d.documents[k] = [v];
+        // Not JSON, treat as single entry
+        result = [v];
       }
     }
+    // Handle array
+    else if (Array.isArray(v)) {
+      result = v;
+    }
+    // Handle object
+    else if (typeof v === 'object') {
+      result = [v];
+    } else {
+      result = [v];
+    }
+    
+    // Ensure result is array and parse nested JSON if present
+    if (!Array.isArray(result)) {
+      result = [result];
+    }
+    
+    // Parse array elements if they are JSON strings
+    const parsed = result.map(el => {
+      if (typeof el === 'string') {
+        try {
+          return JSON.parse(el);
+        } catch (e) {
+          return el;
+        }
+      }
+      return el;
+    });
+    
+    d.documents[k] = parsed;
   }
+  
   return d;
 }
 
