@@ -258,6 +258,13 @@ router.get("/deliveries/:id/documents/:documentType/download", auth, onlyAdmin, 
     const normalized = normalizeDeliveryForResponse(delivery);
     const normalizedEntry = normalized.documents[documentType];
     let docArray = Array.isArray(normalizedEntry) ? normalizedEntry : (normalizedEntry ? [normalizedEntry] : []);
+    // Converte elementos simples (string paths) em objetos { path }
+    docArray = docArray.map(el => {
+      if (!el) return el;
+      if (typeof el === 'string') return { path: el };
+      if (typeof el === 'object' && !el.path && !el.id && el.name) return { ...el, path: el.name };
+      return el;
+    });
     console.log(`[DOWNLOAD] Documentos após normalizar:`, JSON.stringify(docArray));
     
     const idx = parseInt(req.query.index || '0', 10);
