@@ -248,11 +248,7 @@ router.get("/deliveries/:id/documents/:documentType/download", auth, onlyAdmin, 
     // Verifica se o tipo de documento é conhecido para esta entrega
     const docs = delivery.documents || {};
     console.log(`[DOWNLOAD] Documentos na entrega:`, Object.keys(docs));
-    
-    if (!Object.prototype.hasOwnProperty.call(docs, documentType) || !docs[documentType]) {
-      console.error(`[DOWNLOAD] Tipo de documento não encontrado: ${documentType}`);
-      return res.status(404).json({ message: "Documento não encontrado para esta entrega" });
-    }
+    console.log(`[DOWNLOAD] Buscando tipo: "${documentType}", valor:`, docs[documentType]);
 
     // Normalize delivery first to ensure documents are properly parsed
     const normalized = normalizeDeliveryForResponse(delivery);
@@ -279,6 +275,13 @@ router.get("/deliveries/:id/documents/:documentType/download", auth, onlyAdmin, 
     console.log(`[DOWNLOAD] Documentos após processar:`, JSON.stringify(docArray));
     
     const idx = parseInt(req.query.index || '0', 10);
+    console.log(`[DOWNLOAD] Tentando acessar índice ${idx} de um array de ${docArray.length} itens`);
+    
+    if (docArray.length === 0) {
+      console.error(`[DOWNLOAD] docArray vazio para tipo "${documentType}"`);
+      return res.status(404).json({ message: 'Nenhum documento encontrado para este tipo' });
+    }
+    
     if (isNaN(idx) || idx < 0 || idx >= docArray.length) {
       console.error(`[DOWNLOAD] Índice inválido: ${idx}, tamanho do array: ${docArray.length}`);
       return res.status(400).json({ message: 'Índice de documento inválido' });
