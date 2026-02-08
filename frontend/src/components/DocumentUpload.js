@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FaCheckCircle, FaCamera, FaImage, FaTrash } from 'react-icons/fa';
 import { useCity } from '../contexts/CityContext';
 
@@ -12,12 +12,23 @@ const DocumentUpload = ({
   onFileDelete
 }) => {
   const [selectedFiles, setSelectedFiles] = useState([]);
+  const fileInputRef = useRef(null);
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length) {
-      setSelectedFiles(files);
-      onFileSelect(files);
+      // Deduplicate by name+size to avoid duplicates when UI accidentally triggers twice
+      const merged = [...selectedFiles, ...files];
+      const deduped = [];
+      const seen = new Set();
+      for (const f of merged) {
+        const key = `${f.name}_${f.size}_${f.lastModified || 0}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        deduped.push(f);
+      }
+      setSelectedFiles(deduped);
+      onFileSelect && onFileSelect(deduped);
     }
     // reset input so the same file can be selected again if needed
     e.target.value = '';
@@ -107,15 +118,7 @@ const DocumentUpload = ({
       </div>
 
       <div className="flex gap-2">
-        <label className="flex-1">
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleFileChange}
-            disabled={isLoading}
-            multiple
-            className="hidden"
-          />
+        <div className="flex-1" onClick={() => !isLoading && fileInputRef.current && fileInputRef.current.click()}>
           <div className={`p-3 rounded-lg border-2 border-dashed text-center cursor-pointer transition ${
             isUploaded 
               ? 'border-green-300 bg-green-50' 
@@ -135,11 +138,11 @@ const DocumentUpload = ({
               )}
             </div>
           </div>
-        </label>
+        </div>
 
         <button
           type="button"
-          onClick={() => document.querySelector(`input[data-type="${documentType}"]`)?.click()}
+          onClick={() => !isLoading && fileInputRef.current && fileInputRef.current.click()}
           disabled={isLoading}
           className="px-3 py-2 bg-gray-200 rounded-lg text-gray-700 font-medium hover:bg-gray-300 disabled:opacity-50"
         >
@@ -159,6 +162,7 @@ const DocumentUpload = ({
       </div>
 
       <input
+        ref={fileInputRef}
         type="file"
         accept="image/*"
         capture="environment"
