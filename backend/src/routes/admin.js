@@ -161,12 +161,15 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
     
     console.log('✅ Retornando', deliveries.length, 'entregas');
     
+    // Normaliza documentos para resposta (desserializa JSON strings)
+    const normalizedDeliveries = deliveries.map(d => normalizeDeliveryForResponse(d));
+    
     // Consolida arquivos de ambas as pastas (inclui subpastas por cidade) para cada entrega
     const uploadsPath1 = path.join(__dirname, "../uploads");
     const uploadsPath2 = path.join(__dirname, "../src/uploads");
     const cities = ['manaus', 'itajai'];
     
-    const deliveriesWithFiles = deliveries.map(delivery => {
+    const deliveriesWithFiles = normalizedDeliveries.map(delivery => {
       const consolidatedFiles = {};
       
       // Busca arquivos nas duas pastas e em subpastas por cidade
@@ -293,11 +296,27 @@ router.get("/deliveries/:id/documents/:documentType/download", auth, onlyAdmin, 
     else if (docInfo && docInfo.path) {
       console.log(`[DOWNLOAD] Documento encontrado localmente: ${docInfo.path}`);
       try {
-        const filePath = path.join(__dirname, '../uploads', docInfo.path);
+        // Tenta em ambos os locais (como faz o ZIP)
+        const uploadsPath1 = path.join(__dirname, "../uploads");
+        const uploadsPath2 = path.join(__dirname, "../src/uploads");
+        const city = delivery.city || 'manaus';
+        
+        let filePath = null;
+        const candidate1 = path.join(uploadsPath1, docInfo.path);
+        const candidate2 = path.join(uploadsPath2, docInfo.path);
+        const candidate3 = path.join(uploadsPath1, city, docInfo.path);
+        const candidate4 = path.join(uploadsPath2, city, docInfo.path);
+        
+        if (fs.existsSync(candidate1)) filePath = candidate1;
+        else if (fs.existsSync(candidate2)) filePath = candidate2;
+        else if (fs.existsSync(candidate3)) filePath = candidate3;
+        else if (fs.existsSync(candidate4)) filePath = candidate4;
+        
+        console.log(`[DOWNLOAD] Testadas rotas: ${candidate1}, ${candidate2}, ${candidate3}, ${candidate4}`);
         console.log(`[DOWNLOAD] Caminho resolvido: ${filePath}`);
         
-        if (!fs.existsSync(filePath)) {
-          console.error(`[DOWNLOAD] Arquivo não existe no disco: ${filePath}`);
+        if (!filePath) {
+          console.error(`[DOWNLOAD] Arquivo não existe em nenhum local: ${docInfo.path}`);
           return res.status(404).json({ message: 'Arquivo não encontrado no servidor' });
         }
         
