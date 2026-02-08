@@ -250,16 +250,12 @@ router.get("/deliveries/:id/documents/:documentType/download", auth, onlyAdmin, 
       return res.status(404).json({ message: "Documento não encontrado para esta entrega" });
     }
 
-    // Parse documentos para array
-    let documentEntry = delivery.documents[documentType];
-    let docArray;
-    try {
-      docArray = typeof documentEntry === 'string' ? JSON.parse(documentEntry) : documentEntry;
-    } catch (e) {
-      console.warn(`[DOWNLOAD] Erro ao fazer parse de documento:`, e.message);
-      docArray = documentEntry;
-    }
-    if (!Array.isArray(docArray)) docArray = [docArray];
+    // Normalize delivery first to ensure documents are properly parsed
+    const { normalizeDeliveryForResponse } = require('../utils/storageUtils');
+    const normalized = normalizeDeliveryForResponse(delivery);
+    const normalizedEntry = normalized.documents[documentType];
+    let docArray = Array.isArray(normalizedEntry) ? normalizedEntry : (normalizedEntry ? [normalizedEntry] : []);
+    console.log(`[DOWNLOAD] Documentos após normalizar:`, JSON.stringify(docArray));
     
     const idx = parseInt(req.query.index || '0', 10);
     if (isNaN(idx) || idx < 0 || idx >= docArray.length) {

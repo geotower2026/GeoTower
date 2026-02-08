@@ -38,40 +38,57 @@ const DocumentUpload = ({
   const citySlug = String(city || 'manaus').toLowerCase();
 
   const renderPreview = (file, idx, isTemporary = false) => {
-    // file can be URL string (already uploaded) or a File object
-    let src;
+    // file can be: URL string, File object, or backend object { name, path, id, link }
+    let src = '';
+    let displayName = `doc-${idx}`;
+    
     if (typeof file === 'string') {
-      // If it already looks like a full uploads path, use as-is
+      // Simple string path or URL
+      displayName = file.split('/').pop() || file;
       if (file.startsWith('/uploads/') || file.startsWith('http')) {
         src = file;
-      } else if (file.startsWith('uploads/') ) {
+      } else if (file.startsWith('uploads/')) {
         src = '/' + file;
       } else {
-        // Normal relative format: "container/file.jpg"
         src = `/uploads/${citySlug}/${file}`;
       }
-    } else if (file && typeof file.path === 'string') {
-      // backend object (with absolute path) - extract uploads relative path when possible
-      try {
-        const normalized = file.path.replace(/\\\\/g, '/');
-        const idx = normalized.indexOf('/uploads/');
-        if (idx >= 0) {
-          src = normalized.slice(idx);
-        } else {
-          const idx2 = normalized.indexOf('uploads/');
-          if (idx2 >= 0) src = '/' + normalized.slice(idx2);
-          else src = '';
+    } else if (file && typeof file === 'object') {
+      // Backend object: could have { name, path } or { id, name, link }
+      displayName = file.name || file.fileName || `doc-${idx}`;
+      if (file.path) {
+        // Local path like "manaus/containerFolder/filename.jpg"
+        try {
+          const normalized = file.path.replace(/\\\\/g, '/');
+          const uploadsIdx = normalized.indexOf('/uploads/');
+          if (uploadsIdx >= 0) {
+            src = normalized.slice(uploadsIdx);
+          } else {
+            const idx2 = normalized.indexOf('uploads/');
+            if (idx2 >= 0) src = '/' + normalized.slice(idx2);
+            else src = `/uploads/${citySlug}/${file.path}`;
+          }
+        } catch (e) {
+          console.error('Erro ao processar path do arquivo:', e);
+          src = '';
         }
-      } catch (e) {
-        console.error('Erro ao processar path do arquivo:', e);
-        src = '';
+      } else if (file.link) {
+        // Google Drive link
+        src = file.link;
+      } else if (file instanceof File) {
+        // File object
+        try {
+          src = URL.createObjectURL(file);
+        } catch (e) {
+          console.error('Erro ao criar preview:', e);
+        }
       }
-    } else {
+    } else if (file instanceof File) {
+      // Raw File object
+      displayName = file.name;
       try {
         src = URL.createObjectURL(file);
       } catch (e) {
         console.error('Erro ao criar preview do arquivo:', e);
-        src = '';
       }
     }
 

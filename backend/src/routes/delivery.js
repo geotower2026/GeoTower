@@ -275,11 +275,11 @@ router.post("/:id/documents/:type", auth, upload.array("file"), async (req, res)
       // savedDriveFiles contains objects like { name, path } or { id, name, link }
       const combined = existing.concat(savedDriveFiles || []);
 
-      // Deduplicate by path or name (prefer path if available)
+      // Deduplicate by JSON stringification (most reliable method)
       const seen = new Set();
       const deduped = [];
       for (const item of combined) {
-        const key = (item && (item.path || item.link || item.name || item.id)) || JSON.stringify(item);
+        const key = JSON.stringify(item).replace(/\s+/g, '');
         if (seen.has(key)) continue;
         seen.add(key);
         deduped.push(item);
