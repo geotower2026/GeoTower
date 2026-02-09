@@ -1,3 +1,6 @@
+Redeploy marker
+Timestamp: 2026-02-08T00:00:00Z
+Purpose: trigger Render automatic deploy (marker file)
 BUILD TEST FILE - Created at: 2026-02-08 (to verify Render auto-deploy is working)
 Commit: 75d2060
 
