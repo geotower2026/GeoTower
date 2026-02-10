@@ -396,10 +396,68 @@ router.get("/deliveries/:id/documents/:documentType/download", auth, onlyAdmin, 
         return res.status(500).json({ message: 'Erro ao servir arquivo' });
       }
     } 
-    // Documento sem ID nem path
+    // Se não tem path mas tem name, tentamos localizar pelo nome em locais prováveis
+    else if (docInfo && !docInfo.path && docInfo.name) {
+      console.log(`[DOWNLOAD] Documento sem path mas com name: ${docInfo.name} — tentando localizar por nome`);
+      try {
+        const uploadsPath1 = path.join(__dirname, "../uploads");
+        const uploadsPath2 = path.join(__dirname, "../src/uploads");
+        const city = delivery.city || 'manaus';
+        const name = String(docInfo.name || '').replace(/^\/+/, '');
+
+        const candidates = [];
+        // Common locations
+        candidates.push(path.join(uploadsPath1, delivery.deliveryNumber, name));
+        candidates.push(path.join(uploadsPath1, city, delivery.deliveryNumber, name));
+        candidates.push(path.join(uploadsPath1, city, name));
+        candidates.push(path.join(uploadsPath1, name));
+        candidates.push(path.join(uploadsPath2, delivery.deliveryNumber, name));
+        candidates.push(path.join(uploadsPath2, city, delivery.deliveryNumber, name));
+        candidates.push(path.join(uploadsPath2, city, name));
+        candidates.push(path.join(uploadsPath2, name));
+
+        // Also try basename-only across delivery folder
+        const basename = path.basename(name);
+        candidates.push(path.join(uploadsPath1, delivery.deliveryNumber, basename));
+        candidates.push(path.join(uploadsPath1, city, delivery.deliveryNumber, basename));
+        candidates.push(path.join(uploadsPath2, delivery.deliveryNumber, basename));
+
+        let filePathFound = null;
+        const tried = [];
+        for (const candidate of candidates) {
+          tried.push(candidate);
+          if (fs.existsSync(candidate)) { filePathFound = candidate; break; }
+        }
+
+        console.log(`[DOWNLOAD] Tentativas por nome: ${tried.join(', ')}`);
+
+        if (!filePathFound) {
+          console.error(`[DOWNLOAD] Não foi possível localizar arquivo pelo name: ${docInfo.name}`);
+          return res.status(404).json({ message: 'Arquivo não encontrado no servidor', docInfo, triedPaths: tried });
+        }
+
+        const stat = fs.statSync(filePathFound);
+        const filename = docInfo.name || path.basename(filePathFound);
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.setHeader('Content-Length', stat.size);
+        const readStream = fs.createReadStream(filePathFound);
+        readStream.on('error', (err) => {
+          console.error(`[DOWNLOAD] Erro ao ler arquivo:`, err.message);
+          if (!res.headersSent) {
+            res.status(500).json({ message: 'Erro ao ler arquivo', error: err.message });
+          }
+        });
+        console.log(`[DOWNLOAD] ✓ Iniciando stream do arquivo localizado por nome: ${filename}`);
+        readStream.pipe(res);
+      } catch (err) {
+        console.error(`[DOWNLOAD] ✗ Erro ao localizar/servir arquivo por name:`, err && err.message ? err.message : err);
+        return res.status(500).json({ message: 'Erro ao localizar arquivo por nome', error: err && err.message ? err.message : err, docInfo });
+      }
+    }
+    // Documento sem ID, path ou name
     else {
-      console.error(`[DOWNLOAD] Documento sem ID ou path:`, docInfo);
-      return res.status(404).json({ message: 'Documento inválido: sem ID ou caminho' });
+      console.error(`[DOWNLOAD] Documento sem ID, path ou name:`, docInfo);
+      return res.status(404).json({ message: 'Documento inválido: sem ID, path ou name', docInfo });
     }
   } catch (err) {
     console.error(`[DOWNLOAD] Erro geral:`, err && err.message ? err.message : err);
