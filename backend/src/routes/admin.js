@@ -256,7 +256,8 @@ router.get("/deliveries/:id/documents/:documentType/download", auth, onlyAdmin, 
 
     // Verifica se o tipo de documento é conhecido para esta entrega
     const docs = delivery.documents || {};
-    console.log(`[DOWNLOAD] Documentos na entrega:`, Object.keys(docs));
+    console.log(`[DOWNLOAD] delivery id=${id} city=${delivery.city || 'N/A'}`);
+    console.log(`[DOWNLOAD] Documentos na entrega (keys):`, Object.keys(docs));
     console.log(`[DOWNLOAD] Buscando tipo: "${documentType}", valor:`, docs[documentType]);
 
     // Normalize delivery first to ensure documents are properly parsed
@@ -334,24 +335,43 @@ router.get("/deliveries/:id/documents/:documentType/download", auth, onlyAdmin, 
         const uploadsPath1 = path.join(__dirname, "../uploads");
         const uploadsPath2 = path.join(__dirname, "../src/uploads");
         const city = delivery.city || 'manaus';
-        
+
+        // Normalize docInfo.path and try multiple sensible variants to avoid
+        // issues when the stored path already includes the city or not.
+        const rawRel = String(docInfo.path || '').replace(/^\/+/, '');
+        const relVariants = new Set();
+        relVariants.add(rawRel);
+        // If starts with city/, also try without the leading city
+        if (rawRel.startsWith(city + path.sep)) {
+          relVariants.add(rawRel.slice(city.length + 1));
+        } else {
+          // Try with city prefix
+          relVariants.add(path.join(city, rawRel));
+        }
+        // Also try basename only
+        relVariants.add(path.basename(rawRel));
+
         let filePath = null;
-        const candidate1 = path.join(uploadsPath1, docInfo.path);
-        const candidate2 = path.join(uploadsPath2, docInfo.path);
-        const candidate3 = path.join(uploadsPath1, city, docInfo.path);
-        const candidate4 = path.join(uploadsPath2, city, docInfo.path);
-        
-        if (fs.existsSync(candidate1)) filePath = candidate1;
-        else if (fs.existsSync(candidate2)) filePath = candidate2;
-        else if (fs.existsSync(candidate3)) filePath = candidate3;
-        else if (fs.existsSync(candidate4)) filePath = candidate4;
-        
-        console.log(`[DOWNLOAD] Testadas rotas: ${candidate1}, ${candidate2}, ${candidate3}, ${candidate4}`);
+        const tried = [];
+        for (const uploadsPath of [uploadsPath1, uploadsPath2]) {
+          for (const rel of relVariants) {
+            const candidate = path.join(uploadsPath, rel);
+            tried.push(candidate);
+            if (fs.existsSync(candidate)) {
+              filePath = candidate;
+              break;
+            }
+          }
+          if (filePath) break;
+        }
+
+        console.log(`[DOWNLOAD] Testadas rotas: ${tried.join(', ')}`);
         console.log(`[DOWNLOAD] Caminho resolvido: ${filePath}`);
-        
+
         if (!filePath) {
           console.error(`[DOWNLOAD] Arquivo não existe em nenhum local: ${docInfo.path}`);
-          return res.status(404).json({ message: 'Arquivo não encontrado no servidor' });
+          // Retorna também os caminhos testados para ajudar a debugar remotamente (remover depois)
+          return res.status(404).json({ message: 'Arquivo não encontrado no servidor', triedPaths: tried });
         }
         
         const stat = fs.statSync(filePath);
@@ -499,30 +519,36 @@ router.get('/deliveries/:id/documents/zip', auth, onlyAdmin, async (req, res) =>
 
       // Tenta arquivo local (se tem path)
       if (!added && doc.path) {
-        try {
-          console.log(`[ZIP] Tentando adicionar arquivo local: ${docType}[${idx}] (${doc.path})`);
-          
-          const candidateCity = path.join(__dirname, '..', 'uploads', city, doc.path);
-          const candidateRoot = path.join(__dirname, '..', 'uploads', doc.path);
-          let filePath = null;
+          try {
+            console.log(`[ZIP] Tentando adicionar arquivo local: ${docType}[${idx}] (${doc.path})`);
 
-          if (fs.existsSync(candidateCity)) {
-            filePath = candidateCity;
-          } else if (fs.existsSync(candidateRoot)) {
-            filePath = candidateRoot;
-          }
+            const rawRel = String(doc.path || '').replace(/^\/+/, '');
+            const relVariants = new Set();
+            relVariants.add(rawRel);
+            if (rawRel.startsWith(city + path.sep)) {
+              relVariants.add(rawRel.slice(city.length + 1));
+            } else {
+              relVariants.add(path.join(city, rawRel));
+            }
+            relVariants.add(path.basename(rawRel));
 
-          if (filePath) {
-            const stat = fs.statSync(filePath);
-            const filename = doc.name || path.basename(filePath);
-            archive.file(filePath, { name: path.join(delivery.deliveryNumber, filename) });
-            addedCount++;
-            added = true;
-            console.log(`[ZIP] ✓ Adicionado arquivo local: ${filename} (${stat.size} bytes)`);
-          } else {
-            console.warn(`[ZIP] Arquivo local não encontrado: ${doc.path}`);
-            missing.push(`${docType}[${idx}] (Local: ${doc.path})`);
-          }
+            let filePath = null;
+            for (const rel of relVariants) {
+              const candidateCity = path.join(__dirname, '..', 'uploads', rel);
+              if (fs.existsSync(candidateCity)) { filePath = candidateCity; break; }
+            }
+
+            if (filePath) {
+              const stat = fs.statSync(filePath);
+              const filename = doc.name || path.basename(filePath);
+              archive.file(filePath, { name: path.join(delivery.deliveryNumber, filename) });
+              addedCount++;
+              added = true;
+              console.log(`[ZIP] ✓ Adicionado arquivo local: ${filename} (${stat.size} bytes)`);
+            } else {
+              console.warn(`[ZIP] Arquivo local não encontrado: ${doc.path}`);
+              missing.push(`${docType}[${idx}] (Local: ${doc.path})`);
+            }
         } catch (err) {
           console.error(`[ZIP] ✗ Falha ao adicionar arquivo local ${docType}[${idx}]:`, err.message);
           missing.push(`${docType}[${idx}] (Erro: ${err.message})`);
