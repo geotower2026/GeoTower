@@ -195,7 +195,7 @@ router.post("/:id/documents/:type", auth, upload.array("file"), async (req, res)
       for (let idx = 0; idx < req.files.length; idx++) {
         const file = req.files[idx];
         const originalExt = path.extname(file.originalname) || ".jpg";
-        const finalFilename = `${baseName}_${Date.now()}_${idx}${originalExt}`;
+        const finalFilename = `${baseName}_${delivery.deliveryNumber}_${Date.now()}_${idx}${originalExt}`;
         console.log(`[UPLOAD] Processando arquivo ${idx + 1}/${req.files.length}: ${file.originalname} -> ${finalFilename}`);
         
         let fileEntry = null;
