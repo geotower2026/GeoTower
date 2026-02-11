@@ -1069,4 +1069,145 @@ router.get('/debug/export-drivers', auth, onlyAdmin, async (req, res) => {
   }
 });
 
+// ========================
+// MOTORISTA ROUTES
+// ========================
+
+/**
+ * GET /api/admin/motoristas
+ * Listar todos os motoristas
+ */
+router.get("/motoristas", auth, onlyAdminMiddleware, async (req, res) => {
+  try {
+    const Motorista = require("../models/Motorista");
+    const motoristas = await Motorista.find().sort({ createdAt: -1 });
+    return res.json({ motoristas });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Erro ao listar motoristas" });
+  }
+});
+
+/**
+ * POST /api/admin/motoristas
+ * Criar novo motorista
+ */
+router.post("/motoristas", auth, onlyAdminMiddleware, async (req, res) => {
+  try {
+    const { transportadora, nome, cpf, vinculo, rastreador, telefone, observacoes } = req.body;
+
+    if (!transportadora || !nome || !cpf || !vinculo || !telefone) {
+      return res.status(400).json({ message: "Preencha todos os campos obrigatórios" });
+    }
+
+    const Motorista = require("../models/Motorista");
+    
+    // Check if motorista already exists (same transportadora + cpf)
+    const existing = await Motorista.findOne({ transportadora, cpf });
+    if (existing) {
+      return res.status(400).json({ message: "Motorista já existe para esta transportadora" });
+    }
+
+    const newMotorista = new Motorista({
+      transportadora,
+      nome,
+      cpf,
+      vinculo,
+      rastreador: rastreador || '-',
+      telefone,
+      observacoes: observacoes || ''
+    });
+
+    const saved = await newMotorista.save();
+    console.log('➕ Novo motorista criado:', { _id: saved._id, nome: saved.nome, cpf: saved.cpf });
+
+    return res.status(201).json({
+      success: true,
+      message: "Motorista criado com sucesso",
+      motorista: saved
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Erro ao criar motorista", error: err.message });
+  }
+});
+
+/**
+ * PUT /api/admin/motoristas/:id
+ * Atualizar motorista
+ */
+router.put("/motoristas/:id", auth, onlyAdminMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { transportadora, nome, cpf, vinculo, rastreador, telefone, observacoes, ativo } = req.body;
+
+    if (!transportadora || !nome || !cpf || !vinculo || !telefone) {
+      return res.status(400).json({ message: "Preencha todos os campos obrigatórios" });
+    }
+
+    const Motorista = require("../models/Motorista");
+    const motorista = await Motorista.findById(id);
+    if (!motorista) {
+      return res.status(404).json({ message: "Motorista não encontrado" });
+    }
+
+    // Check if CPF is being changed and if new CPF already exists
+    if (cpf !== motorista.cpf) {
+      const existing = await Motorista.findOne({ cpf, transportadora });
+      if (existing && existing._id.toString() !== id) {
+        return res.status(400).json({ message: "CPF já existe para esta transportadora" });
+      }
+    }
+
+    motorista.transportadora = transportadora;
+    motorista.nome = nome;
+    motorista.cpf = cpf;
+    motorista.vinculo = vinculo;
+    motorista.rastreador = rastreador || '-';
+    motorista.telefone = telefone;
+    motorista.observacoes = observacoes || '';
+    if (ativo !== undefined) motorista.ativo = ativo;
+    motorista.updatedAt = new Date();
+
+    const updated = await motorista.save();
+    console.log('✏️ Motorista atualizado:', { _id: updated._id, nome: updated.nome });
+
+    return res.json({
+      success: true,
+      message: "Motorista atualizado com sucesso",
+      motorista: updated
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Erro ao atualizar motorista", error: err.message });
+  }
+});
+
+/**
+ * DELETE /api/admin/motoristas/:id
+ * Deletar motorista
+ */
+router.delete("/motoristas/:id", auth, onlyAdminMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const Motorista = require("../models/Motorista");
+    const motorista = await Motorista.findById(id);
+    if (!motorista) {
+      return res.status(404).json({ message: "Motorista não encontrado" });
+    }
+
+    await Motorista.findByIdAndDelete(id);
+    console.log('🗑️ Motorista deletado:', { _id: id, nome: motorista.nome });
+
+    return res.json({
+      success: true,
+      message: "Motorista deletado com sucesso"
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Erro ao deletar motorista" });
+  }
+});
+
 module.exports = router;

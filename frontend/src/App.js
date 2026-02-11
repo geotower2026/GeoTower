@@ -15,6 +15,7 @@ import MinhasEntregas from './pages/MinhasEntregas';
 import AdminDashboard from './pages/AdminDashboard';
 import MonitorEntregas from './pages/MonitorEntregas';
 import UserManagement from './pages/UserManagement';
+import MotoristaManagement from './pages/MotoristaManagement';
 import Reconciliation from './pages/Reconciliation';
 import Profile from './pages/Profile';
 
@@ -111,6 +112,17 @@ function AppContent() {
           <PrivateRoute adminOnly>
             <AppLayout>
               <UserManagement />
+            </AppLayout>
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/motoristas"
+        element={
+          <PrivateRoute adminOnly>
+            <AppLayout>
+              <MotoristaManagement />
             </AppLayout>
           </PrivateRoute>
         }

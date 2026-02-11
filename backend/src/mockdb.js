@@ -185,6 +185,74 @@ class MockDatabase {
       }
     ];
 
+    this.collections.motoristas = [
+      {
+        _id: 'mot1_' + crypto.randomUUID(),
+        transportadora: 'GEO TRANSPORTES',
+        nome: 'Alan Alves da Silva',
+        cpf: '025.235.282-15',
+        vinculo: 'FROTA',
+        rastreador: 'SASCAR',
+        telefone: '(92) 98276-0027',
+        observacoes: '',
+        ativo: true,
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString()
+      },
+      {
+        _id: 'mot2_' + crypto.randomUUID(),
+        transportadora: 'J J CHAVES',
+        nome: 'Ariel Vinícius Ferreira Barroso',
+        cpf: '702.209.312-01',
+        vinculo: 'AGREGADO',
+        rastreador: 'ONIXSAT',
+        telefone: '(92) 98528-5394',
+        observacoes: '',
+        ativo: true,
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString()
+      },
+      {
+        _id: 'mot3_' + crypto.randomUUID(),
+        transportadora: 'J J CHAVES',
+        nome: 'Marcio Grein Sardos De Moraes',
+        cpf: '494.025.602-43',
+        vinculo: 'AGREGADO',
+        rastreador: 'POSITRON',
+        telefone: '(92) 99438-2068',
+        observacoes: '',
+        ativo: true,
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString()
+      },
+      {
+        _id: 'mot4_' + crypto.randomUUID(),
+        transportadora: 'BANDEIRA',
+        nome: 'Cristiano Andrade Banana',
+        cpf: '805.991.842-72',
+        vinculo: 'TERCEIRO',
+        rastreador: 'SASCAR',
+        telefone: '(92) 98299-5821',
+        observacoes: '',
+        ativo: true,
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString()
+      },
+      {
+        _id: 'mot5_' + crypto.randomUUID(),
+        transportadora: 'TRANSCAVALCANTE',
+        nome: 'Thiago de Souza Pinatel',
+        cpf: '039.341.127-78',
+        vinculo: 'TERCEIRO',
+        rastreador: 'SASCAR',
+        telefone: '(92) 99473-3645',
+        observacoes: '',
+        ativo: true,
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString()
+      }
+    ];
+
     this.saveToFile();
     console.log('✓ Database initialized and saved', this.DB_FILE);
   }
