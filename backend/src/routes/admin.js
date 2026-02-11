@@ -1083,8 +1083,8 @@ router.get("/motoristas", auth, onlyAdminMiddleware, async (req, res) => {
     const motoristas = await Motorista.find().sort({ createdAt: -1 });
     return res.json({ motoristas });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: "Erro ao listar motoristas" });
+    console.error('[MOTORISTA] ❌ Erro ao listar:', err.message);
+    return res.status(500).json({ message: "Erro ao listar motoristas", error: err.message });
   }
 });
 
@@ -1095,6 +1095,8 @@ router.get("/motoristas", auth, onlyAdminMiddleware, async (req, res) => {
 router.post("/motoristas", auth, onlyAdminMiddleware, async (req, res) => {
   try {
     const { transportadora, nome, cpf, vinculo, rastreador, telefone, observacoes } = req.body;
+
+    console.log('[MOTORISTA] Recebido:', { transportadora, nome, cpf, vinculo, telefone });
 
     if (!transportadora || !nome || !cpf || !vinculo || !telefone) {
       return res.status(400).json({ message: "Preencha todos os campos obrigatórios" });
@@ -1115,11 +1117,14 @@ router.post("/motoristas", auth, onlyAdminMiddleware, async (req, res) => {
       vinculo,
       rastreador: rastreador || '-',
       telefone,
-      observacoes: observacoes || ''
+      observacoes: observacoes || '',
+      ativo: true,
+      createdAt: new Date(),
+      updatedAt: new Date()
     });
 
     const saved = await newMotorista.save();
-    console.log('➕ Novo motorista criado:', { _id: saved._id, nome: saved.nome, cpf: saved.cpf });
+    console.log('[MOTORISTA] ✅ Novo motorista criado:', { _id: saved._id, nome: saved.nome, cpf: saved.cpf });
 
     return res.status(201).json({
       success: true,
@@ -1127,7 +1132,10 @@ router.post("/motoristas", auth, onlyAdminMiddleware, async (req, res) => {
       motorista: saved
     });
   } catch (err) {
-    console.error(err);
+    console.error('[MOTORISTA] ❌ Erro ao criar:', err);
+    if (err.code === 11000) {
+      return res.status(400).json({ message: "Motorista já existe para esta transportadora" });
+    }
     return res.status(500).json({ message: "Erro ao criar motorista", error: err.message });
   }
 });
@@ -1141,6 +1149,8 @@ router.put("/motoristas/:id", auth, onlyAdminMiddleware, async (req, res) => {
     const { id } = req.params;
     const { transportadora, nome, cpf, vinculo, rastreador, telefone, observacoes, ativo } = req.body;
 
+    console.log('[MOTORISTA] Atualizando:', { id, transportadora, nome, cpf });
+
     if (!transportadora || !nome || !cpf || !vinculo || !telefone) {
       return res.status(400).json({ message: "Preencha todos os campos obrigatórios" });
     }
@@ -1153,8 +1163,8 @@ router.put("/motoristas/:id", auth, onlyAdminMiddleware, async (req, res) => {
 
     // Check if CPF is being changed and if new CPF already exists
     if (cpf !== motorista.cpf) {
-      const existing = await Motorista.findOne({ cpf, transportadora });
-      if (existing && existing._id.toString() !== id) {
+      const existing = await Motorista.findOne({ cpf, transportadora, _id: { $ne: id } });
+      if (existing) {
         return res.status(400).json({ message: "CPF já existe para esta transportadora" });
       }
     }
@@ -1170,7 +1180,7 @@ router.put("/motoristas/:id", auth, onlyAdminMiddleware, async (req, res) => {
     motorista.updatedAt = new Date();
 
     const updated = await motorista.save();
-    console.log('✏️ Motorista atualizado:', { _id: updated._id, nome: updated.nome });
+    console.log('[MOTORISTA] ✏️ Motorista atualizado:', { _id: updated._id, nome: updated.nome });
 
     return res.json({
       success: true,
@@ -1178,7 +1188,10 @@ router.put("/motoristas/:id", auth, onlyAdminMiddleware, async (req, res) => {
       motorista: updated
     });
   } catch (err) {
-    console.error(err);
+    console.error('[MOTORISTA] ❌ Erro ao atualizar:', err);
+    if (err.code === 11000) {
+      return res.status(400).json({ message: "CPF já existe para esta transportadora" });
+    }
     return res.status(500).json({ message: "Erro ao atualizar motorista", error: err.message });
   }
 });
@@ -1191,6 +1204,8 @@ router.delete("/motoristas/:id", auth, onlyAdminMiddleware, async (req, res) => 
   try {
     const { id } = req.params;
 
+    console.log('[MOTORISTA] Deletando:', id);
+
     const Motorista = require("../models/Motorista");
     const motorista = await Motorista.findById(id);
     if (!motorista) {
@@ -1198,15 +1213,15 @@ router.delete("/motoristas/:id", auth, onlyAdminMiddleware, async (req, res) => 
     }
 
     await Motorista.findByIdAndDelete(id);
-    console.log('🗑️ Motorista deletado:', { _id: id, nome: motorista.nome });
+    console.log('[MOTORISTA] 🗑️ Motorista deletado:', { _id: id, nome: motorista.nome });
 
     return res.json({
       success: true,
       message: "Motorista deletado com sucesso"
     });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: "Erro ao deletar motorista" });
+    console.error('[MOTORISTA] ❌ Erro ao deletar:', err);
+    return res.status(500).json({ message: "Erro ao deletar motorista", error: err.message });
   }
 });
 

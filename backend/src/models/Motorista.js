@@ -3,25 +3,27 @@ const mongoose = require('mongoose');
 const motoristaSchema = new mongoose.Schema({
   transportadora: {
     type: String,
-    required: true,
+    required: [true, 'Transportadora é obrigatória'],
     trim: true
   },
   nome: {
     type: String,
-    required: true,
+    required: [true, 'Nome do motorista é obrigatório'],
     trim: true
   },
   cpf: {
     type: String,
-    required: true,
-    unique: true,
+    required: [true, 'CPF é obrigatório'],
     trim: true,
-    match: /^\d{3}\.\d{3}\.\d{3}-\d{2}$/ // CPF format: XXX.XXX.XXX-XX
+    match: [/^\d{3}\.\d{3}\.\d{3}-\d{2}$/, 'CPF deve estar no formato XXX.XXX.XXX-XX']
   },
   vinculo: {
     type: String,
-    enum: ['PRÓPRIO', 'AGREGADO', 'TERCEIRO'],
-    required: true
+    enum: {
+      values: ['PRÓPRIO', 'AGREGADO', 'TERCEIRO'],
+      message: 'Vínculo deve ser: PRÓPRIO, AGREGADO ou TERCEIRO'
+    },
+    required: [true, 'Vínculo é obrigatório']
   },
   rastreador: {
     type: String,
@@ -30,9 +32,9 @@ const motoristaSchema = new mongoose.Schema({
   },
   telefone: {
     type: String,
-    required: true,
+    required: [true, 'Telefone é obrigatório'],
     trim: true,
-    match: /^(\+?55)?\s*\(?[1-9]{2}\)?\s*9?\d{4}-?\d{4}$/ // Brazilian phone format
+    match: [/^(\+?55)?\s*\(?[1-9]{2}\)?\s*9?\d{4}-?\d{4}$/, 'Telefone deve estar no formato válido']
   },
   observacoes: {
     type: String,
@@ -45,16 +47,22 @@ const motoristaSchema = new mongoose.Schema({
   },
   createdAt: {
     type: Date,
-    default: Date.now
+    default: () => new Date()
   },
   updatedAt: {
     type: Date,
-    default: Date.now
+    default: () => new Date()
   }
 });
 
 // Create a compound unique index for transportadora + cpf
-motoristaSchema.index({ transportadora: 1, cpf: 1 }, { unique: true });
+motoristaSchema.index({ transportadora: 1, cpf: 1 }, { unique: true, sparse: true });
+
+// Update updatedAt before save
+motoristaSchema.pre('save', function(next) {
+  this.updatedAt = new Date();
+  next();
+});
 
 motoristaSchema.methods.toJSON = function() {
   const obj = this.toObject();
