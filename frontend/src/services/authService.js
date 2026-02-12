@@ -79,6 +79,8 @@ export const adminService = {
 export const deliveryService = {
   createDelivery: (data) => api.post('/deliveries', data),
   getMyDeliveries: (params) => api.get('/deliveries', { params }),
+  // Programações atribuídas ao contratado do usuário
+  getProgramacoesAssigned: () => api.get('/programacoes/mine'),
   getDelivery: (id) => api.get(`/deliveries/${id}`),
   uploadDocument: (deliveryId, documentType, files) => {
     const formData = new FormData();

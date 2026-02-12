@@ -17,6 +17,7 @@ import MonitorEntregas from './pages/MonitorEntregas';
 import UserManagement from './pages/UserManagement';
 import MotoristaManagement from './pages/MotoristaManagement';
 import ProgramacaoManagement from './pages/ProgramacaoManagement';
+import ProgramadasEntregas from './pages/ProgramadasEntregas';
 import Reconciliation from './pages/Reconciliation';
 import Profile from './pages/Profile';
 
@@ -80,6 +81,17 @@ function AppContent() {
           <PrivateRoute>
             <AppLayout>
               <MinhasEntregas />
+            </AppLayout>
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/entregas-programadas"
+        element={
+          <PrivateRoute>
+            <AppLayout>
+              <ProgramadasEntregas />
             </AppLayout>
           </PrivateRoute>
         }

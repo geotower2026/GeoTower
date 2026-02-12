@@ -141,6 +141,41 @@ router.get("/:id", auth, async (req, res) => {
 });
 
 // =======================
+// Programações vinculadas ao contratado do usuário
+// GET /api/programacoes/mine
+// Retorna programações pendentes vinculadas ao contratado do usuário autenticado
+// =======================
+router.get('/programacoes/mine', auth, async (req, res) => {
+  try {
+    console.log('[PROGRAMACAO] Buscando programações vinculadas ao contratado do usuário', req.user && req.user.transportadora);
+    const ProgramacaoEntrega = require('../models/ProgramacaoEntrega');
+
+    // Derive contratado value from logged user (transportadora)
+    const contratadoRaw = (req.user && (req.user.transportadora || req.user.contratado)) || '';
+    const contratado = String(contratadoRaw).trim();
+
+    // Se não houver contratado claro no usuário, retornar vazio
+    if (!contratado) {
+      return res.json({ success: true, programacoes: [] });
+    }
+
+    // Buscar programações ativas e não entregues para o contratado (case-insensitive)
+    const regex = new RegExp(`^${contratado}$`, 'i');
+    const programacoes = await ProgramacaoEntrega.find({
+      contratado: regex,
+      ativo: { $ne: false },
+      status: { $ne: 'ENTREGUE' }
+    }).sort({ dataAgendamento: -1 });
+
+    console.log('[PROGRAMACAO] Encontradas', programacoes.length, 'programações para contratado', contratado);
+    return res.json({ success: true, programacoes: programacoes || [] });
+  } catch (err) {
+    console.error('[PROGRAMACAO] Erro ao buscar programações do usuário', err);
+    return res.status(500).json({ message: 'Erro ao listar programações do usuário', error: err.message });
+  }
+});
+
+// =======================
 // Upload documento (aceita múltiplos arquivos)
 // POST /api/deliveries/:id/documents/:type
 // =======================
