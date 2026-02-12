@@ -150,3 +150,14 @@ textarea:focus {
     @apply w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200;
   }
 }
+
+/* ===== iOS: remove bounce do body em todas as telas ===== */
+html,
+body {
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  overflow: hidden; /* trava o body (sem “puxar” a página inteira) */
+}

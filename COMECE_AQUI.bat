@@ -16,7 +16,7 @@ echo     Execute: NGROK.bat
 echo.
 echo [2] REDE LOCAL
 echo     Se todos na mesma rede Wi-Fi
-echo     Link: http://192.168.1.3:3000
+echo     Link: http://localhost:3000
 echo.
 echo [3] LOGIN PAGE
 echo     Página bonita para motoristas acessarem

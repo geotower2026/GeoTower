@@ -6,7 +6,7 @@ echo   📱 COMPARTILHE O LINK COM OUTRAS PESSOAS
 echo ════════════════════════════════════════════════════════
 echo.
 echo 🔗 Link para compartilhar:
-echo    http://192.168.1.3:3000
+echo    http://localhost:3000
 echo.
 echo 📲 QR Code (escanear com celular):
 echo    [Abra ACESSO.html no navegador para ver o QR code]
