@@ -153,16 +153,70 @@ const ProgramacaoManagement = () => {
         return;
       }
 
+      // Função para normalizar nomes de colunas
+      const normalizeColumnName = (name) => {
+        if (!name) return '';
+        return name
+          .toLowerCase()
+          .trim()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+          .replace(/[^\w\s]/g, '') // Remove caracteres especiais
+          .replace(/\s+/g, ''); // Remove espaços
+      };
+
+      // Mapeamento de variações de nomes de colunas
+      const columnMapping = {
+        processo: ['processo'],
+        recebedor: ['recebedor', 'cliente'],
+        container: ['container', 'ncontainer', 'numercontainer', 'nrcontainer'],
+        dataAgendamento: ['dataagendamento', 'dtagendamento', 'dtgendamento', 'data', 'agendamento', 'dataagend', 'dtagend'],
+        contratado: ['contratado', 'transportadora', 'empresa'],
+        motorista: ['motorista', 'motoristaviagem', 'nomemuotorista'],
+        status: ['status', 'situacao'],
+        observacoes: ['observacoes', 'observacao', 'notas', 'anotacoes', 'obsobdestino', 'observacaodestino']
+      };
+
+      // Encontrar mapeamento de colunas real
+      const firstRow = data[0];
+      const actualColumns = {};
+
+      Object.keys(columnMapping).forEach((expectedCol) => {
+        const normalizedExpected = normalizeColumnName(expectedCol);
+        for (const key of Object.keys(firstRow)) {
+          const normalizedActual = normalizeColumnName(key);
+          if (columnMapping[expectedCol].includes(normalizedActual)) {
+            actualColumns[expectedCol] = key;
+            break;
+          }
+        }
+        // Se não encontrou, tenta buscar por substring
+        if (!actualColumns[expectedCol]) {
+          for (const key of Object.keys(firstRow)) {
+            const normalizedActual = normalizeColumnName(key);
+            for (const variation of columnMapping[expectedCol]) {
+              if (normalizedActual.includes(variation) || variation.includes(normalizedActual)) {
+                actualColumns[expectedCol] = key;
+                break;
+              }
+            }
+            if (actualColumns[expectedCol]) break;
+          }
+        }
+      });
+
+      console.log('Mapeamento de colunas encontrado:', actualColumns);
+
       // Mapear e validar dados
       const programacoesImport = data.map((row, index) => {
-        const processo = String(row['Processo'] || '').trim();
-        const recebedor = String(row['Recebedor'] || '').trim();
-        const container = String(row['Container'] || '').trim();
-        const dataStr = String(row['Data Agendamento'] || '').trim();
-        const contratado = String(row['Contratado'] || 'GEO').trim();
-        const motorista = String(row['Motorista'] || '').trim();
-        const status = String(row['Status'] || 'AGENDADO').trim();
-        const observacoes = String(row['Observações'] || '').trim();
+        const processo = String(row[actualColumns.processo] || '').trim();
+        const recebedor = String(row[actualColumns.recebedor] || '').trim();
+        const container = String(row[actualColumns.container] || '').trim();
+        const dataStr = String(row[actualColumns.dataAgendamento] || '').trim();
+        const contratado = String(row[actualColumns.contratado] || 'GEO').trim();
+        const motorista = String(row[actualColumns.motorista] || '').trim();
+        const status = String(row[actualColumns.status] || 'AGENDADO').trim();
+        const observacoes = String(row[actualColumns.observacoes] || '').trim();
 
         // Converter data do Excel para formato ISO
         let dataAgendamento = '';
@@ -488,8 +542,27 @@ const ProgramacaoManagement = () => {
               <h3 style={{ marginBottom: '15px', color: '#1f2937' }}>Selecione um arquivo Excel</h3>
               
               <p style={{ marginBottom: '20px', color: '#6b7280', fontSize: '14px' }}>
-                A planilha deve conter as colunas: <strong>Processo, Recebedor, Container, Data Agendamento, Contratado, Motorista, Status, Observações</strong>
+                A planilha deve conter as colunas obrigatórias. O sistema reconhece várias variações de nomes:
               </p>
+
+              <div style={{
+                backgroundColor: '#f3f4f6',
+                padding: '15px',
+                borderRadius: '6px',
+                marginBottom: '20px',
+                textAlign: 'left',
+                fontSize: '12px',
+                color: '#4b5563'
+              }}>
+                <div><strong>Processo:</strong> "Processo"</div>
+                <div><strong>Recebedor:</strong> "Recebedor", "Cliente", "RECEBEDOR" (maiúsculas/letras/pontuação flexível)</div>
+                <div><strong>Container:</strong> "Container", "Nº container", "N° container"</div>
+                <div><strong>Data Agendamento:</strong> "Data Agendamento", "Dt. Agendamento", "Dta gendamento", "Data"</div>
+                <div><strong>Contratado:</strong> "Contratado", "Transportadora", "Empresa" (ex: GEO, MACHADO)</div>
+                <div><strong>Motorista:</strong> "Motorista" (opcional)</div>
+                <div><strong>Status:</strong> "Status" (opcional - AGENDADO, EM_ROTA, ENTREGUE, CANCELADO)</div>
+                <div><strong>Observações:</strong> "Observações", "Observação", "Notas" (opcional)</div>
+              </div>
 
               <button
                 onClick={downloadTemplate}
