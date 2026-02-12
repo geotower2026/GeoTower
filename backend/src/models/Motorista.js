@@ -34,7 +34,7 @@ const motoristaSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Telefone é obrigatório'],
     trim: true,
-    match: [/^\s*\(?(\d{2})\)?\s*9?\d{4}-?\d{4}\s*$/, 'Telefone deve estar no formato: (XX) 9XXXX-XXXX ou (XX) XXXX-XXXX']
+    match: [/^[\d\s\-\(\)]{7,}$/, 'Telefone deve conter números, parênteses, hífens ou espaços']
   },
   observacoes: {
     type: String,
