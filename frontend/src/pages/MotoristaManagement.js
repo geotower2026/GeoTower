@@ -235,7 +235,7 @@ const MotoristaManagement = () => {
                       onChange={(e) => setFormData({ ...formData, telefone: formatPhone(e.target.value) })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="(92) 98765-4321"
-                      maxLength="14"
+                      maxLength="15"
                     />
                   </div>
                 </div>
