@@ -18,11 +18,16 @@ Se você deseja continuar salvando no Google Drive, siga estes passos:
 - Crie um novo projeto
 - Ative a API do Google Drive
 
-### 2. Crie uma Service Account
-- Vá para "Service Accounts"
-- Crie uma nova Service Account
-- Gere uma chave JSON
-- Salve o JSON como `google-credentials.json`
+### 2. Crie uma Service Account (recomendado)
+- Vá para "Service Accounts" no Google Cloud Console
+- Crie uma nova Service Account ou use uma existente
+- Gere uma **chave JSON** para essa conta
+- Baixe o arquivo e **salve como** `google-credentials.json`
+
+> O sistema agora é capaz de usar essa chave diretamente via JWT sem precisar
+> de consentimento manual, o que evita erros `invalid_grant`.
+> Você pode também definir a variável de ambiente `GDRIVE_SERVICE_ACCOUNT_KEY`
+> com o caminho do arquivo para reforçar.
 
 ### 3. Coloque o Arquivo
 Copie o arquivo `google-credentials.json` para:
