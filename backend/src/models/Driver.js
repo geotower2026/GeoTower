@@ -38,6 +38,12 @@ const driverSchema = new mongoose.Schema({
     enum: ['driver', 'manager', 'admin'],
     default: 'driver'
   },
+  // Contratado: GEO, MACHADO, BANDEIRA, TRANSCAVALCANTE, etc
+  contratado: {
+    type: String,
+    trim: true,
+    default: null
+  },
   createdAt: {
     type: Date,
     default: Date.now

@@ -113,6 +113,7 @@ class MockDatabase {
         role: 'driver',
         phoneNumber: '11987654321',
         cnh: 'ABC1234567',
+        contratado: 'GEO',
         isActive: true,
         createdAt: now.toISOString()
       },
@@ -126,6 +127,7 @@ class MockDatabase {
         role: 'driver',
         phoneNumber: '11987654322',
         cnh: 'DEF1234567',
+        contratado: 'BANDEIRA',
         isActive: true,
         createdAt: now.toISOString()
       }

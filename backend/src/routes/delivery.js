@@ -159,8 +159,8 @@ router.get('/programacoes/mine', auth, async (req, res) => {
       console.warn('[PROGRAMACAO] Aviso: falha ao buscar registro do usuário no DB:', e && e.message ? e.message : e);
     }
 
-    // Prioriza campos do registro do usuário, depois valores vindos no token (se houver)
-    const contratadoRaw = (driverRecord && (driverRecord.transportadora || driverRecord.name || driverRecord.fullName)) || (req.user && (req.user.transportadora || req.user.contratado)) || '';
+    // Prioriza campos do registro do usuário: contratado > transportadora > name > fullName
+    const contratadoRaw = (driverRecord && (driverRecord.contratado || driverRecord.transportadora || driverRecord.name || driverRecord.fullName)) || (req.user && (req.user.transportadora || req.user.contratado)) || '';
     const contratado = String(contratadoRaw || '').trim();
 
     // Se não houver contratado claro no usuário, retornar vazio
