@@ -11,6 +11,15 @@ const MotoristaManagement = () => {
   const [toast, setToast] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [editingMotorista, setEditingMotorista] = useState(null);
+  // Filtros
+  const [filters, setFilters] = useState({
+    transportadora: '',
+    vinculo: '',
+    status: '',
+    searchTerm: ''
+  });
+  // Ordenação
+  const [sort, setSort] = useState({ column: 'transportadora', direction: 'asc' });
   const [formData, setFormData] = useState({
     transportadora: '',
     nome: '',
@@ -164,6 +173,54 @@ const MotoristaManagement = () => {
     if (digits.length <= 2) return digits;
     if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
     return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
+  };
+
+  // Filtrar e ordenar motoristas
+  const getDisplayedMotoristas = () => {
+    let display = motoristas.filter(m => {
+      const matchTransportadora = !filters.transportadora || m.transportadora.toLowerCase().includes(filters.transportadora.toLowerCase());
+      const matchVinculo = !filters.vinculo || m.vinculo === filters.vinculo;
+      const matchStatus = !filters.status || m.statusMotorista === filters.status;
+      const matchSearch = !filters.searchTerm || 
+        m.nome.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+        m.cpf.includes(filters.searchTerm);
+      return matchTransportadora && matchVinculo && matchStatus && matchSearch;
+    });
+
+    // Ordenar
+    display.sort((a, b) => {
+      let aVal = a[sort.column];
+      let bVal = b[sort.column];
+      
+      // Handle null/undefined
+      if (aVal === null || aVal === undefined) aVal = '';
+      if (bVal === null || bVal === undefined) bVal = '';
+      
+      // String comparison
+      if (typeof aVal === 'string') {
+        aVal = aVal.toLowerCase();
+        bVal = bVal.toLowerCase();
+        return sort.direction === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      }
+      
+      // Number comparison
+      return sort.direction === 'asc' ? aVal - bVal : bVal - aVal;
+    });
+
+    return display;
+  };
+
+  const handleSort = (column) => {
+    if (sort.column === column) {
+      setSort({ ...sort, direction: sort.direction === 'asc' ? 'desc' : 'asc' });
+    } else {
+      setSort({ column, direction: 'asc' });
+    }
+  };
+
+  const SortIcon = ({ column }) => {
+    if (sort.column !== column) return <span className="ml-1 text-gray-400">⇅</span>;
+    return <span className="ml-1">{sort.direction === 'asc' ? '↑' : '↓'}</span>;
   };
 
   return (
@@ -413,7 +470,68 @@ const MotoristaManagement = () => {
           </div>
         )}
 
-        {/* Motoristas Table */}
+        {/* FILTROS AVANÇADOS */}
+        {motoristas.length > 0 && !loading && (
+          <div className="mb-6 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">🔍 FILTROS</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Buscar (nome/CPF)</label>
+                <input
+                  type="text"
+                  placeholder="Digite nome ou CPF..."
+                  value={filters.searchTerm}
+                  onChange={(e) => setFilters({ ...filters, searchTerm: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Transportadora</label>
+                <input
+                  type="text"
+                  placeholder="Digite transportadora..."
+                  value={filters.transportadora}
+                  onChange={(e) => setFilters({ ...filters, transportadora: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Vínculo</label>
+                <select
+                  value={filters.vinculo}
+                  onChange={(e) => setFilters({ ...filters, vinculo: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                >
+                  <option value="">Todos</option>
+                  <option value="PRÓPRIO">PRÓPRIO</option>
+                  <option value="AGREGADO">AGREGADO</option>
+                  <option value="TERCEIRO">TERCEIRO</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Status</label>
+                <select
+                  value={filters.status}
+                  onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                >
+                  <option value="">Todos</option>
+                  <option value="A VENCER">A VENCER</option>
+                  <option value="VENCIDO">VENCIDO</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-2">Resultados</label>
+                <div className="px-3 py-2 bg-gray-100 rounded-lg text-center">
+                  <span className="text-lg font-bold text-blue-600">{getDisplayedMotoristas().length}</span>
+                  <p className="text-xs text-gray-600">de {motoristas.length}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TABELA DE MOTORISTAS */}
         {loading ? (
           <div className="text-center py-16">
             <div className="inline-block animate-spin">
@@ -431,35 +549,61 @@ const MotoristaManagement = () => {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="bg-gradient-to-r from-blue-600 to-blue-700 border-b border-blue-800 sticky top-0">
                   <tr>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Transportadora</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Motorista</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">CPF</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Vínculo</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Rastreador</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Exp. cadastro</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Cavalo</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Rastreador Cav.</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Exp. cadastro Cavalo</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Carreta</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Rastreador Carreta</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Exp. cadastro Carreta</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Telefone</th>
-                    <th className="px-6 py-3 text-center text-sm font-semibold text-gray-900">Ações</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase cursor-pointer hover:bg-blue-800 transition" onClick={() => handleSort('transportadora')}>
+                      TRANSPORTADORA <SortIcon column="transportadora" />
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase cursor-pointer hover:bg-blue-800 transition" onClick={() => handleSort('nome')}>
+                      MOTORISTA <SortIcon column="nome" />
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase cursor-pointer hover:bg-blue-800 transition" onClick={() => handleSort('cpf')}>
+                      CPF <SortIcon column="cpf" />
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase cursor-pointer hover:bg-blue-800 transition" onClick={() => handleSort('vinculo')}>
+                      VÍNCULO <SortIcon column="vinculo" />
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase cursor-pointer hover:bg-blue-800 transition" onClick={() => handleSort('rastreador')}>
+                      RASTREADOR <SortIcon column="rastreador" />
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase cursor-pointer hover:bg-blue-800 transition" onClick={() => handleSort('expCadastroMotorista')}>
+                      EXP. CADASTRO <SortIcon column="expCadastroMotorista" />
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs font-bold text-white uppercase">STATUS</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase cursor-pointer hover:bg-blue-800 transition" onClick={() => handleSort('cavalo')}>
+                      CAVALO <SortIcon column="cavalo" />
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase cursor-pointer hover:bg-blue-800 transition" onClick={() => handleSort('rastreadorCavalo')}>
+                      RAST. CAVALO <SortIcon column="rastreadorCavalo" />
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase cursor-pointer hover:bg-blue-800 transition" onClick={() => handleSort('expCadastroCavalo')}>
+                      EXP. CAVALO <SortIcon column="expCadastroCavalo" />
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs font-bold text-white uppercase">ST.</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase cursor-pointer hover:bg-blue-800 transition" onClick={() => handleSort('carreta')}>
+                      CARRETA <SortIcon column="carreta" />
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase cursor-pointer hover:bg-blue-800 transition" onClick={() => handleSort('rastreadorCarreta')}>
+                      RAST. CARRETA <SortIcon column="rastreadorCarreta" />
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase cursor-pointer hover:bg-blue-800 transition" onClick={() => handleSort('expCadastroCarreta')}>
+                      EXP. CARRETA <SortIcon column="expCadastroCarreta" />
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs font-bold text-white uppercase">ST.</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase cursor-pointer hover:bg-blue-800 transition" onClick={() => handleSort('telefone')}>
+                      TELEFONE <SortIcon column="telefone" />
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs font-bold text-white uppercase">AÇÕES</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {motoristas.map((motorista) => (
-                    <tr key={motorista._id} className="border-b border-gray-200 hover:bg-gray-50">
-                      <td className="px-6 py-3 font-medium text-gray-900">{motorista.transportadora}</td>
-                      <td className="px-6 py-3 text-gray-700">{motorista.nome}</td>
-                      <td className="px-6 py-3 text-gray-700">{motorista.cpf}</td>
+                  {getDisplayedMotoristas().map((motorista) => (
+                    <tr key={motorista._id} className="border-b border-gray-100 hover:bg-blue-50 text-sm">
+                      <td className="px-3 py-2 font-medium text-gray-900">{motorista.transportadora}</td>
+                      <td className="px-3 py-2 text-gray-700">{motorista.nome}</td>
+                      <td className="px-3 py-2 text-gray-700 font-mono text-xs">{motorista.cpf}</td>
                       <td className="px-6 py-3">
-                        <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                        <span className={`px-2 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${
                           motorista.vinculo === 'PRÓPRIO'
                             ? 'bg-green-100 text-green-800'
                             : motorista.vinculo === 'AGREGADO'
@@ -469,72 +613,72 @@ const MotoristaManagement = () => {
                           {motorista.vinculo}
                         </span>
                       </td>
-                      <td className="px-6 py-3 text-gray-700">{motorista.rastreador || '-'}</td>
-                      <td className="px-6 py-3 text-gray-700">
+                      <td className="px-3 py-2 text-gray-700 text-xs">{motorista.rastreador || '-'}</td>
+                      <td className="px-3 py-2 text-gray-700 text-xs whitespace-nowrap">
                         {motorista.expCadastroMotorista
                           ? new Date(motorista.expCadastroMotorista).toLocaleDateString('pt-BR')
                           : '-'}
                       </td>
-                      <td className="px-6 py-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                      <td className="px-3 py-2 text-center">
+                        <span className={`px-2 py-1 rounded text-xs font-semibold whitespace-nowrap ${
                           motorista.statusMotorista === 'VENCIDO'
                             ? 'bg-red-100 text-red-800'
                             : motorista.statusMotorista === 'A VENCER'
                             ? 'bg-yellow-100 text-yellow-800'
-                            : ''
+                            : 'text-gray-400'
                         }`}>
                           {motorista.statusMotorista || '-'}
                         </span>
                       </td>
-                      <td className="px-6 py-3 text-gray-700">{motorista.cavalo || '-'}</td>
-                      <td className="px-6 py-3 text-gray-700">{motorista.rastreadorCavalo || '-'}</td>
-                      <td className="px-6 py-3 text-gray-700">
+                      <td className="px-3 py-2 text-gray-700 text-xs">{motorista.cavalo || '-'}</td>
+                      <td className="px-3 py-2 text-gray-700 text-xs">{motorista.rastreadorCavalo || '-'}</td>
+                      <td className="px-3 py-2 text-gray-700 text-xs whitespace-nowrap">
                         {motorista.expCadastroCavalo
                           ? new Date(motorista.expCadastroCavalo).toLocaleDateString('pt-BR')
                           : '-'}
                       </td>
-                      <td className="px-6 py-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                      <td className="px-3 py-2 text-center">
+                        <span className={`px-2 py-1 rounded text-xs font-semibold whitespace-nowrap ${
                           motorista.statusCavalo === 'VENCIDO'
                             ? 'bg-red-100 text-red-800'
                             : motorista.statusCavalo === 'A VENCER'
                             ? 'bg-yellow-100 text-yellow-800'
-                            : ''
+                            : 'text-gray-400'
                         }`}>
                           {motorista.statusCavalo || '-'}
                         </span>
                       </td>
-                      <td className="px-6 py-3 text-gray-700">{motorista.carreta || '-'}</td>
-                      <td className="px-6 py-3 text-gray-700">{motorista.rastreadorCarreta || '-'}</td>
-                      <td className="px-6 py-3 text-gray-700">
+                      <td className="px-3 py-2 text-gray-700 text-xs">{motorista.carreta || '-'}</td>
+                      <td className="px-3 py-2 text-gray-700 text-xs">{motorista.rastreadorCarreta || '-'}</td>
+                      <td className="px-3 py-2 text-gray-700 text-xs whitespace-nowrap">
                         {motorista.expCadastroCarreta
                           ? new Date(motorista.expCadastroCarreta).toLocaleDateString('pt-BR')
                           : '-'}
                       </td>
-                      <td className="px-6 py-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                      <td className="px-3 py-2 text-center">
+                        <span className={`px-2 py-1 rounded text-xs font-semibold whitespace-nowrap ${
                           motorista.statusCarreta === 'VENCIDO'
                             ? 'bg-red-100 text-red-800'
                             : motorista.statusCarreta === 'A VENCER'
                             ? 'bg-yellow-100 text-yellow-800'
-                            : ''
+                            : 'text-gray-400'
                         }`}>
                           {motorista.statusCarreta || '-'}
                         </span>
                       </td>
-                      <td className="px-6 py-3 text-gray-700">{motorista.telefone}</td>
-                      <td className="px-6 py-3 text-center">
+                      <td className="px-3 py-2 text-gray-700 text-xs">{motorista.telefone}</td>
+                      <td className="px-3 py-2 text-center whitespace-nowrap">
                         <button
                           onClick={() => handleEdit(motorista)}
-                          className="inline-flex items-center gap-1 px-3 py-1 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 rounded transition mr-2"
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded transition mr-1"
                         >
                           <FaEdit /> Editar
                         </button>
                         <button
                           onClick={() => handleDelete(motorista._id)}
-                          className="inline-flex items-center gap-1 px-3 py-1 text-sm bg-red-100 hover:bg-red-200 text-red-700 rounded transition"
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded transition"
                         >
-                          <FaTrash /> Deletar
+                          <FaTrash /> Del
                         </button>
                       </td>
                     </tr>
