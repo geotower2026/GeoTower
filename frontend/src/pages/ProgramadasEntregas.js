@@ -4,7 +4,6 @@ import Toast from '../components/Toast';
 import { deliveryService } from '../services/authService';
 import { FaArrowLeft, FaCalendarAlt, FaSearch } from 'react-icons/fa';
 import { useAuth } from '../services/authContext';
-import { deliveryService } from '../services/authService';
 
 const ProgramadasEntregas = () => {
   const navigate = useNavigate();
@@ -12,7 +11,6 @@ const ProgramadasEntregas = () => {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
   const { user } = useAuth();
-  const navigate = useNavigate();
 
   useEffect(() => {
     loadProgramacoes();
