@@ -25,44 +25,36 @@ const ElapsedTimer = ({ start }) => {
   return <span>{hh}:{mm}:{ss}</span>;
 };
 
-// SVG Truck component - professional design
-const TruckSVG = ({ progress = 0 }) => {
-  const truckLeft = `${Math.min(progress, 90)}%`;
+// Emoji truck progress component
+const TruckEmoji = ({ progress = 0 }) => {
+  // bar width 100%, truck moves along
+  const left = `${Math.min(progress, 100)}%`;
   return (
-    <svg style={{ position: 'absolute', left: truckLeft, top: '6px', transition: 'left 0.3s ease-out' }} width="60" height="48" viewBox="0 0 240 160" xmlns="http://www.w3.org/2000/svg">
-      {/* Trailer Body - Blue */}
-      <rect x="80" y="35" width="130" height="75" fill="#3b82f6" rx="4" />
-      {/* Trailer window/door */}
-      <rect x="100" y="45" width="30" height="55" fill="#1e40af" rx="2" />
-      <rect x="145" y="45" width="30" height="55" fill="#1e40af" rx="2" />
-      {/* Cabin - Dark Blue */}
-      <rect x="15" y="55" width="65" height="55" fill="#1e40af" rx="3" />
-      {/* Cabin window */}
-      <polygon points="35,60 65,60 62,75 38,75" fill="#60a5fa" />
-      {/* Connection bar */}
-      <line x1="80" y1="85" x2="80" y2="95" stroke="#1e40af" strokeWidth="3" />
-      {/* Front wheel */}
-      <g>
-        <circle cx="30" cy="120" r="15" fill="#1f2937" stroke="#111827" strokeWidth="2" />
-        <circle cx="30" cy="120" r="10" fill="#4b5563" />
-        <circle cx="30" cy="120" r="5" fill="#374151" />
-      </g>
-      {/* Middle wheel */}
-      <g>
-        <circle cx="105" cy="125" r="13" fill="#1f2937" stroke="#111827" strokeWidth="2" />
-        <circle cx="105" cy="125" r="9" fill="#4b5563" />
-        <circle cx="105" cy="125" r="4" fill="#374151" />
-      </g>
-      {/* Rear wheel */}
-      <g>
-        <circle cx="135" cy="125" r="13" fill="#1f2937" stroke="#111827" strokeWidth="2" />
-        <circle cx="135" cy="125" r="9" fill="#4b5563" />
-        <circle cx="135" cy="125" r="4" fill="#374151" />
-      </g>
-      {/* Light reflection on trailer */}
-      <rect x="85" y="38" width="20" height="50" fill="#60a5fa" opacity="0.3" rx="2" />
-    </svg>
+    <div className="w-full h-8 bg-gray-200 rounded relative" style={{overflow: 'hidden'}}>
+      <div className="absolute h-full flex items-center" style={{left}}>
+        <span className="text-2xl">🚚</span>
+      </div>
+    </div>
   );
+};
+
+// Component to track truck progress based on elapsed time and render emoji bar
+const ProgressiveTruck = ({ start }) => {
+  const [progress, setProgress] = useState(0);
+  useEffect(() => {
+    let startDate = start ? new Date(start) : new Date();
+    if (isNaN(startDate.getTime())) startDate = new Date();
+    const tick = () => {
+      const elapsed = Math.max(0, Date.now() - startDate.getTime());
+      // 100% at 30 minutes
+      const pct = Math.min(100, (elapsed / 1800000) * 100);
+      setProgress(pct);
+    };
+    tick();
+    const id = setInterval(tick, 500);
+    return () => clearInterval(id);
+  }, [start]);
+  return <TruckEmoji progress={progress} />;
 };
 
 // Component to track truck progress based on elapsed time
@@ -170,6 +162,8 @@ const ProgramadasEntregas = () => {
         setDocumentsUpload({});
         setShowModal(true);
         setToast({ message: 'Entrega retomada', type: 'success' });
+        // Programação saiu da lista
+        loadProgramacoes();
       } else {
         const payload = {
           deliveryNumber: deliveryNumber.toUpperCase(),
@@ -188,6 +182,8 @@ const ProgramadasEntregas = () => {
         setJustification('');
         setDocumentsUpload({});
         setShowModal(true);
+        // remove from list
+        loadProgramacoes();
       }
     } catch (err) {
       console.error('Erro ao iniciar entrega:', err);
@@ -274,6 +270,8 @@ const ProgramadasEntregas = () => {
       await deliveryService.updateDelivery(currentDelivery._id, { arrivedAt: new Date().toISOString(), status: 'EM_ROTA' });
       setToast({ message: 'Chegada confirmada', type: 'success' });
       goToStep('confirmDesova');
+      // delivery moved to EM_ROTA, refresh programacoes
+      loadProgramacoes();
     } catch (err) {
       console.error(err);
       setToast({ message: 'Erro ao enviar fotos', type: 'error' });
@@ -298,6 +296,8 @@ const ProgramadasEntregas = () => {
       await deliveryService.updateDelivery(currentDelivery._id, { status: 'EM_DESOVA' });
       setToast({ message: 'Desova iniciada', type: 'success' });
       goToStep('desovaProgress');
+      // optionally refresh programacoes, though should already be removed
+      loadProgramacoes();
     } catch (err) {
       console.error(err);
       setToast({ message: 'Erro ao enviar fotos', type: 'error' });
@@ -337,6 +337,7 @@ const ProgramadasEntregas = () => {
       await deliveryService.updateDelivery(currentDelivery._id, { status: 'DESOVA_FINALIZADA' });
       setToast({ message: 'Desova finalizada', type: 'success' });
       goToStep('askSchedule');
+      loadProgramacoes();
     } catch (err) {
       console.error(err);
       setToast({ message: 'Erro ao enviar fotos', type: 'error' });
@@ -372,7 +373,10 @@ const ProgramadasEntregas = () => {
       }
       await deliveryService.updateDelivery(currentDelivery._id, { status: 'ENTREGUE' });
       setToast({ message: 'Entrega finalizada com sucesso!', type: 'success' });
-      setTimeout(() => closeModal(), 1500);
+      setTimeout(() => {
+        closeModal();
+        loadProgramacoes();
+      }, 1500);
     } catch (err) {
       console.error(err);
       setToast({ message: 'Erro ao enviar documentos', type: 'error' });

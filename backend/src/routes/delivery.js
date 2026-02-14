@@ -82,6 +82,24 @@ router.post("/", auth, async (req, res) => {
       city
     });
 
+    // Attempt to update matching programacao to indicate it is now em rota
+    try {
+      const ProgramacaoEntrega = require('../models/ProgramacaoEntrega');
+      const prog = await ProgramacaoEntrega.findOne({
+        $or: [
+          { processo: new RegExp(`^${deliveryNumber}$`, 'i') },
+          { container: new RegExp(`^${deliveryNumber}$`, 'i') }
+        ]
+      });
+      if (prog) {
+        prog.status = 'EM_ROTA';
+        await prog.save();
+        console.log('[DELIVERY] Programacao', prog._id, 'status atualizado para EM_ROTA');
+      }
+    } catch (syncErr) {
+      console.warn('[DELIVERY] Falha ao sincronizar programacao:', syncErr.message || syncErr);
+    }
+
     res.status(201).json({ delivery });
   } catch (err) {
     console.error(err);
@@ -161,7 +179,26 @@ router.put("/:id", auth, async (req, res) => {
     }
 
     const updates = {};
-    if (req.body.status) updates.status = req.body.status;
+    if (req.body.status) {
+      updates.status = req.body.status;
+      // mirror to programacao if exists
+      try {
+        const ProgramacaoEntrega = require('../models/ProgramacaoEntrega');
+        const prog = await ProgramacaoEntrega.findOne({
+          $or: [
+            { processo: new RegExp(`^${delivery.deliveryNumber}$`, 'i') },
+            { container: new RegExp(`^${delivery.deliveryNumber}$`, 'i') }
+          ]
+        });
+        if (prog) {
+          prog.status = req.body.status;
+          await prog.save();
+          console.log('[DELIVERY] sincronizado status da programacao', prog._id, req.body.status);
+        }
+      } catch (syncErr) {
+        console.warn('[DELIVERY] erro sync programacao:', syncErr.message || syncErr);
+      }
+    }
     if (req.body.arrivedAt !== undefined) updates.arrivedAt = req.body.arrivedAt;
     if (req.body.currentStep !== undefined) updates.currentStep = req.body.currentStep;
     if (req.body.observations !== undefined) updates.observations = req.body.observations;
