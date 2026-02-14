@@ -246,10 +246,11 @@ const ProgramadasEntregas = () => {
         formData.append('file', blob);
       });
       await deliveryService.uploadDocument(currentDelivery._id, 'arrivalPhotos', Array.from(formData.getAll('file')));
-      await deliveryService.updateDelivery(currentDelivery._id, { arrivedAt: new Date().toISOString(), status: 'EM_ROTA' });
+      // Mudar status para AGUARDANDO_DESOVA
+      await deliveryService.updateDelivery(currentDelivery._id, { arrivedAt: new Date().toISOString(), status: 'AGUARDANDO_DESOVA' });
       setToast({ message: 'Chegada confirmada', type: 'success' });
       goToStep('confirmDesova');
-      // delivery moved to EM_ROTA, refresh programacoes
+      // Não remover da tela, apenas atualizar status
       loadProgramacoes();
     } catch (err) {
       console.error(err);
@@ -426,6 +427,7 @@ const ProgramadasEntregas = () => {
                         <p className="font-medium">
                           {/* Show 'AGENDADO' as initial status, otherwise show mapped status */}
                           {(!p.status || p.status === 'pending' || p.status === 'PENDING') ? 'AGENDADO' :
+                            p.status === 'AGUARDANDO_DESOVA' ? 'AGUARDANDO DESOVA' :
                             p.status === 'EM_ROTA' ? 'EM ROTA' :
                             p.status === 'EM_DESOVA' ? 'EM DESOVA' :
                             p.status === 'DESOVA_FINALIZADA' ? 'DESOVA FINALIZADA' :
