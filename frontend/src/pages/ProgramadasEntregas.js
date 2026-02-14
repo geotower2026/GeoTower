@@ -449,23 +449,17 @@ const ProgramadasEntregas = () => {
 
                     <div className="flex gap-2 ml-4">
                       
-                      {/* Show 'Iniciar Entrega' only if status is AGENDADO, otherwise show 'Continuar Entrega' only if status is EM_ROTA */}
-                      {(!p.status || p.status === 'pending' || p.status === 'PENDING') && (
+                      {/* Exibe botão para todos os status, exceto ENTREGUE/CANCELADO */}
+                      {(!['ENTREGUE','CANCELADO'].includes((p.status||'').toString())) && (
                         <button
                           onClick={() => handleStartDelivery(p)}
                           className="px-4 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-lg transition font-semibold"
-                          title="Iniciar Entrega"
+                          title={
+                            (!p.status || p.status === 'pending' || p.status === 'PENDING') ? 'Iniciar Entrega' :
+                            'Continuar Entrega'
+                          }
                         >
-                          Iniciar Entrega
-                        </button>
-                      )}
-                      {(p.status === 'EM_ROTA') && (
-                        <button
-                          onClick={() => handleStartDelivery(p)}
-                          className="px-4 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-lg transition font-semibold"
-                          title="Continuar Entrega"
-                        >
-                          Continuar Entrega
+                          {(!p.status || p.status === 'pending' || p.status === 'PENDING') ? 'Iniciar Entrega' : 'Continuar Entrega'}
                         </button>
                       )}
                     </div>
