@@ -26,6 +26,19 @@ const ProgramacaoManagement = () => {
     observacoes: ''
   });
   const [motoristasList, setMotoristasList] = useState([]);
+  // compute contrato options by merging fixed options with transportadoras from motoristas
+  const normalize = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9 ]/g, '').trim();
+
+  const getContratadosOptions = () => {
+    const fixed = ['GEO', 'MACHADO', 'BANDEIRA', 'TRANSCAVALCANTE', 'OUTRO'];
+    const fromMotoristas = Array.from(new Set((motoristasList || []).map(m => (m.transportadora || '').trim()).filter(Boolean)));
+    // Merge preserving fixed first, then others (excluding duplicates case-insensitively)
+    const merged = [...fixed];
+    fromMotoristas.forEach((t) => {
+      if (!merged.some(x => normalize(x) === normalize(t))) merged.push(t);
+    });
+    return merged;
+  };
 
   useEffect(() => {
     loadProgramacoes();
@@ -520,11 +533,9 @@ const ProgramacaoManagement = () => {
                     setFormData({ ...formData, contratado: novo, motorista: '' });
                   }}
                 >
-                  <option value="GEO">GEO</option>
-                  <option value="MACHADO">MACHADO</option>
-                  <option value="BANDEIRA">BANDEIRA</option>
-                  <option value="TRANSCAVALCANTE">TRANSCAVALCANTE</option>
-                  <option value="OUTRO">OUTRO</option>
+                  {getContratadosOptions().map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
                 </select>
               </div>
 
@@ -536,7 +547,18 @@ const ProgramacaoManagement = () => {
                 >
                   <option value="">-- Selecionar motorista --</option>
                   {motoristasList
-                    .filter(m => String(m.transportadora || '').toUpperCase() === String(formData.contratado || '').toUpperCase())
+                    .filter((m) => {
+                      const t = m.transportadora || '';
+                      const c = formData.contratado || '';
+                      if (!c) return true;
+                      const tn = normalize(t);
+                      const cn = normalize(c);
+                      // match if either contains the other or tokens overlap
+                      if (tn.includes(cn) || cn.includes(tn)) return true;
+                      const tTokens = tn.split(/\s+/).filter(Boolean);
+                      const cTokens = cn.split(/\s+/).filter(Boolean);
+                      return tTokens.some(tok => cTokens.includes(tok)) || cTokens.some(tok => tTokens.includes(tok));
+                    })
                     .map((m) => (
                       <option key={m._id} value={m.nome}>{m.nome} {m.cpf ? `(${m.cpf})` : ''}</option>
                     ))}
