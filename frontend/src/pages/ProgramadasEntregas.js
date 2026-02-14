@@ -423,7 +423,16 @@ const ProgramadasEntregas = () => {
 
                       <div>
                         <p className="text-gray-500">Status</p>
-                        <p className="font-medium">{p.status || '-'}</p>
+                        <p className="font-medium">
+                          {/* Show 'AGENDADO' as initial status, otherwise show mapped status */}
+                          {(!p.status || p.status === 'pending' || p.status === 'PENDING') ? 'AGENDADO' :
+                            p.status === 'EM_ROTA' ? 'EM ROTA' :
+                            p.status === 'EM_DESOVA' ? 'EM DESOVA' :
+                            p.status === 'DESOVA_FINALIZADA' ? 'DESOVA FINALIZADA' :
+                            p.status === 'ENTREGUE' ? 'ENTREGUE' :
+                            p.status === 'CANCELADO' ? 'CANCELADO' :
+                            p.status}
+                        </p>
                       </div>
 
                       <div>
@@ -440,19 +449,25 @@ const ProgramadasEntregas = () => {
 
                     <div className="flex gap-2 ml-4">
                       
-                      {/**
-                       * Show 'Iniciar Entrega' when status is still the initial pending state,
-                       * otherwise let the driver continue an in‑progress delivery.
-                       * The backend already filters out ENTREGUE/CANCELADO so we don't need to
-                       * hide the button in those cases.
-                       */}
-                      <button
-                        onClick={() => handleStartDelivery(p)}
-                        className="px-4 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-lg transition font-semibold"
-                        title={['pending','PENDING'].includes((p.status||'').toString()) ? 'Iniciar Entrega' : 'Continuar Entrega'}
-                      >
-                        {['pending','PENDING'].includes((p.status||'').toString()) ? 'Iniciar Entrega' : 'Continuar Entrega'}
-                      </button>
+                      {/* Show 'Iniciar Entrega' only if status is AGENDADO, otherwise show 'Continuar Entrega' only if status is EM_ROTA */}
+                      {(!p.status || p.status === 'pending' || p.status === 'PENDING') && (
+                        <button
+                          onClick={() => handleStartDelivery(p)}
+                          className="px-4 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-lg transition font-semibold"
+                          title="Iniciar Entrega"
+                        >
+                          Iniciar Entrega
+                        </button>
+                      )}
+                      {(p.status === 'EM_ROTA') && (
+                        <button
+                          onClick={() => handleStartDelivery(p)}
+                          className="px-4 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-lg transition font-semibold"
+                          title="Continuar Entrega"
+                        >
+                          Continuar Entrega
+                        </button>
+                      )}
                     </div>
                 </div>
               </div>
