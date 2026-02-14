@@ -25,10 +25,22 @@ const ProgramacaoManagement = () => {
     status: 'AGENDADO',
     observacoes: ''
   });
+  const [motoristasList, setMotoristasList] = useState([]);
 
   useEffect(() => {
     loadProgramacoes();
+    loadAllMotoristas();
   }, []);
+
+  const loadAllMotoristas = async () => {
+    try {
+      const res = await adminService.getMotoristas();
+      const list = res.data.motoristas || [];
+      setMotoristasList(list);
+    } catch (err) {
+      console.error('Erro ao carregar motoristas', err);
+    }
+  };
 
   const loadProgramacoes = async () => {
     try {
@@ -503,7 +515,10 @@ const ProgramacaoManagement = () => {
                 <label>Contratado *</label>
                 <select
                   value={formData.contratado}
-                  onChange={(e) => setFormData({ ...formData, contratado: e.target.value })}
+                  onChange={(e) => {
+                    const novo = e.target.value;
+                    setFormData({ ...formData, contratado: novo, motorista: '' });
+                  }}
                 >
                   <option value="GEO">GEO</option>
                   <option value="MACHADO">MACHADO</option>
@@ -515,12 +530,17 @@ const ProgramacaoManagement = () => {
 
               <div className="form-group">
                 <label>Motorista</label>
-                <input
-                  type="text"
+                <select
                   value={formData.motorista}
                   onChange={(e) => setFormData({ ...formData, motorista: e.target.value })}
-                  placeholder="Nome do motorista"
-                />
+                >
+                  <option value="">-- Selecionar motorista --</option>
+                  {motoristasList
+                    .filter(m => String(m.transportadora || '').toUpperCase() === String(formData.contratado || '').toUpperCase())
+                    .map((m) => (
+                      <option key={m._id} value={m.nome}>{m.nome} {m.cpf ? `(${m.cpf})` : ''}</option>
+                    ))}
+                </select>
               </div>
 
               <div className="form-group">
