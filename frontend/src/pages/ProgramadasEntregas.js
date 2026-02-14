@@ -57,25 +57,6 @@ const ProgressiveTruck = ({ start }) => {
   return <TruckEmoji progress={progress} />;
 };
 
-// Component to track truck progress based on elapsed time
-const ProgressiveTruck = ({ start }) => {
-  const [progress, setProgress] = useState(0);
-  useEffect(() => {
-    let startDate = start ? new Date(start) : new Date();
-    if (isNaN(startDate.getTime())) startDate = new Date();
-    const tick = () => {
-      const elapsed = Math.max(0, Date.now() - startDate.getTime());
-      // Progress: 100% at 30 minutes (1800000ms)
-      const pct = Math.min(100, (elapsed / 1800000) * 100);
-      setProgress(pct);
-    };
-    tick();
-    const id = setInterval(tick, 500);
-    return () => clearInterval(id);
-  }, [start]);
-
-  return <TruckSVG progress={progress} />;
-};
 
 // Component to show elapsed time at each step
 const StepTimer = ({ start, label = 'Tempo esperando' }) => {
