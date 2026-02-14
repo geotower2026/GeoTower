@@ -77,6 +77,7 @@ router.post("/", auth, async (req, res) => {
       userId: req.user.id,
       userName: driver?.fullName || driver?.name || driver?.username || "Unknown",
       status: "pending",
+      currentStep: 'welcome',
       documents: {},
       city
     });
@@ -162,6 +163,7 @@ router.put("/:id", auth, async (req, res) => {
     const updates = {};
     if (req.body.status) updates.status = req.body.status;
     if (req.body.arrivedAt !== undefined) updates.arrivedAt = req.body.arrivedAt;
+    if (req.body.currentStep !== undefined) updates.currentStep = req.body.currentStep;
     if (req.body.observations !== undefined) updates.observations = req.body.observations;
 
     if (Object.keys(updates).length === 0) {

@@ -5,6 +5,32 @@ import { deliveryService } from '../services/authService';
 import { FaArrowLeft, FaCalendarAlt, FaSearch, FaCamera, FaTimes } from 'react-icons/fa';
 import { useAuth } from '../services/authContext';
 
+// Small elapsed timer component
+const ElapsedTimer = ({ start }) => {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    let startDate = start ? new Date(start) : new Date();
+    if (isNaN(startDate.getTime())) startDate = new Date();
+    const tick = () => {
+      setElapsed(Math.max(0, Math.floor((Date.now() - startDate.getTime()) / 1000)));
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [start]);
+
+  const hh = String(Math.floor(elapsed / 3600)).padStart(2, '0');
+  const mm = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
+  const ss = String(elapsed % 60).padStart(2, '0');
+  return <span>{hh}:{mm}:{ss}</span>;
+};
+
+// CSS for truck animation
+const truckStyles = `
+@keyframes truckMove { 0% { transform: translateX(0%); } 100% { transform: translateX(120%); } }
+.truck { will-change: transform; }
+`;
+
 const ProgramadasEntregas = () => {
   const navigate = useNavigate();
   const [programacoes, setProgramacoes] = useState([]);
@@ -53,23 +79,47 @@ const ProgramadasEntregas = () => {
 
     try {
       setSubmitting(true);
-      const payload = {
-        deliveryNumber: deliveryNumber.toUpperCase(),
-        vehiclePlate: '',
-        observations: `Criada a partir da Programação ${p.processo || ''}`,
-        driverName: user?.fullName || user?.name || ''
-      };
+      // First check if a delivery with this number already exists for this driver
+      let existing = null;
+      try {
+        const searchRes = await deliveryService.getMyDeliveries({ q: deliveryNumber.toUpperCase() });
+        const list = searchRes.data.deliveries || [];
+        existing = list.find(d => String(d.deliveryNumber).toUpperCase() === deliveryNumber.toUpperCase());
+      } catch (err) {
+        console.warn('Erro ao buscar entregas existentes:', err);
+      }
 
-      const res = await deliveryService.createDelivery(payload);
-      const newDelivery = res.data.delivery;
-      setCurrentDelivery(newDelivery);
-      setCurrentProgramacao(p);
-      setCurrentStep('welcome');
-      setPhotos([]);
-      setObservations('');
-      setJustification('');
-      setDocumentsUpload({});
-      setShowModal(true);
+      if (existing) {
+        // Re-use existing delivery and restore step
+        setCurrentDelivery(existing);
+        setCurrentProgramacao(p);
+        const restoredStep = existing.currentStep || (existing.status === 'pending' ? 'welcome' : 'welcome');
+        setCurrentStep(restoredStep);
+        setPhotos([]);
+        setObservations('');
+        setJustification('');
+        setDocumentsUpload({});
+        setShowModal(true);
+        setToast({ message: 'Entrega retomada', type: 'success' });
+      } else {
+        const payload = {
+          deliveryNumber: deliveryNumber.toUpperCase(),
+          vehiclePlate: '',
+          observations: `Criada a partir da Programação ${p.processo || ''}`,
+          driverName: user?.fullName || user?.name || ''
+        };
+
+        const res = await deliveryService.createDelivery(payload);
+        const newDelivery = res.data.delivery;
+        setCurrentDelivery(newDelivery);
+        setCurrentProgramacao(p);
+        setCurrentStep(newDelivery.currentStep || 'welcome');
+        setPhotos([]);
+        setObservations('');
+        setJustification('');
+        setDocumentsUpload({});
+        setShowModal(true);
+      }
     } catch (err) {
       console.error('Erro ao iniciar entrega:', err);
       setToast({ message: err.response?.data?.message || 'Erro ao iniciar entrega', type: 'error' });
@@ -90,9 +140,20 @@ const ProgramadasEntregas = () => {
     loadProgramacoes();
   };
 
-  const goToStep = (step) => {
+  const goToStep = async (step) => {
     setPhotos([]);
     setCurrentStep(step);
+    // Persist current step to backend so reopening restores progress
+    try {
+      if (currentDelivery && currentDelivery._id) {
+        await deliveryService.updateDelivery(currentDelivery._id, { currentStep: step });
+        // Refresh delivery locally
+        const refreshed = await deliveryService.getDelivery(currentDelivery._id);
+        setCurrentDelivery(refreshed.data.delivery);
+      }
+    } catch (err) {
+      console.warn('Não foi possível persistir etapa atual da entrega:', err?.message || err);
+    }
   };
 
   const addPhoto = (photo) => {
@@ -350,6 +411,7 @@ const ProgramadasEntregas = () => {
       {showModal && currentDelivery && currentProgramacao && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+            <style>{truckStyles}</style>
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold">Fluxo de Entrega</h2>
               <button onClick={closeModal} className="text-gray-500 hover:text-gray-800">
@@ -362,7 +424,7 @@ const ProgramadasEntregas = () => {
               <div className="space-y-4">
                 <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
                   <p className="text-lg mb-2">
-                    Olá <strong>{user?.fullName || user?.name || 'Motorista'}</strong>,
+                    Olá <strong>{(currentDelivery && currentDelivery.driverName) || currentProgramacao?.motorista || user?.fullName || user?.name || 'Motorista'}</strong>,
                   </p>
                   <p className="text-lg mb-2">
                     Sua entrega no <strong>{currentProgramacao?.recebedor || 'Rufino'}</strong> está agendada para:
@@ -373,6 +435,17 @@ const ProgramadasEntregas = () => {
                       timeStyle: 'short'
                     })}
                   </p>
+                  {/* Truck animation + elapsed timer when delivery is en route */}
+                  {(currentDelivery && ['pending', 'PENDING', 'EM_ROTA'].includes((currentDelivery.status || '').toString())) && (
+                    <div className="mt-4 flex items-center gap-4">
+                      <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden relative">
+                        <div className="truck absolute left-0 top-[-14px] flex items-center" style={{animation: 'truckMove 6s linear infinite'}}>
+                          <div className="text-2xl">🚚</div>
+                        </div>
+                      </div>
+                      <div className="text-sm text-gray-700 font-medium">Tempo de rota: <ElapsedTimer start={currentDelivery.createdAt} /></div>
+                    </div>
+                  )}
                   <p className="text-gray-600 mt-3">Confirme sua chegada no cliente</p>
                 </div>
                 <div className="flex gap-2">
