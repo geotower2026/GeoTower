@@ -25,37 +25,42 @@ const ElapsedTimer = ({ start }) => {
   return <span>{hh}:{mm}:{ss}</span>;
 };
 
-// SVG Truck component - styled with mint/purple colors
+// SVG Truck component - professional design
 const TruckSVG = ({ progress = 0 }) => {
-  // progress is 0-100, translates to left position
   const truckLeft = `${Math.min(progress, 90)}%`;
   return (
-    <svg style={{ position: 'absolute', left: truckLeft, top: '8px', transition: 'left 0.3s ease-out' }} width="45" height="35" viewBox="0 0 200 140" xmlns="http://www.w3.org/2000/svg">
-      {/* Cabin - mint green */}
-      <rect x="20" y="50" width="50" height="50" fill="#a8e6cf" rx="4" />
-      {/* Cabin highlight */}
-      <rect x="20" y="50" width="10" height="50" fill="#7dd3c0" />
-      {/* Windshield */}
-      <polygon points="45,60 70,60 65,75 45,75" fill="#d4f1f4" />
-      {/* Trailer - purple/violet */}
-      <rect x="70" y="40" width="110" height="60" fill="#b19cd9" rx="4" />
-      {/* Trailer door accent */}
-      <rect x="130" y="40" width="20" height="60" fill="#9d7eb8" rx="2" />
-      {/* Trailer door 2 */}
-      <rect x="155" y="40" width="20" height="60" fill="#9d7eb8" rx="2" />
+    <svg style={{ position: 'absolute', left: truckLeft, top: '6px', transition: 'left 0.3s ease-out' }} width="60" height="48" viewBox="0 0 240 160" xmlns="http://www.w3.org/2000/svg">
+      {/* Trailer Body - Blue */}
+      <rect x="80" y="35" width="130" height="75" fill="#3b82f6" rx="4" />
+      {/* Trailer window/door */}
+      <rect x="100" y="45" width="30" height="55" fill="#1e40af" rx="2" />
+      <rect x="145" y="45" width="30" height="55" fill="#1e40af" rx="2" />
+      {/* Cabin - Dark Blue */}
+      <rect x="15" y="55" width="65" height="55" fill="#1e40af" rx="3" />
+      {/* Cabin window */}
+      <polygon points="35,60 65,60 62,75 38,75" fill="#60a5fa" />
       {/* Connection bar */}
-      <rect x="65" y="70" width="10" height="20" fill="#6b5b95" />
-      {/* Front wheel - mint */}
-      <circle cx="35" cy="110" r="12" fill="#a8e6cf" stroke="#2d3b2d" strokeWidth="2" />
-      <circle cx="35" cy="110" r="8" fill="#7dd3c0" />
-      <circle cx="35" cy="110" r="4" fill="#333" />
-      {/* Rear wheels - mint */}
-      <circle cx="95" cy="112" r="11" fill="#a8e6cf" stroke="#2d3b2d" strokeWidth="2" />
-      <circle cx="95" cy="112" r="7" fill="#7dd3c0" />
-      <circle cx="95" cy="112" r="3" fill="#333" />
-      <circle cx="125" cy="112" r="11" fill="#a8e6cf" stroke="#2d3b2d" strokeWidth="2" />
-      <circle cx="125" cy="112" r="7" fill="#7dd3c0" />
-      <circle cx="125" cy="112" r="3" fill="#333" />
+      <line x1="80" y1="85" x2="80" y2="95" stroke="#1e40af" strokeWidth="3" />
+      {/* Front wheel */}
+      <g>
+        <circle cx="30" cy="120" r="15" fill="#1f2937" stroke="#111827" strokeWidth="2" />
+        <circle cx="30" cy="120" r="10" fill="#4b5563" />
+        <circle cx="30" cy="120" r="5" fill="#374151" />
+      </g>
+      {/* Middle wheel */}
+      <g>
+        <circle cx="105" cy="125" r="13" fill="#1f2937" stroke="#111827" strokeWidth="2" />
+        <circle cx="105" cy="125" r="9" fill="#4b5563" />
+        <circle cx="105" cy="125" r="4" fill="#374151" />
+      </g>
+      {/* Rear wheel */}
+      <g>
+        <circle cx="135" cy="125" r="13" fill="#1f2937" stroke="#111827" strokeWidth="2" />
+        <circle cx="135" cy="125" r="9" fill="#4b5563" />
+        <circle cx="135" cy="125" r="4" fill="#374151" />
+      </g>
+      {/* Light reflection on trailer */}
+      <rect x="85" y="38" width="20" height="50" fill="#60a5fa" opacity="0.3" rx="2" />
     </svg>
   );
 };
@@ -78,6 +83,16 @@ const ProgressiveTruck = ({ start }) => {
   }, [start]);
 
   return <TruckSVG progress={progress} />;
+};
+
+// Component to show elapsed time at each step
+const StepTimer = ({ start, label = 'Tempo esperando' }) => {
+  return (
+    <div className="flex items-center justify-between py-2 px-3 bg-blue-100 rounded border border-blue-300">
+      <span className="text-sm text-gray-700">{label}:</span>
+      <span className="text-sm font-bold text-blue-600"><ElapsedTimer start={start} /></span>
+    </div>
+  );
 };
 
 // CSS for truck animation
@@ -521,6 +536,7 @@ const ProgramadasEntregas = () => {
             {currentStep === 'obs' && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Observação</h3>
+                <StepTimer start={currentDelivery?.createdAt} label="Tempo aguardando" />
                 <textarea
                   value={observations}
                   onChange={(e) => setObservations(e.target.value)}
@@ -550,6 +566,7 @@ const ProgramadasEntregas = () => {
             {currentStep === 'arrival' && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">📸 Registre sua chegada no cliente</h3>
+                <StepTimer start={currentDelivery?.createdAt} label="Tempo em rota" />
                 <p className="text-gray-600">Tire uma ou mais fotos</p>
                 
                 {photos.length > 0 && (
@@ -604,20 +621,22 @@ const ProgramadasEntregas = () => {
             {/* STEP 4: Confirme desova */}
             {currentStep === 'confirmDesova' && (
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Confirme o início da desova</h3>
-                <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
-                  <p className="text-gray-700">Escolha uma das opções abaixo:</p>
+                <h3 className="text-xl font-bold text-gray-800">Confirme o início da desova</h3>
+                <StepTimer start={currentDelivery?.arrivedAt || currentDelivery?.createdAt} label="Aguardando desova" />
+                <div className="bg-gradient-to-r from-orange-50 to-amber-50 border-l-4 border-orange-400 p-4 rounded-lg">
+                  <p className="text-gray-800 font-medium mb-2">📦 Selecione uma das opções:</p>
+                  <p className="text-sm text-gray-600">Indique se a desova foi iniciada ou não</p>
                 </div>
                 <div className="flex gap-2">
                   <button
                     onClick={() => goToStep('desovaStart')}
-                    className="flex-1 px-4 py-3 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700"
+                    className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-lg font-semibold hover:from-emerald-600 hover:to-emerald-700 shadow-md transition"
                   >
                     ✓ Desova iniciada
                   </button>
                   <button
                     onClick={() => goToStep('desovaJustify')}
-                    className="flex-1 px-4 py-3 bg-red-100 text-red-700 rounded-lg font-semibold hover:bg-red-200"
+                    className="flex-1 px-4 py-3 bg-gradient-to-r from-red-400 to-red-500 text-white rounded-lg font-semibold hover:from-red-500 hover:to-red-600 shadow-md transition"
                   >
                     ✗ Desova não iniciada
                   </button>
@@ -629,6 +648,7 @@ const ProgramadasEntregas = () => {
             {currentStep === 'desovaJustify' && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Por que a desova não foi iniciada?</h3>
+                <StepTimer start={currentDelivery?.arrivedAt || currentDelivery?.createdAt} label="Tempo aguardando" />
                 <textarea
                   value={justification}
                   onChange={(e) => setJustification(e.target.value)}
@@ -658,6 +678,7 @@ const ProgramadasEntregas = () => {
             {currentStep === 'desovaStart' && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">📸 Registre o início da desova</h3>
+                <StepTimer start={currentDelivery?.arrivedAt || currentDelivery?.createdAt} label="Tempo no cliente" />
                 <p className="text-gray-600">Tire uma ou mais fotos</p>
                 
                 {photos.length > 0 && (
@@ -713,6 +734,7 @@ const ProgramadasEntregas = () => {
             {currentStep === 'desovaProgress' && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">A desova já finalizou?</h3>
+                <StepTimer start={currentDelivery?.arrivedAt || currentDelivery?.createdAt} label="Tempo em desova" />
                 <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
                   <p className="text-gray-700">Indique se a desova foi completada</p>
                 </div>
@@ -737,6 +759,7 @@ const ProgramadasEntregas = () => {
             {currentStep === 'desovaFinal' && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">📸 Registre a finalização da desova</h3>
+                <StepTimer start={currentDelivery?.arrivedAt || currentDelivery?.createdAt} label="Tempo em desova" />
                 <p className="text-gray-600">Tire uma ou mais fotos</p>
                 
                 {photos.length > 0 && (
@@ -792,6 +815,7 @@ const ProgramadasEntregas = () => {
             {currentStep === 'askSchedule' && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Deseja fazer o agendamento da devolução do Container?</h3>
+                <StepTimer start={currentDelivery?.arrivedAt || currentDelivery?.createdAt} label="Tempo total na entrega" />
                 <div className="bg-purple-50 border border-purple-200 p-4 rounded-lg">
                   <p className="text-gray-700">Se você clicar em "Sim", o administrativo será notificado para agendamento</p>
                 </div>
@@ -816,6 +840,7 @@ const ProgramadasEntregas = () => {
             {currentStep === 'finalDocs' && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">📄 Documentos Finais</h3>
+                <StepTimer start={currentDelivery?.arrivedAt || currentDelivery?.createdAt} label="Tempo total na entrega" />
                 <p className="text-gray-600 mb-4">Anexe os documentos da entrega</p>
 
                 {['canhotNF', 'canhotCTE', 'diarioBordo', 'devolucaoVazio', 'retiradaCheio'].map((docType) => {
