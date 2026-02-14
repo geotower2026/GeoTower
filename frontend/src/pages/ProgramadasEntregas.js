@@ -425,12 +425,11 @@ const ProgramadasEntregas = () => {
                       <div>
                         <p className="text-gray-500">Status</p>
                         <p className="font-medium">
-                          {/* Show 'AGENDADO' as initial status, otherwise show mapped status */}
+                          {/* Status amigável para cada etapa */}
                           {(!p.status || p.status === 'pending' || p.status === 'PENDING') ? 'AGENDADO' :
                             p.status === 'AGUARDANDO_DESOVA' ? 'AGUARDANDO DESOVA' :
-                            p.status === 'EM_ROTA' ? 'EM ROTA' :
                             p.status === 'EM_DESOVA' ? 'EM DESOVA' :
-                            p.status === 'DESOVA_FINALIZADA' ? 'DESOVA FINALIZADA' :
+                            p.status === 'AGUARDANDO_ANEXO' ? 'AGUARDANDO ANEXO DOS DOCUMENTOS' :
                             p.status === 'ENTREGUE' ? 'ENTREGUE' :
                             p.status === 'CANCELADO' ? 'CANCELADO' :
                             p.status}
@@ -458,10 +457,17 @@ const ProgramadasEntregas = () => {
                           className="px-4 py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded-lg transition font-semibold"
                           title={
                             (!p.status || p.status === 'pending' || p.status === 'PENDING') ? 'Iniciar Entrega' :
+                            p.status === 'AGUARDANDO_DESOVA' ? 'Continuar Entrega' :
+                            p.status === 'EM_DESOVA' ? 'Continuar Entrega' :
+                            p.status === 'AGUARDANDO_ANEXO' ? 'Continuar Entrega' :
                             'Continuar Entrega'
                           }
                         >
-                          {(!p.status || p.status === 'pending' || p.status === 'PENDING') ? 'Iniciar Entrega' : 'Continuar Entrega'}
+                          {(!p.status || p.status === 'pending' || p.status === 'PENDING') ? 'Iniciar Entrega' :
+                            p.status === 'AGUARDANDO_DESOVA' ? 'Continuar Entrega' :
+                            p.status === 'EM_DESOVA' ? 'Continuar Entrega' :
+                            p.status === 'AGUARDANDO_ANEXO' ? 'Continuar Entrega' :
+                            'Continuar Entrega'}
                         </button>
                       )}
                     </div>
