@@ -38,8 +38,16 @@ const programacaoEntregaSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: {
-      values: ['AGENDADO', 'EM_ROTA', 'ENTREGUE', 'CANCELADO'],
-      message: 'Status deve ser: AGENDADO, EM_ROTA, ENTREGUE ou CANCELADO'
+      values: [
+        'AGENDADO',
+        'AGUARDANDO_DESOVA',
+        'EM_DESOVA',
+        'AGUARDANDO_ANEXO',
+        'EM_ROTA',
+        'ENTREGUE',
+        'CANCELADO'
+      ],
+      message: 'Status deve ser: AGENDADO, AGUARDANDO_DESOVA, EM_DESOVA, AGUARDANDO_ANEXO, EM_ROTA, ENTREGUE ou CANCELADO'
     },
     default: 'AGENDADO'
   },
