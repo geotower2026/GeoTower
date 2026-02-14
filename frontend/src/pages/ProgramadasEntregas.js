@@ -25,32 +25,64 @@ const ElapsedTimer = ({ start }) => {
   return <span>{hh}:{mm}:{ss}</span>;
 };
 
-// SVG Truck component
-const TruckSVG = () => (
-  <svg className="truck-svg" width="50" height="40" viewBox="0 0 100 80" xmlns="http://www.w3.org/2000/svg">
-    {/* Cabin */}
-    <rect x="10" y="30" width="25" height="25" fill="#2563eb" stroke="#1e40af" strokeWidth="2" />
-    {/* Windshield */}
-    <polygon points="25,32 35,32 33,40 27,40" fill="#87ceeb" />
-    {/* Trailer */}
-    <rect x="35" y="25" width="55" height="35" fill="#3b82f6" stroke="#1e40af" strokeWidth="2" rx="2" />
-    {/* Door line on trailer */}
-    <line x1="65" y1="25" x2="65" y2="60" stroke="#1e40af" strokeWidth="1" />
-    {/* Front wheel */}
-    <circle cx="20" cy="60" r="8" fill="#333" stroke="#000" strokeWidth="1" />
-    <circle cx="20" cy="60" r="5" fill="#555" />
-    {/* Rear wheels */}
-    <circle cx="50" cy="62" r="7" fill="#333" stroke="#000" strokeWidth="1" />
-    <circle cx="50" cy="62" r="4" fill="#555" />
-    <circle cx="62" cy="62" r="7" fill="#333" stroke="#000" strokeWidth="1" />
-    <circle cx="62" cy="62" r="4" fill="#555" />
-  </svg>
-);
+// SVG Truck component - styled with mint/purple colors
+const TruckSVG = ({ progress = 0 }) => {
+  // progress is 0-100, translates to left position
+  const truckLeft = `${Math.min(progress, 90)}%`;
+  return (
+    <svg style={{ position: 'absolute', left: truckLeft, top: '8px', transition: 'left 0.3s ease-out' }} width="45" height="35" viewBox="0 0 200 140" xmlns="http://www.w3.org/2000/svg">
+      {/* Cabin - mint green */}
+      <rect x="20" y="50" width="50" height="50" fill="#a8e6cf" rx="4" />
+      {/* Cabin highlight */}
+      <rect x="20" y="50" width="10" height="50" fill="#7dd3c0" />
+      {/* Windshield */}
+      <polygon points="45,60 70,60 65,75 45,75" fill="#d4f1f4" />
+      {/* Trailer - purple/violet */}
+      <rect x="70" y="40" width="110" height="60" fill="#b19cd9" rx="4" />
+      {/* Trailer door accent */}
+      <rect x="130" y="40" width="20" height="60" fill="#9d7eb8" rx="2" />
+      {/* Trailer door 2 */}
+      <rect x="155" y="40" width="20" height="60" fill="#9d7eb8" rx="2" />
+      {/* Connection bar */}
+      <rect x="65" y="70" width="10" height="20" fill="#6b5b95" />
+      {/* Front wheel - mint */}
+      <circle cx="35" cy="110" r="12" fill="#a8e6cf" stroke="#2d3b2d" strokeWidth="2" />
+      <circle cx="35" cy="110" r="8" fill="#7dd3c0" />
+      <circle cx="35" cy="110" r="4" fill="#333" />
+      {/* Rear wheels - mint */}
+      <circle cx="95" cy="112" r="11" fill="#a8e6cf" stroke="#2d3b2d" strokeWidth="2" />
+      <circle cx="95" cy="112" r="7" fill="#7dd3c0" />
+      <circle cx="95" cy="112" r="3" fill="#333" />
+      <circle cx="125" cy="112" r="11" fill="#a8e6cf" stroke="#2d3b2d" strokeWidth="2" />
+      <circle cx="125" cy="112" r="7" fill="#7dd3c0" />
+      <circle cx="125" cy="112" r="3" fill="#333" />
+    </svg>
+  );
+};
+
+// Component to track truck progress based on elapsed time
+const ProgressiveTruck = ({ start }) => {
+  const [progress, setProgress] = useState(0);
+  useEffect(() => {
+    let startDate = start ? new Date(start) : new Date();
+    if (isNaN(startDate.getTime())) startDate = new Date();
+    const tick = () => {
+      const elapsed = Math.max(0, Date.now() - startDate.getTime());
+      // Progress: 100% at 30 minutes (1800000ms)
+      const pct = Math.min(100, (elapsed / 1800000) * 100);
+      setProgress(pct);
+    };
+    tick();
+    const id = setInterval(tick, 500);
+    return () => clearInterval(id);
+  }, [start]);
+
+  return <TruckSVG progress={progress} />;
+};
 
 // CSS for truck animation
 const truckStyles = `
-@keyframes truckMove { 0% { left: 0%; } 100% { left: calc(100% - 50px); } }
-.truck-svg { animation: truckMove 6s linear infinite; will-change: transform; }
+.truck-container { position: relative; height: 60px; }
 `;
 
 const ProgramadasEntregas = () => {
@@ -128,7 +160,7 @@ const ProgramadasEntregas = () => {
           deliveryNumber: deliveryNumber.toUpperCase(),
           vehiclePlate: '',
           observations: `Criada a partir da Programação ${p.processo || ''}`,
-          driverName: user?.fullName || user?.name || ''
+          driverName: p.motorista || user?.fullName || user?.name || ''
         };
 
         const res = await deliveryService.createDelivery(payload);
@@ -446,7 +478,7 @@ const ProgramadasEntregas = () => {
               <div className="space-y-4">
                 <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
                   <p className="text-lg mb-2">
-                    Olá <strong>{(currentDelivery && currentDelivery.driverName) || currentProgramacao?.motorista || user?.fullName || user?.name || 'Motorista'}</strong>,
+                    Olá <strong>{currentProgramacao?.motorista || (currentDelivery && currentDelivery.driverName) || user?.fullName || user?.name || 'Motorista'}</strong>,
                   </p>
                   <p className="text-lg mb-2">
                     Sua entrega no <strong>{currentProgramacao?.recebedor || 'Rufino'}</strong> está agendada para:
@@ -460,8 +492,8 @@ const ProgramadasEntregas = () => {
                   {/* Truck animation + elapsed timer when delivery is en route */}
                   {(currentDelivery && ['pending', 'PENDING', 'EM_ROTA'].includes((currentDelivery.status || '').toString())) && (
                     <div className="mt-4 flex items-center gap-3">
-                      <div className="flex-1 bg-gray-200 rounded-lg h-16 overflow-hidden relative border border-gray-300 flex items-center">
-                        <TruckSVG />
+                      <div className="flex-1 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg min-h-16 overflow-hidden relative border-2 border-purple-200" style={{position: 'relative'}}>
+                        <ProgressiveTruck start={currentDelivery.createdAt} />
                       </div>
                       <div className="text-sm text-gray-700 font-medium text-right">Tempo de rota:<br /><span className="text-base font-bold text-blue-600"><ElapsedTimer start={currentDelivery.createdAt} /></span></div>
                     </div>
