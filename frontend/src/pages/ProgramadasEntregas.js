@@ -152,8 +152,28 @@ const ProgramadasEntregas = () => {
         // Re-use existing delivery and restore step
         setCurrentDelivery(existing);
         setCurrentProgramacao(p);
-        const restoredStep = existing.currentStep || (existing.status === 'pending' ? 'welcome' : 'welcome');
-        setCurrentStep(restoredStep);
+        // Determina o step inicial conforme o status
+        let restoredStep = 'welcome';
+        switch ((existing.status || '').toUpperCase()) {
+          case 'AGUARDANDO_DESOVA':
+            restoredStep = 'confirmDesova';
+            break;
+          case 'EM_DESOVA':
+            restoredStep = 'desovaProgress';
+            break;
+          case 'AGUARDANDO_ANEXO':
+            restoredStep = 'finalDocs';
+            break;
+          case 'ENTREGUE':
+            restoredStep = 'finalDocs';
+            break;
+          case 'PENDING':
+          case 'EM_ROTA':
+          default:
+            restoredStep = 'welcome';
+        }
+        // Se currentStep já estiver salvo, prioriza ele
+        setCurrentStep(existing.currentStep || restoredStep);
         setPhotos([]);
         setObservations('');
         setJustification('');
