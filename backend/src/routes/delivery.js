@@ -247,8 +247,7 @@ router.get('/programacoes/mine', auth, async (req, res) => {
     // Buscar todas as programações ativas para o contratado (independente do status)
     const regex = new RegExp(`^${contratado}$`, 'i');
     const programacoes = await ProgramacaoEntrega.find({
-      contratado: regex,
-      ativo: { $ne: false }
+      contratado: regex
     }).sort({ dataAgendamento: -1 });
 
     console.log('[PROGRAMACAO] Encontradas', programacoes.length, 'programações para contratado', contratado);
