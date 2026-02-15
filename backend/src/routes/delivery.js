@@ -244,13 +244,11 @@ router.get('/programacoes/mine', auth, async (req, res) => {
       return res.json({ success: true, programacoes: [] });
     }
 
-    // Buscar programações ativas e não entregues para o contratado (case-insensitive)
+    // Buscar todas as programações ativas para o contratado (independente do status)
     const regex = new RegExp(`^${contratado}$`, 'i');
-    // Apenas programações com status AGENDADO
     const programacoes = await ProgramacaoEntrega.find({
       contratado: regex,
-      ativo: { $ne: false },
-      status: 'AGENDADO'
+      ativo: { $ne: false }
     }).sort({ dataAgendamento: -1 });
 
     console.log('[PROGRAMACAO] Encontradas', programacoes.length, 'programações para contratado', contratado);
