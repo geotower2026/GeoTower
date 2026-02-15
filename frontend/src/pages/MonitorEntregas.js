@@ -244,7 +244,7 @@ const MonitorEntregas = () => {
           >
             <FaArrowLeft /> VOLTAR
           </button>
-          <h1 className="text-4xl font-extrabold text-gray-900 tracking-widest uppercase flex items-center gap-2 drop-shadow-sm">
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-widest uppercase flex items-center gap-2 drop-shadow-sm">
             <span role="img" aria-label="Gráfico">📊</span> MONITOR DE ENTREGAS
           </h1>
           <button
@@ -261,19 +261,19 @@ const MonitorEntregas = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-gradient-to-r from-blue-100 to-blue-200 rounded-xl shadow-lg p-6 border-l-8 border-blue-600 flex flex-col items-center">
             <p className="text-blue-900 text-base font-extrabold uppercase tracking-widest mb-1">TOTAL</p>
-            <p className="text-4xl font-extrabold text-blue-700 drop-shadow">{stats.total}</p>
+            <p className="text-2xl font-extrabold text-blue-700 drop-shadow">{stats.total}</p>
           </div>
           <div className="bg-gradient-to-r from-green-100 to-green-200 rounded-xl shadow-lg p-6 border-l-8 border-green-600 flex flex-col items-center">
             <p className="text-green-900 text-base font-extrabold uppercase tracking-widest mb-1">ENTREGUES</p>
-            <p className="text-4xl font-extrabold text-green-700 drop-shadow">{stats.submitted}</p>
+            <p className="text-2xl font-extrabold text-green-700 drop-shadow">{stats.submitted}</p>
           </div>
           <div className="bg-gradient-to-r from-yellow-100 to-yellow-200 rounded-xl shadow-lg p-6 border-l-8 border-yellow-500 flex flex-col items-center">
             <p className="text-yellow-900 text-base font-extrabold uppercase tracking-widest mb-1">PENDENTE</p>
-            <p className="text-4xl font-extrabold text-yellow-600 drop-shadow">{stats.pending}</p>
+            <p className="text-2xl font-extrabold text-yellow-600 drop-shadow">{stats.pending}</p>
           </div>
           <div className="bg-gradient-to-r from-purple-100 to-purple-200 rounded-xl shadow-lg p-6 border-l-8 border-purple-600 flex flex-col items-center">
             <p className="text-purple-900 text-base font-extrabold uppercase tracking-widest mb-1">MOTORISTAS</p>
-            <p className="text-4xl font-extrabold text-purple-700 drop-shadow">{stats.byDriver}</p>
+            <p className="text-2xl font-extrabold text-purple-700 drop-shadow">{stats.byDriver}</p>
           </div>
         </div>
 
@@ -387,20 +387,20 @@ const MonitorEntregas = () => {
           <div className="overflow-x-auto bg-white rounded-lg shadow-md">
             <table className="w-full">
               <thead className="bg-gradient-to-r from-purple-100 to-purple-200 border-b-2 border-purple-400">
-                <tr>
-                  <th className="px-4 py-3 text-left text-base font-extrabold text-gray-900 uppercase tracking-widest">NÚMERO</th>
-                  <th className="px-4 py-3 text-left text-base font-extrabold text-gray-900 uppercase tracking-widest">CONTRATADO</th>
-                  <th className="px-4 py-3 text-left text-base font-extrabold text-gray-900 uppercase tracking-widest">MOTORISTA</th>
-                  <th className="px-4 py-3 text-left text-base font-extrabold text-gray-900 uppercase tracking-widest">RECEBEDOR</th>
-                  <th className="px-4 py-3 text-left text-base font-extrabold text-gray-900 uppercase tracking-widest">STATUS</th>
-                  <th className="px-4 py-3 text-left text-base font-extrabold text-gray-900 uppercase tracking-widest">DATA AGENDAMENTO</th>
-                  <th className="px-4 py-3 text-left text-base font-extrabold text-gray-900 uppercase tracking-widest">CHEGADA CLIENTE</th>
-                  <th className="px-4 py-3 text-left text-base font-extrabold text-gray-900 uppercase tracking-widest">INÍCIO DESOVA</th>
-                  <th className="px-4 py-3 text-left text-base font-extrabold text-gray-900 uppercase tracking-widest">FIM DESOVA</th>
-                  <th className="px-4 py-3 text-center text-base font-extrabold text-gray-900 uppercase tracking-widest">DOCUMENTOS</th>
-                  <th className="px-4 py-3 text-center text-base font-extrabold text-gray-900 uppercase tracking-widest">AÇÕES</th>
-                </tr>
-              </thead>
+                  <tr>
+                    <th className="px-4 py-3 text-left text-sm font-extrabold text-gray-900 uppercase tracking-widest">NÚMERO</th>
+                    <th className="px-4 py-3 text-left text-sm font-extrabold text-gray-900 uppercase tracking-widest">CONTRATADO</th>
+                    <th className="px-4 py-3 text-left text-sm font-extrabold text-gray-900 uppercase tracking-widest">MOTORISTA</th>
+                    <th className="px-4 py-3 text-left text-sm font-extrabold text-gray-900 uppercase tracking-widest">RECEBEDOR</th>
+                    <th className="px-4 py-3 text-left text-sm font-extrabold text-gray-900 uppercase tracking-widest">STATUS</th>
+                    <th className="px-4 py-3 text-left text-sm font-extrabold text-gray-900 uppercase tracking-widest">DATA AGENDAMENTO</th>
+                    <th className="px-4 py-3 text-left text-sm font-extrabold text-gray-900 uppercase tracking-widest">CHEGADA CLIENTE</th>
+                    <th className="px-4 py-3 text-left text-sm font-extrabold text-gray-900 uppercase tracking-widest">INÍCIO DESOVA</th>
+                    <th className="px-4 py-3 text-left text-sm font-extrabold text-gray-900 uppercase tracking-widest">FIM DESOVA</th>
+                    <th className="px-4 py-3 text-center text-sm font-extrabold text-gray-900 uppercase tracking-widest">DOCUMENTOS</th>
+                    <th className="px-4 py-3 text-center text-sm font-extrabold text-gray-900 uppercase tracking-widest">AÇÕES</th>
+                  </tr>
+                </thead>
               <tbody>
                 {filteredDeliveries.map((delivery, index) => (
                   <tr
