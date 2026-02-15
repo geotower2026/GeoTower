@@ -237,49 +237,48 @@ const MonitorEntregas = () => {
     <div className="bg-gray-50 min-h-screen pb-20">
       <div className="max-w-7xl mx-auto p-4">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-8">
           <button
             onClick={() => navigate('/home')}
-            className="flex items-center gap-2 text-purple-600 hover:text-purple-800 font-semibold transition"
+            className="flex items-center gap-2 text-purple-700 hover:text-purple-900 font-extrabold text-lg tracking-widest uppercase transition"
           >
-            <FaArrowLeft /> Voltar
+            <FaArrowLeft /> VOLTAR
           </button>
-          <h1 className="text-3xl font-bold text-gray-800">📊 Monitor de Entregas</h1>
+          <h1 className="text-4xl font-extrabold text-gray-900 tracking-widest uppercase flex items-center gap-2 drop-shadow-sm">
+            <span role="img" aria-label="Gráfico">📊</span> MONITOR DE ENTREGAS
+          </h1>
           <button
             onClick={loadDeliveries}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition"
+            className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-purple-500 to-purple-700 text-white rounded-xl shadow-lg hover:from-purple-600 hover:to-purple-800 disabled:opacity-50 font-bold text-lg transition"
           >
             <FaSync className={loading ? 'animate-spin' : ''} />
-            {loading ? 'Atualizando...' : 'Atualizar'}
+            {loading ? 'ATUALIZANDO...' : 'ATUALIZAR'}
           </button>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-blue-500">
-            <p className="text-gray-600 text-sm font-semibold">Total</p>
-            <p className="text-3xl font-bold text-blue-600">{stats.total}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+          <div className="bg-gradient-to-r from-blue-100 to-blue-200 rounded-xl shadow-lg p-6 border-l-8 border-blue-600 flex flex-col items-center">
+            <p className="text-blue-900 text-base font-extrabold uppercase tracking-widest mb-1">TOTAL</p>
+            <p className="text-4xl font-extrabold text-blue-700 drop-shadow">{stats.total}</p>
           </div>
-          
-          <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-green-500">
-            <p className="text-gray-600 text-sm font-semibold">Entregues</p>
-            <p className="text-3xl font-bold text-green-600">{stats.submitted}</p>
+          <div className="bg-gradient-to-r from-green-100 to-green-200 rounded-xl shadow-lg p-6 border-l-8 border-green-600 flex flex-col items-center">
+            <p className="text-green-900 text-base font-extrabold uppercase tracking-widest mb-1">ENTREGUES</p>
+            <p className="text-4xl font-extrabold text-green-700 drop-shadow">{stats.submitted}</p>
           </div>
-          
-          <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-yellow-500">
-            <p className="text-gray-600 text-sm font-semibold">Pendente</p>
-            <p className="text-3xl font-bold text-yellow-600">{stats.pending}</p>
+          <div className="bg-gradient-to-r from-yellow-100 to-yellow-200 rounded-xl shadow-lg p-6 border-l-8 border-yellow-500 flex flex-col items-center">
+            <p className="text-yellow-900 text-base font-extrabold uppercase tracking-widest mb-1">PENDENTE</p>
+            <p className="text-4xl font-extrabold text-yellow-600 drop-shadow">{stats.pending}</p>
           </div>
-          
-          <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-purple-500">
-            <p className="text-gray-600 text-sm font-semibold">Motoristas</p>
-            <p className="text-3xl font-bold text-purple-600">{stats.byDriver}</p>
+          <div className="bg-gradient-to-r from-purple-100 to-purple-200 rounded-xl shadow-lg p-6 border-l-8 border-purple-600 flex flex-col items-center">
+            <p className="text-purple-900 text-base font-extrabold uppercase tracking-widest mb-1">MOTORISTAS</p>
+            <p className="text-4xl font-extrabold text-purple-700 drop-shadow">{stats.byDriver}</p>
           </div>
         </div>
 
         {/* Auto Refresh Control */}
-        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-200">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
             <label className="flex items-center gap-2">
               <input
@@ -310,16 +309,16 @@ const MonitorEntregas = () => {
         </div>
 
         {/* Filtros */}
-        <div className="bg-white rounded-lg shadow-md mb-6">
+        <div className="bg-white rounded-xl shadow-lg mb-8 border border-gray-200">
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition"
           >
             <div className="flex items-center gap-2">
-              <FaFilter className="text-purple-600" />
-              <span className="font-semibold text-gray-800">Filtros</span>
+              <FaFilter className="text-purple-700 text-xl" />
+              <span className="font-extrabold text-gray-900 uppercase tracking-widest">FILTROS</span>
             </div>
-            <span className="text-gray-500">{showFilters ? '▼' : '▶'}</span>
+            <span className="text-gray-700 font-bold text-lg">{showFilters ? '▼' : '▶'}</span>
           </button>
 
           {showFilters && (
@@ -387,19 +386,19 @@ const MonitorEntregas = () => {
         ) : (
           <div className="overflow-x-auto bg-white rounded-lg shadow-md">
             <table className="w-full">
-              <thead className="bg-gray-100 border-b border-gray-300">
+              <thead className="bg-gradient-to-r from-purple-100 to-purple-200 border-b-2 border-purple-400">
                 <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Número</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Contratado</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Motorista</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Recebedor</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Data Agendamento</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Chegada Cliente</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Início Desova</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Fim Desova</th>
-                  <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Documentos</th>
-                  <th className="px-4 py-3 text-center text-sm font-semibold text-gray-700">Ações</th>
+                  <th className="px-4 py-3 text-left text-base font-extrabold text-gray-900 uppercase tracking-widest">NÚMERO</th>
+                  <th className="px-4 py-3 text-left text-base font-extrabold text-gray-900 uppercase tracking-widest">CONTRATADO</th>
+                  <th className="px-4 py-3 text-left text-base font-extrabold text-gray-900 uppercase tracking-widest">MOTORISTA</th>
+                  <th className="px-4 py-3 text-left text-base font-extrabold text-gray-900 uppercase tracking-widest">RECEBEDOR</th>
+                  <th className="px-4 py-3 text-left text-base font-extrabold text-gray-900 uppercase tracking-widest">STATUS</th>
+                  <th className="px-4 py-3 text-left text-base font-extrabold text-gray-900 uppercase tracking-widest">DATA AGENDAMENTO</th>
+                  <th className="px-4 py-3 text-left text-base font-extrabold text-gray-900 uppercase tracking-widest">CHEGADA CLIENTE</th>
+                  <th className="px-4 py-3 text-left text-base font-extrabold text-gray-900 uppercase tracking-widest">INÍCIO DESOVA</th>
+                  <th className="px-4 py-3 text-left text-base font-extrabold text-gray-900 uppercase tracking-widest">FIM DESOVA</th>
+                  <th className="px-4 py-3 text-center text-base font-extrabold text-gray-900 uppercase tracking-widest">DOCUMENTOS</th>
+                  <th className="px-4 py-3 text-center text-base font-extrabold text-gray-900 uppercase tracking-widest">AÇÕES</th>
                 </tr>
               </thead>
               <tbody>
