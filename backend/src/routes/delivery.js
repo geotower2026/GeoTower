@@ -235,27 +235,16 @@ router.get('/programacoes/mine', auth, async (req, res) => {
       console.warn('[PROGRAMACAO] Aviso: falha ao buscar registro do usuário no DB:', e && e.message ? e.message : e);
     }
 
-    // Buscar programações por contratado igual ao username OU nome do usuário logado
-    const contratadoUsername = (req.user && req.user.username) ? String(req.user.username).trim() : '';
-    const contratadoFullName = (req.user && req.user.fullName) ? String(req.user.fullName).trim() : '';
-
-    console.log('[DEBUG PROGRAMACOES] username:', contratadoUsername, '| fullName:', contratadoFullName);
-
-    if (!contratadoUsername && !contratadoFullName) {
-      console.log('[DEBUG PROGRAMACOES] Nenhum username ou fullName disponível para busca.');
+    // Buscar todas as programações do contratado do usuário, independente do status
+    const contratado = (req.user && req.user.username) ? String(req.user.username).trim().toUpperCase() : '';
+    if (!contratado) {
+      console.log('[DEBUG PROGRAMACOES] Nenhum contratado disponível para busca.');
       return res.json({ success: true, programacoes: [] });
     }
-
-    // Buscar todas as programações cujo contratado seja igual ao username ou fullName (case-insensitive)
-    const regexes = [];
-    if (contratadoUsername) regexes.push(new RegExp(`^${contratadoUsername}$`, 'i'));
-    if (contratadoFullName) regexes.push(new RegExp(`^${contratadoFullName}$`, 'i'));
-    console.log('[DEBUG PROGRAMACOES] Regexes de busca:', regexes);
+    // Busca exata pelo campo contratado (que é em caixa alta)
     const programacoes = await ProgramacaoEntrega.find({
-      contratado: { $in: regexes }
+      contratado: contratado
     }).sort({ dataAgendamento: -1 });
-    console.log('[DEBUG PROGRAMACOES] Programações encontradas:', programacoes.length);
-
     console.log('[PROGRAMACAO] Encontradas', programacoes.length, 'programações para contratado', contratado);
     return res.json({ success: true, programacoes: programacoes || [] });
   } catch (err) {
