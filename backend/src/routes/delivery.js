@@ -228,37 +228,33 @@ router.get('/programacoes/mine', auth, async (req, res) => {
 
     // Tentar derivar o contratado a partir do registro do usuário (busca no DB por id)
     const db = await getDb(req);
+    let driverRecord = null;
+    try {
+      driverRecord = await db.findById('drivers', req.user.id);
+    } catch (e) {
+      console.warn('[PROGRAMACAO] Aviso: falha ao buscar registro do usuário no DB:', e && e.message ? e.message : e);
+    }
 
+    // Prioriza campos do registro do usuário: contratado > transportadora > name > fullName
+    const contratadoRaw = (driverRecord && (driverRecord.contratado || driverRecord.transportadora || driverRecord.name || driverRecord.fullName)) || (req.user && (req.user.transportadora || req.user.contratado)) || '';
+    const contratado = String(contratadoRaw || '').trim();
 
+    // Se não houver contratado claro no usuário, retornar vazio
+    if (!contratado) {
+      return res.json({ success: true, programacoes: [] });
+    }
 
+    // Buscar programações ativas e não entregues para o contratado (case-insensitive)
+    const regex = new RegExp(`^${contratado}$`, 'i');
+    // Apenas programações com status AGENDADO
+    const programacoes = await ProgramacaoEntrega.find({
+      contratado: regex,
+      ativo: { $ne: false },
+      status: 'AGENDADO'
+    }).sort({ dataAgendamento: -1 });
 
-      // Restaurado: prioriza contratado do registro do motorista, aceita variações e usa regex case-insensitive
-      let driverRecord = null;
-      try {
-        driverRecord = await db.findById('drivers', req.user.id);
-      } catch (e) {
-        console.warn('[PROGRAMACAO] Falha ao buscar registro do motorista:', e && e.message ? e.message : e);
-      }
-      let contratado = '';
-      if (driverRecord && driverRecord.contratado) {
-        contratado = String(driverRecord.contratado).trim();
-      } else if (req.user && req.user.username) {
-        contratado = String(req.user.username).trim();
-      } else if (req.user && req.user.name) {
-        contratado = String(req.user.name).trim();
-      }
-      if (!contratado) {
-        console.log('[DEBUG PROGRAMACOES] Nenhum contratado disponível para busca.');
-        return res.json({ success: true, programacoes: [] });
-      }
-      // Busca por regex case-insensitive, apenas programações ativas e status AGENDADO
-      const programacoes = await ProgramacaoEntrega.find({
-        contratado: { $regex: `^${contratado}$`, $options: 'i' },
-        ativo: true,
-        status: 'AGENDADO'
-      }).sort({ dataAgendamento: -1 });
-      console.log('[PROGRAMACAO] Encontradas', programacoes.length, 'programações para contratado', contratado);
-      return res.json({ success: true, programacoes: programacoes || [] });
+    console.log('[PROGRAMACAO] Encontradas', programacoes.length, 'programações para contratado', contratado);
+    return res.json({ success: true, programacoes: programacoes || [] });
   } catch (err) {
     console.error('[PROGRAMACAO] Erro ao buscar programações do usuário', err);
     return res.status(500).json({ message: 'Erro ao listar programações do usuário', error: err.message });
