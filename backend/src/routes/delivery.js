@@ -235,17 +235,20 @@ router.get('/programacoes/mine', auth, async (req, res) => {
       console.warn('[PROGRAMACAO] Aviso: falha ao buscar registro do usuário no DB:', e && e.message ? e.message : e);
     }
 
-    // O campo contratado será igual ao nome de usuário do perfil logado (user.username)
-    const contratado = (req.user && req.user.username) ? String(req.user.username).trim() : '';
+    // Buscar programações por contratado igual ao username OU nome do usuário logado
+    const contratadoUsername = (req.user && req.user.username) ? String(req.user.username).trim() : '';
+    const contratadoFullName = (req.user && req.user.fullName) ? String(req.user.fullName).trim() : '';
 
-    if (!contratado) {
+    if (!contratadoUsername && !contratadoFullName) {
       return res.json({ success: true, programacoes: [] });
     }
 
-    // Buscar todas as programações cujo contratado seja igual ao nome de usuário (case-insensitive)
-    const regex = new RegExp(`^${contratado}$`, 'i');
+    // Buscar todas as programações cujo contratado seja igual ao username ou fullName (case-insensitive)
+    const regexes = [];
+    if (contratadoUsername) regexes.push(new RegExp(`^${contratadoUsername}$`, 'i'));
+    if (contratadoFullName) regexes.push(new RegExp(`^${contratadoFullName}$`, 'i'));
     const programacoes = await ProgramacaoEntrega.find({
-      contratado: regex
+      contratado: { $in: regexes }
     }).sort({ dataAgendamento: -1 });
 
     console.log('[PROGRAMACAO] Encontradas', programacoes.length, 'programações para contratado', contratado);
