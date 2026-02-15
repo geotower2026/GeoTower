@@ -239,7 +239,10 @@ router.get('/programacoes/mine', auth, async (req, res) => {
     const contratadoUsername = (req.user && req.user.username) ? String(req.user.username).trim() : '';
     const contratadoFullName = (req.user && req.user.fullName) ? String(req.user.fullName).trim() : '';
 
+    console.log('[DEBUG PROGRAMACOES] username:', contratadoUsername, '| fullName:', contratadoFullName);
+
     if (!contratadoUsername && !contratadoFullName) {
+      console.log('[DEBUG PROGRAMACOES] Nenhum username ou fullName disponível para busca.');
       return res.json({ success: true, programacoes: [] });
     }
 
@@ -247,9 +250,11 @@ router.get('/programacoes/mine', auth, async (req, res) => {
     const regexes = [];
     if (contratadoUsername) regexes.push(new RegExp(`^${contratadoUsername}$`, 'i'));
     if (contratadoFullName) regexes.push(new RegExp(`^${contratadoFullName}$`, 'i'));
+    console.log('[DEBUG PROGRAMACOES] Regexes de busca:', regexes);
     const programacoes = await ProgramacaoEntrega.find({
       contratado: { $in: regexes }
     }).sort({ dataAgendamento: -1 });
+    console.log('[DEBUG PROGRAMACOES] Programações encontradas:', programacoes.length);
 
     console.log('[PROGRAMACAO] Encontradas', programacoes.length, 'programações para contratado', contratado);
     return res.json({ success: true, programacoes: programacoes || [] });
