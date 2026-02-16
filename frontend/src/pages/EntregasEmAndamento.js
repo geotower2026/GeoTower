@@ -41,7 +41,8 @@ export default function EntregasEmAndamento() {
       ) : programacoes.length === 0 ? (
         <div className="bg-white p-4 rounded shadow text-center">Nenhuma entrega em andamento encontrada</div>
       ) : (
-        programacoes.map((p, idx) => (
+          programacoes.length > 0 ? (
+            programacoes.map((p, idx) => (
           <div key={idx} className="bg-white p-4 rounded shadow mb-4">
             <div className="mb-2 font-semibold">Processo: {p.processo}</div>
             <div>Data Agendamento: {new Date(p.dataAgendamento).toLocaleString()}</div>
@@ -52,6 +53,11 @@ export default function EntregasEmAndamento() {
             <div>Motorista: {p.motorista || '-'}</div>
           </div>
         ))
+          ) : (
+            <div style={{ textAlign: 'center', marginTop: '2rem', color: '#888' }}>
+              Nenhuma entrega em andamento
+            </div>
+          )}
       )}
     </div>
   );

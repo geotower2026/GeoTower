@@ -31,6 +31,9 @@ const DeliverySchema = new mongoose.Schema(
       diarioBordo: { type: String, default: null },
       devolucaoVazio: { type: String, default: null },
       retiradaCheio: { type: String, default: null },
+      chegadaCliente: { type: String, default: null }, // Fotos da chegada no cliente
+      inicioDesova: { type: String, default: null },   // Fotos do início da desova
+      fimDesova: { type: String, default: null },      // Fotos do fim da desova
     },
   },
   { timestamps: true }

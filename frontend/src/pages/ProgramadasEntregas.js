@@ -290,7 +290,7 @@ const ProgramadasEntregas = () => {
         const blob = dataURLtoBlob(photo);
         formData.append('file', blob);
       });
-      await deliveryService.uploadDocument(currentDelivery._id, 'arrivalPhotos', Array.from(formData.getAll('file')));
+      await deliveryService.uploadDocument(currentDelivery._id, 'chegadaCliente', Array.from(formData.getAll('file')));
       // Mudar status para AGUARDANDO_DESOVA
       await deliveryService.updateDelivery(currentDelivery._id, { arrivedAt: new Date().toISOString(), status: 'AGUARDANDO_DESOVA' });
       setToast({ message: 'Chegada confirmada', type: 'success' });
@@ -317,7 +317,7 @@ const ProgramadasEntregas = () => {
         const blob = dataURLtoBlob(photo);
         formData.append('file', blob);
       });
-      await deliveryService.uploadDocument(currentDelivery._id, 'desovaStartPhotos', Array.from(formData.getAll('file')));
+      await deliveryService.uploadDocument(currentDelivery._id, 'inicioDesova', Array.from(formData.getAll('file')));
       // Salva status e currentStep juntos para garantir retomada correta
       await deliveryService.updateDelivery(currentDelivery._id, { status: 'EM_DESOVA', currentStep: 'desovaProgress' });
       setToast({ message: 'Desova iniciada', type: 'success' });
@@ -359,7 +359,7 @@ const ProgramadasEntregas = () => {
         const blob = dataURLtoBlob(photo);
         formData.append('file', blob);
       });
-      await deliveryService.uploadDocument(currentDelivery._id, 'desovaFinalPhotos', Array.from(formData.getAll('file')));
+      await deliveryService.uploadDocument(currentDelivery._id, 'fimDesova', Array.from(formData.getAll('file')));
       await deliveryService.updateDelivery(currentDelivery._id, { status: 'DESOVA_FINALIZADA' });
       setToast({ message: 'Desova finalizada', type: 'success' });
       goToStep('askSchedule');
