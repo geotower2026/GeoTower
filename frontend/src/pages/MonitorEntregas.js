@@ -573,11 +573,9 @@ const MonitorEntregas = () => {
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase">Status</p>
                   <span
-                    className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${getStatusBadge(
-                      selectedDelivery.status
-                    )}`}
+                    className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${getStatusBadge(selectedDelivery.status)}`}
                   >
-                    {selectedDelivery.status === 'submitted' ? '✓ Entregue' : '⏳ Pendente'}
+                    {selectedDelivery.status || '-'}
                   </span>
                 </div>
               </div>
@@ -593,11 +591,11 @@ const MonitorEntregas = () => {
                 </div>
               )}
 
-              {/* Documentos */}
+              {/* Documentos e Fotos do Fluxo */}
               <div>
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-semibold text-gray-500 uppercase mb-3">
-                    Documentos Anexados
+                    Documentos Anexados e Fotos do Fluxo
                   </p>
                   <button
                     onClick={() => handleDownloadAll(selectedDelivery._id)}
@@ -609,7 +607,8 @@ const MonitorEntregas = () => {
                 <div className="grid grid-cols-1 gap-2">
                   {(() => {
                     const labels = getLabelsForDelivery(selectedDelivery);
-                    return Object.keys(selectedDelivery.documents || {}).map(docKey => (
+                    // Documentos normais
+                    const docRows = Object.keys(selectedDelivery.documents || {}).map(docKey => (
                       <div key={docKey}>
                         {selectedDelivery.documents[docKey] ? (
                           <div className="bg-gray-50 p-3 rounded flex items-center justify-between">
@@ -617,9 +616,7 @@ const MonitorEntregas = () => {
                               {labels[docKey] || docKey}
                             </span>
                             <button
-                              onClick={() =>
-                                handleDownload(selectedDelivery._id, docKey)
-                              }
+                              onClick={() => handleDownload(selectedDelivery._id, docKey)}
                               className="flex items-center gap-2 px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600 transition"
                             >
                               <FaDownload /> Baixar
@@ -632,9 +629,50 @@ const MonitorEntregas = () => {
                         )}
                       </div>
                     ));
-                  })()} 
+                    // Fotos do fluxo: chegada, início, fim desova
+                    const fotos = [];
+                    if (selectedDelivery.fotosChegada && selectedDelivery.fotosChegada.length > 0) {
+                      fotos.push({ label: 'Fotos Chegada Cliente', files: selectedDelivery.fotosChegada });
+                    }
+                    if (selectedDelivery.fotosInicioDesova && selectedDelivery.fotosInicioDesova.length > 0) {
+                      fotos.push({ label: 'Fotos Início Desova', files: selectedDelivery.fotosInicioDesova });
+                    }
+                    if (selectedDelivery.fotosFimDesova && selectedDelivery.fotosFimDesova.length > 0) {
+                      fotos.push({ label: 'Fotos Fim Desova', files: selectedDelivery.fotosFimDesova });
+                    }
+                    return [
+                      ...docRows,
+                      ...fotos.map((f, idx) => (
+                        <div key={f.label + idx} className="bg-gray-50 p-3 rounded flex items-center justify-between">
+                          <span className="font-semibold text-gray-800">{f.label}</span>
+                          <button
+                            onClick={() => setModalFotos({ label: f.label, files: f.files })}
+                            className="flex items-center gap-2 px-3 py-1 bg-purple-500 text-white text-sm rounded hover:bg-purple-600 transition"
+                          >
+                            Visualizar Fotos
+                          </button>
+                        </div>
+                      ))
+                    ];
+                  })()}
                 </div>
               </div>
+      {/* Modal para visualizar fotos do fluxo */}
+      {modalFotos && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold">{modalFotos.label}</h2>
+              <button onClick={() => setModalFotos(null)} className="text-2xl hover:text-gray-400 transition"><FaTimes /></button>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {modalFotos.files.map((url, idx) => (
+                <img key={idx} src={url} alt={`Foto ${idx + 1}`} className="w-full h-40 object-cover rounded shadow" />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
               {selectedDelivery.submissionObservation && (
                 <div className="bg-yellow-50 border-l-4 border-yellow-300 p-3 rounded mb-3">
