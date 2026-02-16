@@ -208,16 +208,16 @@ const MonitorEntregas = () => {
 
   const getStatusBadge = (status) => {
     const badges = {
-      submitted: 'bg-green-200 text-green-900 border-2 border-green-500 shadow font-extrabold text-base',
-      pending: 'bg-yellow-200 text-yellow-900 border-2 border-yellow-500 shadow font-extrabold text-base',
-      AGUARDANDO_DESOVA: 'bg-orange-200 text-orange-900 border-2 border-orange-500 shadow font-extrabold text-base',
-      EM_DESOVA: 'bg-purple-200 text-purple-900 border-2 border-purple-500 shadow font-extrabold text-base',
-      DESOVA_FINALIZADA: 'bg-blue-200 text-blue-900 border-2 border-blue-500 shadow font-extrabold text-base',
-      ANEXANDO_DOCUMENTOS_FINAIS: 'bg-pink-200 text-pink-900 border-2 border-pink-500 shadow font-extrabold text-base',
-      ENTREGUE: 'bg-emerald-200 text-emerald-900 border-2 border-emerald-500 shadow font-extrabold text-base',
-      CANCELADO: 'bg-gray-300 text-gray-800 border-2 border-gray-500 shadow font-extrabold text-base'
+      submitted: 'bg-green-100 text-green-800 border border-green-400 font-bold',
+      pending: 'bg-yellow-100 text-yellow-800 border border-yellow-400 font-bold',
+      AGUARDANDO_DESOVA: 'bg-orange-100 text-orange-800 border border-orange-400 font-bold',
+      EM_DESOVA: 'bg-purple-100 text-purple-800 border border-purple-400 font-bold',
+      DESOVA_FINALIZADA: 'bg-blue-100 text-blue-800 border border-blue-400 font-bold',
+      ANEXANDO_DOCUMENTOS_FINAIS: 'bg-pink-100 text-pink-800 border border-pink-400 font-bold',
+      ENTREGUE: 'bg-emerald-100 text-emerald-800 border border-emerald-400 font-bold',
+      CANCELADO: 'bg-gray-200 text-gray-700 border border-gray-400 font-bold'
     };
-    return badges[status] || 'bg-gray-100 text-gray-800 font-bold text-base';
+    return badges[status] || 'bg-gray-100 text-gray-800 font-bold';
   };
 
   // Default labels for Manaus; we will pick per-delivery labels when showing modal
@@ -418,7 +418,7 @@ const MonitorEntregas = () => {
                     <td className="px-4 py-3 text-gray-700">{delivery.driverName || '-'}</td>
                     <td className="px-4 py-3 text-gray-700">{delivery.recebedor || '-'}</td>
                     <td className="px-4 py-3">
-                      <span className={`px-4 py-2 rounded-full font-bold uppercase tracking-wide ${getStatusBadge(delivery.status)} flex items-center justify-center`}>
+                      <span className={`px-3 py-1 rounded-full font-bold uppercase tracking-wide text-xs ${getStatusBadge(delivery.status)} flex items-center justify-center`}>
                         {delivery.status || '-'}
                       </span>
                     </td>
@@ -464,14 +464,7 @@ const MonitorEntregas = () => {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <div className="flex flex-col items-center justify-center gap-1">
-                        {/* Mostra todos alertas/observações relevantes */}
-                        {delivery.observations && delivery.observations.trim() !== '' && (
-                          <div className="mb-1 px-2 py-1 bg-yellow-100 text-yellow-900 rounded text-xs font-semibold flex items-center gap-1 max-w-xs break-words">
-                            <FaExclamationTriangle className="inline text-base align-middle mr-1" />
-                            {delivery.observations}
-                          </div>
-                        )}
+                      <div className="flex items-center justify-center">
                         <div className="relative inline-block text-left" ref={openMenuId === delivery._id ? menuRef : null}>
                           <button
                             onClick={(e) => {
@@ -491,7 +484,7 @@ const MonitorEntregas = () => {
                           </button>
 
                           {openMenuId === delivery._id && (
-                            <div className={`${openMenuUp ? 'origin-bottom-right absolute right-0 mb-2 bottom-full' : 'origin-top-right absolute right-0 mt-2'} w-44 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50`}>
+                            <div className={`${openMenuUp ? 'origin-bottom-right absolute right-0 mb-2 bottom-full' : 'origin-top-right absolute right-0 mt-2'} w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50`}>
                               <div className="py-1">
                                 <button
                                   onClick={() => { setSelectedDelivery(delivery); setOpenMenuId(null); }}
@@ -499,6 +492,13 @@ const MonitorEntregas = () => {
                                 >
                                   <FaEye /> Visualizar
                                 </button>
+                                {/* Observações/alertas no menu de ações */}
+                                {delivery.observations && delivery.observations.trim() !== '' && (
+                                  <div className="px-4 py-2 text-xs text-yellow-900 bg-yellow-50 rounded flex items-center gap-1 mt-1">
+                                    <FaExclamationTriangle className="inline text-base align-middle mr-1" />
+                                    {delivery.observations}
+                                  </div>
+                                )}
                                 <button
                                   onClick={() => { handleEditStart(delivery); setOpenMenuId(null); }}
                                   className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
