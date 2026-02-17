@@ -311,15 +311,10 @@ const ProgramadasEntregas = () => {
       // Upload com barra de progresso
       const formData = new FormData();
       compressedFiles.forEach((file) => formData.append('file', file));
-      await deliveryService.uploadDocumentWithProgress(
+      await deliveryService.uploadDocument(
         currentDelivery._id,
         'chegadaCliente',
-        formData,
-        (progressEvent) => {
-          if (progressEvent.total) {
-            setUploadProgress(30 + Math.round((progressEvent.loaded / progressEvent.total) * 70));
-          }
-        }
+        formData
       );
       setUploadProgress(100);
       await deliveryService.updateDelivery(currentDelivery._id, { arrivedAt: new Date().toISOString(), status: 'AGUARDANDO_DESOVA' });
@@ -568,17 +563,17 @@ function dataURLtoFile(dataurl, filename) {
           <div className="space-y-4">
             {programacoes.map((p) => (
               <div key={p._id} className="bg-white rounded-lg shadow p-4 hover:shadow-lg transition">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex-1 w-full">
                     <h3 className="text-lg font-bold text-gray-800 mb-2">Processo: {p.processo}</h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm text-gray-600">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 sm:gap-4 text-sm text-gray-600">
                       <div>
                         <p className="text-gray-500">Data Agendamento</p>
                         <p className="font-medium">{p.dataAgendamento ? new Date(p.dataAgendamento).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-'}</p>
                       </div>
                       <div>
                         <p className="text-gray-500">Recebedor</p>
-                        <p className="font-medium">{p.recebedor || '-'}</p>
+                        <p className="font-bold text-lg text-purple-700 bg-purple-100 rounded px-2 py-1 shadow-sm">{p.recebedor || '-'}</p>
                       </div>
                       <div>
                         <p className="text-gray-500">Container</p>
@@ -616,13 +611,13 @@ function dataURLtoFile(dataurl, filename) {
                       </div>
                       <div>
                         <p className="text-gray-500">Motorista</p>
-                        <p className="font-medium">{p.motorista || '-'}</p>
+                        <p className="font-bold text-lg text-emerald-700 bg-emerald-100 rounded px-2 py-1 shadow-sm">{p.motorista || '-'}</p>
                       </div>
                     </div>
                   </div>
 
-                    <div className="flex gap-2 ml-4">
-                      {/* Exibe botão para todos os status, exceto ENTREGUE/CANCELADO */}
+                  <div className="flex gap-2 w-full sm:w-auto mt-4 sm:mt-0 justify-end">
+                    {/* Exibe botão para todos os status, exceto ENTREGUE/CANCELADO */}
                       {(!['ENTREGUE','CANCELADO'].includes((p.status||'').toString())) && (
                         <button
                           onClick={() => handleStartDelivery(p)}
