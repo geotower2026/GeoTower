@@ -118,6 +118,7 @@ app.use("/api/auth", require("./routes/auth"));
 app.use("/api/deliveries", require("./routes/delivery"));
 app.use("/api/admin", require("./routes/admin"));
 app.use("/api/admin/reconciliation", require("./routes/reconciliation"));
+app.use("/api/gdrive", require("./routes/gdrive-auth-web"));
 // Meta routes (version/debug)
 app.use("/api/meta", require("./routes/meta"));
 
