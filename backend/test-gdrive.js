@@ -3,6 +3,9 @@
  * Uso: MONGO_URI="..." node test-gdrive.js
  */
 
+
+// Carrega variáveis do .env automaticamente
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const fs = require('fs');
 const path = require('path');
 
