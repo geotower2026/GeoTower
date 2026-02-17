@@ -309,12 +309,10 @@ const ProgramadasEntregas = () => {
         setUploadProgress(Math.round(((i + 1) / photos.length) * 30)); // até 30% na compressão
       }
       // Upload com barra de progresso
-      const formData = new FormData();
-      compressedFiles.forEach((file) => formData.append('file', file));
       await deliveryService.uploadDocument(
         currentDelivery._id,
         'chegadaCliente',
-        formData
+        compressedFiles
       );
       setUploadProgress(100);
       await deliveryService.updateDelivery(currentDelivery._id, { arrivedAt: new Date().toISOString(), status: 'AGUARDANDO_DESOVA' });
@@ -354,12 +352,10 @@ function dataURLtoFile(dataurl, filename) {
         compressedFiles.push(compressed);
         setUploadProgress(Math.round(((i + 1) / photos.length) * 30));
       }
-      const formData = new FormData();
-      compressedFiles.forEach((file) => formData.append('file', file));
       await deliveryService.uploadDocument(
         currentDelivery._id,
         'inicioDesova',
-        formData
+        compressedFiles
       );
       setUploadProgress(100);
       await deliveryService.updateDelivery(currentDelivery._id, { status: 'EM_DESOVA', currentStep: 'desovaProgress' });
@@ -406,12 +402,10 @@ function dataURLtoFile(dataurl, filename) {
         compressedFiles.push(compressed);
         setUploadProgress(Math.round(((i + 1) / photos.length) * 30));
       }
-      const formData = new FormData();
-      compressedFiles.forEach((file) => formData.append('file', file));
       await deliveryService.uploadDocument(
         currentDelivery._id,
         'fimDesova',
-        formData
+        compressedFiles
       );
       setUploadProgress(100);
       await deliveryService.updateDelivery(currentDelivery._id, { status: 'DESOVA_FINALIZADA' });
