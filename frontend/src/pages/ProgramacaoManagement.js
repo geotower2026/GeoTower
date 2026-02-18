@@ -408,8 +408,7 @@ const ProgramacaoManagement = () => {
           dataAgendamento,
           contratado,
           motorista,
-          status: status || 'AGENDADO',
-          observacoes
+          status: status || 'AGENDADO'
         };
       });
 
