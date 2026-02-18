@@ -178,12 +178,10 @@ const ProgramacaoManagement = () => {
         return;
       }
 
-      console.log('📋 Colunas encontradas na planilha:', Object.keys(data[0]));
-
-      // Função para normalizar nomes de colunas (remove acentos, maiúsculas, espaços)
+      // Função para normalizar nomes de colunas
       const normalizeColumnName = (name) => {
         if (!name) return '';
-        return String(name)
+        return name
           .toLowerCase()
           .trim()
           .normalize('NFD')
@@ -192,60 +190,47 @@ const ProgramacaoManagement = () => {
           .replace(/\s+/g, ''); // Remove espaços
       };
 
-      // Mapeamento com variações de nomes de colunas esperadas
+      // Mapeamento de variações de nomes de colunas
       const columnMapping = {
-        processo: ['processo', 'process'],
-        recebedor: ['recebedor', 'receiver'], // APENAS recebedor, não cliente!
-        container: ['container', 'ncontainer', 'nrcontainer', 'nmcontainer', 'nrvi'],
-        dataAgendamento: ['dtagendamento', 'dataagendamento', 'agendamento', 'data', 'dtagen', 'datasched'],
-        contratado: ['contratado', 'transportadora', 'empresa', 'carrier'],
-        motorista: ['motorista', 'driver', 'motoristaviagem', 'nombremotorista'],
-        status: ['status', 'situacao', 'situation']
+        processo: ['processo'],
+        recebedor: ['recebedor'],
+        container: ['container', 'ncontainer', 'numercontainer', 'nrcontainer'],
+        dataAgendamento: ['dataagendamento', 'dtagendamento', 'dtgendamento', 'data', 'agendamento', 'dataagend', 'dtagend'],
+        contratado: ['contratado', 'transportadora', 'empresa'],
+        motorista: ['motorista', 'motoristaviagem', 'nomemuotorista'],
+        status: ['status', 'situacao'],
+        observacoes: ['observacoes', 'observacao', 'notas', 'anotacoes', 'obsobdestino', 'observacaodestino']
       };
 
-      // Encontrar mapeamento de colunas mais inteligentemente
+      // Encontrar mapeamento de colunas real
       const firstRow = data[0];
       const actualColumns = {};
-      const availableColumns = Object.keys(firstRow);
-
-      console.log('🔍 Iniciando busca inteligente de colunas...');
 
       Object.keys(columnMapping).forEach((expectedCol) => {
-        let found = false;
-
-        // Procura 1: Match exato normalizado
-        for (const key of availableColumns) {
-          const normalizedKey = normalizeColumnName(key);
-          if (columnMapping[expectedCol].includes(normalizedKey)) {
+        const normalizedExpected = normalizeColumnName(expectedCol);
+        for (const key of Object.keys(firstRow)) {
+          const normalizedActual = normalizeColumnName(key);
+          if (columnMapping[expectedCol].includes(normalizedActual)) {
             actualColumns[expectedCol] = key;
-            console.log(`  ✓ ${expectedCol} encontrado: "${key}" (match exato)`);
-            found = true;
             break;
           }
         }
-
-        // Procura 2: Substring normalizadas
-        if (!found) {
-          for (const key of availableColumns) {
-            const normalizedKey = normalizeColumnName(key);
+        // Se não encontrou, tenta buscar por substring
+        if (!actualColumns[expectedCol]) {
+          for (const key of Object.keys(firstRow)) {
+            const normalizedActual = normalizeColumnName(key);
             for (const variation of columnMapping[expectedCol]) {
-              if (normalizedKey.includes(variation) || variation.includes(normalizedKey)) {
+              if (normalizedActual.includes(variation) || variation.includes(normalizedActual)) {
                 actualColumns[expectedCol] = key;
-                console.log(`  ✓ ${expectedCol} encontrado: "${key}" (substring match)`);
-                found = true;
                 break;
               }
             }
-            if (found) break;
+            if (actualColumns[expectedCol]) break;
           }
-        }
-
-        if (!found) {
-          console.log(`  ✗ ${expectedCol} NÃO encontrado (coluna obrigatória)`);
         }
       });
 
-      console.log('📊 Mapeamento final:', actualColumns);
+      console.log('Mapeamento de colunas encontrado:', actualColumns);
 
       // Função para mapear contratado - aceita qualquer contratado com busca case-insensitive
       const mapearContratado = (valor) => {
@@ -292,7 +277,7 @@ const ProgramacaoManagement = () => {
         return raw.toUpperCase();
       };
 
-      // Função para parsear data DD/MM/YYYY HH:MM corretamente (preserva hora do Excel)
+      // Função para parsear data DD/MM/YYYY HH:MM corretamente (sem timezone issues)
       const parseDateString = (dataStr) => {
         if (!dataStr) return '';
         
@@ -303,26 +288,19 @@ const ProgramacaoManagement = () => {
           if (!isNaN(strValue) && strValue !== '') {
             const excelNum = Number(strValue);
             
-            // Excel serial date: número inteiro = data, fração decimal = hora
-            // Não usar timezone - extrair direto do número!
-            const days = Math.floor(excelNum);
-            const fraction = excelNum - days;
+            // Excel serial date começa em 1900-01-01 (número 1)
+            // Fórmula: (excelNum - 1) * 86400000 ms, mas precisa ajustar para timezone
+            // Usa 25569 como offset para o epoch de 1970-01-01
+            const date = new Date((excelNum - 25569) * 86400 * 1000);
             
-            // Converter número de dias desde 01/01/1900 para data
-            // Excel começa em 1900-01-01 = 1
-            const date = new Date(1900, 0, 1);
-            date.setDate(date.getDate() + days - 1);
+            // Extrai componentes diretamente sem considerar timezone
+            const year = date.getUTCFullYear();
+            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(date.getUTCDate()).padStart(2, '0');
+            const hours = String(date.getUTCHours()).padStart(2, '0');
+            const minutes = String(date.getUTCMinutes()).padStart(2, '0');
             
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            
-            // Extrair hora da fração decimal (sem timezone!)
-            const totalSeconds = Math.round(fraction * 24 * 60 * 60);
-            const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-            const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
-            
-            console.log(`[DEBUG-EXCEL] ${excelNum} → ${year}-${month}-${day}T${hours}:${minutes}`);
+            console.log(`[DEBUG] Excel serial: ${excelNum} → ${year}-${month}-${day}T${hours}:${minutes}`);
             return `${year}-${month}-${day}T${hours}:${minutes}`;
           } else {
             // Parse string DD/MM/YYYY ou DD/MM/YYYY HH:MM
@@ -343,7 +321,7 @@ const ProgramacaoManagement = () => {
                 time = `${hh}:${mm}`;
               }
 
-              console.log(`[DEBUG-STRING] "${strValue}" → ${year}-${month}-${day}T${time}`);
+              console.log(`[DEBUG] String date: "${strValue}" → ${year}-${month}-${day}T${time}`);
               // Retorna em formato ISO sem timezone
               return `${year}-${month}-${day}T${time}`;
             }
@@ -355,48 +333,16 @@ const ProgramacaoManagement = () => {
         return '';
       };
 
-      // Mapear e validar dados - EXTRAIR APENAS AS COLUNAS RELEVANTES
+      // Mapear e validar dados
       const programacoesImport = data.map((row, index) => {
-        // Busca case-insensitive para Recebedor
-        const recebedorRaw = String(row[actualColumns.recebedor] || '').trim();
-        const recebedor = recebedorRaw; // Preserva exatamente como veio (caso de negócio)
-
-        // Extrai processo
         const processo = String(row[actualColumns.processo] || '').trim();
-        
-        // Extrai container
+        const recebedor = String(row[actualColumns.recebedor] || '').trim();
         const container = String(row[actualColumns.container] || '').trim();
-        
-        // Extrai e parseia data corretamente preservando hora
         const dataStr = String(row[actualColumns.dataAgendamento] || '').trim();
-        
-        // Extrai contratado
         const contratadoRaw = String(row[actualColumns.contratado] || '').trim();
-        
-        // Extrai motorista (opcional)
-        const motorista = actualColumns.motorista ? String(row[actualColumns.motorista] || '').trim() : '';
-        
-        // Extrai status (opcional, default AGENDADO)
-        const status = actualColumns.status ? String(row[actualColumns.status] || 'AGENDADO').trim() : 'AGENDADO';
-
-        // Parse data preservando hora exatamente como no Excel
-        const dataAgendamento = parseDateString(dataStr);
-        
-        // Map contratado com suporte case-insensitive
-        const contratado = mapearContratado(contratadoRaw);
-
-        console.log(`Linha ${index + 2}: processo="${processo}", recebedor="${recebedor}", dataAgendamento="${dataAgendamento}"`);
-
-        return {
-          processo,
-          recebedor,
-          container,
-          dataAgendamento,
-          contratado,
-          motorista,
-          status: status || 'AGENDADO'
-        };
-      });
+        const motorista = String(row[actualColumns.motorista] || '').trim();
+        const status = String(row[actualColumns.status] || 'AGENDADO').trim();
+        const observacoes = String(row[actualColumns.observacoes] || '').trim();
 
         const dataAgendamento = parseDateString(dataStr);
         const contratado = mapearContratado(contratadoRaw);
@@ -408,7 +354,8 @@ const ProgramacaoManagement = () => {
           dataAgendamento,
           contratado,
           motorista,
-          status: status || 'AGENDADO'
+          status: status || 'AGENDADO',
+          observacoes
         };
       });
 
