@@ -292,7 +292,7 @@ const ProgramacaoManagement = () => {
         return raw.toUpperCase();
       };
 
-      // Função para parsear data DD/MM/YYYY HH:MM corretamente (sem timezone issues)
+      // Função para parsear data DD/MM/YYYY HH:MM corretamente (preserva hora do Excel)
       const parseDateString = (dataStr) => {
         if (!dataStr) return '';
         
@@ -303,19 +303,26 @@ const ProgramacaoManagement = () => {
           if (!isNaN(strValue) && strValue !== '') {
             const excelNum = Number(strValue);
             
-            // Excel serial date começa em 1900-01-01 (número 1)
-            // Fórmula: (excelNum - 1) * 86400000 ms, mas precisa ajustar para timezone
-            // Usa 25569 como offset para o epoch de 1970-01-01
-            const date = new Date((excelNum - 25569) * 86400 * 1000);
+            // Excel serial date: número inteiro = data, fração decimal = hora
+            // Não usar timezone - extrair direto do número!
+            const days = Math.floor(excelNum);
+            const fraction = excelNum - days;
             
-            // Extrai componentes diretamente sem considerar timezone
-            const year = date.getUTCFullYear();
-            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-            const day = String(date.getUTCDate()).padStart(2, '0');
-            const hours = String(date.getUTCHours()).padStart(2, '0');
-            const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+            // Converter número de dias desde 01/01/1900 para data
+            // Excel começa em 1900-01-01 = 1
+            const date = new Date(1900, 0, 1);
+            date.setDate(date.getDate() + days - 1);
             
-            console.log(`[DEBUG] Excel serial: ${excelNum} → ${year}-${month}-${day}T${hours}:${minutes}`);
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            
+            // Extrair hora da fração decimal (sem timezone!)
+            const totalSeconds = Math.round(fraction * 24 * 60 * 60);
+            const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+            const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+            
+            console.log(`[DEBUG-EXCEL] ${excelNum} → ${year}-${month}-${day}T${hours}:${minutes}`);
             return `${year}-${month}-${day}T${hours}:${minutes}`;
           } else {
             // Parse string DD/MM/YYYY ou DD/MM/YYYY HH:MM
@@ -336,7 +343,7 @@ const ProgramacaoManagement = () => {
                 time = `${hh}:${mm}`;
               }
 
-              console.log(`[DEBUG] String date: "${strValue}" → ${year}-${month}-${day}T${time}`);
+              console.log(`[DEBUG-STRING] "${strValue}" → ${year}-${month}-${day}T${time}`);
               // Retorna em formato ISO sem timezone
               return `${year}-${month}-${day}T${time}`;
             }
