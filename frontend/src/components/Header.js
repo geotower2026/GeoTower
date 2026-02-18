@@ -47,7 +47,7 @@ const Header = () => {
             onError={(e) => { e.target.onerror = null; e.target.src = '/images/GeoTransportesLogo.svg'; }}
           />
 
-          <div className="leading-tight text-left hidden xs:block">
+          <div className="leading-tight text-left">
             <div className="text-base sm:text-lg lg:text-xl font-extrabold tracking-tight">
               GeoTransportes
             </div>
