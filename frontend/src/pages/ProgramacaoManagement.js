@@ -193,7 +193,7 @@ const ProgramacaoManagement = () => {
       // Mapeamento de variações de nomes de colunas
       const columnMapping = {
         processo: ['processo'],
-        recebedor: ['recebedor', 'cliente'],
+        recebedor: ['recebedor'],
         container: ['container', 'ncontainer', 'numercontainer', 'nrcontainer'],
         dataAgendamento: ['dataagendamento', 'dtagendamento', 'dtgendamento', 'data', 'agendamento', 'dataagend', 'dtagend'],
         contratado: ['contratado', 'transportadora', 'empresa'],
@@ -232,7 +232,7 @@ const ProgramacaoManagement = () => {
 
       console.log('Mapeamento de colunas encontrado:', actualColumns);
 
-      // Função para mapear contratado - extrai o primeiro valor válido encontrado
+      // Função para mapear contratado - aceita qualquer contratado com busca case-insensitive
       const mapearContratado = (valor) => {
         const raw = String(valor || '').trim();
         if (!raw) return 'OUTRO';
@@ -272,8 +272,9 @@ const ProgramacaoManagement = () => {
           }
         }
 
-        console.log(`  Contratado não reconhecido: "${valor}" → OUTRO`);
-        return 'OUTRO';
+        // Se não encontrou correspondência, aceita o valor como está (case-insensitive preservando o original)
+        console.log(`  Contratado aceito como está: "${valor}"`);
+        return raw.toUpperCase();
       };
 
       // Função para parsear data DD/MM/YYYY HH:MM corretamente (sem timezone issues)
@@ -281,29 +282,46 @@ const ProgramacaoManagement = () => {
         if (!dataStr) return '';
         
         try {
+          const strValue = String(dataStr).trim();
+          
           // Se for número (Excel date serial) - pode conter fração para hora
-          if (!isNaN(dataStr) && String(dataStr).trim() !== '') {
-            const excelNum = Number(dataStr);
-            // Excel serial to JS timestamp
-            const ms = (excelNum - 25569) * 86400 * 1000;
-            const d = new Date(ms);
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            const hours = String(d.getHours()).padStart(2, '0');
-            const minutes = String(d.getMinutes()).padStart(2, '0');
+          if (!isNaN(strValue) && strValue !== '') {
+            const excelNum = Number(strValue);
+            
+            // Excel serial date começa em 1900-01-01 (número 1)
+            // Fórmula: (excelNum - 1) * 86400000 ms, mas precisa ajustar para timezone
+            // Usa 25569 como offset para o epoch de 1970-01-01
+            const date = new Date((excelNum - 25569) * 86400 * 1000);
+            
+            // Extrai componentes diretamente sem considerar timezone
+            const year = date.getUTCFullYear();
+            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(date.getUTCDate()).padStart(2, '0');
+            const hours = String(date.getUTCHours()).padStart(2, '0');
+            const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+            
+            console.log(`[DEBUG] Excel serial: ${excelNum} → ${year}-${month}-${day}T${hours}:${minutes}`);
             return `${year}-${month}-${day}T${hours}:${minutes}`;
           } else {
             // Parse string DD/MM/YYYY ou DD/MM/YYYY HH:MM
-            const parts = String(dataStr).trim().split(' ');
+            const parts = strValue.split(' ');
             const dateParts = parts[0].split('/');
 
             if (dateParts.length === 3) {
               const day = dateParts[0].padStart(2, '0');
               const month = dateParts[1].padStart(2, '0');
               const year = dateParts[2];
-              const time = (parts[1] || '00:00').substr(0, 5); // HH:MM
+              
+              // Extrai HH:MM se existir (pode vir como "14:00" ou "14:00:00")
+              let time = '00:00';
+              if (parts.length > 1) {
+                const timeParts = parts[1].split(':');
+                const hh = timeParts[0].padStart(2, '0');
+                const mm = timeParts[1] ? timeParts[1].padStart(2, '0') : '00';
+                time = `${hh}:${mm}`;
+              }
 
+              console.log(`[DEBUG] String date: "${strValue}" → ${year}-${month}-${day}T${time}`);
               // Retorna em formato ISO sem timezone
               return `${year}-${month}-${day}T${time}`;
             }
@@ -657,10 +675,10 @@ const ProgramacaoManagement = () => {
                 color: '#4b5563'
               }}>
                 <div><strong>Processo:</strong> "Processo"</div>
-                <div><strong>Recebedor:</strong> "Recebedor", "Cliente", "RECEBEDOR" (maiúsculas/letras/pontuação flexível)</div>
+                <div><strong>Recebedor:</strong> "Recebedor" (apenas coluna Recebedor, maiúsculas/minúsculas/pontuação flexível)</div>
                 <div><strong>Container:</strong> "Container", "Nº container", "N° container"</div>
                 <div><strong>Data Agendamento:</strong> "Data Agendamento", "Dt. Agendamento", "Dta gendamento", "Data"</div>
-                <div><strong>Contratado:</strong> "Contratado", "Transportadora", "Empresa" (ex: GEO, MACHADO)</div>
+                <div><strong>Contratado:</strong> "Contratado", "Transportadora", "Empresa" (qualquer contratado é aceito)</div>
                 <div><strong>Motorista:</strong> "Motorista" (opcional)</div>
                 <div><strong>Status:</strong> "Status" (opcional - AGENDADO, EM_ROTA, ENTREGUE, CANCELADO)</div>
                 <div><strong>Observações:</strong> "Observações", "Observação", "Notas" (opcional)</div>
