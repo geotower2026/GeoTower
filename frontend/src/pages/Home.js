@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/authContext';
+import { deliveryService } from '../services/authService';
 import {
   FaPlus,
   FaHistory,
@@ -21,6 +22,82 @@ import {
 const Home = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [stats, setStats] = useState({
+    total: 0,
+    completed: 0,
+    inProgress: 0,
+    pending: 0,
+    onTimePercentage: 100
+  });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (user?.role === 'driver') {
+      loadDeliveryStats();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  const loadDeliveryStats = async () => {
+    setLoading(true);
+    try {
+      const res = await deliveryService.getProgramacoesAssigned();
+      const programacoes = res.data.programacoes || [];
+      
+      // Filtrar entregas do motorista logado
+      const nomeFiltro = (user?.username || user?.name || '').trim().toUpperCase();
+      const minhasEntregas = programacoes.filter(
+        p => String(p.contratado).trim().toUpperCase() === nomeFiltro
+      );
+
+      // Calcular estatísticas
+      const total = minhasEntregas.length;
+      const completed = minhasEntregas.filter(e => 
+        String(e.status).toUpperCase() === 'ENTREGUE'
+      ).length;
+      const inProgress = minhasEntregas.filter(e => 
+        String(e.status).toUpperCase() === 'EM_ROTA'
+      ).length;
+      const pending = minhasEntregas.filter(e => 
+        !['ENTREGUE', 'EM_ROTA'].includes(String(e.status).toUpperCase())
+      ).length;
+
+      // Calcular performance de pontualidade
+      let onTimeCount = 0;
+      minhasEntregas.forEach(entrega => {
+        if (String(entrega.status).toUpperCase() === 'ENTREGUE') {
+          // Se tem dataEntrega, comparar com dataEntrega prevista
+          if (entrega.dataEntrega && entrega.dataEntrega) {
+            const entregaAtual = new Date(entrega.dataEntrega);
+            const entregaPrevista = new Date(entrega.dataEntrega);
+            if (entregaAtual <= entregaPrevista) {
+              onTimeCount++;
+            }
+          }
+        }
+      });
+      const onTimePercentage = completed > 0 ? Math.round((onTimeCount / completed) * 100) : 100;
+
+      setStats({
+        total,
+        completed,
+        inProgress,
+        pending,
+        onTimePercentage
+      });
+    } catch (error) {
+      console.error('Erro ao carregar estatísticas:', error);
+      setStats({
+        total: 0,
+        completed: 0,
+        inProgress: 0,
+        pending: 0,
+        onTimePercentage: 100
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     // ✅ Não use min-h-screen aqui (quem controla altura/scroll agora é o AppLayout)
@@ -58,7 +135,7 @@ const Home = () => {
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-500 mb-1">📅 Programadas</p>
-                        <p className="text-3xl font-bold text-indigo-600">-</p>
+                        <p className="text-3xl font-bold text-indigo-600">{stats.total}</p>
                         <p className="text-xs text-gray-400 mt-1">Entregas agendadas</p>
                       </div>
                       <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
@@ -72,7 +149,7 @@ const Home = () => {
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-500 mb-1">✅ Concluídas</p>
-                        <p className="text-3xl font-bold text-emerald-600">-</p>
+                        <p className="text-3xl font-bold text-emerald-600">{stats.completed}</p>
                         <p className="text-xs text-gray-400 mt-1">Expedidas com sucesso</p>
                       </div>
                       <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
@@ -86,7 +163,7 @@ const Home = () => {
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-500 mb-1">🚀 Em Andamento</p>
-                        <p className="text-3xl font-bold text-blue-600">-</p>
+                        <p className="text-3xl font-bold text-blue-600">{stats.inProgress}</p>
                         <p className="text-xs text-gray-400 mt-1">Na rota agora</p>
                       </div>
                       <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -95,17 +172,28 @@ const Home = () => {
                     </div>
                   </div>
 
-                  {/* Card Pendentes */}
+                  {/* Card Performance de Pontualidade */}
                   <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition-shadow">
                     <div className="flex items-start justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-500 mb-1">⏳ Pendentes</p>
-                        <p className="text-3xl font-bold text-amber-600">-</p>
-                        <p className="text-xs text-gray-400 mt-1">Aguardando processamento</p>
+                        <p className="text-sm font-medium text-gray-500 mb-1">⏱️ Pontualidade</p>
+                        <p className="text-3xl font-bold text-green-600">{stats.onTimePercentage}%</p>
+                        <p className="text-xs text-gray-400 mt-1">Taxa de entregas no prazo</p>
                       </div>
-                      <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
-                        <FaClock className="text-amber-600 text-lg" />
+                      <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <span className="text-lg">📈</span>
                       </div>
+                    </div>
+                    {/* Mini progress bar */}
+                    <div className="mt-3 w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full transition-all ${
+                          stats.onTimePercentage >= 90 ? 'bg-green-500' :
+                          stats.onTimePercentage >= 80 ? 'bg-yellow-500' :
+                          'bg-red-500'
+                        }`}
+                        style={{ width: `${stats.onTimePercentage}%` }}
+                      />
                     </div>
                   </div>
                 </div>
