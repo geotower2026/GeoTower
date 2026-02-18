@@ -242,23 +242,23 @@ const MonitorEntregas = () => {
 
 
   return (
-    <div className="bg-gray-50 min-h-screen pb-20">
-      <div className="max-w-7xl mx-auto p-4">
+    <div className="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen pb-20">
+      <div className="max-w-full mx-auto p-4 lg:p-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6 lg:mb-8">
           <button
             onClick={() => navigate('/home')}
             className="flex items-center gap-2 text-purple-700 hover:text-purple-900 font-extrabold text-lg tracking-widest uppercase transition"
           >
             <FaArrowLeft /> VOLTAR
           </button>
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-widest uppercase flex items-center gap-2 drop-shadow-sm">
+          <h1 className="text-3xl lg:text-4xl font-extrabold text-gray-900 tracking-widest uppercase flex items-center gap-3 drop-shadow-sm">
             <span role="img" aria-label="Gráfico">📊</span> MONITOR DE ENTREGAS
           </h1>
           <button
             onClick={loadDeliveries}
             disabled={loading}
-            className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-purple-500 to-purple-700 text-white rounded-xl shadow-lg hover:from-purple-600 hover:to-purple-800 disabled:opacity-50 font-bold text-lg transition"
+            className="flex items-center gap-2 px-6 py-2 lg:py-3 bg-gradient-to-r from-purple-500 to-purple-700 text-white rounded-xl shadow-lg hover:from-purple-600 hover:to-purple-800 disabled:opacity-50 font-bold text-lg transition"
           >
             <FaSync className={loading ? 'animate-spin' : ''} />
             {loading ? 'ATUALIZANDO...' : 'ATUALIZAR'}
@@ -266,22 +266,22 @@ const MonitorEntregas = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-gradient-to-r from-blue-100 to-blue-200 rounded-xl shadow-lg p-6 border-l-8 border-blue-600 flex flex-col items-center">
-            <p className="text-blue-900 text-base font-extrabold uppercase tracking-widest mb-1">TOTAL</p>
-            <p className="text-2xl font-extrabold text-blue-700 drop-shadow">{stats.total}</p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6 mb-6 lg:mb-8">
+          <div className="bg-gradient-to-r from-blue-100 to-blue-200 rounded-xl shadow-lg p-4 lg:p-6 border-l-8 border-blue-600 flex flex-col items-center">
+            <p className="text-blue-900 text-xs lg:text-base font-extrabold uppercase tracking-widest mb-1">TOTAL</p>
+            <p className="text-2xl lg:text-4xl font-extrabold text-blue-700 drop-shadow">{stats.total}</p>
           </div>
-          <div className="bg-gradient-to-r from-green-100 to-green-200 rounded-xl shadow-lg p-6 border-l-8 border-green-600 flex flex-col items-center">
-            <p className="text-green-900 text-base font-extrabold uppercase tracking-widest mb-1">ENTREGUES</p>
-            <p className="text-2xl font-extrabold text-green-700 drop-shadow">{stats.submitted}</p>
+          <div className="bg-gradient-to-r from-green-100 to-green-200 rounded-xl shadow-lg p-4 lg:p-6 border-l-8 border-green-600 flex flex-col items-center">
+            <p className="text-green-900 text-xs lg:text-base font-extrabold uppercase tracking-widest mb-1">ENTREGUES</p>
+            <p className="text-2xl lg:text-4xl font-extrabold text-green-700 drop-shadow">{stats.submitted}</p>
           </div>
-          <div className="bg-gradient-to-r from-yellow-100 to-yellow-200 rounded-xl shadow-lg p-6 border-l-8 border-yellow-500 flex flex-col items-center">
-            <p className="text-yellow-900 text-base font-extrabold uppercase tracking-widest mb-1">PENDENTE</p>
-            <p className="text-2xl font-extrabold text-yellow-600 drop-shadow">{stats.pending}</p>
+          <div className="bg-gradient-to-r from-yellow-100 to-yellow-200 rounded-xl shadow-lg p-4 lg:p-6 border-l-8 border-yellow-500 flex flex-col items-center">
+            <p className="text-yellow-900 text-xs lg:text-base font-extrabold uppercase tracking-widest mb-1">PENDENTE</p>
+            <p className="text-2xl lg:text-4xl font-extrabold text-yellow-600 drop-shadow">{stats.pending}</p>
           </div>
-          <div className="bg-gradient-to-r from-purple-100 to-purple-200 rounded-xl shadow-lg p-6 border-l-8 border-purple-600 flex flex-col items-center">
-            <p className="text-purple-900 text-base font-extrabold uppercase tracking-widest mb-1">MOTORISTAS</p>
-            <p className="text-2xl font-extrabold text-purple-700 drop-shadow">{stats.byDriver}</p>
+          <div className="bg-gradient-to-r from-purple-100 to-purple-200 rounded-xl shadow-lg p-4 lg:p-6 border-l-8 border-purple-600 flex flex-col items-center">
+            <p className="text-purple-900 text-xs lg:text-base font-extrabold uppercase tracking-widest mb-1">MOTORISTAS</p>
+            <p className="text-2xl lg:text-4xl font-extrabold text-purple-700 drop-shadow">{stats.byDriver}</p>
           </div>
         </div>
 
@@ -393,41 +393,41 @@ const MonitorEntregas = () => {
           </div>
         ) : (
           <div className="overflow-x-auto bg-white rounded-lg shadow-md">
-            <table className="w-full">
-              <thead className="bg-gradient-to-r from-purple-100 to-purple-200 border-b-2 border-purple-400">
+            <table className="w-full text-xs">
+              <thead className="bg-gradient-to-r from-purple-100 to-purple-200 border-b-2 border-purple-400 sticky top-0">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-extrabold text-gray-900 uppercase tracking-widest">NÚMERO</th>
-                    <th className="px-4 py-3 text-left text-sm font-extrabold text-gray-900 uppercase tracking-widest">CONTRATADO</th>
-                    <th className="px-4 py-3 text-left text-sm font-extrabold text-gray-900 uppercase tracking-widest">MOTORISTA</th>
-                    <th className="px-4 py-3 text-left text-sm font-extrabold text-gray-900 uppercase tracking-widest">RECEBEDOR</th>
-                    <th className="px-4 py-3 text-left text-sm font-extrabold text-gray-900 uppercase tracking-widest">STATUS</th>
-                    <th className="px-4 py-3 text-left text-sm font-extrabold text-gray-900 uppercase tracking-widest">DATA AGENDAMENTO</th>
-                    <th className="px-4 py-3 text-left text-sm font-extrabold text-gray-900 uppercase tracking-widest">CHEGADA CLIENTE</th>
-                    <th className="px-4 py-3 text-left text-sm font-extrabold text-gray-900 uppercase tracking-widest">INÍCIO DESOVA</th>
-                    <th className="px-4 py-3 text-left text-sm font-extrabold text-gray-900 uppercase tracking-widest">FIM DESOVA</th>
-                    <th className="px-4 py-3 text-center text-sm font-extrabold text-gray-900 uppercase tracking-widest">DOCUMENTOS</th>
-                    <th className="px-4 py-3 text-center text-sm font-extrabold text-gray-900 uppercase tracking-widest">AÇÕES</th>
+                    <th className="px-2 py-2 text-left font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">Nº</th>
+                    <th className="px-2 py-2 text-left font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">CONTRATADO</th>
+                    <th className="px-2 py-2 text-left font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">MOTORISTA</th>
+                    <th className="px-2 py-2 text-left font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">RECEBEDOR</th>
+                    <th className="px-2 py-2 text-left font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">STATUS</th>
+                    <th className="px-2 py-2 text-left font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">AGENDAMENTO</th>
+                    <th className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">CHEGADA</th>
+                    <th className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">INÍCIO</th>
+                    <th className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">FIM</th>
+                    <th className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">DOCS</th>
+                    <th className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">AÇÕES</th>
                   </tr>
                 </thead>
               <tbody>
                 {filteredDeliveries.map((delivery, index) => (
                   <tr
                     key={delivery._id}
-                    className={`border-b border-gray-200 hover:bg-gray-50 transition ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                    className={`border-b border-gray-200 hover:bg-purple-50 transition ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
                   >
-                    <td className="px-4 py-3 font-semibold text-gray-800">{delivery.deliveryNumber}</td>
-                    <td className="px-4 py-3 text-gray-700">{delivery.userName}</td>
-                    <td className="px-4 py-3 text-gray-700">{delivery.driverName || '-'}</td>
-                    <td className="px-4 py-3 text-gray-700">{delivery.recebedor || '-'}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-3 py-1 rounded-full font-bold uppercase tracking-wide text-xs ${getStatusBadge(delivery.status)} flex items-center justify-center`}>
+                    <td className="px-2 py-2 font-semibold text-gray-800 whitespace-nowrap">{delivery.deliveryNumber}</td>
+                    <td className="px-2 py-2 text-gray-700 truncate">{delivery.userName}</td>
+                    <td className="px-2 py-2 text-gray-700 truncate">{delivery.driverName || '-'}</td>
+                    <td className="px-2 py-2 text-gray-700 truncate">{delivery.recebedor || '-'}</td>
+                    <td className="px-2 py-2">
+                      <span className={`px-2 py-1 rounded-full font-bold uppercase tracking-tight text-xs whitespace-nowrap inline-flex items-center justify-center ${getStatusBadge(delivery.status)}`}>
                         {delivery.status || '-'}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
+                    <td className="px-2 py-2 text-gray-600 whitespace-nowrap text-center">
                       {delivery.dataAgendamento ? new Date(delivery.dataAgendamento).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-'}
                     </td>
-                    <td className="px-4 py-3 text-gray-700">
+                    <td className="px-2 py-2 text-gray-700 whitespace-nowrap text-center">
                       {delivery.horarioChegada ? new Date(delivery.horarioChegada).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}
                     </td>
                           {/* Modal/Tooltip de alerta */}
@@ -445,9 +445,9 @@ const MonitorEntregas = () => {
                               </div>
                             </div>
                           )}
-                    <td className="px-4 py-3 text-gray-700">{delivery.horarioInicioDesova ? new Date(delivery.horarioInicioDesova).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
-                    <td className="px-4 py-3 text-gray-700">{delivery.horarioFimDesova ? new Date(delivery.horarioFimDesova).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-2 py-2 text-gray-700 whitespace-nowrap text-center">{delivery.horarioInicioDesova ? new Date(delivery.horarioInicioDesova).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
+                    <td className="px-2 py-2 text-gray-700 whitespace-nowrap text-center">{delivery.horarioFimDesova ? new Date(delivery.horarioFimDesova).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
+                    <td className="px-2 py-2 text-center">
                       <div className="flex flex-wrap gap-1 justify-center">
                         {Object.keys(delivery.documents || {})
                           .filter(key => delivery.documents[key])
@@ -457,7 +457,7 @@ const MonitorEntregas = () => {
                               <span
                                 key={docKey}
                                 title={labels[docKey] || docKey}
-                                className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded"
+                                className="text-xs bg-green-100 text-green-800 px-1 py-0.5 rounded"
                               >
                                 ✓
                               </span>
@@ -465,7 +465,7 @@ const MonitorEntregas = () => {
                           })}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-2 py-2 text-center">
                       <div className="flex items-center justify-center">
                         <div className="relative inline-block text-left" ref={openMenuId === delivery._id ? menuRef : null}>
                           <button
@@ -477,7 +477,7 @@ const MonitorEntregas = () => {
                               setOpenMenuUp(openUp);
                               setOpenMenuId(openMenuId === delivery._id ? null : delivery._id);
                             }}
-                            className="inline-flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 text-gray-700 transition"
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-200 text-gray-600 transition text-sm"
                             aria-haspopup="true"
                             aria-expanded={openMenuId === delivery._id}
                             title="Ações"
@@ -486,34 +486,34 @@ const MonitorEntregas = () => {
                           </button>
 
                           {openMenuId === delivery._id && (
-                            <div className={`${openMenuUp ? 'origin-bottom-right absolute right-0 mb-2 bottom-full' : 'origin-top-right absolute right-0 mt-2'} w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50`}>
-                              <div className="py-1">
+                            <div className={`${openMenuUp ? 'origin-bottom-right absolute right-0 mb-2 bottom-full' : 'origin-top-right absolute right-0 mt-2'} w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50`}>
+                              <div className="py-1 text-xs">
                                 <button
                                   onClick={() => { setSelectedDelivery(delivery); setOpenMenuId(null); }}
-                                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                                  className="w-full text-left px-3 py-2 text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                                 >
-                                  <FaEye /> Visualizar
+                                  <FaEye className="text-xs" /> Visualizar
                                 </button>
                                 {/* Observações/alertas no menu de ações */}
                                 {delivery.observations && delivery.observations.trim() !== '' && (
-                                  <div className="px-4 py-2 text-xs text-yellow-900 bg-yellow-50 rounded flex items-center gap-1 mt-1">
-                                    <FaExclamationTriangle className="inline text-base align-middle mr-1" />
+                                  <div className="px-3 py-2 text-xs text-yellow-900 bg-yellow-50 rounded flex items-center gap-1 mt-1 mx-1">
+                                    <FaExclamationTriangle className="inline text-xs align-middle" />
                                     {delivery.observations}
                                   </div>
                                 )}
                                 <button
                                   onClick={() => { handleEditStart(delivery); setOpenMenuId(null); }}
-                                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                                  className="w-full text-left px-3 py-2 text-gray-700 hover:bg-gray-100 flex items-center gap-2"
                                   title="Editar entrega"
                                 >
-                                  <FaEdit /> Editar
+                                  <FaEdit className="text-xs" /> Editar
                                 </button>
                                 <button
                                   onClick={() => { handleDelete(delivery._id); setOpenMenuId(null); }}
-                                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50 flex items-center gap-2"
+                                  className="w-full text-left px-3 py-2 text-red-600 hover:bg-gray-50 flex items-center gap-2"
                                   title="Deletar entrega"
                                 >
-                                  <FaTrash /> Deletar
+                                  <FaTrash className="text-xs" /> Deletar
                                 </button>
                               </div>
                             </div>
