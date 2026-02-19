@@ -3,20 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/authContext';
 import { deliveryService } from '../services/authService';
 import {
-  FaPlus,
-  FaHistory,
   FaChartBar,
   FaFileAlt,
   FaUsers,
-  FaTruck,
   FaDatabase,
   FaCalendarAlt,
   FaCheckCircle,
-  FaClock,
-  FaBoxes,
-  FaRoad,
-  FaStar,
-  FaTasks
+  FaBoxes
 } from 'react-icons/fa';
 
 const Home = () => {
@@ -151,20 +144,6 @@ const Home = () => {
                     </div>
                   </div>
 
-                  {/* Card Em Andamento */}
-                  <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition-shadow">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-500 mb-1">🚀 Em Andamento</p>
-                        <p className="text-3xl font-bold text-blue-600">{stats.inProgress}</p>
-                        <p className="text-xs text-gray-400 mt-1">Na rota agora</p>
-                      </div>
-                      <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <FaRoad className="text-blue-600 text-lg" />
-                      </div>
-                    </div>
-                  </div>
-
                   {/* Card Performance de Pontualidade */}
                   <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition-shadow">
                     <div className="flex items-start justify-between">
@@ -247,95 +226,13 @@ const Home = () => {
                     </div>
                   </button>
 
-                  {/* Card Entregas em Rota */}
-                  <button
-                    onClick={() => navigate('/entregas-em-rota')}
-                    className="group relative bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-8 border border-blue-200 hover:border-blue-400 overflow-hidden text-left hover:scale-105"
-                  >
-                    <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-blue-300 to-transparent opacity-20 group-hover:opacity-40 transition-opacity duration-300 rounded-full -mr-20 -mt-20" />
-                    <div className="relative z-10">
-                      <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                        <FaRoad className="text-2xl text-white" />
-                      </div>
-                      <h3 className="text-2xl font-bold text-gray-900 mb-2">Entregas em Rota</h3>
-                      <p className="text-gray-700 mb-4 text-sm leading-relaxed">
-                        Gerencie entregas em andamento e atualize status em tempo real
-                      </p>
-                      <div className="flex items-center gap-2 text-blue-600 font-bold">
-                        <span>Acessar</span>
-                        <span className="text-lg group-hover:translate-x-2 transition-transform duration-300">→</span>
-                      </div>
-                    </div>
-                  </button>
 
-                  {/* Card Entrega em Andamento */}
-                  <button
-                    onClick={() => navigate('/entrega-em-andamento')}
-                    className="group relative bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-8 border border-orange-200 hover:border-orange-400 overflow-hidden text-left hover:scale-105"
-                  >
-                    <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-orange-300 to-transparent opacity-20 group-hover:opacity-40 transition-opacity duration-300 rounded-full -mr-20 -mt-20" />
-                    <div className="relative z-10">
-                      <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                        <FaTasks className="text-2xl text-white" />
-                      </div>
-                      <h3 className="text-2xl font-bold text-gray-900 mb-2">Entrega em Andamento</h3>
-                      <p className="text-gray-700 mb-4 text-sm leading-relaxed">
-                        Monitore a entrega atual que você está realizando neste momento
-                      </p>
-                      <div className="flex items-center gap-2 text-orange-600 font-bold">
-                        <span>Acessar</span>
-                        <span className="text-lg group-hover:translate-x-2 transition-transform duration-300">→</span>
-                      </div>
-                    </div>
-                  </button>
-
-                  {/* Card Reconciliação */}
-                  <button
-                    onClick={() => navigate('/reconciliation')}
-                    className="group relative bg-gradient-to-br from-pink-50 to-pink-100 rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-8 border border-pink-200 hover:border-pink-400 overflow-hidden text-left hover:scale-105"
-                  >
-                    <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-pink-300 to-transparent opacity-20 group-hover:opacity-40 transition-opacity duration-300 rounded-full -mr-20 -mt-20" />
-                    <div className="relative z-10">
-                      <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                        <FaChartBar className="text-2xl text-white" />
-                      </div>
-                      <h3 className="text-2xl font-bold text-gray-900 mb-2">Reconciliação</h3>
-                      <p className="text-gray-700 mb-4 text-sm leading-relaxed">
-                        Concilie dados de entregas e valide informações de operações
-                      </p>
-                      <div className="flex items-center gap-2 text-pink-600 font-bold">
-                        <span>Acessar</span>
-                        <span className="text-lg group-hover:translate-x-2 transition-transform duration-300">→</span>
-                      </div>
-                    </div>
-                  </button>
-
-                  {/* Card Perfil */}
-                  <button
-                    onClick={() => navigate('/profile')}
-                    className="group relative bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-8 border border-purple-200 hover:border-purple-400 overflow-hidden text-left hover:scale-105"
-                  >
-                    <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-purple-300 to-transparent opacity-20 group-hover:opacity-40 transition-opacity duration-300 rounded-full -mr-20 -mt-20" />
-                    <div className="relative z-10">
-                      <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                        <FaStar className="text-2xl text-white" />
-                      </div>
-                      <h3 className="text-2xl font-bold text-gray-900 mb-2">Meu Perfil</h3>
-                      <p className="text-gray-700 mb-4 text-sm leading-relaxed">
-                        Gerencie suas informações pessoais, documentos e preferências
-                      </p>
-                      <div className="flex items-center gap-2 text-purple-600 font-bold">
-                        <span>Acessar</span>
-                        <span className="text-lg group-hover:translate-x-2 transition-transform duration-300">→</span>
-                      </div>
-                    </div>
-                  </button>
                 </div>
 
                 {/* Dica / Info Box */}
                 <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-indigo-600 rounded-lg">
                   <p className="text-indigo-900 font-semibold flex items-center gap-2">
-                    💡 <span>Dica: Comece acessando suas entregas programadas para ver o que tem agendado!</span>
+                    💡 <span>Todas as informações baseadas em Entregas Programadas</span>
                   </p>
                 </div>
               </div>
@@ -450,7 +347,7 @@ const Home = () => {
 
                 <div className="relative z-10">
                   <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-xl mb-4 group-hover:scale-110 transition-transform duration-300">
-                    <FaTruck className="text-2xl text-white" />
+                    <span className="text-2xl">👤</span>
                   </div>
 
                   <h2 className="text-2xl font-bold text-gray-900 mb-2">
