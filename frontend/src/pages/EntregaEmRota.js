@@ -7,9 +7,11 @@ const EntregaEmRota = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [delivery, setDelivery] = useState(null);
+  const [programacao, setProgramacao] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState(null);
+  const [atrasoMinutes, setAtrasoMinutes] = useState(null);
 
   useEffect(() => {
     loadDelivery();
@@ -20,7 +22,26 @@ const EntregaEmRota = () => {
     setLoading(true);
     try {
       const res = await deliveryService.getDelivery(id);
-      setDelivery(res.data.delivery);
+      const d = res.data.delivery;
+      setDelivery(d);
+
+      // Buscar programacao correspondente
+      try {
+        const progRes = await deliveryService.getProgramacoesAssigned();
+        const progList = progRes.data.programacoes || [];
+        const key = (d.deliveryNumber || '').toString().trim().toUpperCase();
+        const matched = progList.find(p => ((p.container || p.processo) || '').toString().trim().toUpperCase() === key);
+        if (matched) {
+          setProgramacao(matched);
+          if (d.arrivedAt) {
+            const scheduled = new Date(matched.dataAgendamento);
+            const arrived = new Date(d.arrivedAt);
+            setAtrasoMinutes(Math.round((arrived - scheduled) / 60000));
+          }
+        }
+      } catch (e) {
+        console.warn('Não conseguiu carregar programacao');
+      }
     } catch (err) {
       console.error('Erro ao buscar entrega', err);
       setToast({ message: 'Erro ao carregar entrega', type: 'error' });
@@ -35,12 +56,11 @@ const EntregaEmRota = () => {
     try {
       const payload = {
         arrivedAt: new Date().toISOString()
-        // we could also update status here if desired
       };
       await deliveryService.updateDelivery(id, payload);
       setToast({ message: 'Hora de chegada registrada', type: 'success' });
-      // refresh data or navigate away
-      navigate('/minhas-entregas');
+      // Recarrega para atualizar atraso
+      await loadDelivery();
     } catch (err) {
       console.error('Erro ao registrar chegada', err);
       setToast({ message: 'Erro ao registrar chegada', type: 'error' });
@@ -66,9 +86,13 @@ const EntregaEmRota = () => {
       <h1 className="text-2xl font-bold mb-4">Entrega em andamento</h1>
       <div className="bg-white shadow rounded-lg p-6 mb-6">
         <p><strong>Container / Número:</strong> {delivery.deliveryNumber}</p>
+        {programacao && <p><strong>Agendado para:</strong> {new Date(programacao.dataAgendamento).toLocaleString()}</p>}
         <p><strong>Observações:</strong> {delivery.observations || '-'}</p>
         {delivery.arrivedAt && (
-          <p><strong>Chegada registrada:</strong>{' '}{new Date(delivery.arrivedAt).toLocaleString('pt-BR')}</p>
+          <p><strong>Chegada registrada:</strong> {new Date(delivery.arrivedAt).toLocaleString()}</p>
+        )}
+        {atrasoMinutes !== null && (
+          <p><strong>Resultado:</strong> {atrasoMinutes > 0 ? `Atraso ${atrasoMinutes} min` : 'No horário'}</p>
         )}
       </div>
 

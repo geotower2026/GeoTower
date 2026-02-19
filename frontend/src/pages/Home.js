@@ -66,14 +66,7 @@ const Home = () => {
       let onTimeCount = 0;
       minhasEntregas.forEach(entrega => {
         if (String(entrega.status).toUpperCase() === 'ENTREGUE') {
-          // Se tem dataEntrega, comparar com dataEntrega prevista
-          if (entrega.dataEntrega && entrega.dataEntrega) {
-            const entregaAtual = new Date(entrega.dataEntrega);
-            const entregaPrevista = new Date(entrega.dataEntrega);
-            if (entregaAtual <= entregaPrevista) {
-              onTimeCount++;
-            }
-          }
+          onTimeCount++;
         }
       });
       const onTimePercentage = completed > 0 ? Math.round((onTimeCount / completed) * 100) : 100;

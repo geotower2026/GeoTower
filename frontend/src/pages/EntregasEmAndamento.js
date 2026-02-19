@@ -23,8 +23,36 @@ export default function EntregasEmAndamento() {
       if (user) {
         nomeFiltro = (user.username || user.name || '').trim().toUpperCase();
       }
-      // Filtra entregas com status diferente de AGENDADO
-      setProgramacoes(todas.filter(p => String(p.contratado).trim().toUpperCase() === nomeFiltro && p.status !== 'AGENDADO'));
+      
+      // Buscar entregas para cross-reference de atraso
+      let deliveryMap = {};
+      try {
+        const myRes = await deliveryService.getMyDeliveries({});
+        const myDeliveries = myRes.data.deliveries || [];
+        myDeliveries.forEach(d => {
+          const key = (d.deliveryNumber || '').toString().trim().toUpperCase();
+          if (key) deliveryMap[key] = d;
+        });
+      } catch (e) {
+        // Se não conseguir, continua sem o mapa
+      }
+      
+      // Filtra entregas com status diferente de AGENDADO e enriquece com atraso
+      const filtered = todas
+        .filter(p => String(p.contratado).trim().toUpperCase() === nomeFiltro && p.status !== 'AGENDADO')
+        .map(p => {
+          const key = (p.container || p.processo || '').toString().trim().toUpperCase();
+          const delivery = deliveryMap[key] || null;
+          let atrasoMinutes = null;
+          if (p.dataAgendamento && delivery?.arrivedAt) {
+            const scheduled = new Date(p.dataAgendamento);
+            const arrived = new Date(delivery.arrivedAt);
+            atrasoMinutes = Math.round((arrived - scheduled) / 60000);
+          }
+          return { ...p, atrasoMinutes };
+        });
+      
+      setProgramacoes(filtered);
     } catch (err) {
       setToast({ message: 'Erro ao carregar entregas em andamento', type: 'error' });
     } finally {
@@ -50,7 +78,14 @@ export default function EntregasEmAndamento() {
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-lg font-semibold text-emerald-700">Processo: {p.processo}</span>
-                <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded">{new Date(p.dataAgendamento).toLocaleString()}</span>
+                <div className="flex gap-2 items-center">
+                  {p.atrasoMinutes !== null && (
+                    <span className={`px-2 py-1 rounded text-xs font-bold ${p.atrasoMinutes > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                      {p.atrasoMinutes > 0 ? `Atraso ${p.atrasoMinutes} min` : 'No horário'}
+                    </span>
+                  )}
+                  <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded">{new Date(p.dataAgendamento).toLocaleString()}</span>
+                </div>
               </div>
               <div className="flex flex-col sm:flex-row sm:items-center sm:gap-4">
                 <span className="text-base font-bold text-blue-700">Recebedor:</span>
