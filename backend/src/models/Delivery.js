@@ -12,6 +12,16 @@ const DeliverySchema = new mongoose.Schema(
     // registrar quando o motorista marcou chegada no cliente
     arrivedAt: { type: Date },
 
+    // registrar quando o motorista iniciou e finalizou a desova
+    desovaStartAt: { type: Date },
+    desovaEndAt: { type: Date },
+
+    // Etapa atual do fluxo de desova
+    currentStep: { type: String, default: "" },
+
+    // Dados do recebedor
+    recebedor: { type: String, default: "" },
+
     // Observação e metadata ao submeter com documentos faltando
     submissionObservation: { type: String, default: "" },
     submissionForce: { type: Boolean, default: false },

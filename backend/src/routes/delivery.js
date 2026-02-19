@@ -204,6 +204,7 @@ router.put("/:id", auth, async (req, res) => {
     if (req.body.observations !== undefined) updates.observations = req.body.observations;
     if (req.body.desovaStartAt !== undefined) updates.desovaStartAt = req.body.desovaStartAt;
     if (req.body.desovaEndAt !== undefined) updates.desovaEndAt = req.body.desovaEndAt;
+    if (req.body.recebedor !== undefined) updates.recebedor = req.body.recebedor;
 
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ message: 'Nada para atualizar' });
