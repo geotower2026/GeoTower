@@ -61,8 +61,8 @@ const MonitorEntregas = () => {
       setDeliveries(data);
       
       // Calcula stats
-      const submitted = data.filter(d => d.status === 'submitted').length;
-      const pending = data.filter(d => d.status === 'pending').length;
+      const submitted = data.filter(d => d.status === 'ENTREGUE' || d.status === 'submitted').length;
+      const pending = data.filter(d => d.status !== 'ENTREGUE' && d.status !== 'submitted' && d.status !== 'CANCELADO').length;
       setStats({
         total: data.length,
         submitted,
@@ -112,7 +112,16 @@ const MonitorEntregas = () => {
       });
     }
 
-    setFilteredDeliveries(result);
+    // Filtro de status customizado
+    let filtered = result;
+    if (filters.status && filters.status !== 'all') {
+      filtered = filtered.filter(d => {
+        if (filters.status === 'OPERACAO_FINALIZADA') return d.status === 'ENTREGUE' || d.status === 'submitted';
+        if (filters.status === 'A CAMINHO DO CLIENTE') return d.status === 'pending' || d.status === 'PENDING';
+        return d.status === filters.status;
+      });
+    }
+    setFilteredDeliveries(filtered);
   }, [deliveries, filters, sortBy, sortDir]);
 
   // Fecha dropdown de ações ao clicar fora
@@ -210,13 +219,12 @@ const MonitorEntregas = () => {
 
   const getStatusBadge = (status) => {
     const badges = {
-      submitted: 'bg-green-100 text-green-800 border border-green-400 font-bold',
-      pending: 'bg-yellow-100 text-yellow-800 border border-yellow-400 font-bold',
+      OPERACAO_FINALIZADA: 'bg-green-100 text-green-800 border border-green-400 font-bold',
+      'A CAMINHO DO CLIENTE': 'bg-yellow-100 text-yellow-800 border border-yellow-400 font-bold',
       AGUARDANDO_DESOVA: 'bg-orange-100 text-orange-800 border border-orange-400 font-bold',
       EM_DESOVA: 'bg-purple-100 text-purple-800 border border-purple-400 font-bold',
       DESOVA_FINALIZADA: 'bg-blue-100 text-blue-800 border border-blue-400 font-bold',
       ANEXANDO_DOCUMENTOS_FINAIS: 'bg-pink-100 text-pink-800 border border-pink-400 font-bold',
-      ENTREGUE: 'bg-emerald-100 text-emerald-800 border border-emerald-400 font-bold',
       CANCELADO: 'bg-gray-200 text-gray-700 border border-gray-400 font-bold'
     };
     return badges[status] || 'bg-gray-100 text-gray-800 font-bold';
@@ -225,6 +233,8 @@ const MonitorEntregas = () => {
   // Função para exibir status sem underline
   const formatStatus = (status) => {
     if (!status) return '-';
+    if (status === 'ENTREGUE' || status === 'submitted') return 'OPERAÇÃO FINALIZADA';
+    if (status === 'pending' || status === 'PENDING') return 'A CAMINHO DO CLIENTE';
     return status.replace(/_/g, ' ');
   };
 
@@ -347,8 +357,13 @@ const MonitorEntregas = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="all">Todos</option>
-                  <option value="submitted">Entregues</option>
-                  <option value="pending">Pendente</option>
+                  <option value="OPERACAO_FINALIZADA">Operação Finalizada</option>
+                  <option value="A CAMINHO DO CLIENTE">A Caminho do Cliente</option>
+                  <option value="AGUARDANDO_DESOVA">Aguardando Desova</option>
+                  <option value="EM_DESOVA">Em Desova</option>
+                  <option value="DESOVA_FINALIZADA">Desova Finalizada</option>
+                  <option value="ANEXANDO_DOCUMENTOS_FINAIS">Anexando Documentos Finais</option>
+                  <option value="CANCELADO">Cancelado</option>
                 </select>
               </div>
 
