@@ -13,10 +13,12 @@ const Header = () => {
   const location = useLocation();
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = React.useState(false);
+  // Persistência por usuário logado
+  const userId = user?.id || user?._id || user?.email || user?.username || 'anon';
+  const NOTIF_KEY = `notifications_${userId}`;
   const [notificationList, setNotificationList] = useState(() => {
-    // Persistência: carrega notificações do localStorage
     try {
-      const saved = localStorage.getItem('notifications');
+      const saved = localStorage.getItem(NOTIF_KEY);
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -30,7 +32,7 @@ const Header = () => {
     // Não exibe notificações para perfil Motorista
     if (user && (user.type === 'Motorista' || user.role === 'motorista')) {
       setNotificationList([]);
-      localStorage.setItem('notifications', '[]');
+      localStorage.setItem(NOTIF_KEY, '[]');
       return;
     }
     async function fetchNotifications() {
@@ -61,10 +63,11 @@ const Header = () => {
         setNotificationList(prev => {
           let persisted = [];
           try {
-            persisted = JSON.parse(localStorage.getItem('notifications')) || [];
+            persisted = JSON.parse(localStorage.getItem(NOTIF_KEY)) || [];
           } catch {}
           // Remove duplicadas e mantém lidas/excluídas
           const persistedIds = new Set(persisted.map(n => n.id));
+          // Nunca mostra notificações já lidas/excluídas
           const newOnes = notifications.filter(n => !persistedIds.has(n.id));
           if (newOnes.length > 0) {
             setToastNotification(newOnes[0]);
@@ -73,7 +76,7 @@ const Header = () => {
           }
           // Remove notificações que não existem mais e já estavam lidas/excluídas
           const merged = [...newOnes, ...persisted.filter(n => notifications.some(nn => nn.id === n.id) || n.read)];
-          localStorage.setItem('notifications', JSON.stringify(merged));
+          localStorage.setItem(NOTIF_KEY, JSON.stringify(merged));
           return merged;
         });
       } catch (err) {
@@ -84,7 +87,7 @@ const Header = () => {
     // Atualiza a cada 60s
     const interval = setInterval(fetchNotifications, 60000);
     return () => clearInterval(interval);
-  }, [user]);
+  }, [userId, user]);
 
   const handleLogout = () => {
     logout();
@@ -149,12 +152,12 @@ const Header = () => {
                       <li key={n.id + idx} className="p-4 flex flex-col gap-1 bg-white hover:bg-purple-50 rounded cursor-pointer transition-all">
                         <div className="flex items-center gap-2">
                           <span className="text-blue-700 font-bold text-base"><i className="fa fa-truck" /> {n.title}</span>
-                          <button className="ml-auto text-xs text-gray-400 hover:text-red-600" onClick={e => { e.stopPropagation(); setNotificationList(list => { const updated = list.filter(x => x.id !== n.id); localStorage.setItem('notifications', JSON.stringify(updated)); return updated; }); }}>Excluir</button>
+                          <button className="ml-auto text-xs text-gray-400 hover:text-red-600" onClick={e => { e.stopPropagation(); setNotificationList(list => { const updated = list.filter(x => x.id !== n.id); localStorage.setItem(NOTIF_KEY, JSON.stringify(updated)); return updated; }); }}>Excluir</button>
                         </div>
                         <div className="text-xs text-gray-700 font-medium">{n.info}</div>
                         <div className="flex gap-2 mt-2">
-                          <button className="text-xs text-purple-600 hover:text-purple-800 font-semibold" onClick={e => { e.stopPropagation(); setNotificationList(list => { const updated = list.map(x => x.id === n.id ? { ...x, read: true } : x).filter(x => x.id !== n.id); localStorage.setItem('notifications', JSON.stringify(updated)); return updated; }); }}>Marcar como lida</button>
-                          <button className="text-xs text-blue-600 hover:text-blue-800 font-semibold" onClick={e => { e.stopPropagation(); setToastNotification(n); setNotificationList(list => { const updated = list.map(x => x.id === n.id ? { ...x, read: true } : x).filter(x => x.id !== n.id); localStorage.setItem('notifications', JSON.stringify(updated)); return updated; }); }}>Ver detalhes</button>
+                          <button className="text-xs text-purple-600 hover:text-purple-800 font-semibold" onClick={e => { e.stopPropagation(); setNotificationList(list => { const updated = list.map(x => x.id === n.id ? { ...x, read: true } : x).filter(x => x.id !== n.id); localStorage.setItem(NOTIF_KEY, JSON.stringify(updated)); return updated; }); }}>Marcar como lida</button>
+                          <button className="text-xs text-blue-600 hover:text-blue-800 font-semibold" onClick={e => { e.stopPropagation(); setToastNotification(n); setNotificationList(list => { const updated = list.map(x => x.id === n.id ? { ...x, read: true } : x).filter(x => x.id !== n.id); localStorage.setItem(NOTIF_KEY, JSON.stringify(updated)); return updated; }); }}>Ver detalhes</button>
                         </div>
                       </li>
                   ))}
