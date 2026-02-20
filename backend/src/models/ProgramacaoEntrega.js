@@ -57,6 +57,14 @@ const programacaoEntregaSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  editedBy: {
+    type: String,
+    default: '',
+    trim: true
+  },
+  editedAt: {
+    type: Date
+  },
   createdAt: {
     type: Date,
     default: () => new Date()

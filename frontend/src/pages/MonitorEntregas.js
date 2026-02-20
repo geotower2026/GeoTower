@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useAuth } from '../services/authContext';
 import { useNavigate } from 'react-router-dom';
 import Toast from '../components/Toast';
 import { adminService } from '../services/authService';
@@ -7,6 +8,7 @@ import manaConfig from '../config/cities/manaus.json';
 import itajaiConfig from '../config/cities/itajai.json';
 
 const MonitorEntregas = () => {
+  const { user } = useAuth();
   // Modal para visualizar fotos do fluxo
   const [modalFotos, setModalFotos] = useState(null);
   const navigate = useNavigate();
@@ -29,6 +31,12 @@ const MonitorEntregas = () => {
     userName: '',
     driverName: '',
     vehiclePlate: '',
+    recebedor: '',
+    status: '',
+    dataAgendamento: '',
+    horarioChegada: '',
+    horarioInicioDesova: '',
+    horarioFimDesova: '',
     observations: ''
   });
   
@@ -39,6 +47,17 @@ const MonitorEntregas = () => {
     startDate: '',
     endDate: ''
   });
+
+  // Mapeamento dos status amigáveis para os valores do backend
+  const statusMapToBackend = {
+    OPERACAO_FINALIZADA: ['ENTREGUE', 'submitted'],
+    'A CAMINHO DO CLIENTE': ['pending', 'PENDING'],
+    AGUARDANDO_DESOVA: ['AGUARDANDO_DESOVA'],
+    EM_DESOVA: ['EM_DESOVA'],
+    DESOVA_FINALIZADA: ['DESOVA_FINALIZADA'],
+    ANEXANDO_DOCUMENTOS_FINAIS: ['ANEXANDO_DOCUMENTOS_FINAIS'],
+    CANCELADO: ['CANCELADO']
+  };
   const [showFilters, setShowFilters] = useState(false);
 
   // Stats rápidas
@@ -53,9 +72,19 @@ const MonitorEntregas = () => {
   const loadDeliveries = useCallback(async () => {
     try {
       setLoading(true);
+      // Monta filtros para o backend
+      let backendFilters = { ...filters };
+      if (filters.status && filters.status !== 'all') {
+        // Envia o valor original esperado pelo backend
+        const backendStatus = statusMapToBackend[filters.status];
+        if (backendStatus) {
+          // Se for um array, pega o primeiro (ou pode adaptar para enviar múltiplos se backend aceitar)
+          backendFilters.status = backendStatus[0];
+        }
+      }
       // Log para debug: mostrar quais filtros estão sendo enviados
-      console.log('🔍 Enviando filtros ao backend:', filters);
-      const response = await adminService.getDeliveries(filters);
+      console.log('🔍 Enviando filtros ao backend:', backendFilters);
+      const response = await adminService.getDeliveries(backendFilters);
       const data = response.data.deliveries || [];
       console.log('📥 Resposta do backend:', data.length, 'entregas');
       setDeliveries(data);
@@ -193,6 +222,12 @@ const MonitorEntregas = () => {
       userName: delivery.userName || '',
       driverName: delivery.driverName || '',
       vehiclePlate: delivery.vehiclePlate || '',
+      recebedor: delivery.recebedor || '',
+      status: delivery.status || '',
+      dataAgendamento: delivery.dataAgendamento ? delivery.dataAgendamento.slice(0, 16) : '',
+      horarioChegada: delivery.horarioChegada ? delivery.horarioChegada.slice(0, 16) : '',
+      horarioInicioDesova: delivery.horarioInicioDesova ? delivery.horarioInicioDesova.slice(0, 16) : '',
+      horarioFimDesova: delivery.horarioFimDesova ? delivery.horarioFimDesova.slice(0, 16) : '',
       observations: delivery.observations || ''
     });
   };
@@ -203,10 +238,17 @@ const MonitorEntregas = () => {
       return;
     }
 
-    console.log('📝 Salvando edição:', { id: editingDelivery, data: editForm });
+    // Adiciona info do editor
+    const editPayload = {
+      ...editForm,
+      editedBy: user?.name || user?.username || user?.email || 'Desconhecido',
+      editedAt: new Date().toISOString()
+    };
+
+    console.log('📝 Salvando edição:', { id: editingDelivery, data: editPayload });
 
     try {
-      const response = await adminService.updateDelivery(editingDelivery, editForm);
+      const response = await adminService.updateDelivery(editingDelivery, editPayload);
       console.log('✅ Resposta do servidor:', response);
       setToast({ message: 'Entrega atualizada com sucesso', type: 'success' });
       setEditingDelivery(null);
@@ -515,13 +557,6 @@ const MonitorEntregas = () => {
                                 >
                                   <FaEye className="text-xs" /> Visualizar
                                 </button>
-                                {/* Observações/alertas no menu de ações */}
-                                {delivery.observations && delivery.observations.trim() !== '' && (
-                                  <div className="px-3 py-2 text-xs text-yellow-900 bg-yellow-50 rounded flex items-center gap-1 mt-1 mx-1">
-                                    <FaExclamationTriangle className="inline text-xs align-middle" />
-                                    {delivery.observations}
-                                  </div>
-                                )}
                                 <button
                                   onClick={() => { handleEditStart(delivery); setOpenMenuId(null); }}
                                   className="w-full text-left px-3 py-2 text-gray-700 hover:bg-gray-100 flex items-center gap-2"
@@ -562,64 +597,63 @@ const MonitorEntregas = () => {
       {/* Modal Detalhes */}
       {selectedDelivery && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-gradient-to-r from-purple-600 to-purple-800 text-white p-4 flex items-center justify-between">
-              <h2 className="text-xl font-bold">
-                Entrega #{selectedDelivery.deliveryNumber}
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="sticky top-0 bg-gradient-to-r from-purple-700 to-purple-500 text-white p-4 flex items-center justify-between rounded-t-lg">
+              <h2 className="text-2xl font-bold tracking-widest">
+                Entrega <span className="text-yellow-200">#{selectedDelivery.deliveryNumber}</span>
               </h2>
               <button
                 onClick={() => setSelectedDelivery(null)}
                 className="text-2xl hover:text-gray-200 transition"
+                title="Fechar"
               >
                 <FaTimes />
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase">Contratado</p>
-                  <p className="text-lg font-semibold text-gray-800">
-                    {selectedDelivery.userName}
-                  </p>
+                  <p className="text-lg font-semibold text-gray-800">{selectedDelivery.userName}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase">Nome do Motorista</p>
-                  <p className="text-lg font-semibold text-gray-800">
-                    {selectedDelivery.driverName || '-'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase">Email</p>
-                  <p className="text-sm text-gray-700">{selectedDelivery.userEmail}</p>
+                  <p className="text-xs font-semibold text-gray-500 uppercase">Motorista</p>
+                  <p className="text-lg font-semibold text-gray-800">{selectedDelivery.driverName || '-'}</p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase">Status</p>
-                  <span
-                    className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${getStatusBadge(selectedDelivery.status)}`}
-                  >
-                    {formatStatus(selectedDelivery.status)}
-                  </span>
+                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${getStatusBadge(selectedDelivery.status)}`}>{formatStatus(selectedDelivery.status)}</span>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase">Agendamento</p>
+                  <p className="text-base text-gray-700">{selectedDelivery.dataAgendamento ? new Date(selectedDelivery.dataAgendamento).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase">Chegada</p>
+                  <p className="text-base text-gray-700">{selectedDelivery.horarioChegada ? new Date(selectedDelivery.horarioChegada).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase">Início Desova</p>
+                  <p className="text-base text-gray-700">{selectedDelivery.horarioInicioDesova ? new Date(selectedDelivery.horarioInicioDesova).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase">Fim Desova</p>
+                  <p className="text-base text-gray-700">{selectedDelivery.horarioFimDesova ? new Date(selectedDelivery.horarioFimDesova).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}</p>
                 </div>
               </div>
 
               {selectedDelivery.observations && (
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
-                    Observações
-                  </p>
-                  <p className="text-gray-700 bg-gray-50 p-3 rounded">
-                    {selectedDelivery.observations}
-                  </p>
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded shadow-sm">
+                  <p className="text-xs font-bold text-yellow-800 uppercase mb-1">Observação</p>
+                  <p className="text-gray-800 text-base">{selectedDelivery.observations}</p>
                 </div>
               )}
 
               {/* Documentos e Fotos do Fluxo */}
               <div>
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold text-gray-500 uppercase mb-3">
-                    Documentos Anexados e Fotos do Fluxo
-                  </p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-gray-500 uppercase">Documentos e Fotos do Fluxo</p>
                   <button
                     onClick={() => handleDownloadAll(selectedDelivery._id)}
                     className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition"
@@ -630,33 +664,31 @@ const MonitorEntregas = () => {
                 <div className="grid grid-cols-1 gap-2">
                   {(() => {
                     const labels = getLabelsForDelivery(selectedDelivery);
-                    // Documentos normais
-                    const docRows = Object.keys(selectedDelivery.documents || {}).map(docKey => (
-                      <div key={docKey}>
-                        {selectedDelivery.documents[docKey] ? (
-                          <div className="bg-gray-50 p-3 rounded flex items-center justify-between">
-                            <span className="font-semibold text-gray-800">
-                              {labels[docKey] || docKey}
-                            </span>
-                            <button
-                              onClick={() => handleDownload(selectedDelivery._id, docKey)}
-                              className="flex items-center gap-2 px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600 transition"
-                            >
-                              <FaDownload /> Baixar
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="bg-gray-100 p-3 rounded text-gray-500 text-sm">
-                            {labels[docKey] || docKey} - Não anexado
-                          </div>
-                        )}
-                      </div>
-                    ));
-                    // Fotos do fluxo: chegada, início, fim desova
+                    // Documentos normais (sem duplicar campos de fotos)
+                    const docRows = Object.keys(selectedDelivery.documents || {})
+                      .filter(docKey => !['chegadaCliente', 'inicioDesova', 'fimDesova'].includes(docKey))
+                      .map(docKey => (
+                        <div key={docKey}>
+                          {selectedDelivery.documents[docKey] ? (
+                            <div className="bg-gray-50 p-3 rounded flex items-center justify-between">
+                              <span className="font-semibold text-gray-800">{labels[docKey] || docKey}</span>
+                              <button
+                                onClick={() => handleDownload(selectedDelivery._id, docKey)}
+                                className="flex items-center gap-2 px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600 transition"
+                              >
+                                <FaDownload /> Baixar
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="bg-gray-100 p-3 rounded text-gray-500 text-sm">{labels[docKey] || docKey} - Não anexado</div>
+                          )}
+                        </div>
+                      ));
+                    // Fotos do fluxo: chegada, início, fim desova (sem duplicar)
                     const fotosCampos = [
-                      { key: 'chegadaCliente', label: 'Registre sua chegada no cliente' },
-                      { key: 'inicioDesova', label: 'Registre o início da desova' },
-                      { key: 'fimDesova', label: 'Registre a finalização da desova' }
+                      { key: 'chegadaCliente', label: 'Chegada no Cliente' },
+                      { key: 'inicioDesova', label: 'Início da Desova' },
+                      { key: 'fimDesova', label: 'Finalização da Desova' }
                     ];
                     const fotosRows = fotosCampos.map((f, idx) => {
                       const files = Array.isArray(selectedDelivery.documents?.[f.key]) ? selectedDelivery.documents[f.key] : [];
@@ -688,9 +720,7 @@ const MonitorEntregas = () => {
                           </div>
                         </div>
                       ) : (
-                        <div key={f.label + idx} className="bg-gray-100 p-3 rounded text-gray-500 text-sm">
-                          {f.label} - Não anexado
-                        </div>
+                        <div key={f.label + idx} className="bg-gray-100 p-3 rounded text-gray-500 text-sm">{f.label} - Não anexado</div>
                       );
                     });
                     return [
@@ -738,7 +768,7 @@ const MonitorEntregas = () => {
       {/* Modal de Edição */}
       {editingDelivery && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+          <div className="bg-white rounded-lg shadow-lg max-w-lg w-full p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-bold text-gray-800">Editar Entrega</h2>
               <button
@@ -749,73 +779,63 @@ const MonitorEntregas = () => {
               </button>
             </div>
 
-            <div className="space-y-4 max-h-96 overflow-y-auto">
+            <div className="space-y-4 max-h-[70vh] overflow-y-auto">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Número do Container
-                </label>
-                <input
-                  type="text"
-                  value={editForm.deliveryNumber}
-                  onChange={(e) => setEditForm({ ...editForm, deliveryNumber: e.target.value.toUpperCase() })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="Ex: CGMU5575947"
-                />
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Número do Container</label>
+                <input type="text" value={editForm.deliveryNumber} onChange={e => setEditForm({ ...editForm, deliveryNumber: e.target.value.toUpperCase() })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Ex: CGMU5575947" />
               </div>
-
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Contratado
-                </label>
-                <input
-                  type="text"
-                  value={editForm.userName}
-                  onChange={(e) => setEditForm({ ...editForm, userName: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="Ex: Josinei vieira"
-                />
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Contratado</label>
+                <input type="text" value={editForm.userName} onChange={e => setEditForm({ ...editForm, userName: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Ex: Josinei vieira" />
               </div>
-
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Nome do Motorista
-                </label>
-                <input
-                  type="text"
-                  value={editForm.driverName}
-                  onChange={(e) => setEditForm({ ...editForm, driverName: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="Ex: ALAN"
-                />
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Nome do Motorista</label>
+                <input type="text" value={editForm.driverName} onChange={e => setEditForm({ ...editForm, driverName: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Ex: ALAN" />
               </div>
-
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Motivo da Edição *
-                </label>
-                <textarea
-                  value={editForm.observations}
-                  onChange={(e) => setEditForm({ ...editForm, observations: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="Explique por que está editando (obrigatório)"
-                  rows="2"
-                  required
-                />
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Placa do Veículo</label>
+                <input type="text" value={editForm.vehiclePlate} onChange={e => setEditForm({ ...editForm, vehiclePlate: e.target.value.toUpperCase() })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Ex: ABC1D23" />
               </div>
-
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Recebedor</label>
+                <input type="text" value={editForm.recebedor} onChange={e => setEditForm({ ...editForm, recebedor: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Nome do recebedor" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Status</label>
+                <select value={editForm.status} onChange={e => setEditForm({ ...editForm, status: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                  <option value="">Selecione...</option>
+                  <option value="ENTREGUE">Operação Finalizada</option>
+                  <option value="pending">A Caminho do Cliente</option>
+                  <option value="AGUARDANDO_DESOVA">Aguardando Desova</option>
+                  <option value="EM_DESOVA">Em Desova</option>
+                  <option value="DESOVA_FINALIZADA">Desova Finalizada</option>
+                  <option value="ANEXANDO_DOCUMENTOS_FINAIS">Anexando Documentos Finais</option>
+                  <option value="CANCELADO">Cancelado</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Data Agendamento</label>
+                <input type="datetime-local" value={editForm.dataAgendamento} onChange={e => setEditForm({ ...editForm, dataAgendamento: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Horário Chegada</label>
+                <input type="datetime-local" value={editForm.horarioChegada} onChange={e => setEditForm({ ...editForm, horarioChegada: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Início Desova</label>
+                <input type="datetime-local" value={editForm.horarioInicioDesova} onChange={e => setEditForm({ ...editForm, horarioInicioDesova: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Fim Desova</label>
+                <input type="datetime-local" value={editForm.horarioFimDesova} onChange={e => setEditForm({ ...editForm, horarioFimDesova: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Motivo da Edição *</label>
+                <textarea value={editForm.observations} onChange={e => setEditForm({ ...editForm, observations: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Explique por que está editando (obrigatório)" rows="2" required />
+              </div>
               <div className="flex gap-2">
-                <button
-                  onClick={handleEditSave}
-                  className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-semibold"
-                >
-                  Salvar
-                </button>
-                <button
-                  onClick={() => setEditingDelivery(null)}
-                  className="flex-1 px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition font-semibold"
-                >
-                  Cancelar
-                </button>
+                <button onClick={handleEditSave} className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-semibold">Salvar</button>
+                <button onClick={() => setEditingDelivery(null)} className="flex-1 px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition font-semibold">Cancelar</button>
               </div>
             </div>
           </div>

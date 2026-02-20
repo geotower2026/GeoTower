@@ -1330,6 +1330,8 @@ router.put("/programacoes/:id", auth, onlyAdminMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const { processo, recebedor, container, dataAgendamento, contratado, motorista, status, observacoes } = req.body;
+    // Get editor name from logged-in user
+    const editorName = req.user?.name || req.user?.username || req.user?._id || 'Desconhecido';
 
     console.log('[PROGRAMACAO] Atualizando:', id);
 
@@ -1349,6 +1351,9 @@ router.put("/programacoes/:id", auth, onlyAdminMiddleware, async (req, res) => {
     if (motorista !== undefined) programacao.motorista = motorista;
     if (status !== undefined) programacao.status = status;
     if (observacoes !== undefined) programacao.observacoes = observacoes;
+    // Register editor and time
+    programacao.editedBy = editorName;
+    programacao.editedAt = new Date();
 
     try {
       await programacao.save();
