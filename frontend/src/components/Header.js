@@ -146,17 +146,17 @@ const Header = () => {
                 </div>
                 <ul className="max-h-96 overflow-y-auto divide-y divide-gray-100">
                   {notificationList.filter(n => !n.read).map((n, idx) => (
-                    <li key={n.id + idx} className="p-4 flex flex-col gap-1 bg-white hover:bg-purple-50 rounded cursor-pointer transition-all">
-                      <div className="flex items-center gap-2">
-                        <span className="text-blue-700 font-bold text-base"><i className="fa fa-truck" /> {n.title}</span>
-                        <button className="ml-auto text-xs text-gray-400 hover:text-red-600" onClick={e => { e.stopPropagation(); setNotificationList(list => { const updated = list.filter(x => x.id !== n.id); localStorage.setItem('notifications', JSON.stringify(updated)); return updated; }); }}>Excluir</button>
-                      </div>
-                      <div className="text-xs text-gray-700 font-medium">{n.info}</div>
-                      <div className="flex gap-2 mt-2">
-                        <button className="text-xs text-purple-600 hover:text-purple-800 font-semibold" onClick={e => { e.stopPropagation(); setNotificationList(list => { const updated = list.map(x => x.id === n.id ? { ...x, read: true } : x); localStorage.setItem('notifications', JSON.stringify(updated)); return updated; }); }}>Marcar como lida</button>
-                        <button className="text-xs text-blue-600 hover:text-blue-800 font-semibold" onClick={e => { e.stopPropagation(); setToastNotification(n); setNotificationList(list => { const updated = list.map(x => x.id === n.id ? { ...x, read: true } : x); localStorage.setItem('notifications', JSON.stringify(updated)); return updated; }); }}>Ver detalhes</button>
-                      </div>
-                    </li>
+                      <li key={n.id + idx} className="p-4 flex flex-col gap-1 bg-white hover:bg-purple-50 rounded cursor-pointer transition-all">
+                        <div className="flex items-center gap-2">
+                          <span className="text-blue-700 font-bold text-base"><i className="fa fa-truck" /> {n.title}</span>
+                          <button className="ml-auto text-xs text-gray-400 hover:text-red-600" onClick={e => { e.stopPropagation(); setNotificationList(list => { const updated = list.filter(x => x.id !== n.id); localStorage.setItem('notifications', JSON.stringify(updated)); return updated; }); }}>Excluir</button>
+                        </div>
+                        <div className="text-xs text-gray-700 font-medium">{n.info}</div>
+                        <div className="flex gap-2 mt-2">
+                          <button className="text-xs text-purple-600 hover:text-purple-800 font-semibold" onClick={e => { e.stopPropagation(); setNotificationList(list => { const updated = list.map(x => x.id === n.id ? { ...x, read: true } : x).filter(x => x.id !== n.id); localStorage.setItem('notifications', JSON.stringify(updated)); return updated; }); }}>Marcar como lida</button>
+                          <button className="text-xs text-blue-600 hover:text-blue-800 font-semibold" onClick={e => { e.stopPropagation(); setToastNotification(n); setNotificationList(list => { const updated = list.map(x => x.id === n.id ? { ...x, read: true } : x).filter(x => x.id !== n.id); localStorage.setItem('notifications', JSON.stringify(updated)); return updated; }); }}>Ver detalhes</button>
+                        </div>
+                      </li>
                   ))}
                   {notificationList.filter(n => !n.read).length === 0 && (
                     <li className="p-4 text-center text-gray-400">Nenhuma notificação não lida</li>
