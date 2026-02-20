@@ -81,15 +81,26 @@ const Header = () => {
           } catch {}
           // Histórico definitivo de notificações lidas/excluídas
           const notifiedIds = new Set(getUserNotifiedIds());
-          // Nunca mostra notificações já lidas/excluídas, mesmo que venham do backend
-          const newOnes = notifications.filter(n => !notifiedIds.has(n.id));
-          if (newOnes.length > 0) {
-            setToastNotification(newOnes[0]);
+          // IDs de notificações do backend (atuais)
+          const backendIds = new Set(notifications.map(n => n.id));
+          // Remove duplicadas: só mantém uma notificação por ID
+          const unique = {};
+          // Adiciona notificações novas do backend (se não lidas/excluídas)
+          notifications.forEach(n => {
+            if (!notifiedIds.has(n.id)) unique[n.id] = n;
+          });
+          // Mantém notificações antigas que ainda existem no backend ou já estavam lidas
+          persisted.forEach(n => {
+            if (backendIds.has(n.id) || n.read) unique[n.id] = n;
+          });
+          const merged = Object.values(unique);
+          // Toast e som só para notificações realmente novas
+          const trulyNew = notifications.filter(n => !notifiedIds.has(n.id) && !persisted.some(p => p.id === n.id));
+          if (trulyNew.length > 0) {
+            setToastNotification(trulyNew[0]);
             const audio = new Audio('/assets/notification.mp3');
             audio.play();
           }
-          // Remove notificações que não existem mais e já estavam lidas/excluídas
-          const merged = [...newOnes, ...persisted.filter(n => notifications.some(nn => nn.id === n.id) || n.read)];
           localStorage.setItem(NOTIF_KEY, JSON.stringify(merged));
           return merged;
         });
