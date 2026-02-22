@@ -554,7 +554,7 @@ function dataURLtoFile(dataurl, filename) {
                 </div>
                 <div className="flex gap-2 justify-center">
                   <button
-                    onClick={() => { closeModal(); setTimeout(() => setToast({ message: 'Entrega concluída! Muito obrigado.', type: 'success' }), 500); }}
+                    onClick={() => { closeModal(); }}
                     className="flex-1 px-4 py-3 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition"
                   >
                     ✓ Voltar à lista
@@ -1242,7 +1242,10 @@ function dataURLtoFile(dataurl, filename) {
                     };
                     return (
                       <div key={docType} className="border-2 border-gray-300 p-4 rounded-lg bg-white hover:bg-gray-50 transition shadow-md">
-                        <p className="font-bold text-sm mb-3 text-gray-900 bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">{labels[docType]}</p>
+                        <div className="flex items-center gap-3 mb-3">
+                          <span className="inline-flex items-center justify-center h-8 w-8 rounded-md bg-purple-50 text-purple-600 text-lg flex-shrink-0">{emojis[docType]}</span>
+                          <p className="text-sm font-bold text-gray-900 uppercase tracking-wide">{labels[docType]}</p>
+                        </div>
                         <div className="flex flex-col gap-2">
                           <button
                             type="button"
