@@ -104,6 +104,7 @@ const ProgramadasEntregas = () => {
   const [observations, setObservations] = useState('');
   const [justification, setJustification] = useState('');
   const [documentsUpload, setDocumentsUpload] = useState({});
+  const [documentsJustification, setDocumentsJustification] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showThankYou, setShowThankYou] = useState(false);
   const fileInputRef = useRef(null);
@@ -252,6 +253,7 @@ const ProgramadasEntregas = () => {
     setObservations('');
     setJustification('');
     setDocumentsUpload({});
+    setDocumentsJustification('');
     loadProgramacoes();
   };
 
@@ -523,22 +525,33 @@ function dataURLtoFile(dataurl, filename) {
   const handleFinalUploadAndSubmit = async () => {
     const requiredDocs = ['canhotCTE','diarioBordo','canhotNF','devolucaoVazio'];
     const allOk = requiredDocs.every(k => documentsUpload[k] && documentsUpload[k].length > 0);
-    if (!allOk) {
-      setToast({ message: 'Anexe todos os documentos obrigatórios!', type: 'error' });
+    
+    // Permite prosseguir se: (1) todos documentos anexados OU (2) sem docs mas com justificativa
+    if (!allOk && !documentsJustification.trim()) {
+      setToast({ message: 'Anexe todos os documentos ou justifique a falta deles', type: 'error' });
       return;
     }
+    
     setSubmitting(true);
     try {
+      // Upload documentos que foram anexados
       for (const docType of requiredDocs) {
-        const files = documentsUpload[docType];
-        await deliveryService.uploadDocument(currentDelivery._id, docType, files);
+        if (documentsUpload[docType] && documentsUpload[docType].length > 0) {
+          await deliveryService.uploadDocument(currentDelivery._id, docType, documentsUpload[docType]);
+        }
       }
-      await deliveryService.updateDelivery(currentDelivery._id, { status: 'ENTREGUE' });
-      // Garantir que não haja toasts visíveis — mostrar agradecimento dentro de 'finalDocs'
-      try { setToast(null); } catch (e) { /* silent */ }
-      setShowThankYou(true);
-      setCurrentStep('finalDocs');
-      loadProgramacoes();
+      
+      // Determina o status final
+      const finalStatus = allOk ? 'ENTREGUE' : 'ENTREGUE_COM_PENDENCIA_CANHOTO';
+      const updatePayload = { 
+        status: finalStatus,
+        documentsJustification: documentsJustification
+      };
+      
+      await deliveryService.updateDelivery(currentDelivery._id, updatePayload);
+      // Atualiza lista e fecha o fluxo (retorna para a lista de entregas)
+      await loadProgramacoes();
+      closeModal();
     } catch (err) {
       console.error(err);
       setToast({ message: 'Erro ao enviar documentos', type: 'error' });
@@ -1233,10 +1246,10 @@ function dataURLtoFile(dataurl, filename) {
                 <div className="grid grid-cols-2 gap-3">
                   {['canhotCTE', 'diarioBordo', 'canhotNF', 'devolucaoVazio'].map((docType) => {
                     const labels = {
-                      canhotCTE: '🚛 Canhoto CTE',
-                      canhotNF: '📦 Canhoto NF',
-                      diarioBordo: '📋 Diário Bordo',
-                      devolucaoVazio: '📁 Devolução Vazio'
+                      canhotCTE: 'Canhoto CTE',
+                      canhotNF: 'Canhoto NF',
+                      diarioBordo: 'Diário Bordo',
+                      devolucaoVazio: 'Devolução Vazio'
                     };
                     const emojis = {
                       canhotCTE: '🚛',
@@ -1307,6 +1320,26 @@ function dataURLtoFile(dataurl, filename) {
                     );
                   })}
                 </div>
+
+                {/* Campo de justificativa - mostrar se não houver todos documentos */}
+                {!['canhotCTE','diarioBordo','canhotNF','devolucaoVazio'].every(k => documentsUpload[k] && documentsUpload[k].length > 0) && (
+                  <div className="bg-yellow-50 border-2 border-yellow-300 p-4 rounded-lg">
+                    <label className="block text-sm font-semibold text-yellow-900 mb-2">
+                      ⚠️ Algum problema com os Canhotos da entrega? Justifique:
+                    </label>
+                    <textarea
+                      value={documentsJustification}
+                      onChange={(e) => setDocumentsJustification(e.target.value)}
+                      placeholder="Descreva o motivo pelo qual algum documento não pode ser anexado..."
+                      className="w-full px-3 py-2 border border-yellow-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 resize-none"
+                      rows="3"
+                      disabled={submitting}
+                    />
+                    {!documentsJustification.trim() && (
+                      <p className="text-xs text-yellow-700 mt-2">* Campo obrigatório para finalizar sem todos os documentos</p>
+                    )}
+                  </div>
+                )}
 
                 <div className="flex gap-2">
                   <button
