@@ -231,89 +231,89 @@ const Home = () => {
 
                 </div>
 
-                {/* Footer / Company Info - Large Feature Section */}
-                <footer className="mt-12 md:mt-16 bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 rounded-3xl overflow-hidden shadow-lg">
-                  <div className="max-w-6xl mx-auto px-6 md:px-10 py-12 md:py-16">
-                    {/* Company Header - Large */}
-                    <div className="mb-12 text-center md:text-left">
-                      <div className="flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-8 mb-10">
-                        <img src="https://www.geotransportes.com.br/lovable-uploads/1370f489-a7bc-4d3b-a916-4e11a73378f0.png" alt="GeoTransportes" className="w-28 md:w-32 h-auto object-contain" />
-                        <div className="flex-1">
-                          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-2">
+                {/* Footer / Company Info */}
+                <footer className="mt-12 md:mt-16 bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 rounded-2xl overflow-hidden">
+                  <div className="max-w-6xl mx-auto px-6 md:px-10 py-10 md:py-12">
+                    {/* Company Header */}
+                    <div className="mb-10 md:mb-12">
+                      <div className="flex flex-col md:flex-row items-start gap-6 mb-8">
+                        <img src="https://www.geotransportes.com.br/lovable-uploads/1370f489-a7bc-4d3b-a916-4e11a73378f0.png" alt="GeoTransportes" className="w-24 md:w-28 h-auto object-contain" />
+                        <div>
+                          <h3 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
                             Geo<span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Transportes</span>
-                          </h2>
-                          <p className="text-lg md:text-xl text-gray-700 font-semibold">Logística Rodoviária</p>
-                          <p className="text-base md:text-lg text-gray-600">Atendimento e suporte</p>
+                          </h3>
+                          <p className="text-base md:text-lg text-gray-700 font-medium">Logística Rodoviária</p>
+                          <p className="text-sm md:text-base text-gray-600">Atendimento e suporte</p>
                         </div>
                       </div>
 
                       {/* Instagram Button */}
-                      <div className="mb-8">
-                        <p className="text-sm text-gray-600 mb-3 font-semibold uppercase tracking-wide">Redes Sociais</p>
-                        <a href="https://www.instagram.com/_grupogeo/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-pink-500 to-purple-600 hover:shadow-xl transition-all duration-300 hover:scale-105">
-                          <img src="https://img.icons8.com/?size=100&id=32292&format=png&color=FFFFFF" alt="Instagram" className="h-5 w-5" />
-                          <span className="text-sm font-bold text-white">Instagram</span>
+                      <div>
+                        <p className="text-xs text-gray-600 mb-2 font-semibold uppercase tracking-wide">Redes Sociais</p>
+                        <a href="https://www.instagram.com/_grupogeo/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 hover:shadow-lg transition-all duration-300 hover:scale-105">
+                          <img src="https://img.icons8.com/?size=100&id=32292&format=png&color=FFFFFF" alt="Instagram" className="h-4 w-4" />
+                          <span className="text-xs font-semibold text-white">Instagram</span>
                         </a>
                       </div>
                     </div>
 
-                    {/* Locations + Contacts Grid - Large */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-12 mb-10">
+                    {/* Locations + Contacts Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-12 mb-8">
                       {/* Locations */}
-                      <div className="bg-white rounded-2xl p-8 shadow-md hover:shadow-lg transition-shadow">
-                        <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                      <div>
+                        <h4 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-wide flex items-center gap-2">
                           📍 Localidades
-                        </h3>
-                        <div className="space-y-5">
-                          <div className="flex items-start gap-4">
-                            <FaMapMarkerAlt className="text-purple-600 text-2xl flex-shrink-0 mt-1" />
+                        </h4>
+                        <div className="space-y-3">
+                          <div className="flex items-start gap-3">
+                            <FaMapMarkerAlt className="text-purple-600 text-lg flex-shrink-0 mt-0.5" />
                             <div>
-                              <p className="text-lg font-bold text-gray-900">Itajaí - SC</p>
-                              <p className="text-gray-600 text-base">Av Itaipava</p>
+                              <p className="text-sm font-semibold text-gray-900">Itajaí - SC</p>
+                              <p className="text-xs text-gray-600">Av Itaipava</p>
                             </div>
                           </div>
-                          <div className="flex items-start gap-4">
-                            <FaMapMarkerAlt className="text-purple-600 text-2xl flex-shrink-0 mt-1" />
+                          <div className="flex items-start gap-3">
+                            <FaMapMarkerAlt className="text-purple-600 text-lg flex-shrink-0 mt-0.5" />
                             <div>
-                              <p className="text-lg font-bold text-gray-900">Garuva - SC</p>
-                              <p className="text-gray-600 text-base">BR101 Km 10</p>
+                              <p className="text-sm font-semibold text-gray-900">Garuva - SC</p>
+                              <p className="text-xs text-gray-600">BR101 Km 10</p>
                             </div>
                           </div>
-                          <div className="flex items-start gap-4">
-                            <FaMapMarkerAlt className="text-purple-600 text-2xl flex-shrink-0 mt-1" />
+                          <div className="flex items-start gap-3">
+                            <FaMapMarkerAlt className="text-purple-600 text-lg flex-shrink-0 mt-0.5" />
                             <div>
-                              <p className="text-lg font-bold text-gray-900">Manaus - AM</p>
-                              <p className="text-gray-600 text-base">Rua Gisele</p>
+                              <p className="text-sm font-semibold text-gray-900">Manaus - AM</p>
+                              <p className="text-xs text-gray-600">Rua Gisele</p>
                             </div>
                           </div>
                         </div>
                       </div>
 
                       {/* Contacts */}
-                      <div className="bg-white rounded-2xl p-8 shadow-md hover:shadow-lg transition-shadow">
-                        <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                      <div>
+                        <h4 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-wide flex items-center gap-2">
                           💬 Contatos
-                        </h3>
-                        <div className="space-y-5">
-                          <a href="https://wa.me/5592982760023" target="_blank" rel="noopener noreferrer" className="flex items-start gap-4 text-gray-700 hover:text-green-600 hover:bg-green-50 p-3 rounded-xl transition-all">
-                            <FaWhatsapp className="text-green-500 text-2xl flex-shrink-0 mt-1" />
+                        </h4>
+                        <div className="space-y-3">
+                          <a href="https://wa.me/5592982760023" target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 text-gray-700 hover:text-green-600 transition-colors">
+                            <FaWhatsapp className="text-green-500 text-lg flex-shrink-0 mt-0.5" />
                             <div>
-                              <p className="text-sm text-gray-500 uppercase tracking-wide font-semibold">Gerência</p>
-                              <p className="text-lg font-bold text-gray-900">Igo Ferro</p>
+                              <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Gerência</p>
+                              <p className="text-sm font-semibold text-gray-900">Igo Ferro</p>
                             </div>
                           </a>
-                          <a href="https://wa.me/5592982410180" target="_blank" rel="noopener noreferrer" className="flex items-start gap-4 text-gray-700 hover:text-green-600 hover:bg-green-50 p-3 rounded-xl transition-all">
-                            <FaWhatsapp className="text-green-500 text-2xl flex-shrink-0 mt-1" />
+                          <a href="https://wa.me/5592982410180" target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 text-gray-700 hover:text-green-600 transition-colors">
+                            <FaWhatsapp className="text-green-500 text-lg flex-shrink-0 mt-0.5" />
                             <div>
-                              <p className="text-sm text-gray-500 uppercase tracking-wide font-semibold">Operacional</p>
-                              <p className="text-lg font-bold text-gray-900">Daniela Pontes</p>
+                              <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Operacional</p>
+                              <p className="text-sm font-semibold text-gray-900">Daniela Pontes</p>
                             </div>
                           </a>
-                          <a href="https://wa.me/5592982410138" target="_blank" rel="noopener noreferrer" className="flex items-start gap-4 text-gray-700 hover:text-green-600 hover:bg-green-50 p-3 rounded-xl transition-all">
-                            <FaWhatsapp className="text-green-500 text-2xl flex-shrink-0 mt-1" />
+                          <a href="https://wa.me/5592982410138" target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 text-gray-700 hover:text-green-600 transition-colors">
+                            <FaWhatsapp className="text-green-500 text-lg flex-shrink-0 mt-0.5" />
                             <div>
-                              <p className="text-sm text-gray-500 uppercase tracking-wide font-semibold">Operacional</p>
-                              <p className="text-lg font-bold text-gray-900">Lia Lima</p>
+                              <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Operacional</p>
+                              <p className="text-sm font-semibold text-gray-900">Lia Lima</p>
                             </div>
                           </a>
                         </div>
@@ -321,8 +321,8 @@ const Home = () => {
                     </div>
 
                     {/* Copyright Bar */}
-                    <div className="border-t-2 border-gray-200 pt-8 text-center">
-                      <p className="text-base text-gray-600 font-medium">© {new Date().getFullYear()} <span className="font-bold text-gray-900">GeoTransportes</span> • Todos os direitos reservados</p>
+                    <div className="border-t-2 border-gray-200 pt-6 text-center">
+                      <p className="text-xs text-gray-600">© {new Date().getFullYear()} <span className="font-bold text-gray-900">GeoTransportes</span> • Todos os direitos reservados</p>
                     </div>
                   </div>
                 </footer>
