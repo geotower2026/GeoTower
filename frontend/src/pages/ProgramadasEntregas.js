@@ -545,16 +545,17 @@ function dataURLtoFile(dataurl, filename) {
             {/* STEP 11: Mensagem final de agradecimento e feedback */}
             {currentStep === 'agradecimento' && (
               <div className="space-y-6 text-center">
-                <div className="text-5xl animate-bounce">🎉</div>
-                <h3 className="text-2xl font-bold text-green-600">Muito Obrigado!</h3>
-                <p className="text-lg text-gray-700">Sua entrega foi concluída com sucesso.</p>
-                <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
-                  <p className="text-sm text-gray-600">Você será redirecionado automaticamente em alguns segundos...</p>
+                <div className="text-6xl animate-bounce">🎉</div>
+                <h3 className="text-3xl font-bold text-emerald-600">Excelente trabalho!</h3>
+                <p className="text-lg text-gray-700 font-medium">Sua entrega foi concluída com sucesso na GeoLog</p>
+                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-300 p-6 rounded-lg">
+                  <p className="text-base text-gray-700 mb-2">Obrigado por utilizar nosso sistema!</p>
+                  <p className="text-sm text-gray-600">Seus documentos foram registrados e a entrega finalizada.</p>
                 </div>
                 <div className="flex gap-2 justify-center">
                   <button
-                    onClick={() => { closeModal(); setTimeout(() => setToast({ message: 'Entrega concluída! Obrigado.', type: 'success' }), 500); }}
-                    className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700"
+                    onClick={() => { closeModal(); setTimeout(() => setToast({ message: 'Entrega concluída! Muito obrigado.', type: 'success' }), 500); }}
+                    className="flex-1 px-4 py-3 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition"
                   >
                     ✓ Voltar à lista
                   </button>
@@ -1240,8 +1241,8 @@ function dataURLtoFile(dataurl, filename) {
                       devolucaoVazio: '📁'
                     };
                     return (
-                      <div key={docType} className="border-2 border-gray-200 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition">
-                        <p className="font-semibold text-xs mb-2 text-gray-700">{labels[docType]}</p>
+                      <div key={docType} className="border-2 border-gray-300 p-4 rounded-lg bg-white hover:bg-gray-50 transition shadow-md">
+                        <p className="font-bold text-sm mb-3 text-gray-900 bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">{labels[docType]}</p>
                         <div className="flex flex-col gap-2">
                           <button
                             type="button"
