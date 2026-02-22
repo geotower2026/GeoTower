@@ -37,6 +37,7 @@ const programacaoEntregaSchema = new mongoose.Schema({
     enum: {
       values: [
         'AGENDADO',
+        'CONTAINER_MONTADO',
         'AGUARDANDO_DESOVA',
         'EM_DESOVA',
         'AGUARDANDO_ANEXO',
@@ -44,7 +45,7 @@ const programacaoEntregaSchema = new mongoose.Schema({
         'ENTREGUE',
         'CANCELADO'
       ],
-      message: 'Status deve ser: AGENDADO, AGUARDANDO_DESOVA, EM_DESOVA, AGUARDANDO_ANEXO, EM_ROTA, ENTREGUE ou CANCELADO'
+      message: 'Status deve ser: AGENDADO, CONTAINER_MONTADO, AGUARDANDO_DESOVA, EM_DESOVA, AGUARDANDO_ANEXO, EM_ROTA, ENTREGUE ou CANCELADO'
     },
     default: 'AGENDADO'
   },

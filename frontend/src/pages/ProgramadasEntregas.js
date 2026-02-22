@@ -108,6 +108,11 @@ const ProgramadasEntregas = () => {
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
 
+  // Montagem flow states
+  const [showMontagemModal, setShowMontagemModal] = useState(false);
+  const [montagemProgramacao, setMontagemProgramacao] = useState(null);
+  const [montagemSubmitting, setMontagemSubmitting] = useState(false);
+
   useEffect(() => {
     loadProgramacoes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -241,6 +246,64 @@ const ProgramadasEntregas = () => {
     setJustification('');
     setDocumentsUpload({});
     loadProgramacoes();
+  };
+
+  const handleStartMontagem = async (p) => {
+    setMontagemProgramacao(p);
+    setShowMontagemModal(true);
+  };
+
+  const handleMontagemFinished = async (finished) => {
+    if (!finished) {
+      // User said "Não" - show the question again (by staying in the modal)
+      return;
+    }
+
+    // User said "Sim" - update programacao status to CONTAINER_MONTADO
+    try {
+      setMontagemSubmitting(true);
+      const programacaoId = montagemProgramacao._id;
+      
+      // Update the programacao status via admin API or delivery update
+      // For now, we'll assume we can directly update it as the delivery status mirrors back
+      // Create a delivery first to establish the link
+      const deliveryNumber = (montagemProgramacao.container && montagemProgramacao.container.trim()) || 
+                            (montagemProgramacao.processo && montagemProgramacao.processo.trim());
+      if (!deliveryNumber) {
+        setToast({ message: 'Não foi possível: sem número de container/processo', type: 'error' });
+        setShowMontagemModal(false);
+        setMontagemProgramacao(null);
+        return;
+      }
+
+      // Create delivery with status CONTAINER_MONTADO
+      const payload = {
+        deliveryNumber: deliveryNumber.toUpperCase(),
+        observations: `Montagem finalizada em ${new Date().toLocaleString('pt-BR')}`,
+        driverName: montagemProgramacao.motorista || user?.fullName || user?.name || ''
+      };
+
+      const res = await deliveryService.createDelivery(payload);
+      const delivery = res.data.delivery;
+
+      // Update the delivery/programacao status to CONTAINER_MONTADO
+      await deliveryService.updateDelivery(delivery._id, { status: 'CONTAINER_MONTADO' });
+
+      setToast({ message: 'Container marcado como montado com sucesso!', type: 'success' });
+      setShowMontagemModal(false);
+      setMontagemProgramacao(null);
+      loadProgramacoes();
+    } catch (err) {
+      console.error('Erro ao finalizar montagem:', err);
+      setToast({ message: err?.response?.data?.message || 'Erro ao marcar montagem como finalizada', type: 'error' });
+    } finally {
+      setMontagemSubmitting(false);
+    }
+  };
+
+  const closeMontagemModal = () => {
+    setShowMontagemModal(false);
+    setMontagemProgramacao(null);
   };
 
   const goToStep = async (step) => {
@@ -601,16 +664,38 @@ function dataURLtoFile(dataurl, filename) {
                   </div>
 
                   <div className="flex gap-2 w-full sm:w-auto mt-4 sm:mt-0 justify-end">
-                    {/* Exibe botão para todos os status, exceto ENTREGUE/CANCELADO */}
-                      {(!['ENTREGUE','CANCELADO'].includes((p.status||'').toString())) && (
-                        <button
-                          onClick={() => handleStartDelivery(p)}
-                          className="px-6 py-2 bg-gradient-to-r from-emerald-400 to-emerald-600 text-white rounded-xl shadow-lg hover:scale-105 hover:shadow-xl transition font-bold text-lg border-2 border-emerald-500"
-                          title={(!p.status || p.status === 'pending' || p.status === 'PENDING' || p.status === 'AGENDADO') ? 'Iniciar Entrega' : 'Continuar Entrega'}
-                        >
-                          {(!p.status || p.status === 'pending' || p.status === 'PENDING' || p.status === 'AGENDADO') ? 'Iniciar Entrega' : 'Continuar Entrega'}
-                        </button>
-                      )}
+                    {/* Para AGENDADO: mostrar "Iniciar montagem" */}
+                    {(!p.status || p.status === 'pending' || p.status === 'PENDING' || p.status === 'AGENDADO') && (
+                      <button
+                        onClick={() => handleStartMontagem(p)}
+                        className="px-6 py-2 bg-gradient-to-r from-blue-400 to-blue-600 text-white rounded-xl shadow-lg hover:scale-105 hover:shadow-xl transition font-bold text-lg border-2 border-blue-500"
+                        title="Iniciar Montagem"
+                      >
+                        Iniciar Montagem
+                      </button>
+                    )}
+
+                    {/* Para CONTAINER_MONTADO e outros: mostrar "Iniciar entrega" */}
+                    {p.status === 'CONTAINER_MONTADO' && (
+                      <button
+                        onClick={() => handleStartDelivery(p)}
+                        className="px-6 py-2 bg-gradient-to-r from-emerald-400 to-emerald-600 text-white rounded-xl shadow-lg hover:scale-105 hover:shadow-xl transition font-bold text-lg border-2 border-emerald-500"
+                        title="Iniciar Entrega"
+                      >
+                        Iniciar Entrega
+                      </button>
+                    )}
+
+                    {/* Para outros status (não finalizados, não agendado, não container_montado): mostrar "Continuar entrega" */}
+                    {p.status && !['AGENDADO', 'CONTAINER_MONTADO', 'ENTREGUE', 'CANCELADO', 'pending', 'PENDING'].includes(p.status) && (
+                      <button
+                        onClick={() => handleStartDelivery(p)}
+                        className="px-6 py-2 bg-gradient-to-r from-emerald-400 to-emerald-600 text-white rounded-xl shadow-lg hover:scale-105 hover:shadow-xl transition font-bold text-lg border-2 border-emerald-500"
+                        title="Continuar Entrega"
+                      >
+                        Continuar Entrega
+                      </button>
+                    )}
                     </div>
                 </div>
               </div>
@@ -621,6 +706,64 @@ function dataURLtoFile(dataurl, filename) {
 
       {toast && (
         <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
+      )}
+
+      {/* Modal de pergunta - Finalizou a montagem? */}
+      {showMontagemModal && montagemProgramacao && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-10 border-4 border-blue-400">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-3xl font-extrabold text-blue-700">Montagem de Container</h2>
+              <button onClick={closeMontagemModal} className="text-gray-500 hover:text-gray-800">
+                <FaTimes size={28} />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              <div className="bg-blue-50 border border-blue-200 p-6 rounded-lg">
+                <p className="text-lg mb-4">
+                  <strong>Processo:</strong> {montagemProgramacao.processo}
+                </p>
+                <p className="text-lg mb-4">
+                  <strong>Container:</strong> {montagemProgramacao.container || '-'}
+                </p>
+                <p className="text-lg mb-4">
+                  <strong>Recebedor:</strong> {montagemProgramacao.recebedor || '-'}
+                </p>
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-300 p-6 rounded-lg">
+                <p className="text-2xl font-bold text-yellow-800 text-center">
+                  Você já finalizou a montagem do container?
+                </p>
+              </div>
+
+              {montagemSubmitting && (
+                <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-300 rounded-lg animate-pulse">
+                  <svg className="animate-spin h-6 w-6 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>
+                  <span className="text-blue-700 font-semibold">Processando...</span>
+                </div>
+              )}
+
+              <div className="flex gap-4 justify-center">
+                <button
+                  onClick={() => handleMontagemFinished(false)}
+                  disabled={montagemSubmitting}
+                  className="px-8 py-3 bg-gray-500 hover:bg-gray-600 text-white rounded-lg font-bold text-xl transition disabled:opacity-50"
+                >
+                  ❌ Não, ainda estou montando
+                </button>
+                <button
+                  onClick={() => handleMontagemFinished(true)}
+                  disabled={montagemSubmitting}
+                  className="px-8 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold text-xl transition disabled:opacity-50"
+                >
+                  ✅ Sim, já finalizei!
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Modal de fluxo de entrega */}
