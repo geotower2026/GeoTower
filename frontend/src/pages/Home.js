@@ -17,7 +17,15 @@ import {
 const Home = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [stats, setStats] = useState({
+  const [statsTodayTab, setStatsTodayTab] = useState('today');
+  const [statsToday, setStatsToday] = useState({
+    total: 0,
+    completed: 0,
+    inProgress: 0,
+    pending: 0,
+    onTimePercentage: 100
+  });
+  const [statsGeneral, setStatsGeneral] = useState({
     total: 0,
     completed: 0,
     inProgress: 0,
@@ -45,37 +53,63 @@ const Home = () => {
         p => String(p.contratado).trim().toUpperCase() === nomeFiltro
       );
 
-      // Calcular estatísticas
-      const total = minhasEntregas.length;
-      const completed = minhasEntregas.filter(e => 
-        String(e.status).toUpperCase() === 'ENTREGUE'
-      ).length;
-      const inProgress = minhasEntregas.filter(e => 
-        String(e.status).toUpperCase() === 'EM_ROTA'
-      ).length;
-      const pending = minhasEntregas.filter(e => 
-        !['ENTREGUE', 'EM_ROTA'].includes(String(e.status).toUpperCase())
-      ).length;
+      // Calcular estatísticas GERAL (todas as entregas)
+      const calcularStats = (entregas) => {
+        const total = entregas.length;
+        const completed = entregas.filter(e => 
+          String(e.status).toUpperCase() === 'ENTREGUE'
+        ).length;
+        const inProgress = entregas.filter(e => 
+          String(e.status).toUpperCase() === 'EM_ROTA'
+        ).length;
+        const pending = entregas.filter(e => 
+          !['ENTREGUE', 'EM_ROTA'].includes(String(e.status).toUpperCase())
+        ).length;
 
-      // Calcular performance de pontualidade
-      let onTimeCount = 0;
-      minhasEntregas.forEach(entrega => {
-        if (String(entrega.status).toUpperCase() === 'ENTREGUE') {
-          onTimeCount++;
-        }
-      });
-      const onTimePercentage = completed > 0 ? Math.round((onTimeCount / completed) * 100) : 100;
+        let onTimeCount = 0;
+        entregas.forEach(entrega => {
+          if (String(entrega.status).toUpperCase() === 'ENTREGUE') {
+            onTimeCount++;
+          }
+        });
+        const onTimePercentage = completed > 0 ? Math.round((onTimeCount / completed) * 100) : 100;
 
-      setStats({
-        total,
-        completed,
-        inProgress,
-        pending,
-        onTimePercentage
+        return {
+          total,
+          completed,
+          inProgress,
+          pending,
+          onTimePercentage
+        };
+      };
+
+      // Filtrar apenas entregas de HOJE
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const entregasHoje = minhasEntregas.filter(entrega => {
+        const dataEntrega = new Date(entrega.data);
+        dataEntrega.setHours(0, 0, 0, 0);
+        return dataEntrega.getTime() === today.getTime();
       });
+
+      const statsHoje = calcularStats(entregasHoje);
+      const statsGeral = calcularStats(minhasEntregas);
+
+      setStatsToday(statsHoje);
+      setStatsGeneral(statsGeral);
     } catch (error) {
       console.error('Erro ao carregar estatísticas:', error);
-      setStats({
+      setStatsToday({
+        total: 0,
+        completed: 0,
+        inProgress: 0,
+        pending: 0,
+        onTimePercentage: 100
+      });
+      setStatsGeneral({
         total: 0,
         completed: 0,
         inProgress: 0,
@@ -116,14 +150,43 @@ const Home = () => {
             {/* DASHBOARD STATS - Para Drivers */}
             {user?.role === 'driver' && (
               <div className="mb-10">
-                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-6">📊 Seu Desempenho Hoje</h2>
+                {/* Tabs para alternar entre Hoje e Geral */}
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-widest">📊 Seu Desempenho</h2>
+                  <div className="flex gap-2 bg-gray-200 rounded-lg p-1">
+                    <button
+                      onClick={() => setStatsTodayTab('today')}
+                      className={`px-4 py-2 rounded-md font-semibold text-sm transition-all ${
+                        statsTodayTab === 'today'
+                          ? 'bg-white text-purple-600 shadow-md'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      📅 Hoje
+                    </button>
+                    <button
+                      onClick={() => setStatsTodayTab('general')}
+                      className={`px-4 py-2 rounded-md font-semibold text-sm transition-all ${
+                        statsTodayTab === 'general'
+                          ? 'bg-white text-purple-600 shadow-md'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      📈 Geral
+                    </button>
+                  </div>
+                </div>
+
+                {/* Cards Com Dados Dinâmicos */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {/* Card Entregas Programadas */}
                   <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition-shadow">
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-500 mb-1">📅 Programadas</p>
-                        <p className="text-3xl font-bold text-indigo-600">{stats.total}</p>
+                        <p className="text-3xl font-bold text-indigo-600">
+                          {statsTodayTab === 'today' ? statsToday.total : statsGeneral.total}
+                        </p>
                         <p className="text-xs text-gray-400 mt-1">Entregas agendadas</p>
                       </div>
                       <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
@@ -137,7 +200,9 @@ const Home = () => {
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-500 mb-1">✅ Concluídas</p>
-                        <p className="text-3xl font-bold text-emerald-600">{stats.completed}</p>
+                        <p className="text-3xl font-bold text-emerald-600">
+                          {statsTodayTab === 'today' ? statsToday.completed : statsGeneral.completed}
+                        </p>
                         <p className="text-xs text-gray-400 mt-1">Expedidas com sucesso</p>
                       </div>
                       <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
@@ -151,7 +216,9 @@ const Home = () => {
                     <div className="flex items-start justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-500 mb-1">⏱️ Pontualidade</p>
-                        <p className="text-3xl font-bold text-green-600">{stats.onTimePercentage}%</p>
+                        <p className="text-3xl font-bold text-green-600">
+                          {statsTodayTab === 'today' ? statsToday.onTimePercentage : statsGeneral.onTimePercentage}%
+                        </p>
                         <p className="text-xs text-gray-400 mt-1">Taxa de entregas no prazo</p>
                       </div>
                       <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -162,12 +229,28 @@ const Home = () => {
                     <div className="mt-3 w-full bg-gray-200 rounded-full h-2">
                       <div
                         className={`h-2 rounded-full transition-all ${
-                          stats.onTimePercentage >= 90 ? 'bg-green-500' :
-                          stats.onTimePercentage >= 80 ? 'bg-yellow-500' :
+                          (statsTodayTab === 'today' ? statsToday.onTimePercentage : statsGeneral.onTimePercentage) >= 90 ? 'bg-green-500' :
+                          (statsTodayTab === 'today' ? statsToday.onTimePercentage : statsGeneral.onTimePercentage) >= 80 ? 'bg-yellow-500' :
                           'bg-red-500'
                         }`}
-                        style={{ width: `${stats.onTimePercentage}%` }}
+                        style={{ width: `${statsTodayTab === 'today' ? statsToday.onTimePercentage : statsGeneral.onTimePercentage}%` }}
                       />
+                    </div>
+                  </div>
+
+                  {/* Card Em Rota */}
+                  <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 hover:shadow-lg transition-shadow">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-500 mb-1">🚚 Em Rota</p>
+                        <p className="text-3xl font-bold text-blue-600">
+                          {statsTodayTab === 'today' ? statsToday.inProgress : statsGeneral.inProgress}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1">Entregas em andamento</p>
+                      </div>
+                      <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <span className="text-xl">🚛</span>
+                      </div>
                     </div>
                   </div>
                 </div>
