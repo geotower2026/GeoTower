@@ -533,6 +533,8 @@ function dataURLtoFile(dataurl, filename) {
         await deliveryService.uploadDocument(currentDelivery._id, docType, files);
       }
       await deliveryService.updateDelivery(currentDelivery._id, { status: 'ENTREGUE' });
+      // Garantir que não haja toasts visíveis — mostrar apenas o modal de agradecimento
+      try { setToast(null); } catch (e) { /* silent */ }
       setCurrentStep('agradecimento');
       loadProgramacoes();
     } catch (err) {
