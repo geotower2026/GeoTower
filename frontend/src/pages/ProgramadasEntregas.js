@@ -380,7 +380,12 @@ const ProgramadasEntregas = () => {
       return;
     }
     try {
-      await deliveryService.updateDelivery(currentDelivery._id, { observations });
+      // Append observation to existing observations
+      const fresh = await deliveryService.getDelivery(currentDelivery._id);
+      const existingObs = fresh.data.delivery.observations || '';
+      const timestamp = new Date().toLocaleString('pt-BR');
+      const newObs = `${existingObs ? existingObs + '\n' : ''}[${timestamp}] ${observations}`;
+      await deliveryService.updateDelivery(currentDelivery._id, { observations: newObs });
       setToast({ message: 'Observação registrada', type: 'success' });
       goToStep('welcome');
     } catch (err) {
@@ -521,7 +526,12 @@ function dataURLtoFile(dataurl, filename) {
     if (shouldSchedule) {
       try {
         const obs = '(SOLICITACAO_AGENDAMENTO) Motorista solicitou agendamento de devolução do container.';
-        await deliveryService.updateDelivery(currentDelivery._id, { observations: obs });
+        // Append observation instead of overwriting
+        const fresh = await deliveryService.getDelivery(currentDelivery._id);
+        const existingObs = fresh.data.delivery.observations || '';
+        const timestamp = new Date().toLocaleString('pt-BR');
+        const newObs = `${existingObs ? existingObs + '\n' : ''}[${timestamp}] ${obs}`;
+        await deliveryService.updateDelivery(currentDelivery._id, { observations: newObs });
         setToast({ message: 'Solicitação de agendamento enviada ao admin', type: 'success' });
       } catch (err) {
         setToast({ message: 'Erro ao enviar solicitação', type: 'error' });
@@ -553,11 +563,19 @@ function dataURLtoFile(dataurl, filename) {
       
       // Determina o status final
       const finalStatus = allOk ? 'ENTREGUE' : 'ENTREGUE_COM_PENDENCIA_CANHOTO';
-      const updatePayload = { 
+      // Append documents justification to observations as well
+      const fresh = await deliveryService.getDelivery(currentDelivery._id);
+      const existingObs = fresh.data.delivery.observations || '';
+      const timestamp = new Date().toLocaleString('pt-BR');
+      const docsObs = documentsJustification ? `(JUSTIFICATIVA_DOCS) ${documentsJustification}` : '';
+      const newObs = `${existingObs ? existingObs + '\n' : ''}${docsObs ? `[${timestamp}] ${docsObs}` : ''}`;
+
+      const updatePayload = {
         status: finalStatus,
-        documentsJustification: documentsJustification
+        documentsJustification: documentsJustification,
+        observations: newObs
       };
-      
+
       await deliveryService.updateDelivery(currentDelivery._id, updatePayload);
       // Atualiza lista e fecha o fluxo (retorna para a lista de entregas)
       await loadProgramacoes();

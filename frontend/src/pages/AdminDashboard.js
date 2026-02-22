@@ -459,11 +459,25 @@ const AdminDashboard = () => {
                   </div>
                 </div>
 
-                {/* Observations */}
-                {selectedDelivery.observations && (
+                {/* Observations (all) */}
+                {(
+                  selectedDelivery.observations ||
+                  selectedDelivery.documentsJustification ||
+                  selectedDelivery.submissionObservation
+                ) && (
                   <div>
-                    <h4 className="font-bold text-gray-800 mb-2">Observações</h4>
-                    <p className="text-gray-700">{selectedDelivery.observations}</p>
+                    <h4 className="font-bold text-gray-800 mb-2">Observações do Fluxo</h4>
+                    <div className="text-gray-700 space-y-2">
+                      {selectedDelivery.observations && (
+                        <div className="whitespace-pre-wrap bg-gray-50 p-3 rounded">{selectedDelivery.observations}</div>
+                      )}
+                      {selectedDelivery.documentsJustification && (
+                        <div className="whitespace-pre-wrap bg-yellow-50 p-3 rounded">{`Justificativa de documentos: ${selectedDelivery.documentsJustification}`}</div>
+                      )}
+                      {selectedDelivery.submissionObservation && (
+                        <div className="whitespace-pre-wrap bg-blue-50 p-3 rounded">{selectedDelivery.submissionObservation}</div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

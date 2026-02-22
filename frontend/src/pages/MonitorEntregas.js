@@ -667,17 +667,34 @@ const MonitorEntregas = () => {
                 </div>
               </div>
 
-              {selectedDelivery.observations && (
-                <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded shadow-sm">
-                  <p className="text-xs font-bold text-blue-800 uppercase mb-1">📝 Observações do Fluxo</p>
-                  <p className="text-gray-800 text-sm whitespace-pre-wrap">{selectedDelivery.observations}</p>
-                </div>
-              )}
+              {(
+                selectedDelivery.observations ||
+                selectedDelivery.documentsJustification ||
+                selectedDelivery.submissionObservation
+              ) && (
+                <div className="space-y-2">
+                  <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded shadow-sm">
+                    <p className="text-xs font-bold text-blue-800 uppercase mb-1">📝 Observações do Fluxo</p>
+                    {selectedDelivery.observations ? (
+                      <p className="text-gray-800 text-sm whitespace-pre-wrap">{selectedDelivery.observations}</p>
+                    ) : (
+                      <p className="text-gray-600 text-sm">-</p>
+                    )}
+                  </div>
 
-              {selectedDelivery.documentsJustification && (
-                <div className="bg-orange-50 border-l-4 border-orange-400 p-4 rounded shadow-sm">
-                  <p className="text-xs font-bold text-orange-800 uppercase mb-1">⚠️ Justificativa de Documentos Pendentes</p>
-                  <p className="text-gray-800 text-sm whitespace-pre-wrap">{selectedDelivery.documentsJustification}</p>
+                  {selectedDelivery.documentsJustification && (
+                    <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded shadow-sm">
+                      <p className="text-xs font-bold text-yellow-800 uppercase mb-1">⚠️ Justificativa de Documentos</p>
+                      <p className="text-gray-800 text-sm whitespace-pre-wrap">{selectedDelivery.documentsJustification}</p>
+                    </div>
+                  )}
+
+                  {selectedDelivery.submissionObservation && (
+                    <div className="bg-indigo-50 border-l-4 border-indigo-300 p-4 rounded shadow-sm">
+                      <p className="text-xs font-bold text-indigo-800 uppercase mb-1">ℹ️ Observação de Submissão</p>
+                      <p className="text-gray-800 text-sm whitespace-pre-wrap">{selectedDelivery.submissionObservation}</p>
+                    </div>
+                  )}
                 </div>
               )}
 
