@@ -7,7 +7,15 @@ const DeliverySchema = new mongoose.Schema(
     observations: { type: String, default: "" },
     driverName: { type: String, default: "" },        // nome do motorista
 
-    status: { type: String, enum: ["pending", "submitted"], default: "pending" },
+    status: { 
+      type: String, 
+      enum: [
+        'pending', 'submitted', 'AGENDADO', 'CONTAINER_MONTADO', 'AGUARDANDO_DESOVA',
+        'EM_DESOVA', 'AGUARDANDO_ANEXO', 'ANEXANDO_DOCUMENTOS_FINAIS', 'EM_ROTA',
+        'ENTREGUE', 'CANCELADO', 'A_CAMINHO_DO_CLIENTE', 'ENTREGUE_COM_PENDENCIA_CANHOTO'
+      ],
+      default: 'pending' 
+    },
 
     // registrar quando o motorista marcou chegada no cliente
     arrivedAt: { type: Date },
