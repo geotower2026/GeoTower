@@ -50,7 +50,7 @@ const MonitorEntregas = () => {
 
   // Mapeamento dos status amigáveis para os valores do backend
   const statusMapToBackend = {
-    OPERACAO_FINALIZADA: ['ENTREGUE', 'submitted'],
+    OPERACAO_FINALIZADA: ['ENTREGUE', 'submitted', 'ENTREGUE_COM_PENDENCIA_CANHOTO'],
     'A CAMINHO DO CLIENTE': ['pending', 'PENDING'],
     AGUARDANDO_DESOVA: ['AGUARDANDO_DESOVA'],
     EM_DESOVA: ['EM_DESOVA'],
@@ -278,8 +278,32 @@ const MonitorEntregas = () => {
   const formatStatus = (status) => {
     if (!status) return '-';
     if (status === 'ENTREGUE' || status === 'submitted') return 'OPERAÇÃO FINALIZADA';
+    if (status === 'ENTREGUE_COM_PENDENCIA_CANHOTO') return 'ENTREGUE (PENDÊNCIA)';
     if (status === 'pending' || status === 'PENDING') return 'A CAMINHO DO CLIENTE';
     return status.replace(/_/g, ' ');
+  };
+
+  // Função para retornar o status dos documentos
+  const getDocumentsStatus = (delivery) => {
+    if (!delivery) return 'PENDENTE';
+    
+    const requiredDocs = ['canhotCTE', 'diarioBordo', 'canhotNF', 'devolucaoVazio'];
+    const docs = delivery.documents || {};
+    
+    const allAttached = requiredDocs.every(doc => docs[doc]);
+    if (allAttached) return 'COMPLETO';
+    
+    // Verificar quais estão pendentes
+    const pending = requiredDocs.filter(doc => !docs[doc]);
+    const pendingNames = pending.map(doc => {
+      if (doc === 'canhotCTE') return 'CTE';
+      if (doc === 'canhotNF') return 'NF';
+      if (doc === 'diarioBordo') return 'DIÁRIO';
+      if (doc === 'devolucaoVazio') return 'RIC';
+      return doc;
+    }).join(' + ');
+    
+    return `PENDENTE ${pendingNames}`;
   };
 
   // Default labels for Manaus; we will pick per-delivery labels when showing modal
@@ -467,6 +491,7 @@ const MonitorEntregas = () => {
                     <th className="px-2 py-2 text-left font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">RECEBEDOR</th>
                     <th className="px-2 py-2 text-left font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">STATUS</th>
                     <th className="px-2 py-2 text-left font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">AGENDAMENTO</th>
+                    <th className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">DT RETIRADA</th>
                     <th className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">CHEGADA</th>
                     <th className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">INÍCIO</th>
                     <th className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">FIM</th>
@@ -492,6 +517,9 @@ const MonitorEntregas = () => {
                     <td className="px-2 py-2 text-gray-600 whitespace-nowrap text-center">
                       {delivery.dataAgendamento ? new Date(delivery.dataAgendamento).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-'}
                     </td>
+                    <td className="px-2 py-2 text-gray-600 whitespace-nowrap text-center">
+                      {delivery.horarioInicioDesova ? new Date(delivery.horarioInicioDesova).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-'}
+                    </td>
                     <td className="px-2 py-2 text-gray-700 whitespace-nowrap text-center">
                       {delivery.horarioChegada ? new Date(delivery.horarioChegada).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}
                     </td>
@@ -513,22 +541,11 @@ const MonitorEntregas = () => {
                     <td className="px-2 py-2 text-gray-700 whitespace-nowrap text-center">{delivery.horarioInicioDesova ? new Date(delivery.horarioInicioDesova).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
                     <td className="px-2 py-2 text-gray-700 whitespace-nowrap text-center">{delivery.horarioFimDesova ? new Date(delivery.horarioFimDesova).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
                     <td className="px-2 py-2 text-center">
-                      <div className="flex flex-wrap gap-1 justify-center">
-                        {Object.keys(delivery.documents || {})
-                          .filter(key => delivery.documents[key])
-                          .map(docKey => {
-                            const labels = getLabelsForDelivery(delivery);
-                            return (
-                              <span
-                                key={docKey}
-                                title={labels[docKey] || docKey}
-                                className="text-xs bg-green-100 text-green-800 px-1 py-0.5 rounded"
-                              >
-                                ✓
-                              </span>
-                            );
-                          })}
-                      </div>
+                      <span className={`px-2 py-1 rounded font-semibold text-xs whitespace-nowrap ${
+                        getDocumentsStatus(delivery).includes('COMPLETO') ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {getDocumentsStatus(delivery)}
+                      </span>
                     </td>
                     <td className="px-2 py-2 text-center">
                       <div className="flex items-center justify-center">
