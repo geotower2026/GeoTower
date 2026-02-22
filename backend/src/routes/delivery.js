@@ -59,9 +59,9 @@ router.post("/", auth, async (req, res) => {
   try {
     const db = await getDb(req);
     const city = req.city || 'manaus';
-    const { deliveryNumber, vehiclePlate, observations, driverName } = req.body;
+    const { deliveryNumber, vehiclePlate, observations, driverName, containerMontadoAt, status } = req.body;
 
-    console.log('📦 Recebido no backend:', { deliveryNumber, vehiclePlate, observations, driverName, city });
+    console.log('📦 Recebido no backend:', { deliveryNumber, vehiclePlate, observations, driverName, containerMontadoAt, status, city });
 
     if (!deliveryNumber) {
       return res.status(400).json({ message: "Número da entrega obrigatório" });
@@ -74,9 +74,10 @@ router.post("/", auth, async (req, res) => {
       vehiclePlate,
       observations,
       driverName: driverName || "",
+      containerMontadoAt: containerMontadoAt ? new Date(containerMontadoAt) : null,
       userId: req.user.id,
       userName: driver?.fullName || driver?.name || driver?.username || "Unknown",
-      status: "pending",
+      status: status || "pending",
       currentStep: 'welcome',
       documents: {},
       city
@@ -92,9 +93,10 @@ router.post("/", auth, async (req, res) => {
         ]
       });
       if (prog) {
-        prog.status = 'EM_ROTA';
+        // Se status foi definido (ex: CONTAINER_MONTADO), usa esse, senão usa EM_ROTA
+        prog.status = status === 'CONTAINER_MONTADO' ? 'CONTAINER_MONTADO' : 'EM_ROTA';
         await prog.save();
-        console.log('[DELIVERY] Programacao', prog._id, 'status atualizado para EM_ROTA');
+        console.log('[DELIVERY] Programacao', prog._id, 'status atualizado para', prog.status);
       }
     } catch (syncErr) {
       console.warn('[DELIVERY] Falha ao sincronizar programacao:', syncErr.message || syncErr);

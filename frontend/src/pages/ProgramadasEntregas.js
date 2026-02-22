@@ -179,6 +179,13 @@ const ProgramadasEntregas = () => {
         // Re-use existing delivery and restore step
         setCurrentDelivery(existing);
         setCurrentProgramacao(p);
+        
+        // Se status é CONTAINER_MONTADO, mudar para A_CAMINHO_DO_CLIENTE
+        if (existing.status === 'CONTAINER_MONTADO') {
+          await deliveryService.updateDelivery(existing._id, { status: 'A_CAMINHO_DO_CLIENTE' });
+          existing.status = 'A_CAMINHO_DO_CLIENTE';
+        }
+        
         // Determina o step inicial conforme o status
         let restoredStep = 'welcome';
         switch ((existing.status || '').toUpperCase()) {
@@ -200,6 +207,7 @@ const ProgramadasEntregas = () => {
             break;
           case 'PENDING':
           case 'EM_ROTA':
+          case 'A_CAMINHO_DO_CLIENTE':
           default:
             restoredStep = 'welcome';
         }
@@ -296,7 +304,8 @@ const ProgramadasEntregas = () => {
         deliveryNumber: deliveryNumber.toUpperCase(),
         observations: `Montagem finalizada em ${new Date().toLocaleString('pt-BR')}`,
         driverName: montagemProgramacao.motorista || user?.fullName || user?.name || '',
-        containerMontadoAt: new Date() // Registrar data/hora da montagem
+        containerMontadoAt: new Date().toISOString(), // Enviar como ISO string
+        status: 'CONTAINER_MONTADO'
       };
 
       const res = await deliveryService.createDelivery(payload);
