@@ -233,34 +233,45 @@ const Home = () => {
 
                 {/* Footer / Company Info */}
                 <div className="mt-8 bg-white rounded-lg shadow border border-gray-100 p-6">
-                  <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="max-w-6xl mx-auto flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
                     <div className="flex items-start gap-4">
-                      <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-white text-xl font-bold">
-                        GT
-                      </div>
+                      <img src="https://www.geotransportes.com.br/lovable-uploads/1370f489-a7bc-4d3b-a916-4e11a73378f0.png" alt="GeoTransportes" className="w-28 h-auto object-contain" />
                       <div>
                         <h4 className="text-lg font-semibold text-gray-800">GeoTransportes</h4>
                         <p className="text-sm text-gray-600">Logística Rodoviária — Atendimento e suporte</p>
-                        <p className="text-sm text-gray-500 mt-1 flex items-center gap-2"><FaMapMarkerAlt className="text-purple-600" /> <span>Endereço: (adicionar endereço enviado)</span></p>
+                        <div className="text-sm text-gray-500 mt-2 space-y-1">
+                          <div className="flex items-center gap-2"><FaMapMarkerAlt className="text-purple-600" /> <span>Itajaí, SC - Av Itaipava, 898</span></div>
+                          <div className="flex items-center gap-2"><FaMapMarkerAlt className="text-purple-600" /> <span>Manaus, AM - Rua Gisele, 830, sala 2</span></div>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                      <div className="text-sm">
-                        <div className="text-xs text-gray-500">Gerência</div>
-                        <a href="https://wa.me/5592982760023" target="_blank" rel="noopener noreferrer" className="text-purple-700 font-semibold hover:underline flex items-center gap-2">
-                          <FaWhatsapp className="text-green-500" /> Igo Ferro — (92) 98276-0023
-                        </a>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+                      <div>
+                        <div className="text-xs text-gray-500">Contatos GeoTransportes</div>
+                        <div className="mt-2 space-y-1">
+                          <a href="https://wa.me/5592982760023" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-purple-700 font-semibold hover:underline">
+                            <FaWhatsapp className="text-green-500" /> Igo Ferro — (92) 98276-0023
+                          </a>
+                          <a href="https://wa.me/5592982410180" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-purple-700 font-semibold hover:underline">
+                            <FaWhatsapp className="text-green-500" /> Daniela Pontes — (92) 98241-0180
+                          </a>
+                          <a href="https://wa.me/5592982410138" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-purple-700 font-semibold hover:underline">
+                            <FaWhatsapp className="text-green-500" /> Lia Lima — (92) 98241-0138
+                          </a>
+                        </div>
                       </div>
 
-                      <div className="text-sm">
-                        <div className="text-xs text-gray-500">Operacional</div>
-                        <a href="https://wa.me/5592982410180" target="_blank" rel="noopener noreferrer" className="text-purple-700 font-semibold hover:underline flex items-center gap-2">
-                          <FaWhatsapp className="text-green-500" /> Daniela Pontes — (92) 98241-0180
-                        </a>
-                        <a href="https://wa.me/5592982410138" target="_blank" rel="noopener noreferrer" className="text-purple-700 font-semibold hover:underline flex items-center gap-2 mt-1">
-                          <FaWhatsapp className="text-green-500" /> Lia Lima — (92) 98241-0138
-                        </a>
+                      <div className="flex flex-col items-start">
+                        <div className="text-xs text-gray-500">Redes Sociais</div>
+                        <div className="flex items-center gap-3 mt-2">
+                          <a href="https://www.geotransportes.com.br" target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-700" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12a9.953 9.953 0 006.667 9.345c.487.09.666-.212.666-.47 0-.232-.008-.847-.013-1.664-2.713.59-3.284-1.307-3.284-1.307-.445-1.129-1.086-1.43-1.086-1.43-.888-.607.068-.595.068-.595  .981.069 1.496 1.007 1.496 1.007.873 1.495 2.29 1.063 2.847.813.089-.633.342-1.063.622-1.307-2.165-.246-4.443-1.083-4.443-4.819 0-1.064.38-1.935 1.005-2.618-.101-.246-.436-1.237.096-2.578 0 0 .82-.262 2.686 1.001A9.28 9.28 0 0112 6.844c.83.004 1.666.112 2.448.328 1.865-1.263 2.684-1.001 2.684-1.001.534 1.341.2 2.332.099 2.578.626.683 1.004 1.554 1.004 2.618 0 3.746-2.281 4.569-4.453 4.811.35.303.662.9.662 1.815 0 1.31-.012 2.365-.012 2.686 0 .261.176.564.672.468A9.953 9.953 0 0022 12z"/></svg>
+                          </a>
+                          <a href="https://www.geotransportes.com.br" target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-pink-500" viewBox="0 0 24 24" fill="currentColor"><path d="M7 2C4.243 2 2 4.243 2 7v10c0 2.757 2.243 5 5 5h10c2.757 0 5-2.243 5-5V7c0-2.757-2.243-5-5-5H7zm8.5 4.25a1.25 1.25 0 110 2.5 1.25 1.25 0 010-2.5zM12 7.5a4.5 4.5 0 110 9 4.5 4.5 0 010-9z"/></svg>
+                          </a>
+                        </div>
                       </div>
                     </div>
                   </div>
