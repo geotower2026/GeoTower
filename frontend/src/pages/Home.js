@@ -258,7 +258,7 @@ const Home = () => {
                     </div>
 
                     {/* Locations + Contacts Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-12 mb-8">
+                    <div className="grid grid-cols-2 gap-6 md:gap-10 md:gap-12 mb-8">
                       {/* Locations */}
                       <div>
                         <h4 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-wide flex items-center gap-2">
