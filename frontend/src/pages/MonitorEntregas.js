@@ -94,33 +94,35 @@ const MonitorEntregas = () => {
       setDeliveries(data);
       
       // Calcula a data alvo baseada no período selecionado
-      const getPeriodDate = () => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        if (statsPeriod === 'yesterday') {
-          const yesterday = new Date(today);
-          yesterday.setDate(yesterday.getDate() - 1);
-          return yesterday;
-        } else if (statsPeriod === 'tomorrow') {
-          const tomorrow = new Date(today);
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          return tomorrow;
-        }
-        return today; // today (padrão)
-      };
+      let entrugasPeriodo = data;
+      
+      if (statsPeriod !== 'general') {
+        const getPeriodDate = () => {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          if (statsPeriod === 'yesterday') {
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            return yesterday;
+          } else if (statsPeriod === 'tomorrow') {
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            return tomorrow;
+          }
+          return today; // today (padrão)
+        };
 
-      const targetDate = getPeriodDate();
-      const nextDay = new Date(targetDate);
-      nextDay.setDate(nextDay.getDate() + 1);
+        const targetDate = getPeriodDate();
 
-      // Filtra entregas pelo período
-      const entrugasPeriodo = data.filter(d => {
-        if (!d.dataAgendamento) return false;
-        const deliveryDate = new Date(d.dataAgendamento);
-        deliveryDate.setHours(0, 0, 0, 0);
-        return deliveryDate.getTime() === targetDate.getTime();
-      });
+        // Filtra entregas pelo período usando dataAgendamento
+        entrugasPeriodo = data.filter(d => {
+          if (!d.dataAgendamento) return false;
+          const deliveryDate = new Date(d.dataAgendamento);
+          deliveryDate.setHours(0, 0, 0, 0);
+          return deliveryDate.getTime() === targetDate.getTime();
+        });
+      }
 
       // Calcula stats
       const submitted = entrugasPeriodo.filter(d => d.status === 'ENTREGUE' || d.status === 'submitted').length;
@@ -383,7 +385,17 @@ const MonitorEntregas = () => {
         </div>
 
         {/* Period Selector for Stats */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-2 mb-6 flex-wrap">
+          <button
+            onClick={() => setStatsPeriod('general')}
+            className={`px-4 py-2 rounded-lg font-semibold transition-all ${
+              statsPeriod === 'general'
+                ? 'bg-indigo-600 text-white shadow-lg'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            📊 Geral
+          </button>
           <button
             onClick={() => setStatsPeriod('yesterday')}
             className={`px-4 py-2 rounded-lg font-semibold transition-all ${
@@ -635,7 +647,7 @@ const MonitorEntregas = () => {
                           </button>
 
                           {openMenuId === delivery._id && (
-                            <div className={`${openMenuUp ? 'origin-bottom-right absolute right-0 mb-2 bottom-full' : 'origin-top-right absolute right-0 mt-2'} w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50`}>
+                            <div className={`${openMenuUp ? 'origin-bottom-right absolute right-0 mb-2 bottom-full' : 'origin-top-right absolute right-0 mt-2'} w-48 rounded-md shadow-2xl bg-white ring-1 ring-black ring-opacity-5 z-[9999] overflow-visible`}>
                               <div className="py-1 text-xs">
                                 <button
                                   onClick={() => { setSelectedDelivery(delivery); setOpenMenuId(null); }}
