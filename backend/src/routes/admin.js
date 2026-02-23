@@ -779,8 +779,12 @@ router.post("/users", auth, managerOnly, async (req, res) => {
 
     // Verifica se usuário existe (por username ou email)
     const db = await getDb(req);
-    const existing = await db.find('drivers', { $or: [{ username: normalizedUsername }, { email: normalizedEmail }] });
-    if (existing && existing.length > 0) {
+    const allDrivers = await db.find('drivers', {}) || [];
+    const existing = allDrivers.find(d => 
+      String(d.username || '').toLowerCase() === normalizedUsername || 
+      String(d.email || '').toLowerCase() === normalizedEmail
+    );
+    if (existing) {
       return res.status(400).json({ message: "Usuário já existe" });
     }
 
@@ -1069,7 +1073,7 @@ router.get('/debug/export-drivers', auth, onlyAdmin, async (req, res) => {
  * GET /api/admin/motoristas
  * Listar todos os motoristas
  */
-router.get("/motoristas", auth, onlyAdminMiddleware, async (req, res) => {
+router.get("/motoristas", auth, managerOnly, async (req, res) => {
   try {
     const Motorista = require("../models/Motorista");
     const motoristas = await Motorista.find().sort({ createdAt: -1 });
@@ -1085,7 +1089,7 @@ router.get("/motoristas", auth, onlyAdminMiddleware, async (req, res) => {
  * POST /api/admin/motoristas
  * Criar novo motorista
  */
-router.post("/motoristas", auth, onlyAdminMiddleware, async (req, res) => {
+router.post("/motoristas", auth, managerOnly, async (req, res) => {
   try {
     const {
       transportadora,
@@ -1159,7 +1163,7 @@ router.post("/motoristas", auth, onlyAdminMiddleware, async (req, res) => {
  * PUT /api/admin/motoristas/:id
  * Atualizar motorista
  */
-router.put("/motoristas/:id", auth, onlyAdminMiddleware, async (req, res) => {
+router.put("/motoristas/:id", auth, managerOnly, async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -1238,7 +1242,7 @@ router.put("/motoristas/:id", auth, onlyAdminMiddleware, async (req, res) => {
  * DELETE /api/admin/motoristas/:id
  * Deletar motorista
  */
-router.delete("/motoristas/:id", auth, onlyAdminMiddleware, async (req, res) => {
+router.delete("/motoristas/:id", auth, managerOnly, async (req, res) => {
   try {
     const { id } = req.params;
 
