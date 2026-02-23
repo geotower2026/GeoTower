@@ -22,7 +22,7 @@ const UserManagement = () => {
   });
 
   useEffect(() => {
-    // Proteger rota - só gerentes e admins podem acessar
+    // Proteger rota - só gerentes e admins podem acessar (GeoMar não tem acesso)
     if (!user || (user.role !== 'manager' && user.role !== 'admin')) {
       navigate('/');
       return;

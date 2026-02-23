@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { adminService } from '../services/authService';
+import { adminService, useAuth } from '../services/authService';
 import { FaArrowLeft, FaPlus, FaEdit, FaTrash, FaFileDownload, FaFileExcel } from 'react-icons/fa';
 import * as XLSX from 'xlsx';
 import '../styles/MotoristaManagement.css';
 
 const ProgramacaoManagement = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  // Permission helper functions
+  const isGeoMar = () => user?.role === 'geomar';
+  const canEdit = () => !isGeoMar();
   const [programacoes, setProgramacoes] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -89,6 +94,10 @@ const ProgramacaoManagement = () => {
 
   const handleOpen = (programacao = null) => {
     if (programacao) {
+      if (isGeoMar()) {
+        setToast({ message: '👁️ Modo Visualização: você não pode editar programações', type: 'error' });
+        return;
+      }
       setEditingId(programacao._id);
       setFormData({
         processo: programacao.processo,
@@ -107,6 +116,10 @@ const ProgramacaoManagement = () => {
   };
 
   const handleSave = async () => {
+    if (isGeoMar()) {
+      setToast({ message: '👁️ Modo Visualização: você não pode salvar alterações', type: 'error' });
+      return;
+    }
     try {
       if (!formData.processo || !formData.recebedor || !formData.dataAgendamento || !formData.contratado) {
         showToast('Preencha todos os campos obrigatórios', 'error');
@@ -130,6 +143,10 @@ const ProgramacaoManagement = () => {
   };
 
   const handleDelete = async (id) => {
+    if (isGeoMar()) {
+      setToast({ message: '👁️ Modo Visualização: você não pode deletar programações', type: 'error' });
+      return;
+    }
     if (window.confirm('Tem certeza que deseja deletar esta programação?')) {
       try {
         await adminService.deleteProgramacao(id);
@@ -432,12 +449,34 @@ const ProgramacaoManagement = () => {
         <button onClick={() => navigate('/home')} className="back-button">
           <FaArrowLeft /> Voltar
         </button>
-        <h1>📅 Programação de Entregas</h1>
+        <h1>📅 Programação de Entregas {isGeoMar() && <span style={{ fontSize: '0.7em', backgroundColor: '#fef3c7', color: '#92400e', padding: '4px 8px', borderRadius: '4px', marginLeft: '10px' }}>👁️ Visualização</span>}</h1>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={() => setShowImportModal(true)} className="create-button" style={{ backgroundColor: '#059669', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button 
+            onClick={() => {
+              if (isGeoMar()) {
+                setToast({ message: '👁️ Modo Visualização: você não pode importar', type: 'error' });
+                return;
+              }
+              setShowImportModal(true);
+            }}
+            disabled={isGeoMar()}
+            className="create-button" 
+            style={{ backgroundColor: isGeoMar() ? '#d1d5db' : '#059669', display: 'flex', alignItems: 'center', gap: '8px', opacity: isGeoMar() ? 0.6 : 1, cursor: isGeoMar() ? 'not-allowed' : 'pointer' }}
+          >
             <FaFileExcel /> Importar Excel
           </button>
-          <button onClick={() => handleOpen()} className="create-button">
+          <button 
+            onClick={() => {
+              if (isGeoMar()) {
+                setToast({ message: '👁️ Modo Visualização: você não pode criar programações', type: 'error' });
+                return;
+              }
+              handleOpen();
+            }}
+            disabled={isGeoMar()}
+            className="create-button"
+            style={{ opacity: isGeoMar() ? 0.6 : 1, cursor: isGeoMar() ? 'not-allowed' : 'pointer', backgroundColor: isGeoMar() ? '#d1d5db' : '' }}
+          >
             <FaPlus /> Nova Programação
           </button>
         </div>
@@ -501,15 +540,25 @@ const ProgramacaoManagement = () => {
                   <td className="actions">
                     <button
                       onClick={() => handleOpen(prog)}
+                      disabled={isGeoMar()}
                       className="edit-btn"
                       title="Editar"
+                      style={{ opacity: isGeoMar() ? 0.6 : 1, cursor: isGeoMar() ? 'not-allowed' : 'pointer' }}
                     >
                       <FaEdit />
                     </button>
                     <button
-                      onClick={() => handleDelete(prog._id)}
+                      onClick={() => {
+                        if (isGeoMar()) {
+                          setToast({ message: '👁️ Modo Visualização: você não pode deletar programações', type: 'error' });
+                          return;
+                        }
+                        handleDelete(prog._id);
+                      }}
+                      disabled={isGeoMar()}
                       className="delete-btn"
                       title="Deletar"
+                      style={{ opacity: isGeoMar() ? 0.6 : 1, cursor: isGeoMar() ? 'not-allowed' : 'pointer' }}
                     >
                       <FaTrash />
                     </button>
@@ -531,14 +580,23 @@ const ProgramacaoManagement = () => {
               </button>
             </div>
 
+            {isGeoMar() && (
+              <div style={{ margin: '10px', padding: '10px', backgroundColor: '#fef3c7', border: '1px solid #fcd34d', borderLeft: '4px solid #f59e0b', borderRadius: '4px' }}>
+                <p style={{ fontSize: '0.9em', color: '#92400e', fontWeight: 'bold' }}>👁️ Modo Visualização</p>
+                <p style={{ fontSize: '0.85em', color: '#b45309', margin: '4px 0 0 0' }}>Este formulário está bloqueado para visualização apenas</p>
+              </div>
+            )}
+
             <div className="modal-body">
               <div className="form-group">
                 <label>Processo *</label>
                 <input
                   type="text"
+                  disabled={isGeoMar()}
                   value={formData.processo}
                   onChange={(e) => setFormData({ ...formData, processo: e.target.value })}
                   placeholder="CAB42196"
+                  style={{ opacity: isGeoMar() ? 0.6 : 1, backgroundColor: isGeoMar() ? '#f3f4f6' : '', cursor: isGeoMar() ? 'not-allowed' : '' }}
                 />
               </div>
 
@@ -546,9 +604,11 @@ const ProgramacaoManagement = () => {
                 <label>Recebedor *</label>
                 <input
                   type="text"
+                  disabled={isGeoMar()}
                   value={formData.recebedor}
                   onChange={(e) => setFormData({ ...formData, recebedor: e.target.value })}
                   placeholder="Nome do recebedor"
+                  style={{ opacity: isGeoMar() ? 0.6 : 1, backgroundColor: isGeoMar() ? '#f3f4f6' : '', cursor: isGeoMar() ? 'not-allowed' : '' }}
                 />
               </div>
 
@@ -556,9 +616,11 @@ const ProgramacaoManagement = () => {
                 <label>Container</label>
                 <input
                   type="text"
+                  disabled={isGeoMar()}
                   value={formData.container}
                   onChange={(e) => setFormData({ ...formData, container: e.target.value })}
                   placeholder="Ex: UETU6510024"
+                  style={{ opacity: isGeoMar() ? 0.6 : 1, backgroundColor: isGeoMar() ? '#f3f4f6' : '', cursor: isGeoMar() ? 'not-allowed' : '' }}
                 />
               </div>
 
@@ -566,19 +628,23 @@ const ProgramacaoManagement = () => {
                 <label>Data Agendamento *</label>
                 <input
                   type="datetime-local"
+                  disabled={isGeoMar()}
                   value={formData.dataAgendamento}
                   onChange={(e) => setFormData({ ...formData, dataAgendamento: e.target.value })}
+                  style={{ opacity: isGeoMar() ? 0.6 : 1, backgroundColor: isGeoMar() ? '#f3f4f6' : '', cursor: isGeoMar() ? 'not-allowed' : '' }}
                 />
               </div>
 
               <div className="form-group">
                 <label>Contratado *</label>
                 <select
+                  disabled={isGeoMar()}
                   value={formData.contratado}
                   onChange={(e) => {
                     const novo = e.target.value;
                     setFormData({ ...formData, contratado: novo, motorista: '' });
                   }}
+                  style={{ opacity: isGeoMar() ? 0.6 : 1, backgroundColor: isGeoMar() ? '#f3f4f6' : '', cursor: isGeoMar() ? 'not-allowed' : '' }}
                 >
                   {getContratadosOptions().map((c) => (
                     <option key={c} value={c}>{c}</option>
@@ -589,8 +655,10 @@ const ProgramacaoManagement = () => {
               <div className="form-group">
                 <label>Motorista</label>
                 <select
+                  disabled={isGeoMar()}
                   value={formData.motorista}
                   onChange={(e) => setFormData({ ...formData, motorista: e.target.value })}
+                  style={{ opacity: isGeoMar() ? 0.6 : 1, backgroundColor: isGeoMar() ? '#f3f4f6' : '', cursor: isGeoMar() ? 'not-allowed' : '' }}
                 >
                   <option value="">-- Selecionar motorista --</option>
                   {motoristasList
@@ -615,8 +683,10 @@ const ProgramacaoManagement = () => {
               <div className="form-group">
                 <label>Status</label>
                 <select
+                  disabled={isGeoMar()}
                   value={formData.status}
                   onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  style={{ opacity: isGeoMar() ? 0.6 : 1, backgroundColor: isGeoMar() ? '#f3f4f6' : '', cursor: isGeoMar() ? 'not-allowed' : '' }}
                 >
                   <option value="AGENDADO">AGENDADO</option>
                   <option value="EM_ROTA">EM_ROTA</option>
@@ -628,10 +698,12 @@ const ProgramacaoManagement = () => {
               <div className="form-group">
                 <label>Observações</label>
                 <textarea
+                  disabled={isGeoMar()}
                   value={formData.observacoes}
                   onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
                   placeholder="Anotações adicionais..."
                   rows="3"
+                  style={{ opacity: isGeoMar() ? 0.6 : 1, backgroundColor: isGeoMar() ? '#f3f4f6' : '', cursor: isGeoMar() ? 'not-allowed' : '' }}
                 />
               </div>
             </div>
@@ -640,7 +712,12 @@ const ProgramacaoManagement = () => {
               <button onClick={() => setShowModal(false)} className="cancel-btn">
                 Cancelar
               </button>
-              <button onClick={handleSave} className="save-btn">
+              <button 
+                onClick={handleSave} 
+                className="save-btn"
+                disabled={isGeoMar()}
+                style={{ opacity: isGeoMar() ? 0.6 : 1, cursor: isGeoMar() ? 'not-allowed' : 'pointer' }}
+              >
                 {editingId ? 'Atualizar' : 'Criar'} Programação
               </button>
             </div>
