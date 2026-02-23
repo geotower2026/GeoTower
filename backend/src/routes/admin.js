@@ -1076,7 +1076,16 @@ router.get('/debug/export-drivers', auth, onlyAdmin, async (req, res) => {
 router.get("/motoristas", auth, managerOnly, async (req, res) => {
   try {
     const Motorista = require("../models/Motorista");
-    const motoristas = await Motorista.find().sort({ createdAt: -1 });
+    let motoristas = [];
+    try {
+      motoristas = await Promise.race([
+        Motorista.find().sort({ createdAt: -1 }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 2000))
+      ]);
+    } catch (mongoErr) {
+      console.warn('[MOTORISTA] MongoDB não disponível, retornando array vazio');
+      motoristas = [];
+    }
     return res.json({ motoristas });
   } catch (err) {
     console.error('[MOTORISTA] ❌ Erro ao listar:', err);
@@ -1191,14 +1200,31 @@ router.put("/motoristas/:id", auth, managerOnly, async (req, res) => {
     }
 
     const Motorista = require("../models/Motorista");
-    const motorista = await Motorista.findById(id);
+    let motorista = null;
+    try {
+      motorista = await Promise.race([
+        Motorista.findById(id),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 2000))
+      ]);
+    } catch (mongoErr) {
+      console.warn('[MOTORISTA] MongoDB timeout ao buscar motorista');
+      return res.status(500).json({ message: "Serviço temporariamente indisponível" });
+    }
     if (!motorista) {
       return res.status(404).json({ message: "Motorista não encontrado" });
     }
 
     // Check if CPF is being changed and if new CPF already exists
     if (cpf !== motorista.cpf) {
-      const existing = await Motorista.findOne({ cpf, transportadora, _id: { $ne: id } });
+      let existing = null;
+      try {
+        existing = await Promise.race([
+          Motorista.findOne({ cpf, transportadora, _id: { $ne: id } }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 2000))
+        ]);
+      } catch (mongoErr) {
+        console.warn('[MOTORISTA] MongoDB timeout ao verificar CPF');
+      }
       if (existing) {
         return res.status(400).json({ message: "CPF já existe para esta transportadora" });
       }
