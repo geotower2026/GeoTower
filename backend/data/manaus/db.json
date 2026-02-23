@@ -19,14 +19,15 @@
       "_id": "523a275f-32bd-4454-8744-95350f6ea935",
       "username": "josinei vieira",
       "email": "josinei.vieira@geotransportes.com.br",
-      "password": "55a5e9e78207b4df8699d60886fa070079463547b095d1a05bc719bb4e6cd251",
+      "password": "$2a$10$Ak1uyNWTVLMDpMsAhrEa6ex7VGRSE7LREONrOiAlLV1THmUqPXml6",
       "name": "Josinei vieira",
       "fullName": "Josinei vieira",
       "phone": "92992938603",
       "role": "admin",
       "isActive": true,
       "createdAt": "2026-01-27T19:56:04.674Z",
-      "updatedAt": "2026-02-06T00:00:00.000Z"
+      "updatedAt": "2026-02-23T03:29:04.011Z",
+      "legacyPasswordSha256": null
     },
     {
       "_id": "b0d81410-dae1-4265-a9db-aef826f3f2b1",
@@ -79,6 +80,44 @@
       "isActive": true,
       "createdAt": "2026-02-03T13:15:59.709Z",
       "updatedAt": "2026-02-03T13:20:41.636Z"
+    },
+    {
+      "_id": "geomar_test_1",
+      "username": "geomar1",
+      "email": "geomar1@example.com",
+      "password": "0c30639d01432e6ac73e75390f69455be1edd6851bd725437ef74623cea2eb02",
+      "name": "GeoMar User",
+      "fullName": "GeoMar User",
+      "role": "geomar",
+      "isActive": true,
+      "createdAt": "2026-02-22T00:00:00.000Z",
+      "updatedAt": "2026-02-22T00:00:00.000Z"
+    },
+    {
+      "_id": "manager_ae51a0b5-5e1f-48bf-8727-a34fa3621f00",
+      "username": "gerente",
+      "email": "gerente@test.com",
+      "password": "ecfba551324356e5bd27b548adf36b728783f60d9b573d142caac7baad62be49",
+      "name": "Gerente",
+      "fullName": "Gerente da Entrega",
+      "role": "manager",
+      "phone": "1199999999",
+      "isActive": true,
+      "createdAt": "2026-02-23T03:27:20.247Z"
+    },
+    {
+      "_id": "user_598153c7-0d62-4cb4-ac91-662808c4f49d",
+      "username": "testuser123",
+      "email": "testuser@example.com",
+      "name": "Test User",
+      "fullName": "Test User",
+      "password": "7e6e0c3079a08c5cc6036789b57e951f65f82383913ba1a49ae992544f1b4b6e",
+      "role": "driver",
+      "phoneNumber": "",
+      "cnh": "",
+      "isActive": true,
+      "createdAt": "2026-02-23T03:29:04.050Z",
+      "updatedAt": "2026-02-23T03:29:04.050Z"
     }
   ],
   "deliveries": [
