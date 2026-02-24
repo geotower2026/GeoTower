@@ -84,7 +84,7 @@ const Footer = () => {
                   <FaWhatsapp className="text-green-400 text-sm" />
                   Igo Ferro
                 </p>
-                <p className="text-gray-400 text-sm ml-6">(59) 98276-0023</p>
+                <p className="text-gray-400 text-sm ml-6">(92) 98276-0023</p>
               </a>
             </div>
           </div>
@@ -106,7 +106,7 @@ const Footer = () => {
                   <FaWhatsapp className="text-green-400 text-sm" />
                   Daniela Pontes
                 </p>
-                <p className="text-gray-400 text-sm ml-6">(59) 98241-0180</p>
+                <p className="text-gray-400 text-sm ml-6">(92) 98241-0180</p>
               </a>
               <a 
                 href="https://wa.me/5592982410138" 
@@ -118,7 +118,7 @@ const Footer = () => {
                   <FaWhatsapp className="text-green-400 text-sm" />
                   Lia Lima
                 </p>
-                <p className="text-gray-400 text-sm ml-6">(59) 98241-0138</p>
+                <p className="text-gray-400 text-sm ml-6">(92) 98241-0138</p>
               </a>
             </div>
           </div>
@@ -133,9 +133,9 @@ const Footer = () => {
             © {currentYear} <span className="font-semibold text-white">GeoTransportes</span> • Todos os direitos reservados
           </p>
           <div className="flex gap-6 text-gray-400 text-xs">
-            <a href="/docs/PoliticaPrivacidade.md" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Política de Privacidade</a>
-            <a href="/docs/TermosUso.md" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Termos de Uso</a>
-            <a href="/docs/Suporte.md" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Suporte</a>
+            <a href="/politica-privacidade" className="hover:text-white transition-colors">Política de Privacidade</a>
+            <a href="/termos-uso" className="hover:text-white transition-colors">Termos de Uso</a>
+            <a href="/suporte" className="hover:text-white transition-colors">Suporte</a>
           </div>
         </div>
       </div>

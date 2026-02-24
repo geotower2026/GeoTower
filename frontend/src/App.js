@@ -6,6 +6,9 @@ import PrivateRoute from './components/PrivateRoute';
 import AppLayout from './components/AppLayout';
 import { CityProvider, useCity } from './contexts/CityContext';
 import CitySelector from './components/CitySelector';
+import PoliticaPrivacidade from './pages/PoliticaPrivacidade';
+import TermosUso from './pages/TermosUso';
+import Suporte from './pages/Suporte';
 
 // Pages
 import Login from './pages/Login';
@@ -185,6 +188,19 @@ function AppContent() {
             </AppLayout>
           </PrivateRoute>
         }
+      />
+
+      <Route
+        path="/politica-privacidade"
+        element={<AppLayout><PoliticaPrivacidade /></AppLayout>}
+      />
+      <Route
+        path="/termos-uso"
+        element={<AppLayout><TermosUso /></AppLayout>}
+      />
+      <Route
+        path="/suporte"
+        element={<AppLayout><Suporte /></AppLayout>}
       />
 
       <Route path="/" element={<Navigate to="/home" />} />
