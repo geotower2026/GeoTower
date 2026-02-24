@@ -133,9 +133,9 @@ const Footer = () => {
             © {currentYear} <span className="font-semibold text-white">GeoTransportes</span> • Todos os direitos reservados
           </p>
           <div className="flex gap-6 text-gray-400 text-xs">
-            <a href="#" className="hover:text-white transition-colors">Política de Privacidade</a>
-            <a href="#" className="hover:text-white transition-colors">Termos de Uso</a>
-            <a href="#" className="hover:text-white transition-colors">Suporte</a>
+            <a href="/docs/PoliticaPrivacidade.md" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Política de Privacidade</a>
+            <a href="/docs/TermosUso.md" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Termos de Uso</a>
+            <a href="/docs/Suporte.md" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Suporte</a>
           </div>
         </div>
       </div>

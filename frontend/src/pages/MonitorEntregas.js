@@ -338,6 +338,7 @@ const MonitorEntregas = () => {
     };
 
     try {
+      // Usa a rota correta para atualizar entrega
       const response = await adminService.updateDelivery(editingDelivery, editPayload);
       setToast({ message: 'Entrega atualizada com sucesso', type: 'success' });
       setEditingDelivery(null);
