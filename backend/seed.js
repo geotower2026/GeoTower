@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const path = require('path');
 const dotenv = require('dotenv');
 
@@ -12,8 +12,8 @@ const Delivery = require('./src/models/Delivery');
 // Conecta ao MongoDB
 const connectDB = async () => {
   try {
-    const { MongoMemoryServer } = require('mongodb-memory-server');
     try {
+      const { MongoMemoryServer } = require('mongodb-memory-server');
       const mongoServer = await MongoMemoryServer.create();
       const mongoUri = mongoServer.getUri();
       await mongoose.connect(mongoUri);
@@ -21,7 +21,7 @@ const connectDB = async () => {
     } catch (err) {
       const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/delivery-docs';
       await mongoose.connect(mongoUri);
-      console.log('✓ MongoDB localhost conectado');
+      console.log('✓ MongoDB conectado (usando MONGODB_URI se fornecido)');
     }
   } catch (error) {
     console.error('✗ Erro ao conectar MongoDB:', error.message);
@@ -47,40 +47,36 @@ const seedDatabase = async () => {
       username: 'admin',
       password: adminPassword,
       email: 'admin@test.com',
-      fullName: 'Administrador',
+      name: 'Administrador',
       role: 'admin',
-      phoneNumber: '1199999999',
-      cnh: '12345678901'
+      phone: '1199999999'
     });
 
     const manager = await Driver.create({
       username: 'gerente',
       password: managerPassword,
       email: 'gerente@test.com',
-      fullName: 'Gerente da Entrega',
+      name: 'Gerente da Entrega',
       role: 'manager',
-      phoneNumber: '1199999999',
-      cnh: '12345678901'
+      phone: '1199999999'
     });
 
     const driver1 = await Driver.create({
       username: 'motorista1',
       password: driverPassword,
       email: 'motorista1@test.com',
-      fullName: 'João Silva',
+      name: 'João Silva',
       role: 'driver',
-      phoneNumber: '11987654321',
-      cnh: 'ABC1234567'
+      phone: '11987654321'
     });
 
     const driver2 = await Driver.create({
       username: 'motorista2',
       password: driverPassword,
       email: 'motorista2@test.com',
-      fullName: 'Maria Santos',
+      name: 'Maria Santos',
       role: 'driver',
-      phoneNumber: '11987654322',
-      cnh: 'DEF1234567'
+      phone: '11987654322'
     });
 
     console.log('✓ Usuários criados:');

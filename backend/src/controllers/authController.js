@@ -61,6 +61,14 @@ exports.register = async (req, res) => {
       console.warn('[REGISTER] could not log saved id', e && e.message);
     }
 
+    try {
+      const allDrivers = await db.find('drivers', {});
+      const total = Array.isArray(allDrivers) ? allDrivers.length : (allDrivers && allDrivers.count) || (allDrivers && allDrivers.total) || '?';
+      console.log('[REGISTER] total drivers agora:', total);
+    } catch (e) {
+      console.warn('[REGISTER] could not get drivers total', e && e.message);
+    }
+
     const token = generateToken(driver._id, driver.role);
 
     res.status(201).json({
