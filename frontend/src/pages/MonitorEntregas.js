@@ -65,6 +65,7 @@ const MonitorEntregas = () => {
     EM_DESOVA: ['EM_DESOVA'],
     DESOVA_FINALIZADA: ['DESOVA_FINALIZADA'],
     ANEXANDO_DOCUMENTOS_FINAIS: ['ANEXANDO_DOCUMENTOS_FINAIS'],
+    AGENDADO: ['AGENDADO'],
     CANCELADO: ['CANCELADO']
   };
   const [showFilters, setShowFilters] = useState(false);
@@ -192,6 +193,7 @@ const MonitorEntregas = () => {
       filtered = filtered.filter(d => {
         if (filters.status === 'OPERACAO_FINALIZADA') return d.status === 'ENTREGUE' || d.status === 'submitted';
         if (filters.status === 'A CAMINHO DO CLIENTE') return d.status === 'pending' || d.status === 'PENDING';
+        if (filters.status === 'AGENDADO') return d.status === 'AGENDADO';
         return d.status === filters.status;
       });
     }
@@ -206,6 +208,33 @@ const MonitorEntregas = () => {
         (d.recebedor || '').toLowerCase().includes(searchLower) ||
         (d.vehiclePlate || '').toLowerCase().includes(searchLower)
       );
+    }
+
+    // Filtro de período (Hoje, Amanhã, Ontem) - SEMPRE ativo, não apenas para stats
+    if (statsPeriod !== 'general') {
+      const getPeriodDate = () => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        if (statsPeriod === 'yesterday') {
+          const yesterday = new Date(today);
+          yesterday.setDate(yesterday.getDate() - 1);
+          return yesterday;
+        } else if (statsPeriod === 'tomorrow') {
+          const tomorrow = new Date(today);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          return tomorrow;
+        }
+        return today; // today (padrão)
+      };
+
+      const targetDate = getPeriodDate();
+      filtered = filtered.filter(d => {
+        if (!d.dataAgendamento) return false;
+        const deliveryDate = new Date(d.dataAgendamento);
+        deliveryDate.setHours(0, 0, 0, 0);
+        return deliveryDate.getTime() === targetDate.getTime();
+      });
     }
 
     // Filtro de data - AGENDAMENTO
@@ -231,7 +260,7 @@ const MonitorEntregas = () => {
     }
 
     setFilteredDeliveries(filtered);
-  }, [deliveries, filters, sortBy, sortDir]);
+  }, [deliveries, filters, sortBy, sortDir, statsPeriod]);
 
   // Fecha dropdown de ações ao clicar fora
   useEffect(() => {
@@ -563,6 +592,7 @@ const MonitorEntregas = () => {
                   <option value="all">Todos</option>
                   <option value="OPERACAO_FINALIZADA">Operação Finalizada</option>
                   <option value="A CAMINHO DO CLIENTE">A Caminho do Cliente</option>
+                  <option value="AGENDADO">Agendado</option>
                   <option value="AGUARDANDO_DESOVA">Aguardando Desova</option>
                   <option value="EM_DESOVA">Em Desova</option>
                   <option value="DESOVA_FINALIZADA">Desova Finalizada</option>
