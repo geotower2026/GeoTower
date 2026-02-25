@@ -126,7 +126,7 @@ const ProgramadasEntregas = () => {
   const loadProgramacoes = async () => {
     setLoading(true);
     try {
-      // Busca programações da base de dados geral
+      // Busca sempre da base de dados geral
       const res = await adminService.getProgramacoes();
       const todas = res.data.programacoes || [];
       setAllProgramacoes(todas);
