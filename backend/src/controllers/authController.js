@@ -29,6 +29,18 @@ exports.register = async (req, res) => {
     }
 
     // Create new driver
+    // Debug logs: show request body (mask password) and which collection we'll use
+    try {
+      console.log('[REGISTER] body:', { ...req.body, password: req.body?.password ? '***' : undefined });
+    } catch (e) {
+      console.warn('[REGISTER] could not log body', e && e.message);
+    }
+    try {
+      console.log('[REGISTER] model:', (db && db.collectionName) || 'drivers');
+    } catch (e) {
+      console.warn('[REGISTER] could not log model', e && e.message);
+    }
+
     // If using MongoDB, let mongoose handle bcrypt hashing by providing plain password.
     // For MockDB (file-backed), store SHA256 to remain compatible.
     const passwordToStore = process.env.MONGODB_URI ? password : hashPassword(password);
@@ -42,6 +54,12 @@ exports.register = async (req, res) => {
       role: 'driver',
       isActive: true
     });
+
+    try {
+      console.log('[REGISTER] saved id:', driver?._id);
+    } catch (e) {
+      console.warn('[REGISTER] could not log saved id', e && e.message);
+    }
 
     const token = generateToken(driver._id, driver.role);
 
