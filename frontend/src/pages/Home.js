@@ -499,6 +499,35 @@ const Home = () => {
                   </div>
                 </div>
               </button>
+
+              {/* Card Base de Dados Geral - Apenas Gerente */}
+              {hasAccess(['manager']) && (
+                <button
+                  onClick={() => navigate('/base-dados-geral')}
+                  className="group relative bg-gradient-to-br from-green-50 to-green-100 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-8 border-2 border-green-200 hover:border-green-400 overflow-hidden text-left hover:scale-105"
+                >
+                  <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-green-300 to-transparent opacity-0 group-hover:opacity-30 transition-opacity duration-300 rounded-full -mr-20 -mt-20" />
+
+                  <div className="relative z-10">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-xl mb-4 group-hover:scale-120 transition-transform duration-300 shadow-lg">
+                      <FaDatabase className="text-2xl text-white" />
+                    </div>
+
+                    <h2 className="text-xl font-bold text-gray-900 mb-2">
+                      🗄️ Base de Dados Geral
+                    </h2>
+                    <p className="text-gray-700 mb-4 text-sm leading-relaxed">
+                      Visualizar todos os dados das programações em formato de tabela
+                    </p>
+                    <div className="flex items-center gap-2 text-green-600 font-bold">
+                      <span>Acessar</span>
+                      <span className="text-lg group-hover:translate-x-1 transition-transform duration-300">
+                        →
+                      </span>
+                    </div>
+                  </div>
+                </button>
+              )}
             </div>
           </>
         )}
