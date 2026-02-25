@@ -36,6 +36,29 @@ const BaseDadosGeral = () => {
     status: 'AGENDADO'
   });
 
+  // Função para retornar o status dos documentos (sincronizado com Torre de Controle)
+  const getDocumentsStatus = (delivery) => {
+    if (!delivery) return 'PENDENTE';
+    
+    const requiredDocs = ['canhotCTE', 'diarioBordo', 'canhotNF', 'devolucaoVazio'];
+    const docs = delivery.documents || {};
+    
+    const allAttached = requiredDocs.every(doc => docs[doc]);
+    if (allAttached) return 'COMPLETO';
+    
+    // Verificar quais estão pendentes
+    const pending = requiredDocs.filter(doc => !docs[doc]);
+    const pendingNames = pending.map(doc => {
+      if (doc === 'canhotCTE') return 'CTE';
+      if (doc === 'canhotNF') return 'NF';
+      if (doc === 'diarioBordo') return 'DIÁRIO';
+      if (doc === 'devolucaoVazio') return 'RIC';
+      return doc;
+    }).join(' + ');
+    
+    return `PENDENTE ${pendingNames}`;
+  };
+
   const carregarDados = async () => {
     setLoading(true);
     try {
@@ -112,11 +135,18 @@ const BaseDadosGeral = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Tem certeza que deseja deletar esta programação?')) {
+  const handleDelete = async (id, item) => {
+    if (window.confirm('Tem certeza que deseja deletar esta programação? Isso também removerá a entrega da Torre de Controle.')) {
       try {
+        // Deletar a programação
         await adminService.deleteProgramacao(id);
-        setToast({ message: 'Programação deletada com sucesso', type: 'success' });
+        
+        // Deletar a entrega correspondente se existir
+        if (item._entrega && item._entrega._id) {
+          await adminService.deleteDelivery(item._entrega._id);
+        }
+        
+        setToast({ message: 'Programação e entrega deletadas com sucesso', type: 'success' });
         carregarDados();
       } catch (err) {
         setToast({ message: 'Erro ao deletar', type: 'error' });
@@ -169,7 +199,13 @@ const BaseDadosGeral = () => {
                   <td className="border px-2 py-1 text-xs">{item._entrega?.horarioChegada ? new Date(item._entrega.horarioChegada).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : (item._entrega?.arrivedAt ? new Date(item._entrega.arrivedAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-')}</td>
                   <td className="border px-2 py-1 text-xs">{item._entrega?.horarioInicioDesova ? new Date(item._entrega.horarioInicioDesova).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : (item._entrega?.desovaStartAt ? new Date(item._entrega.desovaStartAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-')}</td>
                   <td className="border px-2 py-1 text-xs">{item._entrega?.horarioFimDesova ? new Date(item._entrega.horarioFimDesova).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : (item._entrega?.desovaEndAt ? new Date(item._entrega.desovaEndAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-')}</td>
-                  <td className="border px-2 py-1 text-xs">{item._entrega?.documentsJustification || '-'}</td>
+                  <td className="border px-2 py-1 text-center">
+                    <span className={`px-2 py-1 rounded font-semibold text-xs whitespace-nowrap ${
+                      getDocumentsStatus(item._entrega).includes('COMPLETO') ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {getDocumentsStatus(item._entrega)}
+                    </span>
+                  </td>
                   <td className="border px-2 py-1 text-xs max-w-xs truncate" title={item._entrega?.observations}>{item._entrega?.observations || '-'}</td>
                   <td className="border px-2 py-1 text-xs max-w-xs truncate" title={item._entrega?.submissionObservation}>{item._entrega?.submissionObservation || '-'}</td>
                   <td className="border px-2 py-1 text-center">
@@ -177,7 +213,7 @@ const BaseDadosGeral = () => {
                       <button onClick={() => handleEdit(item)} className="text-blue-600 hover:text-blue-800" title="Editar">
                         <FaEdit />
                       </button>
-                      <button onClick={() => handleDelete(item._id)} className="text-red-600 hover:text-red-800" title="Deletar">
+                      <button onClick={() => handleDelete(item._id, item)} className="text-red-600 hover:text-red-800" title="Deletar">
                         <FaTrash />
                       </button>
                     </div>
