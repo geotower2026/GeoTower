@@ -1529,6 +1529,7 @@ router.post("/programacoes/import", auth, managerOnly, async (req, res) => {
     });
   } catch (err) {
     console.error('[PROGRAMACAO] ❌ Erro ao importar:', err);
+
     return res.status(500).json({ message: "Erro ao importar programações", error: err.message });
   }
 });
