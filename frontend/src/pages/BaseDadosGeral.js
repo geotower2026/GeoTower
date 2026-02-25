@@ -42,14 +42,28 @@ const BaseDadosGeral = () => {
 
   // Status disponíveis (mesmo da Torre de Controle)
   const statusOptions = [
-    'OPERACAO_FINALIZADA',
-    'A CAMINHO DO CLIENTE',
+    'ENTREGUE',
+    'submitted',
+    'ENTREGUE_COM_PENDENCIA_CANHOTO',
+    'pending',
+    'PENDING',
     'AGUARDANDO_DESOVA',
     'EM_DESOVA',
     'DESOVA_FINALIZADA',
     'ANEXANDO_DOCUMENTOS_FINAIS',
-    'CANCELADO'
+    'CANCELADO',
+    'CONTAINER_MONTADO',
+    'A_CAMINHO_DO_CLIENTE'
   ];
+
+  // Função para formatar status (sincronizado com Torre de Controle)
+  const formatStatus = (status) => {
+    if (!status) return '-';
+    if (status === 'ENTREGUE' || status === 'submitted') return 'OPERAÇÃO FINALIZADA';
+    if (status === 'ENTREGUE_COM_PENDENCIA_CANHOTO') return 'ENTREGUE (PENDÊNCIA)';
+    if (status === 'pending' || status === 'PENDING') return 'A CAMINHO DO CLIENTE';
+    return status.replace(/_/g, ' ');
+  };
 
   // Função para retornar o status dos documentos
   const getDocumentsStatus = (delivery) => {
@@ -104,7 +118,7 @@ const BaseDadosGeral = () => {
     let filtered = dataToFilter;
     
     if (filters.status !== 'all') {
-      filtered = filtered.filter(item => item.status === filters.status);
+      filtered = filtered.filter(item => item._entrega?.status === filters.status || item.status === filters.status);
     }
     if (filters.motorista) {
       filtered = filtered.filter(item => 
@@ -145,7 +159,7 @@ const BaseDadosGeral = () => {
       dataAgendamento: item.dataAgendamento || '',
       contratado: item.contratado,
       motorista: item.motorista || '',
-      status: item.status,
+      status: item._entrega?.status || item.status,
       containerMontadoAt: item._entrega?.containerMontadoAt || '',
       horarioChegada: item._entrega?.horarioChegada || '',
       horarioInicioDesova: item._entrega?.horarioInicioDesova || '',
@@ -165,20 +179,20 @@ const BaseDadosGeral = () => {
     try {
       const item = dados.find(d => d._id === editingId);
       
-      // Atualizar programação
+      // Atualizar programação (sem status, que agora é da entrega)
       await adminService.updateProgramacao(editingId, {
         processo: editForm.processo,
         recebedor: editForm.recebedor,
         container: editForm.container,
         dataAgendamento: editForm.dataAgendamento,
         contratado: editForm.contratado,
-        motorista: editForm.motorista,
-        status: editForm.status
+        motorista: editForm.motorista
       });
 
       // Atualizar entrega se existir
       if (item?._entrega?._id) {
         await adminService.updateDelivery(item._entrega._id, {
+          status: editForm.status,
           containerMontadoAt: editForm.containerMontadoAt,
           horarioChegada: editForm.horarioChegada,
           horarioInicioDesova: editForm.horarioInicioDesova,
@@ -281,7 +295,7 @@ const BaseDadosGeral = () => {
                 >
                   <option value="all">Todos</option>
                   {statusOptions.map(status => (
-                    <option key={status} value={status}>{status}</option>
+                    <option key={status} value={status}>{formatStatus(status)}</option>
                   ))}
                 </select>
               </div>
@@ -360,7 +374,7 @@ const BaseDadosGeral = () => {
                       <td className="px-4 py-3 border border-gray-200 text-xs whitespace-nowrap">{item.motorista || item._entrega?.driverName || '-'}</td>
                       <td className="px-4 py-3 border border-gray-200 text-xs whitespace-nowrap">
                         <span className="px-2 py-1 rounded text-xs font-semibold bg-purple-100 text-purple-800">
-                          {item.status}
+                          {formatStatus(item._entrega?.status || item.status)}
                         </span>
                       </td>
                       <td className="px-4 py-3 border border-gray-200 text-xs whitespace-nowrap">{item._entrega?.containerMontadoAt ? new Date(item._entrega.containerMontadoAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-'}</td>
@@ -450,8 +464,9 @@ const BaseDadosGeral = () => {
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">Status</label>
                     <select value={editForm.status} onChange={(e) => setEditForm({...editForm, status: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                      <option value="">Selecione um status</option>
                       {statusOptions.map(status => (
-                        <option key={status} value={status}>{status}</option>
+                        <option key={status} value={status}>{formatStatus(status)}</option>
                       ))}
                     </select>
                   </div>
