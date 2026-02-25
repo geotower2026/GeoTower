@@ -311,34 +311,40 @@ const ProgramacaoManagement = () => {
 
       // Função para parsear data DD/MM/YYYY HH:MM corretamente (sem timezone issues)
       const parseDateString = (dataStr) => {
-        if (!dataStr) return '';
-        
+        if (dataStr === null || dataStr === undefined || dataStr === '') return '';
+
+        // Se Excel já devolveu um Date, usamos direto (evita fusos e "serial" bugado)
+        if (dataStr instanceof Date) {
+          const d = dataStr;
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          const hours = String(d.getHours()).padStart(2, '0');
+          const minutes = String(d.getMinutes()).padStart(2, '0');
+          return `${year}-${month}-${day}T${hours}:${minutes}`;
+        }
+
         try {
           const strValue = String(dataStr).trim();
-          
           // Se for número (Excel date serial) - pode conter fração para hora
           if (!isNaN(strValue) && strValue !== '') {
             const excelNum = Number(strValue);
-            
-            // Excel serial date: a parte inteira = dias desde 1/1/1900, fração = parte do dia
-            const days = Math.floor(excelNum);
+            let days = Math.floor(excelNum);
             const fraction = excelNum - days;
-            
-            // Converter dias para data (1 = 1/1/1900)
-            const baseDate = new Date(1900, 0, 1);
-            const date = new Date(baseDate.getTime() + (days - 1) * 24 * 60 * 60 * 1000);
-            
+            // Corrigir bug do Excel: baseDate correta e ajuste do dia 60
+            // baseDate = 1899-12-30 (Excel serial 1 = 1899-12-31, mas Excel começa em 0)
+            const baseDate = new Date(1899, 11, 30);
+            // Excel bug: 1900 é considerado bissexto, então a partir do dia 60 (29/2/1900) soma +1
+            if (days >= 60) days -= 1;
+            const date = new Date(baseDate.getTime() + days * 24 * 60 * 60 * 1000);
             // Extrair data sem timezone
             const year = date.getFullYear();
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const day = String(date.getDate()).padStart(2, '0');
-            
             // Extrair hora da fração (sem timezone! calculado direto)
             const totalSeconds = Math.round(fraction * 24 * 60 * 60);
             const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
             const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
-            
-            console.log(`[DEBUG-EXCEL] ${excelNum} → ${year}-${month}-${day}T${hours}:${minutes}`);
             return `${year}-${month}-${day}T${hours}:${minutes}`;
           } else {
             // Parse string DD/MM/YYYY ou DD/MM/YYYY HH:MM
@@ -529,15 +535,12 @@ const ProgramacaoManagement = () => {
                   <td>{prog.container}</td>
                   <td>
                     {prog.dataAgendamento
-                      ? new Date(prog.dataAgendamento.replace(' ', 'T')).toLocaleString('pt-BR', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          hour12: false,
-                          timeZone: 'America/Manaus'
-                        })
+                      ? (() => {
+                          // Exibe a data exatamente como salva, sem ajuste de fuso
+                          const [date, time] = prog.dataAgendamento.split('T');
+                          const [year, month, day] = date.split('-');
+                          return `${day}/${month}/${year}${time ? ', ' + time : ''}`;
+                        })()
                       : ''}
                   </td>
                   <td>
