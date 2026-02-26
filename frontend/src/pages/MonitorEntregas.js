@@ -374,6 +374,32 @@ const MonitorEntregas = () => {
     return status.replace(/_/g, ' ');
   };
 
+  // statuses which represent steps for progress bar (in order)
+  const progressStatuses = [
+    'AGENDADO',
+    'CONTAINER MONTADO',
+    'A CAMINHO DO CLIENTE',
+    'AGUARDANDO DESOVA',
+    'EM DESOVA',
+    'ANEXANDO DOCUMENTOS FINAIS',
+    'ENTREGUE'
+  ];
+
+  const normalizeStatusForProgress = (s) => {
+    if (!s) return null;
+    if (s === 'ENTREGUE' || s === 'submitted') return 'ENTREGUE';
+    if (s === 'pending' || s === 'PENDING') return 'A CAMINHO DO CLIENTE';
+    return s;
+  };
+
+  const getProgress = (delivery) => {
+    const status = normalizeStatusForProgress(delivery.status);
+    if (status === 'CANCELADO' || !status) return 0;
+    const idx = progressStatuses.indexOf(status);
+    if (idx === -1) return 0;
+    return Math.round((idx / (progressStatuses.length - 1)) * 100);
+  };
+
   // Função para retornar o status dos documentos
   // retorna string como "COMPLETO" ou "PENDENTE CTE + NF"
   // usada na Torre de Controle para tooltip; a coluna agora exibe
@@ -700,6 +726,7 @@ const MonitorEntregas = () => {
                     <th className="px-2 py-2 text-left font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">MOTORISTA</th>
                     <th className="px-2 py-2 text-left font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">RECEBEDOR</th>
                     <th className="px-2 py-2 text-left font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">STATUS</th>
+                    <th title="progresso da entrega" className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">🔋 Progresso</th>
                     <th className="px-2 py-2 text-left font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">AGENDAMENTO</th>
                     <th className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">DT RETIRADA</th>
                     <th className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">CHEGADA</th>
@@ -732,6 +759,14 @@ const MonitorEntregas = () => {
                     </td>
                     <td className="px-2 py-2 text-gray-600 whitespace-nowrap text-center font-semibold text-blue-600 bg-blue-50">
                       {delivery.containerMontadoAt ? new Date(delivery.containerMontadoAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-'}
+                    </td>
+                    <td className="px-2 py-2 text-center">
+                      <div className="w-20 h-3 bg-gray-200 rounded-full overflow-hidden" title={`${getProgress(delivery)}%`}> 
+                        <div
+                          className={`h-full ${getProgress(delivery) === 100 ? 'bg-green-500' : 'bg-blue-500'}`}
+                          style={{ width: `${getProgress(delivery)}%` }}
+                        />
+                      </div>
                     </td>
                     <td className="px-2 py-2 text-gray-700 whitespace-nowrap text-center">
                       {delivery.horarioChegada ? new Date(delivery.horarioChegada).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}
