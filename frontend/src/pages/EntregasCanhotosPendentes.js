@@ -31,11 +31,14 @@ const EntregasCanhotosPendentes = () => {
     }
   };
 
-  const handleAnexar = async (p) => {
-    // Reuse existing delivery start behaviour: try to open delivery modal by navigating to programadas
-    // Simpler: navigate to Programadas and let driver start by clicking the item; or open delivery creation via API
-    // We'll navigate to Programadas and pass a query to highlight the processo
-    navigate(`/entregas-programadas?q=${encodeURIComponent(p.processo || p.container || '')}`);
+  const handleAnexar = async (p, pending) => {
+    // navigate to programadas and request opening the flow at finalDocs with pending info
+    let url = `/entregas-programadas?q=${encodeURIComponent(p.processo || p.container || '')}`;
+    url += `&step=finalDocs`;
+    if (pending) {
+      url += `&pending=${encodeURIComponent(pending)}`;
+    }
+    navigate(url);
   };
 
   return (
@@ -48,19 +51,28 @@ const EntregasCanhotosPendentes = () => {
         <div className="bg-white rounded p-6">Nenhuma entrega com canhotos pendentes.</div>
       ) : (
         <div className="space-y-4">
-          {items.map(p => (
+          {items.map(p => {
+            const pendingDocs = p.missingDocumentsAtSubmit || [];
+            const pending = pendingDocs.length > 0 ? pendingDocs[0] : '';
+            return (
             <div key={p._id} className="bg-white rounded shadow p-4 flex justify-between items-center">
               <div>
                 <div className="text-sm text-gray-500">Processo</div>
                 <div className="font-bold text-lg">{p.processo || p.container}</div>
+                <div className="text-xs text-gray-600">Container: {p.container || '-'}</div>
                 <div className="text-xs text-gray-600">Recebedor: {p.recebedor || '-'}</div>
               </div>
               <div className="flex gap-2">
-                <button onClick={() => handleAnexar(p)} className="px-4 py-2 bg-emerald-600 text-white rounded">Anexar Canhoto</button>
+                <button
+                  onClick={() => handleAnexar(p, pending)}
+                  className="px-4 py-2 bg-emerald-600 text-white rounded"
+                >
+                  Anexar Canhoto
+                </button>
                 <button onClick={() => navigate('/entregas-programadas')} className="px-4 py-2 bg-gray-200 rounded">Abrir Programadas</button>
               </div>
             </div>
-          ))}
+          )})}
         </div>
       )}
     </div>

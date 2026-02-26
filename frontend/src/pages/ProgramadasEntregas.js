@@ -100,6 +100,7 @@ const ProgramadasEntregas = () => {
   // Modal flow states
   const [showModal, setShowModal] = useState(false);
   const [currentStep, setCurrentStep] = useState('welcome');
+  const [fromPendingNav, setFromPendingNav] = useState(false); // if arrived here due to pending-doc link
   const [currentDelivery, setCurrentDelivery] = useState(null);
   const [currentProgramacao, setCurrentProgramacao] = useState(null);
   const [photos, setPhotos] = useState([]);
@@ -134,12 +135,22 @@ const ProgramadasEntregas = () => {
     if (!programacoes || programacoes.length === 0) return;
     const params = new URLSearchParams(location.search);
     const q = params.get('q');
+    const step = params.get('step');
+    const pending = params.get('pending');
+    if (pending) {
+      setFromPendingNav(true);
+    }
     if (!q) return;
     const needle = String(q).trim().toUpperCase();
     const found = programacoes.find(p => String(p.processo || p.container || '').toUpperCase().includes(needle));
     if (found) {
-      // try to start delivery flow for this programacao
-      handleStartDelivery(found).catch(()=>{});
+      handleStartDelivery(found).catch(() => {});
+      if (step === 'finalDocs') {
+        goToStep('finalDocs');
+        if (pending) {
+          setToast({ message: `Pendência de documento: ${pending}`, type: 'warning' });
+        }
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [programacoes, location.search]);
@@ -689,15 +700,12 @@ function dataURLtoFile(dataurl, filename) {
       };
 
       await deliveryService.updateDelivery(currentDelivery._id, updatePayload);
-      // Atualiza lista
+      // Atualiza lista e fecha o fluxo
       await loadProgramacoes();
-      // Se ficou com pendência de canhoto, seguir para fluxo de devolução (abrir modal de devolução)
-      if (finalStatus === 'ENTREGUE_COM_PENDENCIA_CANHOTO') {
-        // Atualiza o objeto local da programação e abre modal de devolução
-        if (currentProgramacao) currentProgramacao.status = 'ENTREGUE_COM_PENDENCIA_CANHOTO';
-        openReturnModal(currentProgramacao || {});
-      } else {
-        closeModal();
+      closeModal();
+      // se viemos da tela de pendentes e tudo ok, manda para Minhas Entregas
+      if (finalStatus === 'ENTREGUE' && fromPendingNav) {
+        navigate('/minhas-entregas');
       }
     } catch (err) {
       console.error(err);
