@@ -503,48 +503,56 @@ const MonitorEntregas = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 lg:gap-6 mb-6 lg:mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-2 mb-6 lg:mb-8">
           {/* programadas (anteriormente TOTAL) */}
-          <div className="bg-gradient-to-r from-blue-100 to-blue-200 rounded-xl shadow-lg p-4 lg:p-6 border-l-8 border-blue-600 flex flex-col items-center">
+          <div className="bg-gradient-to-r from-blue-100 to-blue-200 rounded-xl shadow-lg p-2 lg:p-4 border-l-4 border-blue-600 flex flex-col items-center">
             <p className="text-blue-900 text-xs lg:text-base font-extrabold uppercase tracking-widest mb-1">PROGRAMADAS</p>
-            <p className="text-2xl lg:text-4xl font-extrabold text-blue-700 drop-shadow">{stats.total}</p>
+            <p className="text-xl lg:text-3xl font-extrabold text-blue-700 drop-shadow">{stats.total}</p>
           </div>
 
-          {/* indicadores por status, exceto container montado (tratado separadamente) */}
-          {Object.entries(stats.statusCounts)
-            .filter(([status]) => status !== 'CONTAINER MONTADO')
-            .map(([status, count]) => {
-              // normalize label
+          {/* indicadores por status em ordem definida */}
+          {(() => {
+            const order = [
+              'AGENDADO',
+              'CONTAINER MONTADO',
+              'A CAMINHO DO CLIENTE',
+              'AGUARDANDO DESOVA',
+              'EM DESOVA',
+              'ANEXANDO DOCUMENTOS FINAIS',
+              'ENTREGUE',
+              'CANCELADO'
+            ];
+            const entries = Object.entries(stats.statusCounts);
+            entries.sort(([a], [b]) => {
+              const ia = order.indexOf(a);
+              const ib = order.indexOf(b);
+              if (ia !== -1 && ib !== -1) return ia - ib;
+              if (ia !== -1) return -1;
+              if (ib !== -1) return 1;
+              return a.localeCompare(b);
+            });
+            return entries.map(([status, count]) => {
               const label = status.replace(/_/g, ' ');
               return (
                 <div
                   key={status}
-                  className="bg-gradient-to-r from-gray-100 to-gray-200 rounded-xl shadow-lg p-4 lg:p-6 border-l-8 border-gray-600 flex flex-col items-center"
+                  className="bg-gradient-to-r from-gray-100 to-gray-200 rounded-xl shadow-lg p-2 lg:p-4 border-l-4 border-gray-600 flex flex-col items-center"
                 >
                   <p className="text-gray-900 text-xs lg:text-base font-extrabold uppercase tracking-widest mb-1">
                     {label}
                   </p>
-                  <p className="text-2xl lg:text-4xl font-extrabold text-gray-700 drop-shadow">
+                  <p className="text-xl lg:text-3xl font-extrabold text-gray-700 drop-shadow">
                     {count}
                   </p>
                 </div>
               );
-            })}
-
-          {/* container montado como card adicional (se existir) */}
-          <div className="bg-gradient-to-r from-pink-100 to-pink-200 rounded-xl shadow-lg p-4 lg:p-6 border-l-8 border-pink-600 flex flex-col items-center">
-            <p className="text-pink-900 text-xs lg:text-base font-extrabold uppercase tracking-widest mb-1">
-              CONTAINER MONTADO
-            </p>
-            <p className="text-2xl lg:text-4xl font-extrabold text-pink-700 drop-shadow">
-              {stats.statusCounts['CONTAINER MONTADO'] || 0}
-            </p>
-          </div>
+            });
+          })()}
 
           {/* motoristas permanece por último */}
-          <div className="bg-gradient-to-r from-purple-100 to-purple-200 rounded-xl shadow-lg p-4 lg:p-6 border-l-8 border-purple-600 flex flex-col items-center">
+          <div className="bg-gradient-to-r from-purple-100 to-purple-200 rounded-xl shadow-lg p-2 lg:p-4 border-l-4 border-purple-600 flex flex-col items-center">
             <p className="text-purple-900 text-xs lg:text-base font-extrabold uppercase tracking-widest mb-1">MOTORISTAS</p>
-            <p className="text-2xl lg:text-4xl font-extrabold text-purple-700 drop-shadow">{stats.byDriver}</p>
+            <p className="text-xl lg:text-3xl font-extrabold text-purple-700 drop-shadow">{stats.byDriver}</p>
           </div>
         </div>
 
