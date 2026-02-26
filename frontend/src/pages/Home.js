@@ -325,6 +325,24 @@ const Home = () => {
                     </div>
                   </button>
 
+                  {/* Card Entregas com Canhotos Pendentes */}
+                  <button
+                    onClick={() => navigate('/entregas-canhotos-pendentes')}
+                    className="group relative bg-gradient-to-br from-pink-50 to-pink-100 rounded-xl shadow-md hover:shadow-xl transition-all duration-300 p-8 border border-pink-200 hover:border-pink-400 overflow-hidden text-left hover:scale-105"
+                  >
+                    <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-pink-300 to-transparent opacity-20 group-hover:opacity-40 transition-opacity duration-300 rounded-full -mr-20 -mt-20" />
+                    <div className="relative z-10">
+                      <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                        <FaFileAlt className="text-2xl text-white" />
+                      </div>
+                      <h3 className="text-2xl font-bold text-gray-900 mb-2">Entregas com Canhotos Pendentes</h3>
+                      <p className="text-gray-700 mb-4 text-sm leading-relaxed">Anexe os canhotos pendentes das entregas que ficaram abertas.</p>
+                      <div className="flex items-center gap-2 text-pink-600 font-bold">
+                        <span>Acessar</span>
+                        <span className="text-lg group-hover:translate-x-2 transition-transform duration-300">→</span>
+                      </div>
+                    </div>
+                  </button>
 
                 </div>
               </div>

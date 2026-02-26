@@ -1,7 +1,7 @@
 import { deliveryService, adminService } from '../services/authService';
 import React, { useState, useEffect, useRef } from 'react';
 import imageCompression from 'browser-image-compression';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Toast from '../components/Toast';
 import { FaArrowLeft, FaCalendarAlt, FaSearch, FaCamera, FaTimes } from 'react-icons/fa';
 import { useAuth } from '../services/authContext';
@@ -86,6 +86,7 @@ const truckStyles = `
 
 const ProgramadasEntregas = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [programacoes, setProgramacoes] = useState([]);
   const [allProgramacoes, setAllProgramacoes] = useState([]);
   const [deliveriesMap, setDeliveriesMap] = useState({});
@@ -128,6 +129,21 @@ const ProgramadasEntregas = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
+  // if navigated here with ?q= we'll try to auto-open that programação for convenience
+  useEffect(() => {
+    if (!programacoes || programacoes.length === 0) return;
+    const params = new URLSearchParams(location.search);
+    const q = params.get('q');
+    if (!q) return;
+    const needle = String(q).trim().toUpperCase();
+    const found = programacoes.find(p => String(p.processo || p.container || '').toUpperCase().includes(needle));
+    if (found) {
+      // try to start delivery flow for this programacao
+      handleStartDelivery(found).catch(()=>{});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [programacoes, location.search]);
+
   const loadProgramacoes = async () => {
     setLoading(true);
     try {
@@ -144,7 +160,9 @@ const ProgramadasEntregas = () => {
       if (nomeFiltro) {
         filtradas = todas.filter(p => String(p.contratado).trim().toUpperCase() === nomeFiltro);
       }
-      setProgramacoes(filtradas);
+      // Excluir programações com canhotos pendentes da lista principal
+      const withoutPendingCanhotos = filtradas.filter(p => String(p.status || '').toUpperCase() !== 'ENTREGUE_COM_PENDENCIA_CANHOTO');
+      setProgramacoes(withoutPendingCanhotos);
 
       // Busca todas as deliveries para alimentar colunas
       const deliveriesRes = await deliveryService.getMyDeliveries({});
@@ -301,9 +319,17 @@ const ProgramadasEntregas = () => {
     try {
       // if there's a linked delivery, update it
       if (currentProgramacao.linkedDeliveryId) {
-        await deliveryService.updateDelivery(currentProgramacao.linkedDeliveryId, { status: 'ENTREGUE_COM_PENDENCIA_CANHOTO' });
-        if (returnProof) {
-          await deliveryService.uploadDocument(currentProgramacao.linkedDeliveryId, 'devolucaoVazio', returnProof);
+        // If programação is pending canhoto, keep it open (do not set FINALIZADO)
+        if (String(currentProgramacao.status).toUpperCase() === 'ENTREGUE_COM_PENDENCIA_CANHOTO') {
+          // keep status as ENTREGUE_COM_PENDENCIA_CANHOTO; just upload proof
+          if (returnProof) {
+            await deliveryService.uploadDocument(currentProgramacao.linkedDeliveryId, 'devolucaoVazio', returnProof);
+          }
+        } else {
+          await deliveryService.updateDelivery(currentProgramacao.linkedDeliveryId, { status: 'FINALIZADO' });
+          if (returnProof) {
+            await deliveryService.uploadDocument(currentProgramacao.linkedDeliveryId, 'devolucaoVazio', returnProof);
+          }
         }
       } else {
         // search by number and update
@@ -312,9 +338,15 @@ const ProgramadasEntregas = () => {
           const resp = await deliveryService.getMyDeliveries({ searchTerm: searchVal });
           const found = resp.data.deliveries && resp.data.deliveries[0];
           if (found) {
-            await deliveryService.updateDelivery(found._id, { status: 'ENTREGUE_COM_PENDENCIA_CANHOTO' });
-            if (returnProof) {
-              await deliveryService.uploadDocument(found._id, 'devolucaoVazio', returnProof);
+            if (String(currentProgramacao.status).toUpperCase() === 'ENTREGUE_COM_PENDENCIA_CANHOTO') {
+              if (returnProof) {
+                await deliveryService.uploadDocument(found._id, 'devolucaoVazio', returnProof);
+              }
+            } else {
+              await deliveryService.updateDelivery(found._id, { status: 'FINALIZADO' });
+              if (returnProof) {
+                await deliveryService.uploadDocument(found._id, 'devolucaoVazio', returnProof);
+              }
             }
           }
         }
@@ -322,7 +354,14 @@ const ProgramadasEntregas = () => {
 
       // update programacao as well
       try {
-        await adminService.updateProgramacao(currentProgramacao._id, { status: 'ENTREGUE_COM_PENDENCIA_CANHOTO' });
+        // If this programação was an 'ENTREGUE_COM_PENDENCIA_CANHOTO', we must keep it open
+        // so the motorista can later anexar o canhoto faltante. In that case do NOT set FINALIZADO.
+        if (String(currentProgramacao.status).toUpperCase() === 'ENTREGUE_COM_PENDENCIA_CANHOTO') {
+          // ensure programacao keeps the pending-canhoto status (just upload comprovante)
+          // optionally we could set a flag, but leave status unchanged
+        } else {
+          await adminService.updateProgramacao(currentProgramacao._id, { status: 'FINALIZADO' });
+        }
       } catch (_) {}
 
       setToast({ message: 'Devolução vazia registrada', type: 'success' });
@@ -650,9 +689,16 @@ function dataURLtoFile(dataurl, filename) {
       };
 
       await deliveryService.updateDelivery(currentDelivery._id, updatePayload);
-      // Atualiza lista e fecha o fluxo (retorna para a lista de entregas)
+      // Atualiza lista
       await loadProgramacoes();
-      closeModal();
+      // Se ficou com pendência de canhoto, seguir para fluxo de devolução (abrir modal de devolução)
+      if (finalStatus === 'ENTREGUE_COM_PENDENCIA_CANHOTO') {
+        // Atualiza o objeto local da programação e abre modal de devolução
+        if (currentProgramacao) currentProgramacao.status = 'ENTREGUE_COM_PENDENCIA_CANHOTO';
+        openReturnModal(currentProgramacao || {});
+      } else {
+        closeModal();
+      }
     } catch (err) {
       console.error(err);
       setToast({ message: 'Erro ao enviar documentos', type: 'error' });
@@ -799,7 +845,7 @@ function dataURLtoFile(dataurl, filename) {
                     )}
 
                     {/* Para status ENTREGUE mostramos retorno vazio */}
-                    {p.status === 'ENTREGUE' && (
+                    {(['ENTREGUE','ENTREGUE_COM_PENDENCIA_CANHOTO'].includes(String(p.status || '').toUpperCase())) && (
                       <button
                         onClick={() => openReturnModal(p)}
                         className="px-6 py-2 bg-gradient-to-r from-pink-400 to-pink-600 text-white rounded-xl shadow-lg hover:scale-105 hover:shadow-xl transition font-bold text-lg border-2 border-pink-500"

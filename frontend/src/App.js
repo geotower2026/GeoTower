@@ -23,6 +23,7 @@ import UserManagement from './pages/UserManagement';
 import MotoristaManagement from './pages/MotoristaManagement';
 import ProgramacaoManagement from './pages/ProgramacaoManagement';
 import ProgramadasEntregas from './pages/ProgramadasEntregas';
+import EntregasCanhotosPendentes from './pages/EntregasCanhotosPendentes';
 import Reconciliation from './pages/Reconciliation';
 import Profile from './pages/Profile';
 import EntregaEmRota from './pages/EntregaEmRota';
@@ -120,6 +121,17 @@ function AppContent() {
           <PrivateRoute>
             <AppLayout>
               <ProgramadasEntregas />
+            </AppLayout>
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/entregas-canhotos-pendentes"
+        element={
+          <PrivateRoute>
+            <AppLayout>
+              <EntregasCanhotosPendentes />
             </AppLayout>
           </PrivateRoute>
         }
