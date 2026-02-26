@@ -80,6 +80,25 @@ const MonitorEntregas = () => {
     byDriver: 0
   });
 
+  // helper para cores de cartão
+  const cardColors = {
+    PROGRAMADAS: 'from-blue-400 to-blue-600 text-white border-blue-700',
+    AGENDADO: 'from-gray-200 to-gray-400 text-gray-800 border-gray-500',
+    'CONTAINER MONTADO': 'from-pink-400 to-pink-600 text-white border-pink-700',
+    'A CAMINHO DO CLIENTE': 'from-green-400 to-green-600 text-white border-green-700',
+    'AGUARDANDO DESOVA': 'from-yellow-300 to-yellow-500 text-gray-800 border-yellow-600',
+    'EM DESOVA': 'from-orange-300 to-orange-500 text-gray-800 border-orange-600',
+    'ANEXANDO DOCUMENTOS FINAIS': 'from-indigo-300 to-indigo-500 text-white border-indigo-700',
+    ENTREGUE: 'from-teal-400 to-teal-600 text-white border-teal-700',
+    CANCELADO: 'from-red-400 to-red-600 text-white border-red-700',
+    MOTORISTAS: 'from-purple-300 to-purple-500 text-white border-purple-700',
+    default: 'from-gray-100 to-gray-200 text-gray-800 border-gray-400'
+  };
+
+  const getCardClasses = (status) => {
+    return cardColors[status] || cardColors.default;
+  };
+
   // Carrega entregas
   const loadDeliveries = useCallback(async () => {
     try {
@@ -505,9 +524,9 @@ const MonitorEntregas = () => {
         {/* Stats Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-7 gap-2 mb-6 lg:mb-8">
           {/* programadas (anteriormente TOTAL) */}
-          <div className="bg-gradient-to-r from-blue-100 to-blue-200 rounded-xl shadow-lg p-2 lg:p-4 border-l-4 border-blue-600 flex flex-col items-center">
-            <p className="text-blue-900 text-xs lg:text-base font-extrabold uppercase tracking-widest mb-1">PROGRAMADAS</p>
-            <p className="text-xl lg:text-3xl font-extrabold text-blue-700 drop-shadow">{stats.total}</p>
+          <div className={`bg-gradient-to-r rounded-xl shadow-lg p-2 lg:p-4 border-l-4 flex flex-col items-center ${getCardClasses('PROGRAMADAS')} hover:scale-105 transition-transform`}> 
+            <p className="text-xs lg:text-base font-extrabold uppercase tracking-widest mb-1">PROGRAMADAS</p>
+            <p className="text-xl lg:text-3xl font-extrabold drop-shadow">{stats.total}</p>
           </div>
 
           {/* indicadores por status em ordem definida */}
@@ -536,12 +555,12 @@ const MonitorEntregas = () => {
               return (
                 <div
                   key={status}
-                  className="bg-gradient-to-r from-gray-100 to-gray-200 rounded-xl shadow-lg p-2 lg:p-4 border-l-4 border-gray-600 flex flex-col items-center"
+                  className={`bg-gradient-to-r rounded-xl shadow-lg p-2 lg:p-4 border-l-4 flex flex-col items-center ${getCardClasses(status)} hover:scale-105 transition-transform`}
                 >
-                  <p className="text-gray-900 text-xs lg:text-base font-extrabold uppercase tracking-widest mb-1">
+                  <p className="text-xs lg:text-base font-extrabold uppercase tracking-widest mb-1">
                     {label}
                   </p>
-                  <p className="text-xl lg:text-3xl font-extrabold text-gray-700 drop-shadow">
+                  <p className="text-xl lg:text-3xl font-extrabold drop-shadow">
                     {count}
                   </p>
                 </div>
