@@ -375,6 +375,9 @@ const MonitorEntregas = () => {
   };
 
   // Função para retornar o status dos documentos
+  // retorna string como "COMPLETO" ou "PENDENTE CTE + NF"
+  // usada na Torre de Controle para tooltip; a coluna agora exibe
+  // apenas um círculo verde/vermelho tipo semáforo.
   const getDocumentsStatus = (delivery) => {
     if (!delivery) return 'PENDENTE';
     
@@ -702,7 +705,7 @@ const MonitorEntregas = () => {
                     <th className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">CHEGADA</th>
                     <th className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">INÍCIO</th>
                     <th className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">FIM</th>
-                    <th className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">DOCS</th>
+                    <th title="🟢 completo / 🔴 pendente" className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">DOCS 🟢🔴</th>
                     <th className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">AÇÕES</th>
                   </tr>
                 </thead>
@@ -751,11 +754,20 @@ const MonitorEntregas = () => {
                     <td className="px-2 py-2 text-gray-700 whitespace-nowrap text-center">{delivery.horarioInicioDesova ? new Date(delivery.horarioInicioDesova).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
                     <td className="px-2 py-2 text-gray-700 whitespace-nowrap text-center">{delivery.horarioFimDesova ? new Date(delivery.horarioFimDesova).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
                     <td className="px-2 py-2 text-center">
-                      <span className={`px-2 py-1 rounded font-semibold text-xs whitespace-nowrap ${
-                        getDocumentsStatus(delivery).includes('COMPLETO') ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {getDocumentsStatus(delivery)}
-                      </span>
+                      {(() => {
+                        const statusText = getDocumentsStatus(delivery);
+                        const complete = statusText.includes('COMPLETO');
+                        // traffic‑light circle with tooltip showing full status
+                        return (
+                          <div title={statusText} className="flex items-center justify-center">
+                            <span
+                              className={`w-3 h-3 rounded-full ${
+                                complete ? 'bg-green-500' : 'bg-red-500'
+                              }`}
+                            />
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="px-2 py-2 text-center">
                       <button
