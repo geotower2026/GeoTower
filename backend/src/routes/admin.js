@@ -130,21 +130,26 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
         targetDate = tomorrow;
       }
       
-      // Formata a data como string (DD/MM/YYYY) para comparar com dataAgendamento
-      const dayStr = String(targetDate.getDate()).padStart(2, '0');
-      const monthStr = String(targetDate.getMonth() + 1).padStart(2, '0');
-      const yearStr = targetDate.getFullYear();
-      const datePattern = `${dayStr}/${monthStr}/${yearStr}`;
+      // Formata a data alvo como string (DD/MM/YYYY)
+      const targetDay = String(targetDate.getDate()).padStart(2, '0');
+      const targetMonth = String(targetDate.getMonth() + 1).padStart(2, '0');
+      const targetYear = targetDate.getFullYear();
+      const datePattern = `${targetDay}/${targetMonth}/${targetYear}`;
       
       console.log('📅 Buscando ProgramacaoEntrega para data:', datePattern);
+      console.log('   Hoje é:', new Date().toLocaleDateString('pt-BR'));
       
-      // Busca programações que correspondem à data
+      // Busca todas as programações
       let programacoes = await ProgramacaoEntrega.find({});
       
-      // Filtra por data usando regex para flexibilidade
+      // Filtra por data - compara exatamente DD/MM/YYYY
+      // Suporta formatos: "25/02/2026", "25/02/2026 10:30", etc
       programacoes = programacoes.filter(p => {
         const progDate = String(p.dataAgendamento || '').trim();
-        return progDate.includes(dayStr) && progDate.includes(monthStr) && progDate.includes(yearStr);
+        // Extrai apenas DD/MM/YYYY do início da string
+        const dateOnly = progDate.split(' ')[0]; // Remove horário se houver
+        console.log(`   Comparando: "${dateOnly}" === "${datePattern}" ?`, dateOnly === datePattern);
+        return dateOnly === datePattern;
       });
       
       console.log(`  ✓ Encontradas ${programacoes.length} programações para ${datePattern}`);
