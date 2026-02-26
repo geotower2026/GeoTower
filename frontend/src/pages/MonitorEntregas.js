@@ -763,12 +763,22 @@ const MonitorEntregas = () => {
                     <td className="px-2 py-2 text-center">
                       {(() => {
                         const p = getProgress(delivery);
+                        const totalStages = 7;
+                        const filledDots = Math.ceil((p / 100) * totalStages);
                         const colorClass = p === 100 ? 'bg-green-500' : (p >= 66 ? 'bg-yellow-400' : (p >= 33 ? 'bg-indigo-500' : 'bg-gray-300'));
                         return (
-                          <div className="w-28 h-4 bg-gray-200 rounded-full overflow-hidden relative" title={`${p}%`} aria-label={`Progresso ${p}%`}>
-                            <div className={`${colorClass} h-full`} style={{ width: `${p}%`, transition: 'width 600ms ease' }} />
-                            {p > 0 && p < 100 && <div className="absolute inset-0 pointer-events-none progress-stripes" />}
-                            {p > 0 && p < 100 && <div className="absolute inset-0 pointer-events-none progress-wave" />}
+                          <div className="flex items-center gap-1" title={`${p}%`}>
+                            <span className="text-xs font-bold text-gray-600">{p}%</span>
+                            <div className="flex gap-1">
+                              {Array.from({ length: totalStages }).map((_, i) => (
+                                <div
+                                  key={i}
+                                  className={`w-3 h-3 rounded-full transition-all ${
+                                    i < filledDots ? `${colorClass} ${p < 100 ? 'animate-pulse' : ''}` : 'bg-gray-300'
+                                  }`}
+                                />
+                              ))}
+                            </div>
                           </div>
                         );
                       })()}
