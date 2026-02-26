@@ -443,6 +443,43 @@ const MonitorEntregas = () => {
     return defaultDocumentLabels;
   };
 
+  // Extrai URLs dos documentos (R2, local ou antigo formato)
+  const getDocumentUrlsArray = (docData) => {
+    if (!docData) return [];
+    
+    // Se for string, retorna array com a string
+    if (typeof docData === 'string') {
+      return [docData];
+    }
+    
+    // Se for array, processa cada item
+    if (Array.isArray(docData)) {
+      return docData.map(item => {
+        if (typeof item === 'string') return item;
+        if (typeof item === 'object' && item !== null) {
+          // R2: tem propriedade url
+          if (item.url) return item.url;
+          // Local: tem propriedade path
+          if (item.path) return `/uploads/${item.path}`;
+          // Antigo Google Drive: tem propriedade link ou webViewLink
+          if (item.link) return item.link;
+          if (item.webViewLink) return item.webViewLink;
+        }
+        return null;
+      }).filter(Boolean);
+    }
+    
+    // Se for objeto (documento único)
+    if (typeof docData === 'object') {
+      if (docData.url) return [docData.url];
+      if (docData.path) return [`/uploads/${docData.path}`];
+      if (docData.link) return [docData.link];
+      if (docData.webViewLink) return [docData.webViewLink];
+    }
+    
+    return [];
+  };
+
   // Later, when rendering, use const labels = getLabelsForDelivery(selectedDelivery) and use labels[docKey] || docKey
 
 
@@ -716,14 +753,66 @@ const MonitorEntregas = () => {
                         {getDocumentsStatus(delivery)}
                       </span>
                     </td>
-                    <td className="px-2 py-2 text-center">
+                    <td className="px-2 py-2 text-center relative">
                       <button
-                        onClick={() => setSelectedDelivery(delivery)}
+                        onClick={(e) => {
+                          setOpenMenuId(openMenuId === delivery._id ? null : delivery._id);
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setMenuPosition({ top: rect.bottom + 5, left: rect.left });
+                        }}
                         className="inline-flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-200 text-gray-600 transition text-sm"
-                        title="Visualizar"
+                        title="Menu de ações"
+                        ref={menuRef}
                       >
-                        <FaEye />
+                        <FaEllipsisV size={16} />
                       </button>
+                      {openMenuId === delivery._id && (
+                        <div
+                          className="absolute bg-white border border-gray-200 rounded-lg shadow-lg z-40 mt-0 min-w-max"
+                          style={{ top: `calc(100% + 5px)`, right: 0 }}
+                        >
+                          <button
+                            onClick={() => {
+                              setSelectedDelivery(delivery);
+                              setOpenMenuId(null);
+                            }}
+                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 border-b border-gray-100"
+                          >
+                            <FaEye className="inline mr-2" /> Visualizar
+                          </button>
+                          {canEdit() && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  handleEditStart(delivery);
+                                  setOpenMenuId(null);
+                                }}
+                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 border-b border-gray-100"
+                              >
+                                <FaEdit className="inline mr-2" /> Editar
+                              </button>
+                              <button
+                                onClick={() => {
+                                  handleDelete(delivery._id);
+                                  setOpenMenuId(null);
+                                }}
+                                className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                              >
+                                <FaTrash className="inline mr-2" /> Deletar
+                              </button>
+                            </>
+                          )}
+                          <button
+                            onClick={() => {
+                              handleDownloadAll(delivery._id);
+                              setOpenMenuId(null);
+                            }}
+                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-green-50 border-t border-gray-100"
+                          >
+                            <FaDownload className="inline mr-2" /> Baixar ZIP
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -850,7 +939,10 @@ const MonitorEntregas = () => {
                               <span className="font-semibold text-gray-700 text-sm">{labels[docKey] || docKey}</span>
                               <div className="flex gap-2">
                                 <button
-                                  onClick={() => setViewingDocument({ label: labels[docKey] || docKey, url: selectedDelivery.documents[docKey], type: 'document' })}
+                                  onClick={() => {
+                                    const urls = getDocumentUrlsArray(selectedDelivery.documents[docKey]);
+                                    setViewingDocument({ label: labels[docKey] || docKey, urls, type: 'document' });
+                                  }}
                                   className="p-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition title='Visualizar'"
                                   title="Visualizar"
                                 >
@@ -877,7 +969,7 @@ const MonitorEntregas = () => {
                       { key: 'fimDesova', label: 'Finalização da Desova' }
                     ];
                     const fotosRows = fotosCampos.map((f, idx) => {
-                      const files = Array.isArray(selectedDelivery.documents?.[f.key]) ? selectedDelivery.documents[f.key] : [];
+                      const files = getDocumentUrlsArray(selectedDelivery.documents?.[f.key]);
                       return files.length > 0 ? (
                         <div key={f.label + idx} className="bg-white border border-gray-300 p-4 rounded-lg flex items-center justify-between hover:shadow-md transition">
                           <span className="font-semibold text-gray-700 text-sm">{f.label}</span>
@@ -946,19 +1038,48 @@ const MonitorEntregas = () => {
               </button>
             </div>
             <div className="bg-gray-50 rounded-lg overflow-auto max-h-[70vh]">
-              {viewingDocument.url && viewingDocument.url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-                <img src={viewingDocument.url} alt={viewingDocument.label} className="w-full h-auto rounded" />
+              {viewingDocument.urls && viewingDocument.urls.length > 0 ? (
+                <div className="space-y-4">
+                  {viewingDocument.urls.map((url, idx) => (
+                    <div key={idx} className="border-b border-gray-200 pb-4 last:border-b-0">
+                      {url && url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                        <img src={url} alt={`${viewingDocument.label} ${idx + 1}`} className="w-full h-auto rounded" />
+                      ) : (
+                        <div className="p-6 text-center text-gray-600">
+                          <p className="mb-4">{viewingDocument.label} {viewingDocument.urls.length > 1 ? `${idx + 1}` : ''}</p>
+                          <a
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                          >
+                            <FaDownload /> Abrir em nova aba
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : viewingDocument.url ? (
+                // Fallback para formato antigo com url singular
+                viewingDocument.url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                  <img src={viewingDocument.url} alt={viewingDocument.label} className="w-full h-auto rounded" />
+                ) : (
+                  <div className="p-6 text-center text-gray-600">
+                    <p className="mb-4">Documento: {viewingDocument.label}</p>
+                    <a
+                      href={viewingDocument.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                    >
+                      <FaDownload /> Abrir em nova aba
+                    </a>
+                  </div>
+                )
               ) : (
-                <div className="p-6 text-center text-gray-600">
-                  <p className="mb-4">Documento: {viewingDocument.label}</p>
-                  <a
-                    href={viewingDocument.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                  >
-                    <FaDownload /> Abrir em nova aba
-                  </a>
+                <div className="p-6 text-center text-gray-500">
+                  <p>Nenhum documento disponível</p>
                 </div>
               )}
             </div>
