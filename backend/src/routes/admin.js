@@ -100,7 +100,7 @@ router.get("/statistics", auth, onlyAdmin, async (req, res) => {
  * filtros:
  *  - status=draft|submitted|all
  *  - q=texto
- *  - period=today|yesterday|tomorrow (filtra ProgramacaoEntrega por data)
+ *  - period=today|yesterday|tomorrow (filtra por dataAgendamento)
  * 
  * Consolida automaticamente arquivos das duas pastas de uploads
  */
@@ -109,13 +109,48 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
     const { status, q, startDate, endDate, period } = req.query;
     console.log('📋 GET /admin/deliveries recebido com filtros:', { status, q, startDate, endDate, period });
     
-    // Se period é selecionado, filtra APENAS por ProgramacaoEntrega
+    // SEMPRE busca todas as entregas da base deliveries
+    const db = await getDb(req);
+    const allDeliveries = await db.find("deliveries", {});
+    console.log('  ℹ️  Total de entregas na DB:', allDeliveries ? allDeliveries.length : 0);
+    
+    // Buscar programações para cruzar dados
+    const ProgramacaoEntrega = require('../models/ProgramacaoEntrega');
+    const programacoes = await ProgramacaoEntrega.find({});
+    console.log('  ℹ️  Total de programações:', programacoes ? programacoes.length : 0);
+
+    // Normaliza documentos para resposta
+    const normalizedDeliveries = (allDeliveries || []).map(d => {
+      try {
+        return normalizeDeliveryForResponse(d);
+      } catch (err) {
+        console.error('Erro ao normalizar entrega:', err);
+        return d;
+      }
+    });
+
+    // Cruzar dados de programação (por container) SEMPRE
+    let deliveriesWithProgramacao = normalizedDeliveries.map(delivery => {
+      const prog = programacoes.find(p => 
+        (p.container || '').toUpperCase() === (delivery.deliveryNumber || '').toUpperCase()
+      );
+      return {
+        ...delivery,
+        recebedor: prog ? prog.recebedor : '',
+        dataAgendamento: prog ? prog.dataAgendamento : '',
+        horarioChegada: delivery.arrivedAt || '',
+        horarioInicioDesova: delivery.desovaStartAt || '',
+        horarioFimDesova: delivery.desovaEndAt || '',
+        status: delivery.status
+      };
+    });
+
+    console.log(`  ✓ Cruzadas ${deliveriesWithProgramacao.length} entregas com programações`);
+
+    // FILTRA por período se fornecido
     if (period && period !== 'general') {
-      console.log('🗓️  Filtrando por período:', period);
+      console.log('🗓️  Aplicando filtro de período:', period);
       
-      const ProgramacaoEntrega = require('../models/ProgramacaoEntrega');
-      
-      // Calcula a data alvo
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
@@ -130,102 +165,55 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
         targetDate = tomorrow;
       }
       
-      // Formata a data alvo como string (DD/MM/YYYY)
       const targetDay = String(targetDate.getDate()).padStart(2, '0');
       const targetMonth = String(targetDate.getMonth() + 1).padStart(2, '0');
       const targetYear = targetDate.getFullYear();
       const datePattern = `${targetDay}/${targetMonth}/${targetYear}`;
       
-      console.log('📅 Buscando ProgramacaoEntrega para data:', datePattern);
-      console.log('   Hoje é:', new Date().toLocaleDateString('pt-BR'));
+      console.log('📅 Filtrando para data:', datePattern);
       
-      // Busca todas as programações
-      let programacoes = await ProgramacaoEntrega.find({});
-      
-      // Filtra por data - compara exatamente DD/MM/YYYY
-      // Suporta formatos: "25/02/2026", "25/02/2026 10:30", etc
-      programacoes = programacoes.filter(p => {
-        const progDate = String(p.dataAgendamento || '').trim();
-        // Extrai apenas DD/MM/YYYY do início da string
+      deliveriesWithProgramacao = deliveriesWithProgramacao.filter(d => {
+        if (!d.dataAgendamento) return false;
+        const progDate = String(d.dataAgendamento).trim();
         const dateOnly = progDate.split(' ')[0]; // Remove horário se houver
-        console.log(`   Comparando: "${dateOnly}" === "${datePattern}" ?`, dateOnly === datePattern);
-        return dateOnly === datePattern;
+        const match = dateOnly === datePattern;
+        if (match) console.log(`   ✓ "${progDate}" corresponde a ${datePattern}`);
+        return match;
       });
       
-      console.log(`  ✓ Encontradas ${programacoes.length} programações para ${datePattern}`);
-      
-      // Converte ProgramacaoEntrega para formato delivery para compatibilidade com frontend
-      const deliveries = programacoes.map(prog => ({
-        _id: prog._id,
-        deliveryNumber: prog.container || prog.processo,
-        userName: prog.contratado || '',
-        driverName: prog.motorista || '',
-        recebedor: prog.recebedor || '',
-        dataAgendamento: prog.dataAgendamento || '',
-        status: prog.status || 'AGENDADO',
-        documents: {},
-        uploadedFiles: [],
-        hasFiles: false,
-        createdAt: prog.createdAt,
-        observations: prog.observacoes || ''
-      }));
-      
-      return res.json({ deliveries });
+      console.log(`  ✓ ${deliveriesWithProgramacao.length} entregas após filtro de período`);
     }
-    
-    // Lógica padrão (quando não há período selecionado)
-    const db = await getDb(req);
-    const allDeliveries = await db.find("deliveries", {});
-    console.log('  ℹ️  Total de entregas na DB:', allDeliveries ? allDeliveries.length : 0);
-    
-    const filter = {};
+
+    // Aplica outros filtros (status, busca)
+    let filtered = deliveriesWithProgramacao;
 
     if (status && status !== "all") {
       console.log('  ✓ Aplicando filtro de status:', status);
-      filter.status = status;
+      filtered = filtered.filter(d => {
+        if (status === 'OPERACAO_FINALIZADA') return d.status === 'ENTREGUE' || d.status === 'submitted';
+        if (status === 'A CAMINHO DO CLIENTE') return d.status === 'pending' || d.status === 'PENDING';
+        return d.status === status;
+      });
     }
 
     if (q && q.trim()) {
       const text = q.trim();
       console.log('  ✓ Aplicando filtro de busca:', text);
-      filter.$or = [
-        { deliveryNumber: { $regex: text, $options: "i" } },
-        { vehiclePlate: { $regex: text, $options: "i" } },
-        { userName: { $regex: text, $options: "i" } },
-        { driverName: { $regex: text, $options: "i" } }
-      ];
+      filtered = filtered.filter(d => 
+        (d.deliveryNumber || '').toLowerCase().includes(text.toLowerCase()) ||
+        (d.vehiclePlate || '').toLowerCase().includes(text.toLowerCase()) ||
+        (d.userName || '').toLowerCase().includes(text.toLowerCase()) ||
+        (d.driverName || '').toLowerCase().includes(text.toLowerCase()) ||
+        (d.recebedor || '').toLowerCase().includes(text.toLowerCase())
+      );
     }
 
-    // Busca entregas
-    let deliveries = await db.find("deliveries", filter) || [];
-    deliveries = deliveries.slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    // Buscar programações para cruzar dados
-    const ProgramacaoEntrega = require('../models/ProgramacaoEntrega');
-    const programacoes = await ProgramacaoEntrega.find({});
-
-    // Normaliza documentos para resposta (desserializa JSON strings)
-    const normalizedDeliveries = deliveries.map(d => normalizeDeliveryForResponse(d));
-
-    // Cruzar dados de programação (por container)
-    const deliveriesWithProgramacao = normalizedDeliveries.map(delivery => {
-      const prog = programacoes.find(p => (p.container || '').toUpperCase() === (delivery.deliveryNumber || '').toUpperCase());
-      return {
-        ...delivery,
-        recebedor: prog ? prog.recebedor : '',
-        dataAgendamento: prog ? prog.dataAgendamento : '',
-        horarioChegada: delivery.arrivedAt || '',
-        horarioInicioDesova: delivery.desovaStartAt || '',
-        horarioFimDesova: delivery.desovaEndAt || '',
-        status: delivery.status // status do motorista
-      };
-    });
-
-    // Consolida arquivos de ambas as pastas (inclui subpastas por cidade) para cada entrega
+    // Consolida arquivos de ambas as pastas
     const uploadsPath1 = path.join(__dirname, "../uploads");
     const uploadsPath2 = path.join(__dirname, "../src/uploads");
     const cities = ['manaus', 'itajai'];
 
-    const deliveriesWithFiles = deliveriesWithProgramacao.map(delivery => {
+    const deliveriesWithFiles = filtered.map(delivery => {
       const consolidatedFiles = {};
       [uploadsPath1, uploadsPath2].forEach(uploadsPath => {
         const deliveryPath = path.join(uploadsPath, delivery.deliveryNumber);
@@ -256,10 +244,11 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
       };
     });
 
+    console.log(`📤 Retornando ${deliveriesWithFiles.length} entregas`);
     return res.json({ deliveries: deliveriesWithFiles });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: "Erro ao listar entregas (admin)" });
+    console.error('❌ Erro em /admin/deliveries:', err);
+    return res.status(500).json({ message: "Erro ao listar entregas (admin)", error: err.message });
   }
 });
 
