@@ -210,33 +210,6 @@ const MonitorEntregas = () => {
       );
     }
 
-    // Filtro de período (Hoje, Amanhã, Ontem) - SEMPRE ativo, não apenas para stats
-    if (statsPeriod !== 'general') {
-      const getPeriodDate = () => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        if (statsPeriod === 'yesterday') {
-          const yesterday = new Date(today);
-          yesterday.setDate(yesterday.getDate() - 1);
-          return yesterday;
-        } else if (statsPeriod === 'tomorrow') {
-          const tomorrow = new Date(today);
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          return tomorrow;
-        }
-        return today; // today (padrão)
-      };
-
-      const targetDate = getPeriodDate();
-      filtered = filtered.filter(d => {
-        if (!d.dataAgendamento) return false;
-        const deliveryDate = new Date(d.dataAgendamento);
-        deliveryDate.setHours(0, 0, 0, 0);
-        return deliveryDate.getTime() === targetDate.getTime();
-      });
-    }
-
     // Filtro de data - AGENDAMENTO
     // apply explicit date bounds if user set filters
     if (filters.startDate && filters.startDate.trim() !== '') {
@@ -815,15 +788,7 @@ const MonitorEntregas = () => {
                             <FaEye className="inline mr-2" /> Visualizar
                           </button>
                           {/* only view and download zip in actions, editing/deleting moved elsewhere */}
-                          <button
-                            onClick={() => {
-                              handleDownloadAll(delivery._id);
-                              setOpenMenuId(null);
-                            }}
-                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-green-50 border-t border-gray-100"
-                          >
-                            <FaDownload className="inline mr-2" /> Baixar ZIP
-                          </button>
+
                         </div>
                       )}
                     </td>
