@@ -301,7 +301,7 @@ const ProgramadasEntregas = () => {
     try {
       // if there's a linked delivery, update it
       if (currentProgramacao.linkedDeliveryId) {
-        await deliveryService.updateDelivery(currentProgramacao.linkedDeliveryId, { status: 'FINALIZADO' });
+        await deliveryService.updateDelivery(currentProgramacao.linkedDeliveryId, { status: 'ENTREGUE_COM_PENDENCIA_CANHOTO' });
         if (returnProof) {
           await deliveryService.uploadDocument(currentProgramacao.linkedDeliveryId, 'devolucaoVazio', returnProof);
         }
@@ -312,7 +312,7 @@ const ProgramadasEntregas = () => {
           const resp = await deliveryService.getMyDeliveries({ searchTerm: searchVal });
           const found = resp.data.deliveries && resp.data.deliveries[0];
           if (found) {
-            await deliveryService.updateDelivery(found._id, { status: 'FINALIZADO' });
+            await deliveryService.updateDelivery(found._id, { status: 'ENTREGUE_COM_PENDENCIA_CANHOTO' });
             if (returnProof) {
               await deliveryService.uploadDocument(found._id, 'devolucaoVazio', returnProof);
             }
@@ -322,7 +322,7 @@ const ProgramadasEntregas = () => {
 
       // update programacao as well
       try {
-        await adminService.updateProgramacao(currentProgramacao._id, { status: 'FINALIZADO' });
+        await adminService.updateProgramacao(currentProgramacao._id, { status: 'ENTREGUE_COM_PENDENCIA_CANHOTO' });
       } catch (_) {}
 
       setToast({ message: 'Devolução vazia registrada', type: 'success' });
