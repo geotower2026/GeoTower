@@ -1351,11 +1351,28 @@ router.get("/programacoes", auth, async (req, res) => {
     const ProgramacaoEntrega = require("../models/ProgramacaoEntrega");
     const programacoes = await ProgramacaoEntrega.find().sort({ dataAgendamento: -1 });
 
-    console.log('[PROGRAMACAO] ✅ Encontradas', programacoes.length, 'programações');
+    // também trazemos entregas para permitir associação com motoristas
+    const db = await getDb(req);
+    const allDeliveries = await db.find("deliveries", {});
+
+    // vincular id de entrega correspondente (se existir)
+    const enriched = (programacoes || []).map(p => {
+      const match = allDeliveries.find(d => {
+        const num = String(d.deliveryNumber || '').trim().toUpperCase();
+        const proc = String(p.processo || '').trim().toUpperCase();
+        const cont = String(p.container || '').trim().toUpperCase();
+        return (num && (num === proc || num === cont));
+      });
+      const obj = p.toObject ? p.toObject() : { ...p };
+      obj.linkedDeliveryId = match ? match._id : null;
+      return obj;
+    });
+
+    console.log('[PROGRAMACAO] ✅ Encontradas', enriched.length, 'programações');
 
     return res.json({
       success: true,
-      programacoes: programacoes || []
+      programacoes: enriched
     });
   } catch (err) {
     console.error('[PROGRAMACAO] ❌ Erro ao listar:', err);

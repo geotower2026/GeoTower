@@ -276,6 +276,39 @@ const ProgramadasEntregas = () => {
     setShowMontagemModal(true);
   };
 
+  // marcar devolução vazia como finalizada
+  const handleReturn = async (p) => {
+    try {
+      // Se o backend já retornou o id da delivery vinculada, use-o diretamente
+      if (p.linkedDeliveryId) {
+        await deliveryService.updateDelivery(p.linkedDeliveryId, { status: 'FINALIZADO' });
+      } else {
+        // buscar entrega existente correspondente para atualizar status
+        const searchVal = (p.container || p.processo || '').trim();
+        if (searchVal) {
+          const resp = await deliveryService.getMyDeliveries({ searchTerm: searchVal });
+          const found = resp.data.deliveries && resp.data.deliveries[0];
+          if (found) {
+            await deliveryService.updateDelivery(found._id, { status: 'FINALIZADO' });
+          }
+        }
+      }
+
+      // também atualiza a programacao diretamente (caso não tenha sido sincronizada via delivery)
+      try {
+        await adminService.updateProgramacao(p._id, { status: 'FINALIZADO' });
+      } catch (_) {
+        // silent fail is fine
+      }
+
+      setToast({ message: 'Devolução vazia registrada', type: 'success' });
+      await loadProgramacoes();
+    } catch (err) {
+      console.error('Erro ao registrar devolução:', err);
+      setToast({ message: 'Erro ao fazer devolução', type: 'error' });
+    }
+  };
+
   const handleMontagemFinished = async (finished) => {
     if (!finished) {
       // User said "Não" - show the question again (by staying in the modal)
@@ -556,7 +589,7 @@ function dataURLtoFile(dataurl, filename) {
   };
 
   const handleFinalUploadAndSubmit = async () => {
-    const requiredDocs = ['canhotCTE','diarioBordo','canhotNF','devolucaoVazio'];
+    const requiredDocs = ['canhotCTE','diarioBordo','canhotNF'];
     const allOk = requiredDocs.every(k => documentsUpload[k] && documentsUpload[k].length > 0);
     
     // Permite prosseguir se: (1) todos documentos anexados OU (2) sem docs mas com justificativa
@@ -685,7 +718,8 @@ function dataURLtoFile(dataurl, filename) {
                             p.status === 'AGUARDANDO_ANEXO' ? 'bg-purple-100 text-purple-800 border border-purple-300' :
                             p.status === 'AGUARDANDO_AGENDAMENTO_DEVOLUCAO' ? 'bg-pink-100 text-pink-800 border border-pink-300' :
                             p.status === 'ANEXANDO_DOCUMENTOS_FINAIS' ? 'bg-green-100 text-green-800 border border-green-300' :
-                            p.status === 'ENTREGUE' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+                            p.status === 'ENTREGUE' ? 'bg-yellow-100 text-yellow-800 border border-yellow-300' :
+                            p.status === 'FINALIZADO' ? 'bg-teal-100 text-teal-800 border border-teal-300' :
                             p.status === 'CANCELADO' ? 'bg-gray-200 text-gray-700 border border-gray-300' :
                             'bg-gray-100 text-gray-700 border border-gray-300'
                           }`
@@ -696,7 +730,8 @@ function dataURLtoFile(dataurl, filename) {
                             p.status === 'AGUARDANDO_ANEXO' ? 'AGUARDANDO ANEXO DOS DOCUMENTOS' :
                             p.status === 'AGUARDANDO_AGENDAMENTO_DEVOLUCAO' ? 'AGUARDANDO AGENDAMENTO DE DEVOLUÇÃO' :
                             p.status === 'ANEXANDO_DOCUMENTOS_FINAIS' ? 'ANEXANDO DOCUMENTOS FINAIS' :
-                            p.status === 'ENTREGUE' ? 'ENTREGUE' :
+                            p.status === 'ENTREGUE' ? 'PENDENTE DEVOLUÇÃO VAZIO' :
+                            p.status === 'FINALIZADO' ? 'FINALIZADO' :
                             p.status === 'CANCELADO' ? 'CANCELADO' :
                             p.status}
                         </span>
@@ -736,6 +771,16 @@ function dataURLtoFile(dataurl, filename) {
                       </button>
                     )}
 
+                    {/* Para status ENTREGUE mostramos retorno vazio */}
+                    {p.status === 'ENTREGUE' && (
+                      <button
+                        onClick={() => handleReturn(p)}
+                        className="px-6 py-2 bg-gradient-to-r from-pink-400 to-pink-600 text-white rounded-xl shadow-lg hover:scale-105 hover:shadow-xl transition font-bold text-lg border-2 border-pink-500"
+                        title="Fazer Devolução"
+                      >
+                        Fazer devolução
+                      </button>
+                    )}
                     {/* Para outros status (não finalizados, não agendado, não container_montado): mostrar "Continuar entrega" */}
                     {p.status && !['AGENDADO', 'CONTAINER_MONTADO', 'ENTREGUE', 'CANCELADO', 'pending', 'PENDING'].includes(p.status) && (
                       <button
@@ -1286,18 +1331,16 @@ function dataURLtoFile(dataurl, filename) {
                 )}
 
                 <div className="grid grid-cols-2 gap-3">
-                  {['canhotCTE', 'diarioBordo', 'canhotNF', 'devolucaoVazio'].map((docType) => {
+                  {['canhotCTE', 'diarioBordo', 'canhotNF'].map((docType) => {
                     const labels = {
                       canhotCTE: 'Canhoto CTE',
                       canhotNF: 'Canhoto NF',
-                      diarioBordo: 'Diário Bordo',
-                      devolucaoVazio: 'Devolução Vazio'
+                      diarioBordo: 'Diário Bordo'
                     };
                     const emojis = {
                       canhotCTE: '🚛',
                       canhotNF: '📦',
-                      diarioBordo: '📋',
-                      devolucaoVazio: '📁'
+                      diarioBordo: '📋'
                     };
                     return (
                       <div key={docType} className="border-2 border-gray-300 p-4 rounded-lg bg-white hover:bg-gray-50 transition shadow-md">
@@ -1364,7 +1407,7 @@ function dataURLtoFile(dataurl, filename) {
                 </div>
 
                 {/* Campo de justificativa - mostrar se não houver todos documentos */}
-                {!['canhotCTE','diarioBordo','canhotNF','devolucaoVazio'].every(k => documentsUpload[k] && documentsUpload[k].length > 0) && (
+                {!['canhotCTE','diarioBordo','canhotNF'].every(k => documentsUpload[k] && documentsUpload[k].length > 0) && (
                   <div className="bg-yellow-50 border-2 border-yellow-300 p-4 rounded-lg">
                     <label className="block text-sm font-semibold text-yellow-900 mb-2">
                       ⚠️ Algum problema com os Canhotos da entrega? Justifique:
