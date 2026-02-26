@@ -510,24 +510,26 @@ const MonitorEntregas = () => {
             <p className="text-2xl lg:text-4xl font-extrabold text-blue-700 drop-shadow">{stats.total}</p>
           </div>
 
-          {/* indicadores por status */}
-          {Object.entries(stats.statusCounts).map(([status, count]) => {
-            // normalize label
-            const label = status.replace(/_/g, ' ');
-            return (
-              <div
-                key={status}
-                className="bg-gradient-to-r from-gray-100 to-gray-200 rounded-xl shadow-lg p-4 lg:p-6 border-l-8 border-gray-600 flex flex-col items-center"
-              >
-                <p className="text-gray-900 text-xs lg:text-base font-extrabold uppercase tracking-widest mb-1">
-                  {label}
-                </p>
-                <p className="text-2xl lg:text-4xl font-extrabold text-gray-700 drop-shadow">
-                  {count}
-                </p>
-              </div>
-            );
-          })}
+          {/* indicadores por status, exceto container montado (tratado separadamente) */}
+          {Object.entries(stats.statusCounts)
+            .filter(([status]) => status !== 'CONTAINER MONTADO')
+            .map(([status, count]) => {
+              // normalize label
+              const label = status.replace(/_/g, ' ');
+              return (
+                <div
+                  key={status}
+                  className="bg-gradient-to-r from-gray-100 to-gray-200 rounded-xl shadow-lg p-4 lg:p-6 border-l-8 border-gray-600 flex flex-col items-center"
+                >
+                  <p className="text-gray-900 text-xs lg:text-base font-extrabold uppercase tracking-widest mb-1">
+                    {label}
+                  </p>
+                  <p className="text-2xl lg:text-4xl font-extrabold text-gray-700 drop-shadow">
+                    {count}
+                  </p>
+                </div>
+              );
+            })}
 
           {/* container montado como card adicional (se existir) */}
           <div className="bg-gradient-to-r from-pink-100 to-pink-200 rounded-xl shadow-lg p-4 lg:p-6 border-l-8 border-pink-600 flex flex-col items-center">
