@@ -729,7 +729,7 @@ const MonitorEntregas = () => {
                     <th className="px-2 py-2 text-left font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">MOTORISTA</th>
                     <th className="px-2 py-2 text-left font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">RECEBEDOR</th>
                     <th className="px-2 py-2 text-left font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">STATUS</th>
-                    <th title="progresso da entrega" className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">🔋 Progresso</th>
+                    <th title="andamento da entrega" className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">ANDAMENTO 🔋</th>
                     <th className="px-2 py-2 text-left font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">AGENDAMENTO</th>
                     <th className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">DT RETIRADA</th>
                     <th className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">CHEGADA</th>
@@ -763,15 +763,20 @@ const MonitorEntregas = () => {
                     {/* progress cell moved up to align with header */}
                     <td className="px-2 py-2 text-center">
                       <div
-                        className="w-20 h-3 bg-gray-200 rounded-full overflow-hidden relative"
+                        className="w-28 h-4 bg-gray-200 rounded-full overflow-hidden relative"
                         title={`${getProgress(delivery)}%`}
+                        aria-label={`Progresso ${getProgress(delivery)}%`}
                       >
                         <div
-                          className={`h-full ${
-                            getProgress(delivery) === 100 ? 'bg-green-500' : 'bg-blue-500'
-                          } animate-pulse`}
-                          style={{ width: `${getProgress(delivery)}%` }}
+                          className={`h-full ${getProgress(delivery) === 100 ? 'bg-green-500' : 'bg-blue-500'}`}
+                          style={{ width: `${getProgress(delivery)}%`, transition: 'width 600ms ease' }}
                         />
+                        {getProgress(delivery) > 0 && getProgress(delivery) < 100 && (
+                          <div className="absolute inset-0 pointer-events-none progress-stripes" />
+                        )}
+                        {getProgress(delivery) > 0 && getProgress(delivery) < 100 && (
+                          <div className="progress-dot-move" />
+                        )}
                       </div>
                     </td>
                     <td className="px-2 py-2 text-gray-600 whitespace-nowrap text-center font-semibold text-blue-600 bg-blue-50">
