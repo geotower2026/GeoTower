@@ -103,21 +103,8 @@ const MonitorEntregas = () => {
     default: 'from-gray-400 to-gray-600 text-white border-gray-700'
   };
 
-  // Icon map for semantic understanding
-  const statusIcons = {
-    PROGRAMADAS: '🔵',
-    AGENDADO: '🟡',
-    'A CAMINHO DO CLIENTE': '🟡',
-    'CONTAINER MONTADO': '🟡',
-    'EM DESOVA': '🟣',
-    'AGUARDANDO DESOVA': '🟠',
-    'ENTREGUE COM PENDENCIA CANHOTO': '🟠',
-    'ANEXANDO DOCUMENTOS FINAIS': '🟣',
-    ENTREGUE: '🟢',
-    CANCELADO: '🔴',
-    MOTORISTAS: '👥',
-    default: '⚪'
-  };
+  // (icons removed - only colors used now)
+  // previously used an emoji map; cards will display color only.
 
   const getCardClasses = (status) => {
     return cardColors[status] || cardColors.default;
@@ -583,7 +570,6 @@ const MonitorEntregas = () => {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-6 lg:mb-8">
           {/* programadas */}
           <div className={`bg-gradient-to-r rounded-xl shadow-xl p-3 lg:p-5 border-l-4 flex flex-col items-center justify-center hover:scale-110 transition-transform cursor-pointer ${getCardClasses('PROGRAMADAS')}`}> 
-            <p className="text-2xl lg:text-4xl mb-2">{statusIcons.PROGRAMADAS}</p>
             <p className="text-xs lg:text-sm font-extrabold uppercase tracking-widest text-center mb-2">PROGRAMADAS</p>
             <p className="text-2xl lg:text-4xl font-extrabold drop-shadow">{stats.total}</p>
           </div>
@@ -611,13 +597,11 @@ const MonitorEntregas = () => {
             });
             return entries.map(([status, count]) => {
               const label = status.replace(/_/g, ' ');
-              const icon = statusIcons[label] || statusIcons[status] || statusIcons.default;
               return (
                 <div
                   key={status}
                   className={`bg-gradient-to-r rounded-xl shadow-xl p-3 lg:p-5 border-l-4 flex flex-col items-center justify-center hover:scale-110 transition-transform cursor-pointer ${getCardClasses(label || status)}`}
                 >
-                  <p className="text-2xl lg:text-4xl mb-2">{icon}</p>
                   <p className="text-xs lg:text-sm font-extrabold uppercase tracking-widest text-center mb-2 line-clamp-2">
                     {label.length > 18 ? label.substring(0, 15) + '...' : label}
                   </p>
@@ -631,7 +615,6 @@ const MonitorEntregas = () => {
 
           {/* motoristas */}
           <div className="bg-gradient-to-r from-purple-600 to-purple-800 rounded-xl shadow-xl p-3 lg:p-5 border-l-4 border-purple-900 flex flex-col items-center justify-center hover:scale-110 transition-transform cursor-pointer">
-            <p className="text-2xl lg:text-4xl mb-2">{statusIcons.MOTORISTAS}</p>
             <p className="text-xs lg:text-sm font-extrabold text-white uppercase tracking-widest text-center mb-2">MOTORISTAS</p>
             <p className="text-2xl lg:text-4xl font-extrabold text-white drop-shadow">{stats.byDriver}</p>
           </div>
