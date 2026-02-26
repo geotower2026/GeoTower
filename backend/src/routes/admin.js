@@ -132,54 +132,8 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
       console.log('   convertido para data efetiva:', effectiveDate);
     }
 
-    // SE tem período selecionado, retorna TODAS as programações para aquela data
-    // (iniciadas ou não)
-    if (effectiveDate) {
-      console.log('📅 Filtrando ProgramacaoEntrega para data:', effectiveDate);
-      const [edDay, edMonth, edYear] = effectiveDate.split('/').map(Number);
-
-      let filteredProgramacoes = programacoes.filter(prog => {
-        if (!prog.dataAgendamento) return false;
-        const progDateStr = String(prog.dataAgendamento).trim();
-        let pd;
-        if (/\d{2}\/\d{2}\/\d{4}/.test(progDateStr)) {
-          const parts = progDateStr.split(' ')[0].split('/');
-          pd = { day: Number(parts[0]), month: Number(parts[1]), year: Number(parts[2]) };
-        } else if (/\d{4}-\d{2}-\d{2}/.test(progDateStr)) {
-          const parts = progDateStr.split('T')[0].split('-');
-          pd = { day: Number(parts[2]), month: Number(parts[1]), year: Number(parts[0]) };
-        } else {
-          const tmp = new Date(progDateStr);
-          if (!isNaN(tmp)) {
-            pd = { day: tmp.getDate(), month: tmp.getMonth()+1, year: tmp.getFullYear() };
-          }
-        }
-        if (!pd) return false;
-        return pd.day === edDay && pd.month === edMonth && pd.year === edYear;
-      });
-
-      console.log(`  ✓ Encontradas ${filteredProgramacoes.length} programações para ${effectiveDate}`);
-
-      // Converte programações para formato entrega para compatibilidade
-      const deliveries = filteredProgramacoes.map(prog => ({
-        _id: prog._id,
-        deliveryNumber: prog.container || prog.processo,
-        userName: prog.contratado || '',
-        driverName: prog.motorista || '-',
-        recebedor: prog.recebedor || '',
-        dataAgendamento: prog.dataAgendamento || '',
-        status: prog.status || 'AGENDADO',
-        documents: {},
-        uploadedFiles: [],
-        hasFiles: false,
-        createdAt: prog.createdAt,
-        observations: prog.observacoes || ''
-      }));
-
-      return res.json({ deliveries });
-    }
-
-    // LÓGICA ORIGINAL: se NÃO tem período, puxa entregas iniciadas cruzadas com programações
+    // *** UNIFIED LOGIC BELOW ***
+    // buscamos entregas iniciadas e também levamos em conta programações não iniciadas
     const db = await getDb(req);
     const allDeliveries = await db.find("deliveries", {});
     console.log('  ℹ️  Total de entregas na DB:', allDeliveries ? allDeliveries.length : 0);
@@ -194,7 +148,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
       }
     });
 
-    // Cruzar dados de programação (por container)
+    // Cruzar dados de programação (por container) e construir lista combinada
     let deliveriesWithProgramacao = normalizedDeliveries.map(delivery => {
       const prog = programacoes.find(p => 
         (p.container || '').toUpperCase() === (delivery.deliveryNumber || '').toUpperCase()
@@ -210,9 +164,59 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
       };
     });
 
-    console.log(`  ✓ Cruzadas ${deliveriesWithProgramacao.length} entregas com programações`);
+    // adicionar programações que não têm entrega correspondente
+    programacoes.forEach(prog => {
+      const key = (prog.container || '').toUpperCase();
+      const exists = normalizedDeliveries.find(d => (d.deliveryNumber || '').toUpperCase() === key);
+      if (!exists) {
+        deliveriesWithProgramacao.push({
+          _id: prog._id,
+          deliveryNumber: prog.container || prog.processo,
+          userName: prog.contratado || '',
+          driverName: prog.motorista || '-',
+          recebedor: prog.recebedor || '',
+          dataAgendamento: prog.dataAgendamento || '',
+          status: prog.status || 'AGENDADO',
+          documents: {},
+          uploadedFiles: [],
+          hasFiles: false,
+          createdAt: prog.createdAt,
+          observations: prog.observacoes || ''
+        });
+      }
+    });
 
-    // Aplica outros filtros (status, busca)
+    console.log(`  ✓ Combinação total após incluir agendadas: ${deliveriesWithProgramacao.length}`);
+
+    // se tem effectiveDate, filtramos a lista combinada por dataAgendamento
+    if (effectiveDate) {
+      console.log('📅 Aplicando filtro de período sobre lista combinada para data:', effectiveDate);
+      const [edDay, edMonth, edYear] = effectiveDate.split('/').map(Number);
+      deliveriesWithProgramacao = deliveriesWithProgramacao.filter(d => {
+        if (!d.dataAgendamento) return false;
+        const progDateStr = String(d.dataAgendamento).trim();
+        let pd;
+        if (/\d{2}\/\d{2}\/\d{4}/.test(progDateStr)) {
+          const parts = progDateStr.split(' ')[0].split('/');
+          pd = { day: Number(parts[0]), month: Number(parts[1]), year: Number(parts[2]) };
+        } else if (/\d{4}-\d{2}-\d{2}/.test(progDateStr)) {
+          const parts = progDateStr.split('T')[0].split('-');
+          pd = { day: Number(parts[2]), month: Number(parts[1]), year: Number(parts[0]) };
+        } else {
+          const tmp = new Date(progDateStr);
+          if (!isNaN(tmp)) {
+            pd = { day: tmp.getDate(), month: tmp.getMonth()+1, year: tmp.getFullYear() };
+          }
+        }
+        if (!pd) return false;
+        const match = pd.day === edDay && pd.month === edMonth && pd.year === edYear;
+        if (match) console.log(`   ✓ "${progDateStr}" corresponde a ${effectiveDate}`);
+        return match;
+      });
+      console.log(`  ✓ ${deliveriesWithProgramacao.length} registros após filtro de data`);
+    }
+
+    // começa a trabalhar com o array já filtrado (ou não)
     let filtered = deliveriesWithProgramacao;
 
     if (status && status !== "all") {
