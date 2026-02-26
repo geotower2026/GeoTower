@@ -289,55 +289,13 @@ router.get("/deliveries/:id/documents/:documentType/download", auth, onlyAdmin, 
     const docInfo = docArray[idx];
     console.log(`[DOWNLOAD] Informações do documento [${idx}]:`, JSON.stringify(docInfo));
 
-    // Se tem ID do Google Drive, baixa de lá
-    if (docInfo && docInfo.id) {
-      console.log(`[DOWNLOAD] Documento encontrado no Google Drive: ${docInfo.id}`);
-      try {
-        const { google } = require('googleapis');
-        const { getOAuth2Client, ensureFreshCredentials } = require('../storage/gdrive');
-        const auth = getOAuth2Client();
-        const drive = google.drive({ version: 'v3', auth });
-
-        console.log(`[DOWNLOAD] Requisitando arquivo do Google Drive: ${docInfo.id}`);
-
-        // Garantir token válido (pode refrescar automaticamente e persistir)
-        try { await ensureFreshCredentials(auth); } catch (e) { console.warn('[DOWNLOAD] Falha ao garantir token fresco:', e.message || e); }
-
-        // Função para tentar baixar, com retry simples em caso de erro de autenticação
-        let tried = 0;
-        const tryDownload = async () => {
-          tried += 1;
-          try {
-            const driveRes = await drive.files.get({ fileId: docInfo.id, alt: 'media' }, { responseType: 'stream' });
-            const filename = docInfo.name || (delivery.deliveryNumber + '_' + documentType + '.jpg');
-            res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-            console.log(`[DOWNLOAD] ✓ Início do stream do Google Drive: ${filename}`);
-            driveRes.data.pipe(res);
-            return true;
-          } catch (err) {
-            const msg = err && err.message ? err.message : String(err);
-            console.error(`[DOWNLOAD] ✗ Erro ao baixar do Google Drive (tentativa ${tried}):`, msg);
-            // Se for erro de autorização, tenta forçar refresh e tentar novamente uma vez
-            if (tried < 2 && (err && (err.code === 401 || err.code === 403 || /Invalid Credentials|insufficient permission|insufficientPermissions/i.test(msg)))) {
-              try {
-                console.log('[DOWNLOAD] Tentando refresh de credenciais e retry...');
-                await ensureFreshCredentials(auth);
-                return await tryDownload();
-              } catch (e) {
-                console.error('[DOWNLOAD] Retry falhou:', e && e.message ? e.message : e);
-              }
-            }
-            // Se não conseguiu, lança para ser tratado mais acima
-            throw err;
-          }
-        };
-
-        await tryDownload();
-      } catch (err) {
-        console.error(`[DOWNLOAD] ✗ Erro ao baixar do Google Drive:`, err && err.message ? err.message : err);
-        return res.status(500).json({ message: 'Erro ao baixar do Google Drive', error: err && err.message ? err.message : String(err) });
-      }
-    } 
+    // Se tem URL do R2, redireciona
+    if (docInfo && docInfo.url) {
+      console.log(`[DOWNLOAD] Documento encontrado em R2: ${docInfo.url}`);
+      const filename = docInfo.name || (delivery.deliveryNumber + '_' + documentType);
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      return res.redirect(docInfo.url);
+    }
     // Se tem caminho local, serve do disco
     else if (docInfo && docInfo.path) {
       console.log(`[DOWNLOAD] Documento encontrado localmente: ${docInfo.path}`);
@@ -549,10 +507,6 @@ router.get('/deliveries/:id/documents/zip', auth, onlyAdmin, async (req, res) =>
     });
     archive.pipe(res);
 
-    const { google } = require('googleapis');
-    const { getOAuth2Client } = require('../storage/gdrive');
-    let driveClient = null;
-
     // Lista de arquivos faltando
     let missing = [];
     let addedCount = 0;
@@ -561,28 +515,34 @@ router.get('/deliveries/:id/documents/zip', auth, onlyAdmin, async (req, res) =>
       const { doc, docType, idx } = item;
       let added = false;
 
-      // Tenta Google Drive primeiro (se tem ID)
-      if (doc.id) {
+      // Tenta R2 primeiro (se tem URL)
+      if (doc.url) {
         try {
-          console.log(`[ZIP] Tentando adicionar do Google Drive: ${docType}[${idx}] (ID: ${doc.id})`);
+          console.log(`[ZIP] Tentando adicionar do R2: ${docType}[${idx}] (URL: ${doc.url})`);
           
-          if (!driveClient) {
-            driveClient = google.drive({ version: 'v3', auth: getOAuth2Client() });
-          }
-          
-          const driveRes = await driveClient.files.get({
-            fileId: doc.id,
-            alt: 'media'
-          }, { responseType: 'stream' });
+          // Faz download da URL e adiciona ao ZIP
+          const https = require('https');
+          const http = require('http');
+          const protocol = doc.url.startsWith('https') ? https : http;
           
           const filename = doc.name || `${docType}_${idx}`;
-          archive.append(driveRes.data, { name: path.join(delivery.deliveryNumber, filename) });
-          addedCount++;
-          added = true;
-          console.log(`[ZIP] ✓ Adicionado do Google Drive: ${filename}`);
+          
+          await new Promise((resolve, reject) => {
+            protocol.get(doc.url, (res) => {
+              if (res.statusCode !== 200) {
+                reject(new Error(`HTTP ${res.statusCode}`));
+                return;
+              }
+              archive.append(res, { name: path.join(delivery.deliveryNumber, filename) });
+              addedCount++;
+              added = true;
+              console.log(`[ZIP] ✓ Adicionado do R2: ${filename}`);
+              resolve();
+            }).on('error', reject);
+          });
         } catch (err) {
-          console.error(`[ZIP] ✗ Falha do Google Drive para ${docType}[${idx}]:`, err.message);
-          missing.push(`${docType}[${idx}] (Google Drive: ${doc.id})`);
+          console.error(`[ZIP] ✗ Falha do R2 para ${docType}[${idx}]:`, err.message);
+          missing.push(`${docType}[${idx}] (R2: ${doc.url})`);
         }
       }
 
@@ -624,8 +584,8 @@ router.get('/deliveries/:id/documents/zip', auth, onlyAdmin, async (req, res) =>
         }
       }
 
-      if (!added && !doc.id && !doc.path) {
-        console.warn(`[ZIP] Documento sem ID nem path: ${docType}[${idx}]`, doc);
+      if (!added && !doc.url && !doc.path) {
+        console.warn(`[ZIP] Documento sem URL nem path: ${docType}[${idx}]`, doc);
         missing.push(`${docType}[${idx}] (Sem dados)`);
       }
     }

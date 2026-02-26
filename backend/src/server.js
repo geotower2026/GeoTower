@@ -121,6 +121,8 @@ app.use("/api/admin/reconciliation", require("./routes/reconciliation"));
 app.use("/api/gdrive", require("./routes/gdrive-auth-web"));
 // Meta routes (version/debug)
 app.use("/api/meta", require("./routes/meta"));
+// Uploads to Cloudflare R2 via S3-compatible API
+app.use("/api", require("./routes/uploadR2"));
 
 // Health check
 app.get("/api/health", (req, res) => {

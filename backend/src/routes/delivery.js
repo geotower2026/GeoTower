@@ -332,28 +332,7 @@ router.post("/:id/documents/:type", auth, upload.array("file"), async (req, res)
       docs[type] = [docs[type]];
     }
 
-    const savedDriveFiles = [];
-    let uploadFileToDrive = null;
-    let createOrFindDeliveryFolder = null;
-    let deliveryFolderId = null;
-    
-    try {
-      uploadFileToDrive = require("../storage/gdrive").uploadFileToDrive;
-      createOrFindDeliveryFolder = require("../storage/gdrive").createOrFindDeliveryFolder;
-    } catch (err) {
-      console.warn('[UPLOAD] Google Drive module unavailable:', err && err.message ? err.message : err);
-    }
-
-    // Criar ou encontrar pasta da entrega no Google Drive
-    if (typeof createOrFindDeliveryFolder === 'function') {
-      try {
-        deliveryFolderId = await createOrFindDeliveryFolder(delivery.deliveryNumber);
-        console.log(`[UPLOAD] ✓ Pasta de entrega obtida no Drive: ${deliveryFolderId}`);
-      } catch (err) {
-        console.warn('[UPLOAD] ⚠️ Falha ao criar/encontrar pasta de entrega:', err && err.message ? err.message : err);
-        // Continuar mesmo assim, os arquivos serão salvos na raiz da pasta principal
-      }
-    }
+    const savedFiles = [];
 
     if (req.files && req.files.length) {
       for (let idx = 0; idx < req.files.length; idx++) {
@@ -364,54 +343,50 @@ router.post("/:id/documents/:type", auth, upload.array("file"), async (req, res)
         
         let fileEntry = null;
         
-        // Try Google Drive first
-        if (typeof uploadFileToDrive === 'function') {
-          try {
-            console.log(`[UPLOAD] Tentando Google Drive...`);
-            const fileBuffer = file.buffer || fs.readFileSync(file.path);
-            const driveFile = await uploadFileToDrive(fileBuffer, finalFilename, file.mimetype, deliveryFolderId);
-            fileEntry = { id: driveFile.id, name: finalFilename, link: driveFile.webViewLink || driveFile.webContentLink };
-            console.log(`[UPLOAD] ✓ Google Drive OK: ${finalFilename} (ID: ${driveFile.id})`);
-          } catch (err) {
-            console.warn(`[UPLOAD] ⚠️  Google Drive FALHOU:`, err && err.message ? err.message : err);
-            console.warn(`[UPLOAD] Motivo: ${err && err.code ? 'HTTP ' + err.code + ' - ' : ''}${err && err.message ? err.message : 'erro desconhecido'}`);
-            console.warn(`[UPLOAD] ⚠️  Fazendo fallback para armazenamento local...`);
-          }
-        }
-        else {
-          console.warn(`[UPLOAD] ⚠️  Google Drive module não disponível (uploadFileToDrive não é função)`);
+        // Try R2 (Cloudflare) first
+        try {
+          console.log(`[UPLOAD] Tentando Cloudflare R2...`);
+          const r2Storage = require('../storage/r2');
+          const fileBuffer = file.buffer || fs.readFileSync(file.path);
+          const r2Key = `uploads/${delivery.deliveryNumber}/${finalFilename}`;
+          const r2Url = await r2Storage.uploadBuffer(fileBuffer, r2Key, file.mimetype);
+          fileEntry = { name: finalFilename, url: r2Url, storage: 'r2', key: r2Key };
+          console.log(`[UPLOAD] ✓ R2 OK: ${finalFilename} (URL: ${r2Url})`);
+        } catch (err) {
+          console.warn(`[UPLOAD] ⚠️ R2 FALHOU:`, err && err.message ? err.message : err);
+          console.warn(`[UPLOAD] ⚠️ Fazendo fallback para armazenamento local...`);
         }
         
-        // If Google Drive failed or unavailable, use local storage
+        // If R2 failed, use local storage as fallback
         if (!fileEntry) {
           try {
             const dest = path.join(containerDir, finalFilename);
             const fileBuffer = file.buffer || fs.readFileSync(file.path);
             fs.writeFileSync(dest, fileBuffer);
             fileEntry = { name: finalFilename, path: path.join(city, containerFolder, finalFilename), storage: 'local' };
-            console.log(`[UPLOAD] ✓ Arquivo salvo LOCALMENTE (não foi para Drive): ${finalFilename}`);
+            console.log(`[UPLOAD] ✓ Arquivo salvo LOCALMENTE (fallback): ${finalFilename}`);
           } catch (err) {
             console.error(`[UPLOAD] ✗ Local save falhou:`, err && err.message ? err.message : err);
             continue; // skip this file
           }
         }
         
-        // Add the entry (either Google Drive or local)
+        // Add the entry (either R2 or local)
         if (fileEntry) {
-          savedDriveFiles.push(fileEntry);
-          console.log(`[UPLOAD] ✅ Arquivo ${idx + 1} adicionado a savedDriveFiles. Total: ${savedDriveFiles.length}`);
+          savedFiles.push(fileEntry);
+          console.log(`[UPLOAD] ✅ Arquivo ${idx + 1} adicionado. Total: ${savedFiles.length}`);
         }
       }
       
       console.log(`[UPLOAD] ===== RESUMO DO UPLOAD =====`);
       console.log(`[UPLOAD] Arquivos recebidos: ${req.files.length}`);
-      console.log(`[UPLOAD] Arquivos salvos com sucesso: ${savedDriveFiles.length}`);
+      console.log(`[UPLOAD] Arquivos salvos com sucesso: ${savedFiles.length}`);
       console.log(`[UPLOAD] Tipo de documento: ${type}`);
-      console.log(`[UPLOAD] savedDriveFiles:`, JSON.stringify(savedDriveFiles));
+      console.log(`[UPLOAD] savedFiles:`, JSON.stringify(savedFiles));
 
-      if (req.files.length > 0 && savedDriveFiles.length === 0) {
+      if (req.files.length > 0 && savedFiles.length === 0) {
         console.error('[UPLOAD] Nenhum arquivo foi salvo durante upload. Aborting.');
-        return res.status(500).json({ message: 'Erro ao fazer upload: nenhum arquivo salvo (verifique configuração de Google Drive ou permissão de pasta)' });
+        return res.status(500).json({ message: 'Erro ao fazer upload: nenhum arquivo salvo (verifique configuração de R2 ou armazenamento local)' });
       }
 
       // Merge existing docs and newly saved files
@@ -425,17 +400,17 @@ router.post("/:id/documents/:type", auth, upload.array("file"), async (req, res)
       }
       existing = Array.isArray(existing) ? existing : (existing ? [existing] : []);
 
-      // Combine and deduplicate by unique identifier (prefer id or path)
-      const allFiles = [...existing, ...savedDriveFiles];
+      // Combine and deduplicate by unique identifier (prefer url or path)
+      const allFiles = [...existing, ...savedFiles];
       const deduped = [];
       const seen = new Set();
       
-      console.log(`[UPLOAD] Antes dedup - existing: ${existing.length}, savedDriveFiles: ${savedDriveFiles.length}, total: ${allFiles.length}`);
+      console.log(`[UPLOAD] Antes dedup - existing: ${existing.length}, savedFiles: ${savedFiles.length}, total: ${allFiles.length}`);
       
       for (const item of allFiles) {
         if (!item) continue;
-        // Use id (Google Drive) or path (local) as unique key
-        const uniqueKey = item.id || item.path || item.link || JSON.stringify(item);
+        // Use url (R2) or path (local) as unique key
+        const uniqueKey = item.url || item.path || item.link || JSON.stringify(item);
         if (seen.has(uniqueKey)) {
           console.log(`[UPLOAD] Dedupe: pulando item duplicado (key: ${uniqueKey})`);
           continue;
