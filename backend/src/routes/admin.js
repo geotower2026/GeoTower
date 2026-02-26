@@ -1357,14 +1357,29 @@ router.get("/programacoes", auth, async (req, res) => {
 
     // vincular id de entrega correspondente (se existir)
     const enriched = (programacoes || []).map(p => {
+      const obj = p.toObject ? p.toObject() : { ...p };
+      // se já temos um vínculo gravado, mantenha
+      if (obj.linkedDeliveryId) {
+        // também copie eventual lista de documentos pendentes se disponível
+        if (obj.linkedDeliveryId && obj.missingDocumentsAtSubmit === undefined) {
+          const existing = allDeliveries.find(d => String(d._id) === String(obj.linkedDeliveryId));
+          if (existing) {
+            obj.missingDocumentsAtSubmit = existing.missingDocumentsAtSubmit || [];
+          }
+        }
+        return obj;
+      }
+      // senão tente descobrir pela comparação de números
       const match = allDeliveries.find(d => {
         const num = String(d.deliveryNumber || '').trim().toUpperCase();
         const proc = String(p.processo || '').trim().toUpperCase();
         const cont = String(p.container || '').trim().toUpperCase();
         return (num && (num === proc || num === cont));
       });
-      const obj = p.toObject ? p.toObject() : { ...p };
       obj.linkedDeliveryId = match ? match._id : null;
+      if (match) {
+        obj.missingDocumentsAtSubmit = match.missingDocumentsAtSubmit || [];
+      }
       return obj;
     });
 
