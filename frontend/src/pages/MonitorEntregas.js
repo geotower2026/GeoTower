@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../services/authContext';
 import { useNavigate } from 'react-router-dom';
 import Toast from '../components/Toast';
 import { adminService } from '../services/authService';
-import { FaArrowLeft, FaEye, FaDownload, FaSync, FaFilter, FaTimes, FaTrash, FaEdit, FaEllipsisV, FaExclamationTriangle } from 'react-icons/fa';
+import { FaArrowLeft, FaEye, FaDownload, FaSync, FaFilter, FaTimes, FaTrash, FaEdit, FaExclamationTriangle } from 'react-icons/fa';
 import manaConfig from '../config/cities/manaus.json';
 import itajaiConfig from '../config/cities/itajai.json';
 
@@ -30,9 +30,6 @@ const MonitorEntregas = () => {
   const [alertInfo, setAlertInfo] = useState(null); // Para tooltip/modal de alerta
   const [refreshInterval, setRefreshInterval] = useState(30);
   const [editingDelivery, setEditingDelivery] = useState(null);
-  const [openMenuId, setOpenMenuId] = useState(null);
-  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
-  const menuRef = useRef(null);
   const [sortBy, setSortBy] = useState(null); // e.g. 'deliveryNumber' or 'createdAt'
   const [sortDir, setSortDir] = useState('asc');
   const [editForm, setEditForm] = useState({
@@ -187,15 +184,18 @@ const MonitorEntregas = () => {
       });
     }
 
-    // Filtro de status customizado
+    // Filtro de status customizado - IGNORADO quando período específico é selecionado
     let filtered = result;
-    if (filters.status && filters.status !== 'all') {
-      filtered = filtered.filter(d => {
-        if (filters.status === 'OPERACAO_FINALIZADA') return d.status === 'ENTREGUE' || d.status === 'submitted';
-        if (filters.status === 'A CAMINHO DO CLIENTE') return d.status === 'pending' || d.status === 'PENDING';
-        if (filters.status === 'AGENDADO') return d.status === 'AGENDADO';
-        return d.status === filters.status;
-      });
+    if (statsPeriod === 'general') {
+      // Apenas aplica filtro de status quando no modo 'general'
+      if (filters.status && filters.status !== 'all') {
+        filtered = filtered.filter(d => {
+          if (filters.status === 'OPERACAO_FINALIZADA') return d.status === 'ENTREGUE' || d.status === 'submitted';
+          if (filters.status === 'A CAMINHO DO CLIENTE') return d.status === 'pending' || d.status === 'PENDING';
+          if (filters.status === 'AGENDADO') return d.status === 'AGENDADO';
+          return d.status === filters.status;
+        });
+      }
     }
 
     // Filtro de texto (Busca)
@@ -238,12 +238,12 @@ const MonitorEntregas = () => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       if (statsPeriod === 'today') {
-        // show deliveries scheduled today or earlier (future deliveries already handled by tomorrow)
+        // show deliveries scheduled exactly for today
         filtered = filtered.filter(d => {
           if (!d.dataAgendamento) return false;
           const dt = new Date(d.dataAgendamento);
           dt.setHours(0, 0, 0, 0);
-          return dt.getTime() <= today.getTime();
+          return dt.getTime() === today.getTime();
         });
       } else if (statsPeriod === 'tomorrow') {
         const tom = new Date(today);
@@ -268,17 +268,6 @@ const MonitorEntregas = () => {
 
     setFilteredDeliveries(filtered);
   }, [deliveries, filters, sortBy, sortDir, statsPeriod]);
-
-  // Fecha dropdown de ações ao clicar fora
-  useEffect(() => {
-    const handleDocClick = (e) => {
-      if (openMenuId && menuRef.current && !menuRef.current.contains(e.target)) {
-        setOpenMenuId(null);
-      }
-    };
-    document.addEventListener('click', handleDocClick);
-    return () => document.removeEventListener('click', handleDocClick);
-  }, [openMenuId]);
 
   const handleDownload = async (deliveryId, documentType) => {
     try {
@@ -760,37 +749,14 @@ const MonitorEntregas = () => {
                         {getDocumentsStatus(delivery)}
                       </span>
                     </td>
-                    <td className="px-2 py-2 text-center relative">
+                    <td className="px-2 py-2 text-center">
                       <button
-                        onClick={(e) => {
-                          setOpenMenuId(openMenuId === delivery._id ? null : delivery._id);
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          setMenuPosition({ top: rect.bottom + 5, left: rect.left });
-                        }}
-                        className="inline-flex items-center justify-center w-8 h-8 rounded-full hover:bg-gray-200 text-gray-600 transition text-sm"
-                        title="Menu de ações"
-                        ref={menuRef}
+                        onClick={() => setSelectedDelivery(delivery)}
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-full hover:bg-purple-200 text-purple-600 transition text-sm hover:text-purple-800"
+                        title="Visualizar"
                       >
-                        <FaEllipsisV size={16} />
+                        <FaEye size={16} />
                       </button>
-                      {openMenuId === delivery._id && (
-                        <div
-                          className="absolute bg-white border border-gray-200 rounded-lg shadow-lg z-40 mt-0 min-w-[120px] whitespace-nowrap"
-                          style={{ top: `calc(100% + 5px)`, right: 0 }}
-                        >
-                          <button
-                            onClick={() => {
-                              setSelectedDelivery(delivery);
-                              setOpenMenuId(null);
-                            }}
-                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 border-b border-gray-100"
-                          >
-                            <FaEye className="inline mr-2" /> Visualizar
-                          </button>
-                          {/* only view and download zip in actions, editing/deleting moved elsewhere */}
-
-                        </div>
-                      )}
                     </td>
                   </tr>
                 ))}
