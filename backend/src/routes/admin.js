@@ -168,12 +168,37 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
 
     if (effectiveDate) {
       console.log('📅 Filtrando para data efetiva:', effectiveDate);
+      // parse effectiveDate dd/mm/yyyy into year/month/day
+      const [edDay, edMonth, edYear] = effectiveDate.split('/').map(Number);
       deliveriesWithProgramacao = deliveriesWithProgramacao.filter(d => {
         if (!d.dataAgendamento) return false;
-        const progDate = String(d.dataAgendamento).trim();
-        const dateOnly = progDate.split(' ')[0]; // Remove horário se houver
-        const match = dateOnly === effectiveDate;
-        if (match) console.log(`   ✓ "${progDate}" corresponde a ${effectiveDate}`);
+        const progDateStr = String(d.dataAgendamento).trim();
+        // try parse various possible formats
+        let pd;
+        // if contains slash assume dd/mm/yyyy (or dd/mm/yyyy hh:mm)
+        if (/\d{2}\/\d{2}\/\d{4}/.test(progDateStr)) {
+          const parts = progDateStr.split(' ')[0].split('/');
+          const day = Number(parts[0]);
+          const month = Number(parts[1]);
+          const year = Number(parts[2]);
+          pd = { day, month, year };
+        } else if (/\d{4}-\d{2}-\d{2}/.test(progDateStr)) {
+          // ISO 2026-02-26
+          const parts = progDateStr.split('T')[0].split('-');
+          const year = Number(parts[0]);
+          const month = Number(parts[1]);
+          const day = Number(parts[2]);
+          pd = { day, month, year };
+        } else {
+          // fallback: attempt Date parse
+          const tmp = new Date(progDateStr);
+          if (!isNaN(tmp)) {
+            pd = { day: tmp.getDate(), month: tmp.getMonth()+1, year: tmp.getFullYear() };
+          }
+        }
+        if (!pd) return false;
+        const match = pd.day === edDay && pd.month === edMonth && pd.year === edYear;
+        if (match) console.log(`   ✓ "${progDateStr}" corresponde a ${effectiveDate}`);
         return match;
       });
       console.log(`  ✓ ${deliveriesWithProgramacao.length} entregas após filtro de data`);
