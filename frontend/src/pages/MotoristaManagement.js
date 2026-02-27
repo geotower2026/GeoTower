@@ -560,9 +560,30 @@ const MotoristaManagement = () => {
                       />
                     </div>
 
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Rastreador cavalo</label>
+                      <input
+                        type="text"
+                        value={formData.rastreadorCavalo}
+                        onChange={(e) => setFormData({ ...formData, rastreadorCavalo: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Ex: SASCAR"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Exp. cadastro cavalo</label>
+                      <input
+                        type="date"
+                        value={formData.expCadastroCavalo}
+                        onChange={(e) => setFormData({ ...formData, expCadastroCavalo: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Rastreador da carreta
+                      Rastreador carreta
                     </label>
                     <input
                       type="text"
