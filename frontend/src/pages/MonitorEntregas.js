@@ -97,6 +97,38 @@ const MonitorEntregas = () => {
     return { tempo, isActive };
   };
 
+  // Gera um histórico ordenado das principais etapas do fluxo
+  const getFlowHistory = (delivery) => {
+    const events = [];
+    if (delivery.containerMontadoAt) {
+      events.push({
+        label: 'Montagem do container finalizada',
+        date: delivery.containerMontadoAt
+      });
+    }
+    if (delivery.horarioChegada) {
+      events.push({
+        label: 'Chegada',
+        date: delivery.horarioChegada
+      });
+    }
+    if (delivery.horarioInicioDesova) {
+      events.push({
+        label: 'Início da desova',
+        date: delivery.horarioInicioDesova
+      });
+    }
+    if (delivery.horarioFimDesova) {
+      events.push({
+        label: 'Fim da desova',
+        date: delivery.horarioFimDesova
+      });
+    }
+    // ordena cronologicamente
+    events.sort((a, b) => new Date(a.date) - new Date(b.date));
+    return events;
+  };
+
   // Stats rápidas
   // total = número de programações retornadas (agendadas)
   // statusCounts = mapa de cada status para sua contagem
@@ -106,6 +138,9 @@ const MonitorEntregas = () => {
     statusCounts: {},
     byDriver: 0
   });
+
+  // Quando existe uma entrega selecionada, fornece o histórico de etapas para renderizar
+  const flowHistory = selectedDelivery ? getFlowHistory(selectedDelivery) : [];
 
   // Semantic color map for dashboard visibility
   const cardColors = {
@@ -958,19 +993,31 @@ const MonitorEntregas = () => {
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase">Chegada</p>
-                  <p className="text-base text-gray-700">{selectedDelivery.horarioChegada ? new Date(selectedDelivery.horarioChegada).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}</p>
+                  <p className="text-base text-gray-700">
+                    {selectedDelivery.horarioChegada
+                      ? new Date(selectedDelivery.horarioChegada).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+                      : '-'}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase">Início Desova</p>
-                  <p className="text-base text-gray-700">{selectedDelivery.horarioInicioDesova ? new Date(selectedDelivery.horarioInicioDesova).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}</p>
+                  <p className="text-base text-gray-700">
+                    {selectedDelivery.horarioInicioDesova
+                      ? new Date(selectedDelivery.horarioInicioDesova).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+                      : '-'}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase">Fim Desova</p>
-                  <p className="text-base text-gray-700">{selectedDelivery.horarioFimDesova ? new Date(selectedDelivery.horarioFimDesova).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}</p>
+                  <p className="text-base text-gray-700">
+                    {selectedDelivery.horarioFimDesova
+                      ? new Date(selectedDelivery.horarioFimDesova).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+                      : '-'}
+                  </p>
                 </div>
               </div>
 
-              {(selectedDelivery.observations || selectedDelivery.observacoes || selectedDelivery.documentsJustification || selectedDelivery.submissionObservation) && (
+              {(selectedDelivery.observations || selectedDelivery.observacoes || selectedDelivery.documentsJustification || selectedDelivery.submissionObservation || flowHistory.length > 0) && (
                 <div className="space-y-2">
                   <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded shadow-sm">
                     <p className="text-xs font-bold text-blue-800 uppercase mb-1">📝 Observações do Fluxo</p>
@@ -980,7 +1027,13 @@ const MonitorEntregas = () => {
                     {selectedDelivery.observacoes && (
                       <p className="text-gray-800 text-sm whitespace-pre-wrap">{selectedDelivery.observacoes}</p>
                     )}
-                    {!selectedDelivery.observations && !selectedDelivery.observacoes && (
+                    {/* renderir histórico automático baseado nas timestamps */}
+                    {flowHistory.map((ev, idx) => (
+                      <p key={idx} className="text-gray-800 text-sm">
+                        {ev.label} em {new Date(ev.date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                      </p>
+                    ))}
+                    {!selectedDelivery.observations && !selectedDelivery.observacoes && flowHistory.length === 0 && (
                       <p className="text-gray-600 text-sm">-</p>
                     )}
                   </div>
