@@ -388,44 +388,84 @@ const MonitorEntregas = () => {
   };
 
   // gera um PDF com informações da entrega para compartilhar/exportar
-  const handleShareDelivery = () => {
-    if (!selectedDelivery) return;
-    const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.text('GeoTransportes', 105, 20, { align: 'center' });
-
-    const rows = [];
-    const addRow = (label, value) => rows.push([label, value || '-']);
-
-    addRow('Número', selectedDelivery.deliveryNumber);
-    addRow('Contratado', selectedDelivery.userName);
-    addRow('Motorista', selectedDelivery.driverName);
-    addRow('Placa', selectedDelivery.vehiclePlate);
-    addRow('Status', formatStatus(selectedDelivery.status));
-    addRow('Agendamento', selectedDelivery.dataAgendamento ? new Date(selectedDelivery.dataAgendamento).toLocaleString('pt-BR') : '-');
-    addRow('Montagem container', selectedDelivery.containerMontadoAt ? new Date(selectedDelivery.containerMontadoAt).toLocaleString('pt-BR') : '-');
-    addRow('Chegada', selectedDelivery.horarioChegada ? new Date(selectedDelivery.horarioChegada).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-');
-    addRow('Início desova', selectedDelivery.horarioInicioDesova ? new Date(selectedDelivery.horarioInicioDesova).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-');
-    addRow('Fim desova', selectedDelivery.horarioFimDesova ? new Date(selectedDelivery.horarioFimDesova).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-');
-
-    const history = getFlowHistory(selectedDelivery);
-    if (history.length > 0) {
-      history.forEach(ev => addRow(ev.label, new Date(ev.date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })));
+  const handleShareDelivery = async () => {
+    console.debug('handleShareDelivery invoked', selectedDelivery);
+    if (!selectedDelivery) {
+      setToast({ type: 'error', message: 'Nenhuma entrega selecionada' });
+      return;
     }
 
-    if (selectedDelivery.observations) addRow('Observações', selectedDelivery.observations);
-    if (selectedDelivery.observacoes) addRow('Observações (alt.)', selectedDelivery.observacoes);
-    if (selectedDelivery.documentsJustification) addRow('Justificativa docs', selectedDelivery.documentsJustification);
-    if (selectedDelivery.submissionObservation) addRow('Obs. submissão', selectedDelivery.submissionObservation);
+    try {
+      const doc = new jsPDF({ unit: 'pt' });
 
-    doc.autoTable({
-      startY: 30,
-      head: [['Campo', 'Valor']],
-      body: rows,
-      styles: { fontSize: 10 }
-    });
+      // tenta carregar logo da pasta pública
+      const loadImage = (url) =>
+        new Promise((resolve) => {
+          const img = new Image();
+          img.crossOrigin = 'Anonymous';
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            resolve(canvas.toDataURL('image/png'));
+          };
+          img.onerror = () => resolve(null);
+          img.src = url;
+        });
 
-    doc.save(`Entrega_${selectedDelivery.deliveryNumber}.pdf`);
+      const logoUrl = await loadImage('/images/geotransporteslogo.png');
+      if (logoUrl) {
+        // centraliza logo no topo com largura máxima de 100pt
+        const imgProps = doc.getImageProperties(logoUrl);
+        const w = 100;
+        const h = (imgProps.height * w) / imgProps.width;
+        const x = (doc.internal.pageSize.getWidth() - w) / 2;
+        doc.addImage(logoUrl, 'PNG', x, 20, w, h);
+      }
+
+      doc.setFontSize(16);
+      doc.text('Detalhes da Entrega', doc.internal.pageSize.getWidth() / 2, 60, { align: 'center' });
+
+      const rows = [];
+      const addRow = (label, value) => rows.push([label, value || '-']);
+
+      addRow('Número', selectedDelivery.deliveryNumber);
+      addRow('Contratado', selectedDelivery.userName);
+      addRow('Motorista', selectedDelivery.driverName);
+      addRow('Placa', selectedDelivery.vehiclePlate);
+      addRow('Status', formatStatus(selectedDelivery.status));
+      addRow('Agendamento', selectedDelivery.dataAgendamento ? new Date(selectedDelivery.dataAgendamento).toLocaleString('pt-BR') : '-');
+      addRow('Montagem container', selectedDelivery.containerMontadoAt ? new Date(selectedDelivery.containerMontadoAt).toLocaleString('pt-BR') : '-');
+      addRow('Chegada', selectedDelivery.horarioChegada ? new Date(selectedDelivery.horarioChegada).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-');
+      addRow('Início desova', selectedDelivery.horarioInicioDesova ? new Date(selectedDelivery.horarioInicioDesova).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-');
+      addRow('Fim desova', selectedDelivery.horarioFimDesova ? new Date(selectedDelivery.horarioFimDesova).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-');
+
+      const history = getFlowHistory(selectedDelivery);
+      if (history.length > 0) {
+        history.forEach(ev => addRow(ev.label, new Date(ev.date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })));
+      }
+
+      if (selectedDelivery.observations) addRow('Observações', selectedDelivery.observations);
+      if (selectedDelivery.observacoes) addRow('Observações (alt.)', selectedDelivery.observacoes);
+      if (selectedDelivery.documentsJustification) addRow('Justificativa docs', selectedDelivery.documentsJustification);
+      if (selectedDelivery.submissionObservation) addRow('Obs. submissão', selectedDelivery.submissionObservation);
+
+      doc.autoTable({
+        startY: logoUrl ? 100 : 80,
+        head: [['Campo', 'Valor']],
+        body: rows,
+        styles: { fontSize: 10 },
+        headStyles: { fillColor: [60, 60, 60] }
+      });
+
+      doc.save(`Entrega_${selectedDelivery.deliveryNumber}.pdf`);
+      setToast({ type: 'success', message: 'PDF gerado e baixado' });
+    } catch (err) {
+      console.error('Erro ao gerar PDF', err);
+      setToast({ type: 'error', message: 'Falha ao gerar PDF: ' + err.message });
+    }
   };
 
   const handleDelete = async (deliveryId) => {
