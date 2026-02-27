@@ -22,6 +22,54 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const [deliveries, setDeliveries] = useState([]);
   const [statistics, setStatistics] = useState(null);
+
+  // derived metrics for recebedores
+  const getCliMinutes = (delivery) => {
+    if (!delivery.horarioChegada) return null;
+    const chegada = new Date(delivery.horarioChegada);
+    const referencia = delivery.horarioFimDesova ? new Date(delivery.horarioFimDesova) : new Date();
+    const diff = referencia - chegada;
+    if (diff < 0) return null;
+    return diff / 60000; // minutes
+  };
+
+  const topRecebedores = React.useMemo(() => {
+    const counts = {};
+    deliveries.forEach(d => {
+      const key = d.recebedor || '-';
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([recebedor, count]) => ({ recebedor, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  }, [deliveries]);
+
+  const avgCliByRecebedor = React.useMemo(() => {
+    const sums = {};
+    const counts = {};
+    deliveries.forEach(d => {
+      const key = d.recebedor || '-';
+      const mins = getCliMinutes(d);
+      if (mins != null) {
+        sums[key] = (sums[key] || 0) + mins;
+        counts[key] = (counts[key] || 0) + 1;
+      }
+    });
+    const res = {};
+    Object.keys(sums).forEach(k => {
+      res[k] = sums[k] / counts[k];
+    });
+    return res;
+  }, [deliveries]);
+
+  const formatMinutes = (m) => {
+    if (m == null) return '-';
+    const h = Math.floor(m / 60);
+    const min = Math.round(m % 60);
+    if (h > 0) return `${h}h ${min}m`;
+    return `${min}m`;
+  };
   const [period, setPeriod] = useState('month');
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
@@ -118,7 +166,7 @@ const AdminDashboard = () => {
           Voltar
         </button>
 
-        <h2 className="text-3xl font-bold text-gray-800 mb-8">📊 Painel Administrativo</h2>
+        <h2 className="text-3xl font-bold text-gray-800 mb-8">Dashboard de Indicadores</h2>
 
         {/* Statistics Cards */}
         {statistics && (
@@ -212,6 +260,23 @@ const AdminDashboard = () => {
                 </ResponsiveContainer>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Top recebedores com média de tempo CLI */}
+        {deliveries.length > 0 && (
+          <div className="bg-white rounded-lg shadow p-6 mb-8">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">Top Recebedores &amp; Tempo médio no cliente</h3>
+            <ul className="space-y-2">
+              {topRecebedores.map(r => (
+                <li key={r.recebedor} className="flex justify-between">
+                  <span>{r.recebedor}</span>
+                  <span className="font-semibold">
+                    {r.count} entrega(s); média {formatMinutes(avgCliByRecebedor[r.recebedor])}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 
