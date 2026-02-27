@@ -70,6 +70,20 @@ const MonitorEntregas = () => {
   // Period filter for stats
   const [statsPeriod, setStatsPeriod] = useState('today'); // 'today', 'yesterday', 'tomorrow'
 
+  // Calcular tempo decorrido no cliente (chegada até fim desova)
+  const calculateCliTime = (delivery) => {
+    if (!delivery.horarioChegada || !delivery.horarioFimDesova) return null;
+    const chegada = new Date(delivery.horarioChegada);
+    const fim = new Date(delivery.horarioFimDesova);
+    const diffMs = fim - chegada;
+    if (diffMs < 0) return null;
+    const totalMinutos = Math.floor(diffMs / 60000);
+    const horas = Math.floor(totalMinutos / 60);
+    const minutos = totalMinutos % 60;
+    if (horas > 0) return `${horas}h ${minutos}m`;
+    return `${minutos}m`;
+  };
+
   // Stats rápidas
   // total = número de programações retornadas (agendadas)
   // statusCounts = mapa de cada status para sua contagem
@@ -80,27 +94,27 @@ const MonitorEntregas = () => {
     byDriver: 0
   });
 
-  // Semantic color map for dashboard visibility - Cores profissionais alinhadas com identidade da empresa
+  // Semantic color map for dashboard visibility
   const cardColors = {
-    // Programadas = Azul corporativo
-    PROGRAMADAS: 'from-blue-700 to-blue-900 text-white border-blue-950 shadow-lg',
-    // Em andamento = Âmbar/Ouro profissional
-    AGENDADO: 'from-yellow-600 to-amber-700 text-white border-amber-900 shadow-lg',
-    'A CAMINHO DO CLIENTE': 'from-yellow-600 to-amber-700 text-white border-amber-900 shadow-lg',
-    'CONTAINER MONTADO': 'from-yellow-600 to-amber-700 text-white border-amber-900 shadow-lg',
-    // Em desova = Púrpura corporativo
-    'EM DESOVA': 'from-purple-600 to-purple-800 text-white border-purple-900 shadow-lg',
-    // Pendência = Laranja queimado
-    'AGUARDANDO DESOVA': 'from-orange-600 to-red-700 text-white border-red-900 shadow-lg',
-    'ENTREGUE COM PENDENCIA CANHOTO': 'from-orange-600 to-red-700 text-white border-red-900 shadow-lg',
-    // Documentos = Teal/Turquesa profissional
-    'ANEXANDO DOCUMENTOS FINAIS': 'from-cyan-600 to-teal-700 text-white border-teal-900 shadow-lg',
-    // Finalizado = Verde escuro forte
-    ENTREGUE: 'from-green-700 to-green-900 text-white border-green-950 shadow-lg',
+    // Programadas = Azul escuro profissional
+    PROGRAMADAS: 'from-blue-600 to-blue-800 text-white border-blue-900',
+    // Em andamento = Âmbar/Dourado
+    AGENDADO: 'from-amber-500 to-amber-700 text-white border-amber-800',
+    'A CAMINHO DO CLIENTE': 'from-amber-500 to-amber-700 text-white border-amber-800',
+    'CONTAINER MONTADO': 'from-amber-500 to-amber-700 text-white border-amber-800',
+    // Em desova = Índigo profundo
+    'EM DESOVA': 'from-indigo-600 to-indigo-800 text-white border-indigo-900',
+    // Pendência = Laranja escuro
+    'AGUARDANDO DESOVA': 'from-orange-600 to-orange-800 text-white border-orange-900',
+    'ENTREGUE COM PENDENCIA CANHOTO': 'from-orange-600 to-orange-800 text-white border-orange-900',
+    // Documentos = Violeta
+    'ANEXANDO DOCUMENTOS FINAIS': 'from-violet-600 to-violet-800 text-white border-violet-900',
+    // Finalizado = Verde escuro
+    ENTREGUE: 'from-green-600 to-green-800 text-white border-green-900',
     // Problema = Vermelho escuro
-    CANCELADO: 'from-red-700 to-red-900 text-white border-red-950 shadow-lg',
-    MOTORISTAS: 'from-slate-700 to-slate-900 text-white border-slate-950 shadow-lg',
-    default: 'from-gray-700 to-gray-900 text-white border-gray-950 shadow-lg'
+    CANCELADO: 'from-red-600 to-red-800 text-white border-red-900',
+    MOTORISTAS: 'from-slate-600 to-slate-800 text-white border-slate-900',
+    default: 'from-gray-600 to-gray-800 text-white border-gray-900'
   };
 
   // (icons removed - only colors used now)
@@ -767,7 +781,7 @@ const MonitorEntregas = () => {
             <table className="w-full text-xs">
               <thead className="bg-gradient-to-r from-purple-100 to-purple-200 border-b-2 border-purple-400 sticky top-0">
                   <tr>
-                    <th className="px-2 py-2 text-left font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">Nº</th>
+                    <th className="px-2 py-2 text-left font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">CONTAINER</th>
                     <th className="px-2 py-2 text-left font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">CONTRATADO</th>
                     <th className="px-2 py-2 text-left font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">MOTORISTA</th>
                     <th className="px-2 py-2 text-left font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">RECEBEDOR</th>
@@ -778,7 +792,7 @@ const MonitorEntregas = () => {
                     <th className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">CHEGADA</th>
                     <th className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">INÍCIO</th>
                     <th className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">FIM</th>
-                    <th title="Status dos documentos: completo ou pendente" className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">DOCS</th>
+                    <th title="🟢 completo / 🔴 pendente" className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">DOCS 🟢🔴</th>
                     <th className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">AÇÕES</th>
                   </tr>
                 </thead>
@@ -824,32 +838,23 @@ const MonitorEntregas = () => {
                         );
                       })()}
                     </td>
-                    <td className="px-2 py-2 text-gray-600 whitespace-nowrap text-center">
-                      {delivery.dataAgendamento ? new Date(delivery.dataAgendamento).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-'}
-                    </td>
                     <td className="px-2 py-2 text-gray-600 whitespace-nowrap text-center font-semibold text-blue-600 bg-blue-50">
                       {delivery.containerMontadoAt ? new Date(delivery.containerMontadoAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-'}
+                    </td>
+                    <td className="px-2 py-2 text-gray-600 whitespace-nowrap text-center">
+                      {delivery.dataAgendamento ? new Date(delivery.dataAgendamento).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-'}
                     </td>
                     <td className="px-2 py-2 text-gray-700 whitespace-nowrap text-center">
                       {delivery.horarioChegada ? new Date(delivery.horarioChegada).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}
                     </td>
-                          {/* Modal/Tooltip de alerta */}
-                          {alertInfo && (
-                            <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-30">
-                              <div className="bg-white rounded-lg shadow-lg p-6 max-w-xs w-full flex flex-col items-center">
-                                <FaExclamationTriangle className="text-yellow-500 text-4xl mb-2" />
-                                <p className="text-gray-800 text-center font-semibold mb-4">{alertInfo.message}</p>
-                                <button
-                                  onClick={() => setAlertInfo(null)}
-                                  className="mt-2 px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition"
-                                >
-                                  Fechar
-                                </button>
-                              </div>
-                            </div>
-                          )}
                     <td className="px-2 py-2 text-gray-700 whitespace-nowrap text-center">{delivery.horarioInicioDesova ? new Date(delivery.horarioInicioDesova).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
                     <td className="px-2 py-2 text-gray-700 whitespace-nowrap text-center">{delivery.horarioFimDesova ? new Date(delivery.horarioFimDesova).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
+                    <td className="px-2 py-2 text-center font-semibold bg-amber-50">
+                      {(() => {
+                        const tempo = calculateCliTime(delivery);
+                        return tempo ? <span className="text-amber-700 font-bold">{tempo}</span> : <span className="text-gray-500">-</span>;
+                      })()}
+                    </td>
                     <td className="px-2 py-2 text-center">
                       {(() => {
                         const statusText = getDocumentsStatus(delivery);
