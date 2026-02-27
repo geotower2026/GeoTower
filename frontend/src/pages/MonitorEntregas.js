@@ -3,24 +3,261 @@ import { useAuth } from '../services/authContext';
 import { useNavigate } from 'react-router-dom';
 import Toast from '../components/Toast';
 import { adminService } from '../services/authService';
-import { FaArrowLeft, FaEye, FaDownload, FaSync, FaFilter, FaTimes, FaTrash, FaEdit, FaExclamationTriangle, FaShareAlt, FaCalendarAlt, FaClock, FaBox, FaTruck, FaCheckCircle, FaTimesCircle, FaFilePdf, FaUsers, FaDolly } from 'react-icons/fa';
+import {
+  FaArrowLeft, FaEye, FaDownload, FaSync, FaFilter, FaTimes,
+  FaTrash, FaEdit, FaExclamationTriangle, FaShareAlt, FaCalendarAlt,
+  FaClock, FaBox, FaTruck, FaCheckCircle, FaTimesCircle, FaFilePdf,
+  FaUsers, FaDolly, FaSearch, FaChevronDown, FaChevronRight,
+  FaExpand, FaBell, FaMapMarkerAlt
+} from 'react-icons/fa';
+import { MdLocalShipping, MdDashboard } from 'react-icons/md';
 import manaConfig from '../config/cities/manaus.json';
 import itajaiConfig from '../config/cities/itajai.json';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
+/* ─────────────────────────────────────────────────────────────
+   DESIGN TOKENS
+   ───────────────────────────────────────────────────────────── */
+const STATUS_CONFIG = {
+  AGENDADO: {
+    label: 'Agendado',
+    bg: 'bg-indigo-600',
+    light: 'bg-indigo-50',
+    text: 'text-indigo-700',
+    border: 'border-indigo-300',
+    badge: 'bg-indigo-100 text-indigo-800 border border-indigo-300',
+    icon: <FaCalendarAlt />,
+    gradient: 'from-indigo-500 to-indigo-700',
+    ring: 'ring-indigo-400/30',
+    dot: 'bg-indigo-500'
+  },
+  'CONTAINER MONTADO': {
+    label: 'Container Montado',
+    bg: 'bg-sky-600',
+    light: 'bg-sky-50',
+    text: 'text-sky-700',
+    border: 'border-sky-300',
+    badge: 'bg-sky-100 text-sky-800 border border-sky-300',
+    icon: <FaBox />,
+    gradient: 'from-sky-500 to-sky-700',
+    ring: 'ring-sky-400/30',
+    dot: 'bg-sky-500'
+  },
+  'A CAMINHO DO CLIENTE': {
+    label: 'A Caminho',
+    bg: 'bg-amber-500',
+    light: 'bg-amber-50',
+    text: 'text-amber-700',
+    border: 'border-amber-300',
+    badge: 'bg-amber-100 text-amber-800 border border-amber-300',
+    icon: <FaTruck />,
+    gradient: 'from-amber-400 to-amber-600',
+    ring: 'ring-amber-400/30',
+    dot: 'bg-amber-500'
+  },
+  'AGUARDANDO DESOVA': {
+    label: 'Aguard. Desova',
+    bg: 'bg-orange-500',
+    light: 'bg-orange-50',
+    text: 'text-orange-700',
+    border: 'border-orange-300',
+    badge: 'bg-orange-100 text-orange-800 border border-orange-300',
+    icon: <FaExclamationTriangle />,
+    gradient: 'from-orange-400 to-orange-600',
+    ring: 'ring-orange-400/30',
+    dot: 'bg-orange-500'
+  },
+  'EM DESOVA': {
+    label: 'Em Desova',
+    bg: 'bg-violet-600',
+    light: 'bg-violet-50',
+    text: 'text-violet-700',
+    border: 'border-violet-300',
+    badge: 'bg-violet-100 text-violet-800 border border-violet-300',
+    icon: <FaDolly />,
+    gradient: 'from-violet-500 to-violet-700',
+    ring: 'ring-violet-400/30',
+    dot: 'bg-violet-500'
+  },
+  'ANEXANDO DOCUMENTOS FINAIS': {
+    label: 'Anexando Docs',
+    bg: 'bg-pink-600',
+    light: 'bg-pink-50',
+    text: 'text-pink-700',
+    border: 'border-pink-300',
+    badge: 'bg-pink-100 text-pink-800 border border-pink-300',
+    icon: <FaFilePdf />,
+    gradient: 'from-pink-500 to-pink-700',
+    ring: 'ring-pink-400/30',
+    dot: 'bg-pink-500'
+  },
+  ENTREGUE: {
+    label: 'Entregue',
+    bg: 'bg-emerald-600',
+    light: 'bg-emerald-50',
+    text: 'text-emerald-700',
+    border: 'border-emerald-300',
+    badge: 'bg-emerald-100 text-emerald-800 border border-emerald-300',
+    icon: <FaCheckCircle />,
+    gradient: 'from-emerald-500 to-emerald-700',
+    ring: 'ring-emerald-400/30',
+    dot: 'bg-emerald-500'
+  },
+  CANCELADO: {
+    label: 'Cancelado',
+    bg: 'bg-gray-500',
+    light: 'bg-gray-50',
+    text: 'text-gray-600',
+    border: 'border-gray-300',
+    badge: 'bg-gray-100 text-gray-600 border border-gray-300',
+    icon: <FaTimesCircle />,
+    gradient: 'from-gray-400 to-gray-600',
+    ring: 'ring-gray-400/30',
+    dot: 'bg-gray-500'
+  }
+};
+
+const normalizeKey = (s) => {
+  if (!s) return '';
+  return s.replace(/_/g, ' ').toUpperCase().trim();
+};
+
+const resolveConfig = (rawStatus) => {
+  const key = normalizeKey(rawStatus);
+  if (key === 'ENTREGUE' || key === 'SUBMITTED' || key === 'ENTREGUE COM PENDENCIA CANHOTO')
+    return STATUS_CONFIG['ENTREGUE'];
+  if (key === 'PENDING' || key === 'A CAMINHO DO CLIENTE')
+    return STATUS_CONFIG['A CAMINHO DO CLIENTE'];
+  return STATUS_CONFIG[key] || null;
+};
+
+/* ─────────────────────────────────────────────────────────────
+   SMALL REUSABLE COMPONENTS
+   ───────────────────────────────────────────────────────────── */
+const Badge = ({ status }) => {
+  const cfg = resolveConfig(status);
+  const label = cfg?.label || normalizeKey(status);
+  const cls = cfg?.badge || 'bg-gray-100 text-gray-700 border border-gray-300';
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide whitespace-nowrap ${cls}`}>
+      {cfg?.icon && <span className="text-[10px]">{cfg.icon}</span>}
+      {label}
+    </span>
+  );
+};
+
+const StatCard = ({ label, value, icon, gradient, ring, onClick, pulse }) => (
+  <button
+    onClick={onClick}
+    className={`
+      relative overflow-hidden rounded-2xl p-5 flex flex-col items-start justify-between
+      bg-gradient-to-br ${gradient}
+      shadow-lg hover:shadow-2xl
+      ring-2 ${ring}
+      hover:-translate-y-1 hover:scale-[1.02]
+      transition-all duration-300 ease-out
+      text-white w-full group
+    `}
+  >
+    {/* glassmorphism sheen */}
+    <span className="absolute -top-6 -right-6 w-24 h-24 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-500" />
+    <span className="absolute -bottom-8 -left-4 w-20 h-20 bg-white/5 rounded-full" />
+
+    <div className="relative flex w-full items-start justify-between">
+      <span className="text-[11px] font-bold uppercase tracking-widest text-white/80 leading-tight max-w-[80%]">
+        {label}
+      </span>
+      <span className="text-white/70 text-xl">{icon}</span>
+    </div>
+    <div className="relative mt-3 flex items-end gap-1">
+      <span className={`text-4xl font-black tabular-nums ${pulse ? 'animate-pulse' : ''}`}>{value}</span>
+    </div>
+  </button>
+);
+
+const SectionTitle = ({ children, sub }) => (
+  <div className="mb-4">
+    <h2 className="text-sm font-extrabold text-gray-400 uppercase tracking-[0.2em]">{children}</h2>
+    {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
+  </div>
+);
+
+const Pill = ({ active, onClick, children, color = 'purple' }) => {
+  const base = 'px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2 border';
+  const on = {
+    purple: 'bg-purple-600 text-white border-purple-700 shadow-md shadow-purple-200',
+    indigo: 'bg-indigo-600 text-white border-indigo-700 shadow-md shadow-indigo-200',
+    gray:   'bg-gray-800 text-white border-gray-900 shadow-md shadow-gray-200',
+    blue:   'bg-blue-600 text-white border-blue-700 shadow-md shadow-blue-200',
+  };
+  const off = 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50';
+  return (
+    <button className={`${base} ${active ? on[color] : off}`} onClick={onClick}>
+      {children}
+    </button>
+  );
+};
+
+/* ─────────────────────────────────────────────────────────────
+   PROGRESS DOTS
+   ───────────────────────────────────────────────────────────── */
+const progressStatuses = [
+  'AGENDADO', 'CONTAINER MONTADO', 'A CAMINHO DO CLIENTE',
+  'AGUARDANDO DESOVA', 'EM DESOVA', 'ANEXANDO DOCUMENTOS FINAIS', 'ENTREGUE'
+];
+
+const getProgress = (delivery) => {
+  const key = normalizeKey(delivery.status);
+  const norm =
+    key === 'ENTREGUE' || key === 'SUBMITTED' || key === 'ENTREGUE COM PENDENCIA CANHOTO'
+      ? 'ENTREGUE'
+      : key === 'PENDING' || key === 'A CAMINHO DO CLIENTE'
+      ? 'A CAMINHO DO CLIENTE'
+      : key;
+  if (norm === 'CANCELADO' || !norm) return 0;
+  const idx = progressStatuses.indexOf(norm);
+  if (idx === -1) return 0;
+  return Math.round((idx / (progressStatuses.length - 1)) * 100);
+};
+
+const ProgressDots = ({ delivery }) => {
+  const p = getProgress(delivery);
+  const total = 7;
+  const filled = Math.ceil((p / 100) * total);
+  const colorDot =
+    p === 100 ? 'bg-emerald-500 shadow-sm shadow-emerald-400' :
+    p >= 66   ? 'bg-amber-400 shadow-sm shadow-amber-300' :
+    p >= 33   ? 'bg-indigo-500 shadow-sm shadow-indigo-300' :
+                'bg-gray-300';
+  return (
+    <div className="flex items-center gap-1" title={`${p}%`}>
+      <span className="text-[10px] font-bold text-gray-500 w-6 text-right">{p}%</span>
+      <div className="flex gap-[3px]">
+        {Array.from({ length: total }).map((_, i) => (
+          <span
+            key={i}
+            className={`block w-2.5 h-2.5 rounded-full transition-all ${
+              i < filled
+                ? `${colorDot} ${p < 100 && i === filled - 1 ? 'animate-pulse' : ''}`
+                : 'bg-gray-200'
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+/* ─────────────────────────────────────────────────────────────
+   MAIN COMPONENT
+   ───────────────────────────────────────────────────────────── */
 const MonitorEntregas = () => {
   const { user } = useAuth();
-  
-  // Funções para verificar permissões
   const isGeoMar = () => user?.role === 'geomar';
-  
-  const canEdit = () => {
-    return !isGeoMar();
-  };
-  
-  // Modal para visualizar fotos do fluxo
-  const [viewingDocument, setViewingDocument] = useState(null); // Para visualizar documento
+  const canEdit = () => !isGeoMar();
+
+  const [viewingDocument, setViewingDocument] = useState(null);
   const [modalFotos, setModalFotos] = useState(null);
   const navigate = useNavigate();
   const [deliveries, setDeliveries] = useState([]);
@@ -29,34 +266,21 @@ const MonitorEntregas = () => {
   const [toast, setToast] = useState(null);
   const [selectedDelivery, setSelectedDelivery] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [alertInfo, setAlertInfo] = useState(null); // Para tooltip/modal de alerta
   const [refreshInterval, setRefreshInterval] = useState(30);
   const [editingDelivery, setEditingDelivery] = useState(null);
-  const [sortBy, setSortBy] = useState(null); // e.g. 'deliveryNumber' or 'createdAt'
+  const [sortBy, setSortBy] = useState(null);
   const [sortDir, setSortDir] = useState('asc');
   const [editForm, setEditForm] = useState({
-    deliveryNumber: '',
-    userName: '',
-    driverName: '',
-    vehiclePlate: '',
-    recebedor: '',
-    status: '',
-    dataAgendamento: '',
-    horarioChegada: '',
-    horarioInicioDesova: '',
-    horarioFimDesova: '',
-    observations: ''
+    deliveryNumber: '', userName: '', driverName: '', vehiclePlate: '',
+    recebedor: '', status: '', dataAgendamento: '', horarioChegada: '',
+    horarioInicioDesova: '', horarioFimDesova: '', observations: ''
   });
-  
-  // Filtros
-  const [filters, setFilters] = useState({
-    status: 'all',
-    searchTerm: '',
-    startDate: '',
-    endDate: ''
-  });
+  const [filters, setFilters] = useState({ status: 'all', searchTerm: '', startDate: '', endDate: '' });
+  const [showFilters, setShowFilters] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [statsPeriod, setStatsPeriod] = useState('today');
+  const [stats, setStats] = useState({ total: 0, statusCounts: {}, byDriver: 0 });
 
-  // Mapeamento dos status amigáveis para os valores do backend
   const statusMapToBackend = {
     OPERACAO_FINALIZADA: ['ENTREGUE', 'submitted', 'ENTREGUE_COM_PENDENCIA_CANHOTO'],
     'A CAMINHO DO CLIENTE': ['pending', 'PENDING'],
@@ -67,1376 +291,1022 @@ const MonitorEntregas = () => {
     AGENDADO: ['AGENDADO'],
     CANCELADO: ['CANCELADO']
   };
-  const [showFilters, setShowFilters] = useState(false);
-  const [currentTime, setCurrentTime] = useState(new Date());
 
-  // Update current time every second for live timer
   useEffect(() => {
-    const interval = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(interval);
+    const t = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(t);
   }, []);
 
-  // Period filter for stats
-  const [statsPeriod, setStatsPeriod] = useState('today'); // 'today', 'yesterday', 'tomorrow'
-
-  // Calcular tempo decorrido no cliente (chegada até agora ou até fim desova)
-  const calculateCliTime = (delivery, now = new Date()) => {
-    if (!delivery.horarioChegada) return { tempo: null, isActive: false };
-    const chegada = new Date(delivery.horarioChegada);
-    
-    // Se já finalizou (tem data de fim desova), usa aquela e marca como inativo
-    // Senão, usa tempo atual (contador live) e marca como ativo
-    const isActive = !delivery.horarioFimDesova;
-    const referencia = isActive ? now : new Date(delivery.horarioFimDesova);
-    const diffMs = referencia - chegada;
-    if (diffMs < 0) return { tempo: null, isActive };
-    const totalMinutos = Math.floor(diffMs / 60000);
-    const horas = Math.floor(totalMinutos / 60);
-    const minutos = totalMinutos % 60;
-    let tempo;
-    if (horas > 0) tempo = `${horas}h ${minutos}m`;
-    else tempo = `${minutos}m`;
-    return { tempo, isActive };
-  };
-
-  // Gera um histórico ordenado das principais etapas do fluxo
-  const getFlowHistory = (delivery) => {
-    const events = [];
-    if (delivery.containerMontadoAt) {
-      events.push({
-        label: 'Montagem do container finalizada',
-        date: delivery.containerMontadoAt
-      });
-    }
-    if (delivery.horarioChegada) {
-      events.push({
-        label: 'Chegada',
-        date: delivery.horarioChegada
-      });
-    }
-    if (delivery.horarioInicioDesova) {
-      events.push({
-        label: 'Início da desova',
-        date: delivery.horarioInicioDesova
-      });
-    }
-    if (delivery.horarioFimDesova) {
-      events.push({
-        label: 'Fim da desova',
-        date: delivery.horarioFimDesova
-      });
-    }
-    // ordena cronologicamente
-    events.sort((a, b) => new Date(a.date) - new Date(b.date));
-    return events;
-  };
-
-  // Stats rápidas
-  // total = número de programações retornadas (agendadas)
-  // statusCounts = mapa de cada status para sua contagem
-  // byDriver = quantidade de motoristas distintos
-  const [stats, setStats] = useState({
-    total: 0,
-    statusCounts: {},
-    byDriver: 0
-  });
-
-  // Quando existe uma entrega selecionada, fornece o histórico de etapas para renderizar
-  const flowHistory = selectedDelivery ? getFlowHistory(selectedDelivery) : [];
-
-  // Semantic color map for dashboard visibility - Elegant & Subtle Professional Palette
-  const cardColors = {
-    // All cards using uniform gray gradient
-    PROGRAMADAS: 'from-slate-300 to-slate-500 text-white border-slate-600',
-    AGENDADO: 'from-slate-300 to-slate-500 text-white border-slate-600',
-    'A CAMINHO DO CLIENTE': 'from-slate-300 to-slate-500 text-white border-slate-600',
-    'CONTAINER MONTADO': 'from-slate-300 to-slate-500 text-white border-slate-600',
-    'EM DESOVA': 'from-slate-300 to-slate-500 text-white border-slate-600',
-    'AGUARDANDO DESOVA': 'from-slate-300 to-slate-500 text-white border-slate-600',
-    'ENTREGUE COM PENDENCIA CANHOTO': 'from-slate-300 to-slate-500 text-white border-slate-600',
-    'ANEXANDO DOCUMENTOS FINAIS': 'from-slate-300 to-slate-500 text-white border-slate-600',
-    ENTREGUE: 'from-slate-300 to-slate-500 text-white border-slate-600',
-    CANCELADO: 'from-slate-300 to-slate-500 text-white border-slate-600',
-    MOTORISTAS: 'from-slate-300 to-slate-500 text-white border-slate-600',
-    default: 'from-slate-300 to-slate-500 text-white border-slate-600'
-  };
-
-  // Icon map for each status
-  const statusIcons = {
-    PROGRAMADAS: <FaCalendarAlt className="text-2xl lg:text-3xl" />,
-    AGENDADO: <FaClock className="text-2xl lg:text-3xl" />,
-    'A CAMINHO DO CLIENTE': <FaTruck className="text-2xl lg:text-3xl" />,
-    'CONTAINER MONTADO': <FaBox className="text-2xl lg:text-3xl" />,
-    'EM DESOVA': <FaDolly className="text-2xl lg:text-3xl" />,
-    'AGUARDANDO DESOVA': <FaExclamationTriangle className="text-2xl lg:text-3xl" />,
-    'ENTREGUE COM PENDENCIA CANHOTO': <FaExclamationTriangle className="text-2xl lg:text-3xl" />,
-    'ANEXANDO DOCUMENTOS FINAIS': <FaFilePdf className="text-2xl lg:text-3xl" />,
-    ENTREGUE: <FaCheckCircle className="text-2xl lg:text-3xl" />,
-    CANCELADO: <FaTimesCircle className="text-2xl lg:text-3xl" />,
-    MOTORISTAS: <FaUsers className="text-2xl lg:text-3xl" />
-  };
-
-  // (icons removed - only colors used now)
-  // previously used an emoji map; cards will display color only.
-
-  const getCardClasses = (status) => {
-    return cardColors[status] || cardColors.default;
-  };
-
-  // fullscreen helpers - keyboard shortcut Ctrl+Shift+F
+  // Fullscreen
   const toggleFullscreen = async () => {
     if (!document.fullscreenElement) {
-      try {
-        await document.documentElement.requestFullscreen();
-      } catch (e) {
-        console.error('Failed to enter fullscreen', e);
-      }
+      try { await document.documentElement.requestFullscreen(); } catch {}
     } else {
       await document.exitFullscreen();
     }
   };
-
   useEffect(() => {
-    const escHandler = (e) => {
-      if (e.key === 'Escape' && document.fullscreenElement) {
-        document.exitFullscreen();
-      }
-      // Ctrl+Shift+F para fullscreen
+    const handler = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'F') {
-        e.preventDefault();
-        toggleFullscreen();
+        e.preventDefault(); toggleFullscreen();
       }
     };
-    window.addEventListener('keydown', escHandler);
-    return () => {
-      window.removeEventListener('keydown', escHandler);
-    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  // Carrega entregas
+  /* helpers */
+  const calculateCliTime = (delivery, now = new Date()) => {
+    if (!delivery.horarioChegada) return { tempo: null, isActive: false };
+    const chegada = new Date(delivery.horarioChegada);
+    const isActive = !delivery.horarioFimDesova;
+    const ref = isActive ? now : new Date(delivery.horarioFimDesova);
+    const diffMs = ref - chegada;
+    if (diffMs < 0) return { tempo: null, isActive };
+    const totalMin = Math.floor(diffMs / 60000);
+    const h = Math.floor(totalMin / 60), m = totalMin % 60;
+    return { tempo: h > 0 ? `${h}h ${m}m` : `${m}m`, isActive };
+  };
+
+  const getFlowHistory = (d) => {
+    const ev = [];
+    if (d.containerMontadoAt) ev.push({ label: 'Montagem do container', date: d.containerMontadoAt });
+    if (d.horarioChegada)       ev.push({ label: 'Chegada', date: d.horarioChegada });
+    if (d.horarioInicioDesova)  ev.push({ label: 'Início da desova', date: d.horarioInicioDesova });
+    if (d.horarioFimDesova)     ev.push({ label: 'Fim da desova', date: d.horarioFimDesova });
+    return ev.sort((a, b) => new Date(a.date) - new Date(b.date));
+  };
+
+  const flowHistory = selectedDelivery ? getFlowHistory(selectedDelivery) : [];
+
+  const formatStatus = (s) => {
+    if (!s) return '-';
+    if (s === 'ENTREGUE' || s === 'submitted') return 'OPERAÇÃO FINALIZADA';
+    if (s === 'ENTREGUE_COM_PENDENCIA_CANHOTO') return 'ENTREGUE (PENDÊNCIA)';
+    if (s === 'pending' || s === 'PENDING') return 'A CAMINHO DO CLIENTE';
+    return s.replace(/_/g, ' ');
+  };
+
+  const getDocumentsStatus = (delivery) => {
+    if (!delivery) return 'PENDENTE';
+    const required = ['canhotCTE', 'diarioBordo', 'canhotNF', 'devolucaoVazio'];
+    const docs = delivery.documents || {};
+    if (required.every(k => docs[k])) return 'COMPLETO';
+    const pending = required.filter(k => !docs[k]).map(k =>
+      ({ canhotCTE: 'CTE', canhotNF: 'NF', diarioBordo: 'DIÁRIO', devolucaoVazio: 'RIC' }[k] || k)
+    ).join(' + ');
+    return `PENDENTE ${pending}`;
+  };
+
+  const defaultDocumentLabels = manaConfig.documents || {
+    canhotNF: 'NF', canhotCTE: 'CTE', diarioBordo: 'Diário', devolucaoVazio: 'Vazio', retiradaCheio: 'Cheio'
+  };
+
+  const getLabelsForDelivery = (d) => {
+    if (!d) return defaultDocumentLabels;
+    return (d.city || '').toLowerCase() === 'itajai' ? itajaiConfig.documents || {} : defaultDocumentLabels;
+  };
+
+  const getDocumentUrlsArray = (docData) => {
+    if (!docData) return [];
+    if (typeof docData === 'string') return [docData];
+    if (Array.isArray(docData)) return docData.map(i => {
+      if (typeof i === 'string') return i;
+      if (typeof i === 'object' && i) return i.url || (i.path && `/uploads/${i.path}`) || i.link || i.webViewLink || null;
+      return null;
+    }).filter(Boolean);
+    if (typeof docData === 'object') return [docData.url || (docData.path && `/uploads/${docData.path}`) || docData.link || docData.webViewLink].filter(Boolean);
+    return [];
+  };
+
+  const removeProgramacaoInfo = (obs) => obs ? obs.replace(/Criada a partir da Programação [A-Z0-9]+/g, '').trim() : '';
+
+  /* ── Data loading ── */
   const loadDeliveries = useCallback(async () => {
     try {
       setLoading(true);
-      // Monta filtros para o backend
       let backendFilters = { ...filters };
       if (filters.status && filters.status !== 'all') {
-        // Envia o valor original esperado pelo backend
-        const backendStatus = statusMapToBackend[filters.status];
-        if (backendStatus) {
-          // Se for um array, pega o primeiro (ou pode adaptar para enviar múltiplos se backend aceitar)
-          backendFilters.status = backendStatus[0];
-        }
+        const bs = statusMapToBackend[filters.status];
+        if (bs) backendFilters.status = bs[0];
       }
-      // Log para debug: mostrar quais filtros estão sendo enviados
-      // compute periodDate string if needed (DD/MM/YYYY)
       let periodDate = '';
       if (statsPeriod && statsPeriod !== 'general') {
-        const today = new Date();
-        today.setHours(0,0,0,0);
-        if (statsPeriod === 'yesterday') {
-          today.setDate(today.getDate() - 1);
-        } else if (statsPeriod === 'tomorrow') {
-          today.setDate(today.getDate() + 1);
-        }
+        const today = new Date(); today.setHours(0,0,0,0);
+        if (statsPeriod === 'yesterday') today.setDate(today.getDate() - 1);
+        if (statsPeriod === 'tomorrow')  today.setDate(today.getDate() + 1);
         periodDate = today.toLocaleDateString('pt-BR');
       }
-      console.log('Enviando filtros ao backend:', backendFilters, 'período:', statsPeriod, 'data:', periodDate);
       const response = await adminService.getDeliveries(backendFilters, statsPeriod, periodDate);
       const data = response.data.deliveries || [];
-      console.log('Resposta do backend:', data.length, 'entregas');
       setDeliveries(data);
-      
-      // Calcula stats com base nos dados retornados
-      // construímos um mapa de status
-      const statusCounts = {};
-      data.forEach(d => {
-        const s = d.status || 'UNKNOWN';
-        statusCounts[s] = (statusCounts[s] || 0) + 1;
-      });
-      const motoristaSet = new Set(data.map(d => d.driverName).filter(Boolean));
-      setStats({
-        total: data.length,
-        statusCounts,
-        byDriver: motoristaSet.size
-      });
-
-      setToast({ message: `Carregadas ${data.length} entregas`, type: 'success' });
-    } catch (error) {
-      console.error('Erro ao carregar:', error);
+      const sc = {};
+      data.forEach(d => { const s = normalizeKey(d.status) || 'UNKNOWN'; sc[s] = (sc[s] || 0) + 1; });
+      const drivers = new Set(data.map(d => d.driverName).filter(Boolean));
+      setStats({ total: data.length, statusCounts: sc, byDriver: drivers.size });
+      setToast({ message: `${data.length} entregas carregadas`, type: 'success' });
+    } catch {
       setToast({ message: 'Erro ao carregar entregas', type: 'error' });
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }, [filters, statsPeriod]);
 
-  // Auto refresh
   useEffect(() => {
     loadDeliveries();
-    
     if (autoRefresh) {
-      const interval = setInterval(loadDeliveries, refreshInterval * 1000);
-      return () => clearInterval(interval);
+      const t = setInterval(loadDeliveries, refreshInterval * 1000);
+      return () => clearInterval(t);
     }
   }, [loadDeliveries, autoRefresh, refreshInterval]);
 
-  // Aplica filtros locais + ordenação
   useEffect(() => {
-    let result = [...deliveries];
-
-    // Client-side sorting
+    let r = [...deliveries];
     if (sortBy) {
-      result.sort((a, b) => {
-        const va = a[sortBy];
-        const vb = b[sortBy];
+      r.sort((a, b) => {
         if (sortBy === 'createdAt') {
-          const da = new Date(va);
-          const db = new Date(vb);
-          return sortDir === 'asc' ? da - db : db - da;
+          const diff = new Date(a[sortBy]) - new Date(b[sortBy]);
+          return sortDir === 'asc' ? diff : -diff;
         }
-        // string fallback
-        const sa = String(va || '').toLowerCase();
-        const sb = String(vb || '').toLowerCase();
-        if (sa < sb) return sortDir === 'asc' ? -1 : 1;
-        if (sa > sb) return sortDir === 'asc' ? 1 : -1;
-        return 0;
+        const sa = String(a[sortBy] || '').toLowerCase();
+        const sb = String(b[sortBy] || '').toLowerCase();
+        return sortDir === 'asc' ? sa.localeCompare(sb) : sb.localeCompare(sa);
       });
     }
-
-    // Filtro de status customizado - IGNORADO quando período específico é selecionado
-    let filtered = result;
-    if (statsPeriod === 'general') {
-      // Apenas aplica filtro de status quando no modo 'general'
-      if (filters.status && filters.status !== 'all') {
-        filtered = filtered.filter(d => {
-          if (filters.status === 'OPERACAO_FINALIZADA') return d.status === 'ENTREGUE' || d.status === 'submitted';
-          if (filters.status === 'A CAMINHO DO CLIENTE') return d.status === 'pending' || d.status === 'PENDING';
-          if (filters.status === 'AGENDADO') return d.status === 'AGENDADO';
-          return d.status === filters.status;
-        });
-      }
+    if (statsPeriod === 'general' && filters.status !== 'all') {
+      r = r.filter(d => {
+        if (filters.status === 'OPERACAO_FINALIZADA') return d.status === 'ENTREGUE' || d.status === 'submitted';
+        if (filters.status === 'A CAMINHO DO CLIENTE') return d.status === 'pending' || d.status === 'PENDING';
+        return d.status === filters.status;
+      });
     }
-
-    // Filtro de texto (Busca)
-    if (filters.searchTerm && filters.searchTerm.trim() !== '') {
-      const searchLower = filters.searchTerm.toLowerCase();
-      filtered = filtered.filter(d => 
-        (d.deliveryNumber || '').toLowerCase().includes(searchLower) ||
-        (d.driverName || '').toLowerCase().includes(searchLower) ||
-        (d.userName || '').toLowerCase().includes(searchLower) ||
-        (d.recebedor || '').toLowerCase().includes(searchLower) ||
-        (d.vehiclePlate || '').toLowerCase().includes(searchLower)
+    if (filters.searchTerm.trim()) {
+      const q = filters.searchTerm.toLowerCase();
+      r = r.filter(d =>
+        [d.deliveryNumber, d.driverName, d.userName, d.recebedor, d.vehiclePlate]
+          .some(v => (v || '').toLowerCase().includes(q))
       );
     }
-
-    // Filtro de data - AGENDAMENTO
-    // apply explicit date bounds if user set filters
-    if (filters.startDate && filters.startDate.trim() !== '') {
-      const startDate = new Date(filters.startDate);
-      startDate.setHours(0, 0, 0, 0);
-      filtered = filtered.filter(d => {
-        if (!d.dataAgendamento) return false;
-        const deliveryDate = new Date(d.dataAgendamento);
-        deliveryDate.setHours(0, 0, 0, 0);
-        return deliveryDate >= startDate;
-      });
+    if (filters.startDate) {
+      const sd = new Date(filters.startDate); sd.setHours(0,0,0,0);
+      r = r.filter(d => d.dataAgendamento && new Date(d.dataAgendamento) >= sd);
     }
-
-    if (filters.endDate && filters.endDate.trim() !== '') {
-      const endDate = new Date(filters.endDate);
-      endDate.setHours(23, 59, 59, 999);
-      filtered = filtered.filter(d => {
-        if (!d.dataAgendamento) return false;
-        const deliveryDate = new Date(d.dataAgendamento);
-        return deliveryDate <= endDate;
-      });
+    if (filters.endDate) {
+      const ed = new Date(filters.endDate); ed.setHours(23,59,59,999);
+      r = r.filter(d => d.dataAgendamento && new Date(d.dataAgendamento) <= ed);
     }
-
-    // additional period-based filtering já é feito no backend
-    // (quando statsPeriod é enviado, o backend filtra por ProgramacaoEntrega)
-
-    setFilteredDeliveries(filtered);
+    setFilteredDeliveries(r);
   }, [deliveries, filters, sortBy, sortDir, statsPeriod]);
 
-  const handleDownload = async (deliveryId, documentType) => {
+  /* ── Actions ── */
+  const handleDownload = async (id, type) => {
     try {
-      const response = await adminService.downloadDocument(deliveryId, documentType);
-      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'image/jpeg' }));
-      const link = document.createElement('a');
-      link.href = url;
-      const delivery = deliveries.find(d => d._id === deliveryId);
-      link.setAttribute('download', `${delivery?.deliveryNumber || 'doc'}_${documentType}.jpg`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const res = await adminService.downloadDocument(id, type);
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'image/jpeg' }));
+      const a = document.createElement('a'); a.href = url;
+      a.setAttribute('download', `${deliveries.find(d=>d._id===id)?.deliveryNumber||'doc'}_${type}.jpg`);
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-      setToast({ message: 'Documento baixado com sucesso', type: 'success' });
-    } catch (error) {
-      console.error('Erro ao baixar:', error);
-      setToast({ message: 'Erro ao baixar arquivo: ' + (error.response?.data?.message || error.message), type: 'error' });
-    }
+      setToast({ message: 'Documento baixado', type: 'success' });
+    } catch (e) { setToast({ message: 'Erro ao baixar: ' + (e.response?.data?.message || e.message), type: 'error' }); }
   };
 
-  const handleDownloadAll = async (deliveryId) => {
+  const handleDownloadAll = async (id) => {
     try {
-      const response = await adminService.downloadAllDocuments(deliveryId);
-      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/zip' }));
-      const link = document.createElement('a');
-      link.href = url;
-      const delivery = deliveries.find(d => d._id === deliveryId);
-      link.setAttribute('download', `${delivery?.deliveryNumber || 'documents'}.zip`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const res = await adminService.downloadAllDocuments(id);
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/zip' }));
+      const a = document.createElement('a'); a.href = url;
+      a.setAttribute('download', `${deliveries.find(d=>d._id===id)?.deliveryNumber||'documents'}.zip`);
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-      setToast({ message: 'ZIP baixado com sucesso', type: 'success' });
-    } catch (error) {
-      console.error('Erro ao baixar ZIP:', error);
-      setToast({ message: 'Erro ao baixar ZIP: ' + (error.response?.data?.message || error.message), type: 'error' });
-    }
+      setToast({ message: 'ZIP baixado', type: 'success' });
+    } catch (e) { setToast({ message: 'Erro ao baixar ZIP: ' + (e.response?.data?.message || e.message), type: 'error' }); }
   };
 
-  // gera um PDF com informações da entrega para compartilhar/exportar
   const handleShareDelivery = async () => {
-    console.debug('handleShareDelivery invoked', selectedDelivery);
-    if (!selectedDelivery) {
-      setToast({ type: 'error', message: 'Nenhuma entrega selecionada' });
-      return;
-    }
-
+    if (!selectedDelivery) return;
     try {
       const doc = new jsPDF({ unit: 'pt' });
-
-      // tenta carregar logo da pasta pública
-      const loadImage = (url) =>
-        new Promise((resolve) => {
-          const img = new Image();
-          img.crossOrigin = 'Anonymous';
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0);
-            resolve(canvas.toDataURL('image/png'));
-          };
-          img.onerror = () => resolve(null);
-          img.src = url;
-        });
-
-      const logoUrl = await loadImage('/images/geotransporteslogo.png');
-      if (logoUrl) {
-        // centraliza logo no topo com largura máxima de 100pt
-        const imgProps = doc.getImageProperties(logoUrl);
-        const w = 100;
-        const h = (imgProps.height * w) / imgProps.width;
-        const x = (doc.internal.pageSize.getWidth() - w) / 2;
-        doc.addImage(logoUrl, 'PNG', x, 20, w, h);
-      }
-
-      doc.setFontSize(16);
-      doc.text('Detalhes da Entrega', doc.internal.pageSize.getWidth() / 2, 60, { align: 'center' });
-
-      const rows = [];
-      const addRow = (label, value) => rows.push([label, value || '-']);
-
-      addRow('Número', selectedDelivery.deliveryNumber);
-      addRow('Contratado', selectedDelivery.userName);
-      addRow('Motorista', selectedDelivery.driverName);
-      addRow('Placa', selectedDelivery.vehiclePlate);
-      addRow('Status', formatStatus(selectedDelivery.status));
-      addRow('Agendamento', selectedDelivery.dataAgendamento ? new Date(selectedDelivery.dataAgendamento).toLocaleString('pt-BR') : '-');
-      addRow('Montagem container', selectedDelivery.containerMontadoAt ? new Date(selectedDelivery.containerMontadoAt).toLocaleString('pt-BR') : '-');
-      addRow('Chegada', selectedDelivery.horarioChegada ? new Date(selectedDelivery.horarioChegada).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-');
-      addRow('Início desova', selectedDelivery.horarioInicioDesova ? new Date(selectedDelivery.horarioInicioDesova).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-');
-      addRow('Fim desova', selectedDelivery.horarioFimDesova ? new Date(selectedDelivery.horarioFimDesova).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-');
-
-      const history = getFlowHistory(selectedDelivery);
-      if (history.length > 0) {
-        history.forEach(ev => addRow(ev.label, new Date(ev.date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })));
-      }
-
-      if (selectedDelivery.observations) addRow('Observações', selectedDelivery.observations);
-      if (selectedDelivery.observacoes) addRow('Observações (alt.)', selectedDelivery.observacoes);
-      if (selectedDelivery.documentsJustification) addRow('Justificativa docs', selectedDelivery.documentsJustification);
-      if (selectedDelivery.submissionObservation) addRow('Obs. submissão', selectedDelivery.submissionObservation);
-
-      doc.autoTable({
-        startY: logoUrl ? 100 : 80,
-        head: [['Campo', 'Valor']],
-        body: rows,
-        styles: { fontSize: 10 },
-        headStyles: { fillColor: [60, 60, 60] }
+      const loadImage = (url) => new Promise(resolve => {
+        const img = new Image(); img.crossOrigin = 'Anonymous';
+        img.onload = () => { const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; c.getContext('2d').drawImage(img,0,0); resolve(c.toDataURL('image/png')); };
+        img.onerror = () => resolve(null); img.src = url;
       });
-
-      doc.save(`Entrega_${selectedDelivery.deliveryNumber}.pdf`);
-      setToast({ type: 'success', message: 'PDF gerado e baixado' });
-    } catch (err) {
-      console.error('Erro ao gerar PDF', err);
-      setToast({ type: 'error', message: 'Falha ao gerar PDF: ' + err.message });
-    }
-  };
-
-  const handleDelete = async (deliveryId) => {
-    if (window.confirm('Tem certeza que deseja deletar esta entrega? Esta ação não pode ser desfeita.')) {
-      try {
-        await adminService.deleteDelivery(deliveryId);
-        setToast({ message: 'Entrega deletada com sucesso', type: 'success' });
-        setSelectedDelivery(null);
-        loadDeliveries(); // Recarrega a tabela
-      } catch (error) {
-        setToast({ message: 'Erro ao deletar entrega', type: 'error' });
+      const logo = await loadImage('/images/geotransporteslogo.png');
+      if (logo) {
+        const ip = doc.getImageProperties(logo); const w=100, h=(ip.height*w)/ip.width;
+        doc.addImage(logo,'PNG',(doc.internal.pageSize.getWidth()-w)/2,20,w,h);
       }
-    }
+      doc.setFontSize(16);
+      doc.text('Detalhes da Entrega', doc.internal.pageSize.getWidth()/2, 60, { align: 'center' });
+      const rows = [];
+      const add = (l,v) => rows.push([l, v||'-']);
+      add('Número', selectedDelivery.deliveryNumber);
+      add('Contratado', selectedDelivery.userName);
+      add('Motorista', selectedDelivery.driverName);
+      add('Placa', selectedDelivery.vehiclePlate);
+      add('Status', formatStatus(selectedDelivery.status));
+      add('Agendamento', selectedDelivery.dataAgendamento ? new Date(selectedDelivery.dataAgendamento).toLocaleString('pt-BR') : '-');
+      add('Chegada', selectedDelivery.horarioChegada ? new Date(selectedDelivery.horarioChegada).toLocaleString('pt-BR') : '-');
+      add('Início desova', selectedDelivery.horarioInicioDesova ? new Date(selectedDelivery.horarioInicioDesova).toLocaleString('pt-BR') : '-');
+      add('Fim desova', selectedDelivery.horarioFimDesova ? new Date(selectedDelivery.horarioFimDesova).toLocaleString('pt-BR') : '-');
+      getFlowHistory(selectedDelivery).forEach(ev => add(ev.label, new Date(ev.date).toLocaleString('pt-BR')));
+      if (selectedDelivery.observations) add('Observações', selectedDelivery.observations);
+      doc.autoTable({ startY: logo ? 100 : 80, head: [['Campo','Valor']], body: rows, styles:{fontSize:10}, headStyles:{fillColor:[88,28,135]} });
+      doc.save(`Entrega_${selectedDelivery.deliveryNumber}.pdf`);
+      setToast({ type:'success', message:'PDF gerado' });
+    } catch (err) { setToast({ type:'error', message:'Falha ao gerar PDF: '+err.message }); }
   };
 
-  const handleEditStart = (delivery) => {
-    if (isGeoMar()) {
-      setToast({ type: 'error', message: '<FaEye/> Modo Visualização: você não pode editar entregas' });
-      return;
-    }
-    setEditingDelivery(delivery._id);
+  const handleDelete = async (id) => {
+    if (!window.confirm('Deletar esta entrega? Ação irreversível.')) return;
+    try {
+      await adminService.deleteDelivery(id);
+      setToast({ message: 'Entrega deletada', type: 'success' });
+      setSelectedDelivery(null); loadDeliveries();
+    } catch { setToast({ message: 'Erro ao deletar', type: 'error' }); }
+  };
+
+  const handleEditStart = (d) => {
+    if (isGeoMar()) { setToast({ type:'error', message:'Modo Visualização: sem permissão de edição' }); return; }
+    setEditingDelivery(d._id);
     setEditForm({
-      deliveryNumber: delivery.deliveryNumber || '',
-      userName: delivery.userName || '',
-      driverName: delivery.driverName || '',
-      vehiclePlate: delivery.vehiclePlate || '',
-      recebedor: delivery.recebedor || '',
-      status: delivery.status || '',
-      dataAgendamento: delivery.dataAgendamento ? delivery.dataAgendamento.slice(0, 16) : '',
-      horarioChegada: delivery.horarioChegada ? delivery.horarioChegada.slice(0, 16) : '',
-      horarioInicioDesova: delivery.horarioInicioDesova ? delivery.horarioInicioDesova.slice(0, 16) : '',
-      horarioFimDesova: delivery.horarioFimDesova ? delivery.horarioFimDesova.slice(0, 16) : '',
-      observations: removeProgramacaoInfo(delivery.observations)
+      deliveryNumber: d.deliveryNumber||'', userName: d.userName||'',
+      driverName: d.driverName||'', vehiclePlate: d.vehiclePlate||'',
+      recebedor: d.recebedor||'', status: d.status||'',
+      dataAgendamento: d.dataAgendamento?.slice(0,16)||'',
+      horarioChegada: d.horarioChegada?.slice(0,16)||'',
+      horarioInicioDesova: d.horarioInicioDesova?.slice(0,16)||'',
+      horarioFimDesova: d.horarioFimDesova?.slice(0,16)||'',
+      observations: removeProgramacaoInfo(d.observations)
     });
   };
 
   const handleEditSave = async () => {
-    if (!editForm.observations || editForm.observations.trim() === '') {
-      setToast({ message: 'Motivo da edição é obrigatório', type: 'error' });
-      return;
-    }
-
-    // Remove info 'Criada a partir da Programação ...' do campo motivo, adiciona ao campo observações
-    let motivo = editForm.observations.replace(/Criada a partir da Programação [A-Z0-9]+/g, '').trim();
-    let programacaoInfo = (editForm.observations.match(/Criada a partir da Programação [A-Z0-9]+/) || []).join(' ');
-    let observacoes = motivo;
-    if (programacaoInfo) {
-      observacoes = motivo + '\n' + programacaoInfo;
-    }
-
-    const editPayload = {
+    if (!editForm.observations?.trim()) { setToast({ message:'Motivo da edição obrigatório', type:'error' }); return; }
+    const motivo = editForm.observations.replace(/Criada a partir da Programação [A-Z0-9]+/g,'').trim();
+    const prog = (editForm.observations.match(/Criada a partir da Programação [A-Z0-9]+/)||[]).join(' ');
+    const payload = {
       ...editForm,
-      observations: observacoes,
+      observations: prog ? `${motivo}\n${prog}` : motivo,
       editedBy: user?.name || user?.username || user?.email || 'Desconhecido',
       editedAt: new Date().toISOString()
     };
-
     try {
-      // Usa a rota correta para atualizar entrega
-      const response = await adminService.updateDelivery(editingDelivery, editPayload);
-      setToast({ message: 'Entrega atualizada com sucesso', type: 'success' });
-      setEditingDelivery(null);
-      loadDeliveries();
-    } catch (error) {
-      setToast({ message: 'Erro ao atualizar entrega', type: 'error' });
-    }
+      await adminService.updateDelivery(editingDelivery, payload);
+      setToast({ message:'Entrega atualizada', type:'success' });
+      setEditingDelivery(null); loadDeliveries();
+    } catch { setToast({ message:'Erro ao atualizar', type:'error' }); }
   };
 
-  const removeProgramacaoInfo = (obs) => {
-    if (!obs) return '';
-    return obs.replace(/Criada a partir da Programação [A-Z0-9]+/g, '').trim();
-  };
-
-  const getStatusBadge = (status) => {
-    const badges = {
-      OPERACAO_FINALIZADA: 'bg-green-100 text-green-800 border border-green-400 font-bold',
-      'A CAMINHO DO CLIENTE': 'bg-yellow-100 text-yellow-800 border border-yellow-400 font-bold',
-      AGUARDANDO_DESOVA: 'bg-orange-100 text-orange-800 border border-orange-400 font-bold',
-      EM_DESOVA: 'bg-purple-100 text-purple-800 border border-purple-400 font-bold',
-      DESOVA_FINALIZADA: 'bg-blue-100 text-blue-800 border border-blue-400 font-bold',
-      ANEXANDO_DOCUMENTOS_FINAIS: 'bg-pink-100 text-pink-800 border border-pink-400 font-bold',
-      CANCELADO: 'bg-gray-200 text-gray-700 border border-gray-400 font-bold'
-    };
-    return badges[status] || 'bg-gray-100 text-gray-800 font-bold';
-  };
-
-  // Função para exibir status sem underline
-  const formatStatus = (status) => {
-    if (!status) return '-';
-    if (status === 'ENTREGUE' || status === 'submitted') return 'OPERAÇÃO FINALIZADA';
-    if (status === 'ENTREGUE_COM_PENDENCIA_CANHOTO') return 'ENTREGUE (PENDÊNCIA)';
-    if (status === 'pending' || status === 'PENDING') return 'A CAMINHO DO CLIENTE';
-    return status.replace(/_/g, ' ');
-  };
-
-  // statuses which represent steps for progress bar (in order)
-  const progressStatuses = [
-    'AGENDADO',
-    'CONTAINER MONTADO',
-    'A CAMINHO DO CLIENTE',
-    'AGUARDANDO DESOVA',
-    'EM DESOVA',
-    'ANEXANDO DOCUMENTOS FINAIS',
-    'ENTREGUE'
+  /* ─────────── stat cards order ─────────── */
+  const CARD_ORDER = [
+    'AGENDADO','CONTAINER MONTADO','A CAMINHO DO CLIENTE',
+    'AGUARDANDO DESOVA','EM DESOVA','ANEXANDO DOCUMENTOS FINAIS',
+    'ENTREGUE','CANCELADO'
   ];
 
-  const normalizeStatusForProgress = (s) => {
-    if (!s) return null;
-    // unify format: replace underscores, make uppercase, trim
-    const ux = String(s).replace(/_/g, ' ').toUpperCase().trim();
-    // map aliases to canonical
-    if (ux === 'ENTREGUE' || ux === 'SUBMITTED' || ux === 'FINALIZADO' || ux === 'ENTREGUE COM PENDENCIA CANHOTO') {
-      return 'ENTREGUE';
-    }
-    if (ux === 'PENDING' || ux === 'A CAMINHO DO CLIENTE') return 'A CAMINHO DO CLIENTE';
-    return ux;
-  };
+  const sortedStatusEntries = Object.entries(stats.statusCounts).sort(([a],[b]) => {
+    const ia = CARD_ORDER.indexOf(a), ib = CARD_ORDER.indexOf(b);
+    if (ia !== -1 && ib !== -1) return ia - ib;
+    if (ia !== -1) return -1; if (ib !== -1) return 1;
+    return a.localeCompare(b);
+  });
 
-  const getProgress = (delivery) => {
-    const status = normalizeStatusForProgress(delivery.status);
-    if (status === 'CANCELADO' || !status) return 0;
-    const idx = progressStatuses.indexOf(status);
-    if (idx === -1) return 0;
-    return Math.round((idx / (progressStatuses.length - 1)) * 100);
-  };
-
-  // Função para retornar o status dos documentos
-  // retorna string como "COMPLETO" ou "PENDENTE CTE + NF"
-  // usada na Torre de Controle para tooltip; a coluna agora exibe
-  // apenas um círculo verde/vermelho tipo semáforo.
-  const getDocumentsStatus = (delivery) => {
-    if (!delivery) return 'PENDENTE';
-    
-    const requiredDocs = ['canhotCTE', 'diarioBordo', 'canhotNF', 'devolucaoVazio'];
-    const docs = delivery.documents || {};
-    
-    const allAttached = requiredDocs.every(doc => docs[doc]);
-    if (allAttached) return 'COMPLETO';
-    
-    // Verificar quais estão pendentes
-    const pending = requiredDocs.filter(doc => !docs[doc]);
-    const pendingNames = pending.map(doc => {
-      if (doc === 'canhotCTE') return 'CTE';
-      if (doc === 'canhotNF') return 'NF';
-      if (doc === 'diarioBordo') return 'DIÁRIO';
-      if (doc === 'devolucaoVazio') return 'RIC';
-      return doc;
-    }).join(' + ');
-    
-    return `PENDENTE ${pendingNames}`;
-  };
-
-  // Default labels for Manaus; we will pick per-delivery labels when showing modal
-  const defaultDocumentLabels = manaConfig.documents || {
-    canhotNF: 'NF',
-    canhotCTE: 'CTE',
-    diarioBordo: 'Diário',
-    devolucaoVazio: 'Vazio',
-    retiradaCheio: 'Cheio'
-  };
-
-  const getLabelsForDelivery = (delivery) => {
-    if (!delivery) return defaultDocumentLabels;
-    const city = (delivery.city || '').toLowerCase();
-    if (city === 'itajai') return itajaiConfig.documents || {};
-    return defaultDocumentLabels;
-  };
-
-  // Extrai URLs dos documentos (R2, local ou antigo formato)
-  const getDocumentUrlsArray = (docData) => {
-    if (!docData) return [];
-    
-    // Se for string, retorna array com a string
-    if (typeof docData === 'string') {
-      return [docData];
-    }
-    
-    // Se for array, processa cada item
-    if (Array.isArray(docData)) {
-      return docData.map(item => {
-        if (typeof item === 'string') return item;
-        if (typeof item === 'object' && item !== null) {
-          // R2: tem propriedade url
-          if (item.url) return item.url;
-          // Local: tem propriedade path
-          if (item.path) return `/uploads/${item.path}`;
-          // Antigo Google Drive: tem propriedade link ou webViewLink
-          if (item.link) return item.link;
-          if (item.webViewLink) return item.webViewLink;
-        }
-        return null;
-      }).filter(Boolean);
-    }
-    
-    // Se for objeto (documento único)
-    if (typeof docData === 'object') {
-      if (docData.url) return [docData.url];
-      if (docData.path) return [`/uploads/${docData.path}`];
-      if (docData.link) return [docData.link];
-      if (docData.webViewLink) return [docData.webViewLink];
-    }
-    
-    return [];
-  };
-
-  // Later, when rendering, use const labels = getLabelsForDelivery(selectedDelivery) and use labels[docKey] || docKey
-
-
+  /* ────────────────────────────────────────
+     RENDER
+     ──────────────────────────────────────── */
   return (
-    <div className="bg-gradient-to-br from-gray-50 to-gray-100 h-screen flex flex-col">
-      {/* outer padding removed; content will stretch */}
-      <div className="w-full flex-grow overflow-auto p-4 lg:p-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6 lg:mb-8">
+    <div className="min-h-screen bg-[#0f0f1a] text-white font-sans">
+
+      {/* ── TOP NAV ── */}
+      <header className="sticky top-0 z-40 bg-[#0f0f1a]/90 backdrop-blur-md border-b border-white/5">
+        <div className="max-w-screen-2xl mx-auto px-4 lg:px-8 h-16 flex items-center justify-between gap-4">
           <button
             onClick={() => navigate('/home')}
-            className="flex items-center gap-2 text-purple-700 hover:text-purple-900 font-extrabold text-lg tracking-widest uppercase transition"
+            className="flex items-center gap-2 text-sm font-semibold text-gray-400 hover:text-white transition"
           >
-            <FaArrowLeft /> VOLTAR
+            <FaArrowLeft className="text-purple-400" />
+            <span className="hidden sm:inline">Voltar</span>
           </button>
-          <h1 className="text-3xl lg:text-4xl font-extrabold text-gray-900 tracking-widest uppercase flex items-center gap-3 drop-shadow-sm">
-            <span role="img" aria-label="Gráfico">📊</span> TORRE DE CONTROLE
-          </h1>
-          <button
-            onClick={loadDeliveries}
-            disabled={loading}
-            title="Atualizar dados"
-            className="flex items-center gap-2 px-3 py-1 lg:px-4 lg:py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg shadow-sm hover:shadow-md disabled:opacity-50 font-semibold text-sm transition"
-          >
-            <FaSync className={loading ? 'animate-spin' : ''} size={16} />
-          </button>
-        </div>
 
-        {/* Period Selector for Stats */}
-        <div className="flex gap-2 mb-6 flex-wrap">
-          <button
-            onClick={() => setStatsPeriod('general')}
-            className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-              statsPeriod === 'general'
-                ? 'bg-indigo-600 text-white shadow-lg'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            📊 Geral
-          </button>
-          <button
-            onClick={() => setStatsPeriod('yesterday')}
-            className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-              statsPeriod === 'yesterday'
-                ? 'bg-gray-700 text-white shadow-lg'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            <FaCalendarAlt className="inline mr-2" /> Ontem
-          </button>
-          <button
-            onClick={() => setStatsPeriod('today')}
-            className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-              statsPeriod === 'today'
-                ? 'bg-purple-600 text-white shadow-lg'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            <FaClock className="inline mr-2" /> Hoje
-          </button>
-          <button
-            onClick={() => setStatsPeriod('tomorrow')}
-            className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-              statsPeriod === 'tomorrow'
-                ? 'bg-blue-600 text-white shadow-lg'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-<FaCalendarAlt className="inline mr-2" /> Amanhã
-          </button>
-        </div>
-
-        {/* Stats Cards - Semantic Color Palette */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-6 lg:mb-8">
-          {/* programadas */}
-          <div className={`bg-gradient-to-r rounded-2xl shadow-2xl p-6 lg:p-8 border-l-8 flex flex-col items-center justify-center hover:scale-105 transition-transform duration-300 ease-in-out cursor-pointer ring-4 ring-white ring-opacity-20 ${getCardClasses('PROGRAMADAS')}`}> 
-            {statusIcons.PROGRAMADAS}
-            <p className="text-xs lg:text-sm font-extrabold uppercase tracking-widest text-center mb-2">PROGRAMADAS</p>
-            <p className="text-2xl lg:text-4xl font-extrabold drop-shadow">{stats.total}</p>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-900/40">
+              <MdDashboard className="text-white text-base" />
+            </div>
+            <h1 className="text-base sm:text-lg font-black tracking-[0.15em] uppercase text-white">
+              Torre de Controle
+            </h1>
           </div>
 
-          {/* status cards */}
-          {(() => {
-            const order = [
-              'AGENDADO',
-              'CONTAINER MONTADO',
-              'A CAMINHO DO CLIENTE',
-              'AGUARDANDO DESOVA',
-              'EM DESOVA',
-              'ANEXANDO DOCUMENTOS FINAIS',
-              'ENTREGUE',
-              'CANCELADO'
-            ];
-            const entries = Object.entries(stats.statusCounts);
-            entries.sort(([a], [b]) => {
-              const ia = order.indexOf(a);
-              const ib = order.indexOf(b);
-              if (ia !== -1 && ib !== -1) return ia - ib;
-              if (ia !== -1) return -1;
-              if (ib !== -1) return 1;
-              return a.localeCompare(b);
-            });
-            return entries.map(([status, count]) => {
-              const label = status.replace(/_/g, ' ');
-              return (
-                <div
-                  key={status}
-                  className={`bg-gradient-to-r rounded-xl shadow-xl p-3 lg:p-5 border-l-4 flex flex-col items-center justify-center hover:scale-110 transition-transform cursor-pointer ${getCardClasses(label || status)}`}
-                >
-                  {statusIcons[label] || statusIcons[status]}
-                  <p className="text-xs lg:text-sm font-extrabold uppercase tracking-widest text-center mb-2 line-clamp-2">
-                    {label.length > 18 ? label.substring(0, 15) + '...' : label}
-                  </p>
-                  <p className="text-2xl lg:text-4xl font-extrabold drop-shadow">
-                    {count}
-                  </p>
-                </div>
-              );
-            });
-          })()}
-
-          {/* motoristas */}
-          <div className={`bg-gradient-to-r rounded-2xl shadow-2xl p-6 lg:p-8 border-l-8 flex flex-col items-center justify-center hover:scale-105 transition-transform duration-300 ease-in-out cursor-pointer ring-4 ring-white ring-opacity-20 ${getCardClasses('MOTORISTAS')}`}>
-            {statusIcons.MOTORISTAS}
-            <p className="text-xs lg:text-sm font-extrabold uppercase tracking-widest text-center mb-2">MOTORISTAS</p>
-            <p className="text-2xl lg:text-4xl font-extrabold drop-shadow">{stats.byDriver}</p>
-          </div>
-        </div>
-
-        {/* Auto Refresh Control */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-gray-200">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={autoRefresh}
-                onChange={(e) => setAutoRefresh(e.target.checked)}
-                className="w-4 h-4 cursor-pointer"
-              />
-              <span className="text-gray-700 font-semibold">Auto Atualizar</span>
-            </label>
-            
+          <div className="flex items-center gap-2">
+            {/* live indicator */}
             {autoRefresh && (
-              <div className="flex items-center gap-2">
-                <label className="text-gray-600 text-sm">A cada</label>
+              <span className="hidden sm:flex items-center gap-1.5 text-xs text-emerald-400 font-semibold">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                LIVE
+              </span>
+            )}
+            <button
+              onClick={() => toggleFullscreen()}
+              title="Fullscreen (Ctrl+Shift+F)"
+              className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition"
+            >
+              <FaExpand size={14} />
+            </button>
+            <button
+              onClick={loadDeliveries}
+              disabled={loading}
+              title="Atualizar"
+              className="w-9 h-9 rounded-xl bg-purple-600/80 hover:bg-purple-600 text-white flex items-center justify-center transition disabled:opacity-40"
+            >
+              <FaSync size={13} className={loading ? 'animate-spin' : ''} />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* ── MAIN CONTENT ── */}
+      <main className="max-w-screen-2xl mx-auto px-4 lg:px-8 py-8 space-y-8">
+
+        {/* ── PERIOD SELECTOR ── */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <Pill active={statsPeriod==='general'} onClick={()=>setStatsPeriod('general')} color="indigo">
+            <MdDashboard /> Geral
+          </Pill>
+          <Pill active={statsPeriod==='yesterday'} onClick={()=>setStatsPeriod('yesterday')} color="gray">
+            <FaCalendarAlt /> Ontem
+          </Pill>
+          <Pill active={statsPeriod==='today'} onClick={()=>setStatsPeriod('today')} color="purple">
+            <FaClock /> Hoje
+          </Pill>
+          <Pill active={statsPeriod==='tomorrow'} onClick={()=>setStatsPeriod('tomorrow')} color="blue">
+            <FaCalendarAlt /> Amanhã
+          </Pill>
+
+          {/* auto-refresh controls inline */}
+          <div className="ml-auto flex items-center gap-3 bg-white/5 rounded-xl px-4 py-2 border border-white/10">
+            <label className="flex items-center gap-2 text-sm text-gray-300 font-semibold cursor-pointer select-none">
+              <span className={`w-10 h-5 rounded-full relative transition-colors duration-300 ${autoRefresh ? 'bg-purple-600' : 'bg-gray-600'}`}
+                onClick={() => setAutoRefresh(v => !v)}>
+                <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-300 ${autoRefresh ? 'translate-x-5' : ''}`} />
+              </span>
+              Auto-refresh
+            </label>
+            {autoRefresh && (
+              <div className="flex items-center gap-1.5 text-sm text-gray-400">
                 <input
-                  type="number"
-                  min="5"
-                  max="300"
-                  step="5"
+                  type="number" min="5" max="300" step="5"
                   value={refreshInterval}
-                  onChange={(e) => setRefreshInterval(Number(e.target.value))}
-                  className="w-16 px-2 py-1 border border-gray-300 rounded"
+                  onChange={e => setRefreshInterval(Number(e.target.value))}
+                  className="w-14 px-2 py-0.5 bg-white/10 border border-white/10 rounded-lg text-white text-center focus:outline-none"
                 />
-                <span className="text-gray-600 text-sm">segundos</span>
+                <span>seg</span>
               </div>
             )}
           </div>
         </div>
 
-        {/* Filtros */}
-        <div className="bg-white rounded-xl shadow-lg mb-8 border border-gray-200">
+        {/* ── STATS CARDS ── */}
+        <div>
+          <SectionTitle sub={`${stats.total} programações encontradas`}>Resumo Operacional</SectionTitle>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-10 gap-3">
+
+            {/* TOTAL */}
+            <StatCard
+              label="Programadas"
+              value={stats.total}
+              icon={<FaCalendarAlt />}
+              gradient="from-purple-600 to-indigo-700"
+              ring="ring-purple-500/30"
+              pulse={loading}
+            />
+
+            {/* STATUS CARDS */}
+            {sortedStatusEntries.map(([status, count]) => {
+              const cfg = STATUS_CONFIG[status] || null;
+              return (
+                <StatCard
+                  key={status}
+                  label={cfg?.label || status.replace(/_/g,' ')}
+                  value={count}
+                  icon={cfg?.icon || <FaBox />}
+                  gradient={cfg?.gradient || 'from-gray-500 to-gray-700'}
+                  ring={cfg?.ring || 'ring-gray-400/30'}
+                />
+              );
+            })}
+
+            {/* MOTORISTAS */}
+            <StatCard
+              label="Motoristas"
+              value={stats.byDriver}
+              icon={<FaUsers />}
+              gradient="from-teal-500 to-cyan-700"
+              ring="ring-teal-400/30"
+            />
+          </div>
+        </div>
+
+        {/* ── FILTERS ── */}
+        <div className="bg-white/5 rounded-2xl border border-white/10 overflow-hidden">
           <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition"
+            onClick={() => setShowFilters(v => !v)}
+            className="w-full px-5 py-4 flex items-center justify-between hover:bg-white/5 transition"
           >
-            <div className="flex items-center gap-2">
-              <FaFilter className="text-purple-700 text-xl" />
-              <span className="font-extrabold text-gray-900 uppercase tracking-widest">FILTROS</span>
+            <div className="flex items-center gap-3">
+              <span className="w-8 h-8 rounded-lg bg-purple-600/20 flex items-center justify-center">
+                <FaFilter className="text-purple-400 text-sm" />
+              </span>
+              <span className="font-bold text-sm uppercase tracking-widest text-gray-300">Filtros</span>
+              {(filters.status !== 'all' || filters.searchTerm || filters.startDate || filters.endDate) && (
+                <span className="px-2 py-0.5 rounded-full bg-purple-600 text-white text-xs font-bold">Ativo</span>
+              )}
             </div>
-            <span className="text-gray-700 font-bold text-lg">{showFilters ? '▼' : '▶'}</span>
+            {showFilters ? <FaChevronDown className="text-gray-400" /> : <FaChevronRight className="text-gray-400" />}
           </button>
 
           {showFilters && (
-            <div className="border-t border-gray-200 p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="border-t border-white/10 p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Status */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Status
-                </label>
+                <label className="block text-xs font-semibold text-gray-400 uppercase mb-2">Status</label>
                 <select
                   value={filters.status}
-                  onChange={(e) => setFilters({...filters, status: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  onChange={e => setFilters({...filters, status: e.target.value})}
+                  className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                 >
-                  <option value="all">Todos</option>
-                  <option value="OPERACAO_FINALIZADA">Operação Finalizada</option>
-                  <option value="A CAMINHO DO CLIENTE">A Caminho do Cliente</option>
-                  <option value="AGENDADO">Agendado</option>
-                  <option value="AGUARDANDO_DESOVA">Aguardando Desova</option>
-                  <option value="EM_DESOVA">Em Desova</option>
-                  <option value="DESOVA_FINALIZADA">Desova Finalizada</option>
-                  <option value="ANEXANDO_DOCUMENTOS_FINAIS">Anexando Documentos Finais</option>
-                  <option value="CANCELADO">Cancelado</option>
+                  <option value="all" className="bg-gray-900">Todos</option>
+                  <option value="OPERACAO_FINALIZADA" className="bg-gray-900">Operação Finalizada</option>
+                  <option value="A CAMINHO DO CLIENTE" className="bg-gray-900">A Caminho do Cliente</option>
+                  <option value="AGENDADO" className="bg-gray-900">Agendado</option>
+                  <option value="AGUARDANDO_DESOVA" className="bg-gray-900">Aguardando Desova</option>
+                  <option value="EM_DESOVA" className="bg-gray-900">Em Desova</option>
+                  <option value="DESOVA_FINALIZADA" className="bg-gray-900">Desova Finalizada</option>
+                  <option value="ANEXANDO_DOCUMENTOS_FINAIS" className="bg-gray-900">Anexando Docs Finais</option>
+                  <option value="CANCELADO" className="bg-gray-900">Cancelado</option>
                 </select>
               </div>
-
+              {/* Search */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Buscar
-                </label>
-                <input
-                  type="text"
-                  placeholder="Número, motorista, placa..."
-                  value={filters.searchTerm}
-                  onChange={(e) => setFilters({...filters, searchTerm: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
+                <label className="block text-xs font-semibold text-gray-400 uppercase mb-2">Buscar</label>
+                <div className="relative">
+                  <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs" />
+                  <input
+                    type="text"
+                    placeholder="Número, motorista, placa…"
+                    value={filters.searchTerm}
+                    onChange={e => setFilters({...filters, searchTerm: e.target.value})}
+                    className="w-full pl-8 pr-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+              </div>
+              {/* Start date */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 uppercase mb-2">Data Inicial</label>
+                <input type="date" value={filters.startDate} onChange={e => setFilters({...filters, startDate: e.target.value})}
+                  className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
+              </div>
+              {/* End date */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 uppercase mb-2">Data Final</label>
+                <input type="date" value={filters.endDate} onChange={e => setFilters({...filters, endDate: e.target.value})}
+                  className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500" />
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Data Inicial
-                </label>
-                <input
-                  type="date"
-                  value={filters.startDate}
-                  onChange={(e) => setFilters({...filters, startDate: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Data Final
-                </label>
-                <input
-                  type="date"
-                  value={filters.endDate}
-                  onChange={(e) => setFilters({...filters, endDate: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
+              {/* Clear filters */}
+              {(filters.status !== 'all' || filters.searchTerm || filters.startDate || filters.endDate) && (
+                <div className="sm:col-span-2 lg:col-span-4 flex justify-end">
+                  <button
+                    onClick={() => setFilters({ status:'all', searchTerm:'', startDate:'', endDate:'' })}
+                    className="flex items-center gap-2 text-xs text-red-400 hover:text-red-300 font-semibold transition"
+                  >
+                    <FaTimes /> Limpar filtros
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        {/* Tabela de Entregas */}
+        {/* ── TABLE ── */}
         {filteredDeliveries.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-md p-8 text-center">
-            <p className="text-gray-500 text-lg">Nenhuma entrega encontrada</p>
+          <div className="bg-white/5 rounded-2xl border border-white/10 p-16 text-center">
+            <MdLocalShipping className="mx-auto text-5xl text-gray-600 mb-4" />
+            <p className="text-gray-400 text-lg font-semibold">Nenhuma entrega encontrada</p>
+            <p className="text-gray-600 text-sm mt-1">Tente ajustar os filtros ou período selecionado</p>
           </div>
         ) : (
-          <div className="overflow-x-auto overflow-visible bg-white rounded-lg shadow-md" style={{ position: 'relative' }}>
-            <table className="w-full text-xs">
-              <thead className="bg-gradient-to-r from-purple-100 to-purple-200 border-b-2 border-purple-400 sticky top-0">
-                  <tr>
-                    <th className="px-2 py-2 text-left font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">Nº</th>
-                    <th className="px-2 py-2 text-left font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">CONTRATADO</th>
-                    <th className="px-2 py-2 text-left font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">MOTORISTA</th>
-                    <th className="px-2 py-2 text-left font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">RECEBEDOR</th>
-                    <th className="px-2 py-2 text-left font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">STATUS</th>
-                    <th title="progresso da entrega" className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">PROGRESSO</th>
-                    <th className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">DT RETIRADA</th>
-                    <th className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">AGENDAMENTO</th>
-                    <th className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">CHEGADA</th>
-                    <th className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">INÍCIO</th>
-                    <th className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">FIM</th>
-                    <th title="Tempo no cliente" className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap bg-amber-100">TEMPO CLI</th>
-                    <th title="Status dos documentos" className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">DOCS</th>
-                    <th className="px-2 py-2 text-center font-extrabold text-gray-900 uppercase tracking-tight whitespace-nowrap">AÇÕES</th>
-                  </tr>
-                </thead>
-              <tbody>
-                {filteredDeliveries.map((delivery, index) => (
-                  <tr
-                    key={delivery._id}
-                    className={`border-b border-gray-200 hover:bg-purple-50 transition ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
-                  >
-                    <td className="px-2 py-2 font-semibold text-gray-800 whitespace-nowrap">{delivery.deliveryNumber}</td>
-                    <td className="px-2 py-2 text-gray-700">{delivery.userName}</td>
-                    <td className="px-2 py-2 text-gray-700">{delivery.driverName || '-'}</td>
-                    <td className="px-2 py-2 text-gray-700">{delivery.recebedor || '-'}</td>
-                    <td className="px-2 py-2">
-                      <span className={`px-2 py-1 rounded-full font-bold uppercase tracking-tight text-xs whitespace-nowrap inline-flex items-center justify-center ${getStatusBadge(delivery.status)}`}>
-                        {formatStatus(delivery.status)}
-                      </span>
-                      {delivery.status === 'CANCELADO' && (
-                        <span className="ml-2 px-2 py-1 rounded bg-gray-200 text-gray-700 border border-gray-400 font-bold text-xs">CANCELADO</span>
-                      )}
-                    </td>
-                    {/* progress cell */}
-                    <td className="px-2 py-2 text-center">
-                      {(() => {
-                        const p = getProgress(delivery);
-                        const totalStages = 7;
-                        const filledDots = Math.ceil((p / 100) * totalStages);
-                        const colorClass = p === 100 ? 'bg-green-500' : (p >= 66 ? 'bg-yellow-400' : (p >= 33 ? 'bg-indigo-500' : 'bg-gray-300'));
-                        return (
-                          <div className="flex items-center gap-1" title={`${p}%`}>
-                            <span className="text-xs font-bold text-gray-600">{p}%</span>
-                            <div className="flex gap-1">
-                              {Array.from({ length: totalStages }).map((_, i) => (
-                                <div
-                                  key={i}
-                                  className={`w-3 h-3 rounded-full transition-all ${
-                                    i < filledDots ? `${colorClass} ${p < 100 ? 'animate-pulse' : ''}` : 'bg-gray-300'
-                                  }`}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </td>
-                    <td className="px-2 py-2 text-gray-600 whitespace-nowrap text-center font-semibold text-blue-600 bg-blue-50">
-                      {delivery.containerMontadoAt ? new Date(delivery.containerMontadoAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-'}
-                    </td>
-                    <td className="px-2 py-2 text-gray-600 whitespace-nowrap text-center">
-                      {delivery.dataAgendamento ? new Date(delivery.dataAgendamento).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-'}
-                    </td>
-                    <td className="px-2 py-2 text-gray-700 whitespace-nowrap text-center">
-                      {delivery.horarioChegada
-                        ? new Date(delivery.horarioChegada).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
-                        : '-'}
-                    </td>
-                    <td className="px-2 py-2 text-gray-700 whitespace-nowrap text-center">
-                      {delivery.horarioInicioDesova
-                        ? new Date(delivery.horarioInicioDesova).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
-                        : '-'}
-                    </td>
-                    <td className="px-2 py-2 text-gray-700 whitespace-nowrap text-center">
-                      {delivery.horarioFimDesova
-                        ? new Date(delivery.horarioFimDesova).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
-                        : '-'}
-                    </td>
-                    <td className="px-2 py-2 text-center font-semibold bg-amber-50">
-                      {(() => {
-                        const result = calculateCliTime(delivery, currentTime);
-                        if (!result || !result.tempo) return <span className="text-gray-500">-</span>;
-                        return (
-                          <div className="flex items-center justify-center gap-1">
-                            <span className="text-amber-700 font-bold">{result.tempo}</span>
-                            {result.isActive && <span className="text-lg animate-pulse">⏱️</span>}
-                          </div>
-                        );
-                      })()}
-                    </td>
-                    <td className="px-2 py-2 text-center">
-                      {(() => {
-                        const statusText = getDocumentsStatus(delivery);
-                        const complete = statusText.includes('COMPLETO');
-                        // traffic‑light circle with tooltip showing full status
-                        return (
-                          <div title={statusText} className="flex items-center justify-center">
+          <div>
+            <SectionTitle sub={`${filteredDeliveries.length} resultado(s)`}>Entregas</SectionTitle>
+            <div className="rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-white/5 border-b border-white/10 text-gray-400 uppercase tracking-wider">
+                      {[
+                        ['Nº','deliveryNumber'],['Contratado','userName'],['Motorista','driverName'],
+                        ['Recebedor','recebedor'],['Status',null],['Progresso',null],
+                        ['DT Retirada','containerMontadoAt'],['Agendamento','dataAgendamento'],
+                        ['Chegada','horarioChegada'],['Início','horarioInicioDesova'],
+                        ['Fim','horarioFimDesova']
+                      ].map(([col, field]) => (
+                        <th
+                          key={col}
+                          className={`px-3 py-3.5 text-left font-bold whitespace-nowrap ${field ? 'cursor-pointer hover:text-white transition' : ''}`}
+                          onClick={() => {
+                            if (!field) return;
+                            if (sortBy === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+                            else { setSortBy(field); setSortDir('asc'); }
+                          }}
+                        >
+                          <span className="flex items-center gap-1">
+                            {col}
+                            {sortBy === field && <span className="text-purple-400">{sortDir==='asc'?'↑':'↓'}</span>}
+                          </span>
+                        </th>
+                      ))}
+                      <th className="px-3 py-3.5 text-center font-bold whitespace-nowrap bg-amber-900/20 text-amber-400">
+                        ⏱ Tempo
+                      </th>
+                      <th className="px-3 py-3.5 text-center font-bold whitespace-nowrap">Docs</th>
+                      <th className="px-3 py-3.5 text-center font-bold whitespace-nowrap">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {filteredDeliveries.map((d, i) => {
+                      const cliTime = calculateCliTime(d, currentTime);
+                      const docStatus = getDocumentsStatus(d);
+                      const isComplete = docStatus.includes('COMPLETO');
+                      const cfg = resolveConfig(d.status);
+                      return (
+                        <tr
+                          key={d._id}
+                          className={`transition-colors hover:bg-white/5 ${i % 2 === 0 ? 'bg-transparent' : 'bg-white/[0.02]'}`}
+                        >
+                          <td className="px-3 py-3 font-bold text-purple-300 whitespace-nowrap">{d.deliveryNumber}</td>
+                          <td className="px-3 py-3 text-gray-300 max-w-[120px] truncate" title={d.userName}>{d.userName}</td>
+                          <td className="px-3 py-3 text-gray-300 whitespace-nowrap">{d.driverName || '—'}</td>
+                          <td className="px-3 py-3 text-gray-400">{d.recebedor || '—'}</td>
+                          <td className="px-3 py-3"><Badge status={d.status} /></td>
+                          <td className="px-3 py-3"><ProgressDots delivery={d} /></td>
+                          {/* DT Retirada */}
+                          <td className="px-3 py-3 text-sky-400 whitespace-nowrap text-center font-semibold">
+                            {d.containerMontadoAt ? new Date(d.containerMontadoAt).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—'}
+                          </td>
+                          <td className="px-3 py-3 text-gray-400 whitespace-nowrap text-center">
+                            {d.dataAgendamento ? new Date(d.dataAgendamento).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—'}
+                          </td>
+                          <td className="px-3 py-3 text-gray-300 whitespace-nowrap text-center">
+                            {d.horarioChegada ? new Date(d.horarioChegada).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—'}
+                          </td>
+                          <td className="px-3 py-3 text-gray-400 whitespace-nowrap text-center">
+                            {d.horarioInicioDesova ? new Date(d.horarioInicioDesova).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—'}
+                          </td>
+                          <td className="px-3 py-3 text-gray-400 whitespace-nowrap text-center">
+                            {d.horarioFimDesova ? new Date(d.horarioFimDesova).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—'}
+                          </td>
+                          {/* Tempo CLI */}
+                          <td className="px-3 py-3 text-center bg-amber-900/10">
+                            {cliTime.tempo ? (
+                              <span className={`font-bold tabular-nums ${cliTime.isActive ? 'text-amber-400' : 'text-amber-600'}`}>
+                                {cliTime.tempo}
+                                {cliTime.isActive && <span className="ml-1 animate-pulse">⏱</span>}
+                              </span>
+                            ) : <span className="text-gray-600">—</span>}
+                          </td>
+                          {/* Docs */}
+                          <td className="px-3 py-3 text-center">
                             <span
-                              className={`w-3 h-3 rounded-full ${
-                                complete ? 'bg-green-500' : 'bg-red-500'
-                              }`}
-                            />
-                          </div>
-                        );
-                      })()}
-                    </td>
-                    <td className="px-2 py-2 text-center">
-                      <button
-                        onClick={() => setSelectedDelivery(delivery)}
-                        className="inline-flex items-center justify-center w-8 h-8 rounded-full hover:bg-purple-200 text-purple-600 transition text-sm hover:text-purple-800"
-                        title="Visualizar"
-                      >
-                        <FaEye size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                              title={docStatus}
+                              className={`inline-flex items-center justify-center w-5 h-5 rounded-full ${isComplete ? 'bg-emerald-500/20 ring-2 ring-emerald-500' : 'bg-red-500/20 ring-2 ring-red-500'}`}
+                            >
+                              <span className={`w-2 h-2 rounded-full ${isComplete ? 'bg-emerald-400' : 'bg-red-400'}`} />
+                            </span>
+                          </td>
+                          {/* Actions */}
+                          <td className="px-3 py-3 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => setSelectedDelivery(d)}
+                                title="Visualizar"
+                                className="w-7 h-7 rounded-lg bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 hover:text-purple-200 flex items-center justify-center transition"
+                              >
+                                <FaEye size={12} />
+                              </button>
+                              {canEdit() && (
+                                <>
+                                  <button
+                                    onClick={() => handleEditStart(d)}
+                                    title="Editar"
+                                    className="w-7 h-7 rounded-lg bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 hover:text-blue-200 flex items-center justify-center transition"
+                                  >
+                                    <FaEdit size={12} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDelete(d._id)}
+                                    title="Deletar"
+                                    className="w-7 h-7 rounded-lg bg-red-600/20 hover:bg-red-600/40 text-red-400 hover:text-red-200 flex items-center justify-center transition"
+                                  >
+                                    <FaTrash size={12} />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
+      </main>
 
-        {/* Toast */}
-        {toast && (
-          <Toast
-            message={toast.message}
-            type={toast.type}
-            onClose={() => setToast(null)}
-          />
-        )}
-      </div>
+      {/* ── TOAST ── */}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-      {/* Modal Detalhes */}
+      {/* ═══════════════════════════════════════
+          MODAL: DETALHES DA ENTREGA
+          ═══════════════════════════════════════ */}
       {selectedDelivery && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="sticky top-0 bg-gradient-to-r from-purple-700 to-purple-500 text-white p-4 flex items-center justify-between rounded-t-lg">
-              <h2 className="text-2xl font-bold tracking-widest">
-                Entrega <span className="text-yellow-200">#{selectedDelivery.deliveryNumber}</span>
-              </h2>
-              <button
-                onClick={() => setSelectedDelivery(null)}
-                className="text-2xl hover:text-gray-200 transition"
-                title="Fechar"
-              >
-                <FaTimes />
-              </button>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#1a1a2e] rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl border border-white/10 flex flex-col">
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-purple-700/60 to-indigo-700/60 border-b border-white/10 flex-shrink-0">
+              <div>
+                <p className="text-xs text-purple-300 uppercase tracking-widest font-semibold mb-0.5">Entrega</p>
+                <h2 className="text-xl font-black text-white tracking-wide">
+                  #{selectedDelivery.deliveryNumber}
+                </h2>
+              </div>
+              <div className="flex items-center gap-3">
+                <Badge status={selectedDelivery.status} />
+                <button
+                  onClick={() => setSelectedDelivery(null)}
+                  className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition"
+                >
+                  <FaTimes />
+                </button>
+              </div>
             </div>
 
-            <div className="p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase">Contratado</p>
-                  <p className="text-lg font-semibold text-gray-800">{selectedDelivery.userName}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase">Motorista</p>
-                  <p className="text-lg font-semibold text-gray-800">{selectedDelivery.driverName || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase">Status</p>
-                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${getStatusBadge(selectedDelivery.status)}`}>{formatStatus(selectedDelivery.status)}</span>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase">Agendamento</p>
-                  <p className="text-base text-gray-700">{selectedDelivery.dataAgendamento ? new Date(selectedDelivery.dataAgendamento).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-'}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase">DT Montagem Container</p>
-                  <p className="text-base text-blue-600 font-semibold bg-blue-50 px-2 py-1 rounded">{selectedDelivery.containerMontadoAt ? new Date(selectedDelivery.containerMontadoAt).toLocaleString('pt-BR') : '-'}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase">Chegada</p>
-                  <p className="text-base text-gray-700">
-                    {selectedDelivery.horarioChegada
-                      ? new Date(selectedDelivery.horarioChegada).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
-                      : '-'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase">Início Desova</p>
-                  <p className="text-base text-gray-700">
-                    {selectedDelivery.horarioInicioDesova
-                      ? new Date(selectedDelivery.horarioInicioDesova).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
-                      : '-'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase">Fim Desova</p>
-                  <p className="text-base text-gray-700">
-                    {selectedDelivery.horarioFimDesova
-                      ? new Date(selectedDelivery.horarioFimDesova).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
-                      : '-'}
-                  </p>
+            {/* Content */}
+            <div className="overflow-y-auto flex-1 p-6 space-y-6">
+
+              {/* Info Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  ['Contratado', selectedDelivery.userName],
+                  ['Motorista', selectedDelivery.driverName || '—'],
+                  ['Placa', selectedDelivery.vehiclePlate || '—'],
+                  ['Recebedor', selectedDelivery.recebedor || '—'],
+                  ['Agendamento', selectedDelivery.dataAgendamento ? new Date(selectedDelivery.dataAgendamento).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—'],
+                  ['Montagem Container', selectedDelivery.containerMontadoAt ? new Date(selectedDelivery.containerMontadoAt).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—'],
+                  ['Chegada', selectedDelivery.horarioChegada ? new Date(selectedDelivery.horarioChegada).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—'],
+                  ['Início Desova', selectedDelivery.horarioInicioDesova ? new Date(selectedDelivery.horarioInicioDesova).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—'],
+                  ['Fim Desova', selectedDelivery.horarioFimDesova ? new Date(selectedDelivery.horarioFimDesova).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—'],
+                ].map(([label, value]) => (
+                  <div key={label} className="bg-white/5 rounded-xl px-4 py-3 border border-white/5">
+                    <p className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold mb-0.5">{label}</p>
+                    <p className="text-sm text-gray-100 font-semibold">{value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Progress bar visual */}
+              <div className="bg-white/5 rounded-xl p-4 border border-white/5">
+                <p className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold mb-3">Progresso da Entrega</p>
+                <div className="flex items-center gap-1.5">
+                  {progressStatuses.map((s, i) => {
+                    const p = getProgress(selectedDelivery);
+                    const filled = Math.ceil((p / 100) * progressStatuses.length);
+                    const cfg = STATUS_CONFIG[s];
+                    return (
+                      <React.Fragment key={s}>
+                        <div className={`flex flex-col items-center gap-1 flex-1 ${i <= filled - 1 ? '' : 'opacity-30'}`}>
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] ${i <= filled - 1 ? (cfg?.bg || 'bg-purple-600') : 'bg-gray-700'} transition-all`}>
+                            {cfg?.icon}
+                          </div>
+                          <p className="text-[7px] text-center text-gray-500 leading-tight hidden sm:block">{cfg?.label || s}</p>
+                        </div>
+                        {i < progressStatuses.length - 1 && (
+                          <div className={`h-0.5 flex-1 rounded-full transition-colors ${i < filled - 1 ? 'bg-purple-500' : 'bg-gray-700'}`} />
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
                 </div>
               </div>
 
-              {(selectedDelivery.observations || selectedDelivery.observacoes || selectedDelivery.documentsJustification || selectedDelivery.submissionObservation || flowHistory.length > 0) && (
-                <div className="space-y-2">
-                  <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded shadow-sm">
-                    <p className="text-xs font-bold text-blue-800 uppercase mb-1">📝 Observações do Fluxo</p>
-                    {/* renderir histórico automático baseado nas timestamps */}
+              {/* Flow history */}
+              {flowHistory.length > 0 && (
+                <div className="bg-white/5 rounded-xl p-4 border border-white/5">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold mb-3">📍 Histórico do Fluxo</p>
+                  <div className="space-y-2">
                     {flowHistory.map((ev, idx) => (
-                      <p key={idx} className="text-gray-800 text-sm">
-                        {ev.label} em {new Date(ev.date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
-                      </p>
+                      <div key={idx} className="flex items-center gap-3">
+                        <span className="w-2 h-2 rounded-full bg-purple-400 flex-shrink-0" />
+                        <span className="text-sm text-gray-200 flex-1">{ev.label}</span>
+                        <span className="text-xs text-gray-500 font-mono">{new Date(ev.date).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}</span>
+                      </div>
                     ))}
-                    {selectedDelivery.observations && (
-                      <p className="text-gray-800 text-sm whitespace-pre-wrap">{selectedDelivery.observations}</p>
-                    )}
-                    {selectedDelivery.observacoes && (
-                      <p className="text-gray-800 text-sm whitespace-pre-wrap">{selectedDelivery.observacoes}</p>
-                    )}
-                    {!selectedDelivery.observations && !selectedDelivery.observacoes && flowHistory.length === 0 && (
-                      <p className="text-gray-600 text-sm">-</p>
-                    )}
                   </div>
+                </div>
+              )}
 
-                  {selectedDelivery.documentsJustification && (
-                    <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded shadow-sm">
-                      <p className="text-xs font-bold text-yellow-800 uppercase mb-1"><FaExclamationTriangle className="inline mr-2" />Justificativa de Documentos</p>
-                      <p className="text-gray-800 text-sm whitespace-pre-wrap">{selectedDelivery.documentsJustification}</p>
+              {/* Observations */}
+              {(selectedDelivery.observations || selectedDelivery.observacoes || selectedDelivery.documentsJustification || selectedDelivery.submissionObservation) && (
+                <div className="space-y-3">
+                  {(selectedDelivery.observations || selectedDelivery.observacoes) && (
+                    <div className="bg-blue-900/20 border border-blue-500/20 rounded-xl p-4">
+                      <p className="text-[10px] text-blue-400 uppercase tracking-widest font-bold mb-2">📝 Observações</p>
+                      {selectedDelivery.observations && <p className="text-sm text-gray-300 whitespace-pre-wrap">{selectedDelivery.observations}</p>}
+                      {selectedDelivery.observacoes && <p className="text-sm text-gray-300 whitespace-pre-wrap mt-1">{selectedDelivery.observacoes}</p>}
                     </div>
                   )}
-
+                  {selectedDelivery.documentsJustification && (
+                    <div className="bg-amber-900/20 border border-amber-500/20 rounded-xl p-4">
+                      <p className="text-[10px] text-amber-400 uppercase tracking-widest font-bold mb-2">⚠️ Justificativa de Documentos</p>
+                      <p className="text-sm text-gray-300 whitespace-pre-wrap">{selectedDelivery.documentsJustification}</p>
+                    </div>
+                  )}
                   {selectedDelivery.submissionObservation && (
-                    <div className="bg-indigo-50 border-l-4 border-indigo-300 p-4 rounded shadow-sm">
-                      <p className="text-xs font-bold text-indigo-800 uppercase mb-1">ℹ️ Observação de Submissão</p>
-                      <p className="text-gray-800 text-sm whitespace-pre-wrap">{selectedDelivery.submissionObservation}</p>
+                    <div className="bg-indigo-900/20 border border-indigo-500/20 rounded-xl p-4">
+                      <p className="text-[10px] text-indigo-400 uppercase tracking-widest font-bold mb-2">ℹ️ Observação de Submissão</p>
+                      <p className="text-sm text-gray-300 whitespace-pre-wrap">{selectedDelivery.submissionObservation}</p>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Documentos e Fotos do Fluxo */}
+              {/* Documents */}
               <div>
-                <div className="flex items-center justify-between mb-4">
-                  <p className="text-sm font-bold text-gray-700 uppercase tracking-wide"><FaBox className="inline mr-2" />Documentos e Fotos do Fluxo</p>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Documentos e Fotos</p>
                   <div className="flex gap-2">
-                    <button
-                      onClick={() => handleShareDelivery()}
-                      className="px-3 py-2 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700 transition font-semibold flex items-center gap-2"
-                    >
+                    <button onClick={handleShareDelivery}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 hover:text-emerald-200 text-xs font-semibold rounded-lg transition border border-emerald-500/20">
                       <FaShareAlt /> Compartilhar
                     </button>
-                    <button
-                      onClick={() => handleDownloadAll(selectedDelivery._id)}
-                      className="px-3 py-2 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 transition font-semibold flex items-center gap-2"
-                    >
-                      <FaDownload /> Baixar Pasta
+                    <button onClick={() => handleDownloadAll(selectedDelivery._id)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 hover:text-blue-200 text-xs font-semibold rounded-lg transition border border-blue-500/20">
+                      <FaDownload /> Baixar Tudo
                     </button>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 gap-3">
+
+                <div className="space-y-2">
                   {(() => {
                     const labels = getLabelsForDelivery(selectedDelivery);
-                    // Documentos normais (sem duplicar campos de fotos)
                     const docRows = Object.keys(selectedDelivery.documents || {})
-                      .filter(docKey => !['chegadaCliente', 'inicioDesova', 'fimDesova'].includes(docKey))
-                      .map(docKey => (
-                        <div key={docKey}>
-                          {selectedDelivery.documents[docKey] ? (
-                            <div className="bg-white border border-gray-300 p-4 rounded-lg flex items-center justify-between hover:shadow-md transition">
-                              <span className="font-semibold text-gray-700 text-sm">{labels[docKey] || docKey}</span>
+                      .filter(k => !['chegadaCliente','inicioDesova','fimDesova'].includes(k))
+                      .map(k => {
+                        const present = !!selectedDelivery.documents[k];
+                        return (
+                          <div key={k} className={`flex items-center justify-between px-4 py-3 rounded-xl border ${present ? 'bg-white/5 border-white/10' : 'bg-white/[0.02] border-white/5 opacity-50'}`}>
+                            <div className="flex items-center gap-3">
+                              <span className={`w-2 h-2 rounded-full ${present ? 'bg-emerald-400' : 'bg-gray-600'}`} />
+                              <span className="text-sm text-gray-300 font-semibold">{labels[k] || k}</span>
+                              {!present && <span className="text-xs text-gray-600">Não anexado</span>}
+                            </div>
+                            {present && (
                               <div className="flex gap-2">
-                                <button
-                                  onClick={() => {
-                                    const urls = getDocumentUrlsArray(selectedDelivery.documents[docKey]);
-                                    setViewingDocument({ label: labels[docKey] || docKey, urls, type: 'document' });
-                                  }}
-                                  className="p-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition title='Visualizar'"
-                                  title="Visualizar"
-                                >
-                                  <FaEye size={16} />
+                                <button onClick={() => setViewingDocument({ label: labels[k]||k, urls: getDocumentUrlsArray(selectedDelivery.documents[k]) })}
+                                  className="w-7 h-7 rounded-lg bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 flex items-center justify-center transition">
+                                  <FaEye size={11} />
                                 </button>
-                                <button
-                                  onClick={() => handleDownload(selectedDelivery._id, docKey)}
-                                  className="p-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
-                                  title="Baixar"
-                                >
-                                  <FaDownload size={16} />
+                                <button onClick={() => handleDownload(selectedDelivery._id, k)}
+                                  className="w-7 h-7 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 flex items-center justify-center transition">
+                                  <FaDownload size={11} />
                                 </button>
                               </div>
+                            )}
+                          </div>
+                        );
+                      });
+
+                    const fotoFields = [
+                      { key:'chegadaCliente', label:'Chegada no Cliente' },
+                      { key:'inicioDesova',   label:'Início da Desova' },
+                      { key:'fimDesova',      label:'Finalização da Desova' }
+                    ];
+                    const fotosRows = fotoFields.map(f => {
+                      const files = getDocumentUrlsArray(selectedDelivery.documents?.[f.key]);
+                      const present = files.length > 0;
+                      return (
+                        <div key={f.key} className={`flex items-center justify-between px-4 py-3 rounded-xl border ${present ? 'bg-white/5 border-white/10' : 'bg-white/[0.02] border-white/5 opacity-50'}`}>
+                          <div className="flex items-center gap-3">
+                            <span className={`w-2 h-2 rounded-full ${present ? 'bg-sky-400' : 'bg-gray-600'}`} />
+                            <span className="text-sm text-gray-300 font-semibold">{f.label}</span>
+                            {present && <span className="text-xs text-gray-500">{files.length} foto(s)</span>}
+                            {!present && <span className="text-xs text-gray-600">Não anexado</span>}
+                          </div>
+                          {present && (
+                            <div className="flex gap-2">
+                              <button onClick={() => setModalFotos({ label:f.label, files })}
+                                className="w-7 h-7 rounded-lg bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 flex items-center justify-center transition">
+                                <FaEye size={11} />
+                              </button>
+                              <button onClick={() => files.forEach((url,i) => {
+                                const a = document.createElement('a'); a.href=url;
+                                a.setAttribute('download',`${f.label.replace(/\s+/g,'_')}_${i+1}.jpg`);
+                                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                              })}
+                                className="w-7 h-7 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 flex items-center justify-center transition">
+                                <FaDownload size={11} />
+                              </button>
                             </div>
-                          ) : (
-                            <div className="bg-gray-100 p-4 rounded-lg text-gray-500 text-sm border border-gray-200">{labels[docKey] || docKey} <span className="text-gray-400">- Não anexado</span></div>
                           )}
                         </div>
-                      ));
-                    // Fotos do fluxo: chegada, início, fim desova (sem duplicar)
-                    const fotosCampos = [
-                      { key: 'chegadaCliente', label: 'Chegada no Cliente' },
-                      { key: 'inicioDesova', label: 'Início da Desova' },
-                      { key: 'fimDesova', label: 'Finalização da Desova' }
-                    ];
-                    const fotosRows = fotosCampos.map((f, idx) => {
-                      const files = getDocumentUrlsArray(selectedDelivery.documents?.[f.key]);
-                      return files.length > 0 ? (
-                        <div key={f.label + idx} className="bg-white border border-gray-300 p-4 rounded-lg flex items-center justify-between hover:shadow-md transition">
-                          <span className="font-semibold text-gray-700 text-sm">{f.label}</span>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => setModalFotos({ label: f.label, files })}
-                              className="p-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition"
-                              title="Visualizar"
-                            >
-                              <FaEye size={16} />
-                            </button>
-                            <button
-                              onClick={() => {
-                                files.forEach((url, i) => {
-                                  const link = document.createElement('a');
-                                  link.href = url;
-                                  link.setAttribute('download', `${f.label.replace(/\s+/g, '_')}_${i+1}.jpg`);
-                                  document.body.appendChild(link);
-                                  link.click();
-                                  document.body.removeChild(link);
-                                });
-                              }}
-                              className="p-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
-                              title="Baixar"
-                            >
-                              <FaDownload size={16} />
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div key={f.label + idx} className="bg-gray-100 p-4 rounded-lg text-gray-500 text-sm border border-gray-200">{f.label} <span className="text-gray-400">- Não anexado</span></div>
                       );
                     });
-                    return [
-                      ...docRows,
-                      ...fotosRows
-                    ];
+                    return [...docRows, ...fotosRows];
                   })()}
                 </div>
               </div>
-      {/* Modal para visualizar fotos do fluxo */}
-      {modalFotos && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold">{modalFotos.label}</h2>
-              <button onClick={() => setModalFotos(null)} className="text-2xl hover:text-gray-400 transition"><FaTimes /></button>
+
+              {/* Footer */}
+              <p className="text-[10px] text-gray-600 text-right border-t border-white/5 pt-4">
+                Criado em {new Date(selectedDelivery.createdAt).toLocaleString('pt-BR')}
+              </p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              {modalFotos.files.map((url, idx) => (
-                <img key={idx} src={url} alt={`Foto ${idx + 1}`} className="w-full h-40 object-cover rounded shadow" />
-              ))}
-            </div>
+
+            {/* Actions footer */}
+            {canEdit() && (
+              <div className="flex-shrink-0 px-6 py-4 border-t border-white/10 bg-white/[0.02] flex justify-end gap-3">
+                <button onClick={() => handleEditStart(selectedDelivery)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 hover:text-blue-200 text-sm font-semibold transition border border-blue-500/20">
+                  <FaEdit /> Editar
+                </button>
+                <button onClick={() => handleDelete(selectedDelivery._id)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600/20 hover:bg-red-600/40 text-red-400 hover:text-red-200 text-sm font-semibold transition border border-red-500/20">
+                  <FaTrash /> Excluir
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* Modal para visualizar documento */}
-      {viewingDocument && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-gray-800">{viewingDocument.label}</h2>
-              <button onClick={() => setViewingDocument(null)} className="text-3xl hover:text-gray-400 transition font-light">
+      {/* ═══════════════════════════════════════
+          MODAL: FOTOS DO FLUXO
+          ═══════════════════════════════════════ */}
+      {modalFotos && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+          <div className="bg-[#1a1a2e] rounded-2xl w-full max-w-lg border border-white/10 shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+              <h2 className="text-base font-bold text-white">{modalFotos.label}</h2>
+              <button onClick={() => setModalFotos(null)}
+                className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition">
                 <FaTimes />
               </button>
             </div>
-            <div className="bg-gray-50 rounded-lg overflow-auto max-h-[70vh]">
-              {viewingDocument.urls && viewingDocument.urls.length > 0 ? (
-                <div className="space-y-4">
-                  {viewingDocument.urls.map((url, idx) => (
-                    <div key={idx} className="border-b border-gray-200 pb-4 last:border-b-0">
-                      {url && url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-                        <img src={url} alt={`${viewingDocument.label} ${idx + 1}`} className="w-full h-auto rounded" />
-                      ) : (
-                        <div className="p-6 text-center text-gray-600">
-                          <p className="mb-4">{viewingDocument.label} {viewingDocument.urls.length > 1 ? `${idx + 1}` : ''}</p>
-                          <a
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                          >
-                            <FaDownload /> Abrir em nova aba
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : viewingDocument.url ? (
-                // Fallback para formato antigo com url singular
-                viewingDocument.url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-                  <img src={viewingDocument.url} alt={viewingDocument.label} className="w-full h-auto rounded" />
-                ) : (
-                  <div className="p-6 text-center text-gray-600">
-                    <p className="mb-4">Documento: {viewingDocument.label}</p>
-                    <a
-                      href={viewingDocument.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                    >
-                      <FaDownload /> Abrir em nova aba
-                    </a>
-                  </div>
-                )
-              ) : (
-                <div className="p-6 text-center text-gray-500">
-                  <p>Nenhum documento disponível</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-              {selectedDelivery.submissionObservation && (
-                <div className="bg-yellow-50 border-l-4 border-yellow-300 p-3 rounded mb-3">
-                  <p className="text-sm font-semibold text-yellow-800">Observação de Envio{selectedDelivery.submissionForce ? ' (Envio Forçado)' : ''}</p>
-                  <p className="text-sm text-yellow-700">{selectedDelivery.submissionObservation}</p>
-                </div>
-              )}
-
-              <div className="text-xs text-gray-500 pt-4 border-t border-gray-200">
-                <p>
-                  Criado em:{' '}
-                  {new Date(selectedDelivery.createdAt).toLocaleString('pt-BR')}
-                </p>
+            <div className="p-5 max-h-[75vh] overflow-y-auto">
+              <div className="grid grid-cols-2 gap-3">
+                {modalFotos.files.map((url, i) => (
+                  <img key={i} src={url} alt={`Foto ${i+1}`} className="w-full h-44 object-cover rounded-xl shadow-lg" />
+                ))}
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal de Edição */}
+      {/* ═══════════════════════════════════════
+          MODAL: VISUALIZAR DOCUMENTO
+          ═══════════════════════════════════════ */}
+      {viewingDocument && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+          <div className="bg-[#1a1a2e] rounded-2xl w-full max-w-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 flex-shrink-0">
+              <h2 className="text-base font-bold text-white">{viewingDocument.label}</h2>
+              <button onClick={() => setViewingDocument(null)}
+                className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition">
+                <FaTimes />
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-5 bg-gray-950/50">
+              {viewingDocument.urls?.length > 0 ? (
+                <div className="space-y-4">
+                  {viewingDocument.urls.map((url, i) => (
+                    <div key={i} className="rounded-xl overflow-hidden">
+                      {url?.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+                        ? <img src={url} alt={`${viewingDocument.label} ${i+1}`} className="w-full h-auto rounded-xl" />
+                        : (
+                          <div className="p-8 text-center">
+                            <FaFilePdf className="mx-auto text-4xl text-red-400 mb-4" />
+                            <p className="text-gray-400 mb-4 text-sm">{viewingDocument.label}</p>
+                            <a href={url} target="_blank" rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition">
+                              <FaDownload /> Abrir documento
+                            </a>
+                          </div>
+                        )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-8 text-center text-gray-500">Nenhum documento disponível</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════
+          MODAL: EDIÇÃO
+          ═══════════════════════════════════════ */}
       {editingDelivery && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-lg max-w-lg w-full p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold text-gray-800">Editar Entrega</h2>
-              <button
-                onClick={() => setEditingDelivery(null)}
-                className="text-2xl hover:text-gray-200 transition"
-              >
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#1a1a2e] rounded-3xl w-full max-w-lg border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-white/10 flex-shrink-0">
+              <div>
+                <p className="text-xs text-gray-500 uppercase tracking-widest mb-0.5">Edição</p>
+                <h2 className="text-lg font-black text-white">Editar Entrega</h2>
+              </div>
+              <button onClick={() => setEditingDelivery(null)}
+                className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition">
                 <FaTimes />
               </button>
             </div>
 
             {isGeoMar() && (
-              <div className="mb-4 p-3 bg-amber-50 border-l-4 border-amber-400 rounded">
-                <p className="text-sm text-amber-800 font-semibold"><FaEye className="inline mr-2" />Modo Visualização</p>
-                <p className="text-xs text-amber-700">Este formulário está bloqueado para visualização apenas</p>
+              <div className="mx-6 mt-4 p-3 bg-amber-900/30 border border-amber-500/20 rounded-xl">
+                <p className="text-sm text-amber-300 font-semibold flex items-center gap-2">
+                  <FaEye /> Modo Visualização – sem permissão de edição
+                </p>
               </div>
             )}
 
-            <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+            <div className="overflow-y-auto flex-1 px-6 py-4 space-y-4">
+              {[
+                ['Número do Container', 'deliveryNumber', 'text', true],
+                ['Contratado', 'userName', 'text', false],
+                ['Motorista', 'driverName', 'text', false],
+                ['Placa', 'vehiclePlate', 'text', true],
+                ['Recebedor', 'recebedor', 'text', false],
+              ].map(([label, field, type, upper]) => (
+                <div key={field}>
+                  <label className="block text-xs font-semibold text-gray-400 uppercase mb-1.5">{label}</label>
+                  <input type={type} disabled={isGeoMar()} value={editForm[field]}
+                    onChange={e => setEditForm({...editForm, [field]: upper ? e.target.value.toUpperCase() : e.target.value})}
+                    className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-40 disabled:cursor-not-allowed" />
+                </div>
+              ))}
+
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Número do Container</label>
-                <input type="text" disabled={isGeoMar()} value={editForm.deliveryNumber} onChange={e => setEditForm({ ...editForm, deliveryNumber: e.target.value.toUpperCase() })} className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${isGeoMar() ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`} placeholder="Ex: CGMU5575947" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Contratado</label>
-                <input type="text" disabled={isGeoMar()} value={editForm.userName} onChange={e => setEditForm({ ...editForm, userName: e.target.value })} className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${isGeoMar() ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`} placeholder="Ex: Josinei vieira" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Nome do Motorista</label>
-                <input type="text" disabled={isGeoMar()} value={editForm.driverName} onChange={e => setEditForm({ ...editForm, driverName: e.target.value })} className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${isGeoMar() ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`} placeholder="Ex: ALAN" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Placa do Veículo</label>
-                <input type="text" disabled={isGeoMar()} value={editForm.vehiclePlate} onChange={e => setEditForm({ ...editForm, vehiclePlate: e.target.value.toUpperCase() })} className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${isGeoMar() ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`} placeholder="Ex: ABC1D23" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Recebedor</label>
-                <input type="text" disabled={isGeoMar()} value={editForm.recebedor} onChange={e => setEditForm({ ...editForm, recebedor: e.target.value })} className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${isGeoMar() ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`} placeholder="Nome do recebedor" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Status</label>
-                <select disabled={isGeoMar()} value={editForm.status} onChange={e => setEditForm({ ...editForm, status: e.target.value })} className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${isGeoMar() ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`}>
-                  <option value="">Selecione...</option>
-                  <option value="ENTREGUE">Operação Finalizada</option>
-                  <option value="pending">A Caminho do Cliente</option>
-                  <option value="AGUARDANDO_DESOVA">Aguardando Desova</option>
-                  <option value="EM_DESOVA">Em Desova</option>
-                  <option value="DESOVA_FINALIZADA">Desova Finalizada</option>
-                  <option value="ANEXANDO_DOCUMENTOS_FINAIS">Anexando Documentos Finais</option>
-                  <option value="CANCELADO">Cancelado</option>
+                <label className="block text-xs font-semibold text-gray-400 uppercase mb-1.5">Status</label>
+                <select disabled={isGeoMar()} value={editForm.status}
+                  onChange={e => setEditForm({...editForm, status: e.target.value})}
+                  className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-40 disabled:cursor-not-allowed">
+                  <option value="" className="bg-gray-900">Selecione…</option>
+                  <option value="ENTREGUE" className="bg-gray-900">Operação Finalizada</option>
+                  <option value="pending" className="bg-gray-900">A Caminho do Cliente</option>
+                  <option value="AGUARDANDO_DESOVA" className="bg-gray-900">Aguardando Desova</option>
+                  <option value="EM_DESOVA" className="bg-gray-900">Em Desova</option>
+                  <option value="DESOVA_FINALIZADA" className="bg-gray-900">Desova Finalizada</option>
+                  <option value="ANEXANDO_DOCUMENTOS_FINAIS" className="bg-gray-900">Anexando Docs Finais</option>
+                  <option value="CANCELADO" className="bg-gray-900">Cancelado</option>
                 </select>
               </div>
+
+              {[
+                ['Data Agendamento', 'dataAgendamento'],
+                ['Horário Chegada', 'horarioChegada'],
+                ['Início Desova', 'horarioInicioDesova'],
+                ['Fim Desova', 'horarioFimDesova'],
+              ].map(([label, field]) => (
+                <div key={field}>
+                  <label className="block text-xs font-semibold text-gray-400 uppercase mb-1.5">{label}</label>
+                  <input type="datetime-local" disabled={isGeoMar()} value={editForm[field]}
+                    onChange={e => setEditForm({...editForm, [field]: e.target.value})}
+                    className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-40 disabled:cursor-not-allowed" />
+                </div>
+              ))}
+
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Data Agendamento</label>
-                <input type="datetime-local" disabled={isGeoMar()} value={editForm.dataAgendamento} onChange={e => setEditForm({ ...editForm, dataAgendamento: e.target.value })} className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${isGeoMar() ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`} />
+                <label className="block text-xs font-semibold text-gray-400 uppercase mb-1.5">
+                  Motivo da Edição <span className="text-red-400">*</span>
+                </label>
+                <textarea disabled={isGeoMar()} value={editForm.observations}
+                  onChange={e => setEditForm({...editForm, observations: e.target.value})}
+                  rows={3}
+                  placeholder="Explique o motivo da edição (obrigatório)"
+                  className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none placeholder-gray-600 disabled:opacity-40 disabled:cursor-not-allowed" />
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Horário Chegada</label>
-                <input type="datetime-local" disabled={isGeoMar()} value={editForm.horarioChegada} onChange={e => setEditForm({ ...editForm, horarioChegada: e.target.value })} className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${isGeoMar() ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`} />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Início Desova</label>
-                <input type="datetime-local" disabled={isGeoMar()} value={editForm.horarioInicioDesova} onChange={e => setEditForm({ ...editForm, horarioInicioDesova: e.target.value })} className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${isGeoMar() ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`} />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Fim Desova</label>
-                <input type="datetime-local" disabled={isGeoMar()} value={editForm.horarioFimDesova} onChange={e => setEditForm({ ...editForm, horarioFimDesova: e.target.value })} className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${isGeoMar() ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`} />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Motivo da Edição *</label>
-                <textarea disabled={isGeoMar()} value={editForm.observations} onChange={e => setEditForm({ ...editForm, observations: e.target.value })} className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${isGeoMar() ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''}`} placeholder="Explique por que está editando (obrigatório)" rows="2" required />
-              </div>
-              <div className="flex gap-2">
-                <button disabled={isGeoMar()} onClick={handleEditSave} className={`flex-1 px-4 py-2 rounded-lg transition font-semibold ${isGeoMar() ? 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-60' : 'bg-purple-600 text-white hover:bg-purple-700'}`}>Salvar</button>
-                <button onClick={() => setEditingDelivery(null)} className="flex-1 px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition font-semibold">Cancelar</button>
-              </div>
+            </div>
+
+            <div className="flex-shrink-0 px-6 py-4 border-t border-white/10 bg-white/[0.02] flex gap-3">
+              <button onClick={handleEditSave} disabled={isGeoMar()}
+                className="flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm transition disabled:opacity-40 disabled:cursor-not-allowed">
+                Salvar Alterações
+              </button>
+              <button onClick={() => setEditingDelivery(null)}
+                className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-gray-300 font-bold text-sm transition">
+                Cancelar
+              </button>
             </div>
           </div>
         </div>
