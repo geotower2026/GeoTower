@@ -8,13 +8,63 @@ import {
   FaTrash, FaEdit, FaExclamationTriangle, FaShareAlt, FaCalendarAlt,
   FaClock, FaBox, FaTruck, FaCheckCircle, FaTimesCircle, FaFilePdf,
   FaUsers, FaDolly, FaSearch, FaChevronDown, FaChevronRight,
-  FaExpand, FaBell, FaMapMarkerAlt
+  FaExpand, FaBell, FaMapMarkerAlt, FaPalette
 } from 'react-icons/fa';
 import { MdLocalShipping, MdDashboard } from 'react-icons/md';
 import manaConfig from '../config/cities/manaus.json';
 import itajaiConfig from '../config/cities/itajai.json';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+
+/* ─────────────────────────────────────────────────────────────
+   TEMA SYSTEM
+   ───────────────────────────────────────────────────────────── */
+const THEMES = {
+  dark: {
+    name: '🌙 Escuro',
+    bg: '#0f0f1a',
+    bgSecondary: '#1a1a2e',
+    text: '#ffffff',
+    textSecondary: '#e0e0e0',
+    border: 'border-white/10',
+    header: 'bg-[#0f0f1a]/90',
+    card: 'bg-white/5',
+    cardHover: 'hover:bg-white/10',
+  },
+  black: {
+    name: '⚫ Preto Puro',
+    bg: '#000000',
+    bgSecondary: '#0a0a0a',
+    text: '#ffffff',
+    textSecondary: '#d0d0d0',
+    border: 'border-white/[0.08]',
+    header: 'bg-black/95',
+    card: 'bg-white/[0.03]',
+    cardHover: 'hover:bg-white/[0.06]',
+  },
+  light: {
+    name: '☀️ Claro',
+    bg: '#f8f9fa',
+    bgSecondary: '#ffffff',
+    text: '#1a1a1a',
+    textSecondary: '#404040',
+    border: 'border-gray-200',
+    header: 'bg-white/95',
+    card: 'bg-gray-50',
+    cardHover: 'hover:bg-gray-100',
+  },
+  company: {
+    name: '🎨 Cores Empresa',
+    bg: '#f3e5f5',
+    bgSecondary: '#ffffff',
+    text: '#1a0033',
+    textSecondary: '#4a0080',
+    border: 'border-purple-200',
+    header: 'bg-gradient-to-r from-purple-700 to-indigo-700',
+    card: 'bg-purple-50',
+    cardHover: 'hover:bg-purple-100',
+  },
+};
 
 /* ─────────────────────────────────────────────────────────────
    DESIGN TOKENS
@@ -280,6 +330,13 @@ const MonitorEntregas = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [statsPeriod, setStatsPeriod] = useState('today');
   const [stats, setStats] = useState({ total: 0, statusCounts: {}, byDriver: 0 });
+  const [theme, setTheme] = useState(() => localStorage.getItem('torreControleTema') || 'dark');
+  const themeConfig = THEMES[theme];
+
+  // Persist theme choice
+  useEffect(() => {
+    localStorage.setItem('torreControleTema', theme);
+  }, [theme]);
 
   const statusMapToBackend = {
     OPERACAO_FINALIZADA: ['ENTREGUE', 'submitted', 'ENTREGUE_COM_PENDENCIA_CANHOTO'],
@@ -575,11 +632,10 @@ const MonitorEntregas = () => {
      RENDER
      ──────────────────────────────────────── */
   return (
-    <div className="min-h-screen bg-[#0f0f1a] text-white font-sans">
-
-      {/* ── TOP NAV ── */}
-      <header className="sticky top-0 z-40 bg-[#0f0f1a]/90 backdrop-blur-md border-b border-white/5">
-        <div className="max-w-screen-2xl mx-auto px-4 lg:px-8 h-16 flex items-center justify-between gap-4">
+    <div style={{ backgroundColor: themeConfig.bg, color: themeConfig.text }} className="min-h-screen font-sans transition-colors duration-300">
+      {/* Header com Seletor de Tema */}
+      <header className={`sticky top-0 z-40 ${themeConfig.header} backdrop-blur-md border-b ${themeConfig.border}`}>
+        <div className="w-full px-4 lg:px-8 h-16 flex items-center justify-between gap-4">
           <button
             onClick={() => navigate('/home')}
             className="flex items-center gap-2 text-sm font-semibold text-gray-400 hover:text-white transition"
@@ -592,13 +648,51 @@ const MonitorEntregas = () => {
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-900/40">
               <MdDashboard className="text-white text-base" />
             </div>
-            <h1 className="text-base sm:text-lg font-black tracking-[0.15em] uppercase text-white">
+            <h1 className="text-base sm:text-lg font-black tracking-[0.15em] uppercase" style={{ color: themeConfig.text }}>
               Torre de Controle
             </h1>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* live indicator */}
+          <div className="flex items-center gap-2 ml-auto">
+            {/* Theme Selector */}
+            <div className="hidden sm:flex items-center gap-1 rounded-xl p-1 border" style={{ backgroundColor: `${themeConfig.bgSecondary}33`, borderColor: themeConfig.border }}>
+              {Object.entries(THEMES).map(([key, t]) => (
+                <button
+                  key={key}
+                  onClick={() => setTheme(key)}
+                  title={t.name}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    theme === key
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : 'hover:bg-white/10'
+                  }`}
+                  style={{ color: theme === key ? '#fff' : themeConfig.text }}
+                >
+                  {t.name.split(' ')[0]}
+                </button>
+              ))}
+            </div>
+
+            {/* Mobile Theme Menu */}
+            <div className="sm:hidden relative group">
+              <button className="w-9 h-9 rounded-xl flex items-center justify-center transition" style={{ backgroundColor: `${themeConfig.card}` }}>
+                <FaPalette size={14} />
+              </button>
+              <div className="absolute right-0 mt-2 w-44 rounded-lg shadow-2xl hidden group-hover:block z-50" style={{ backgroundColor: themeConfig.bgSecondary, borderColor: themeConfig.border, border: '1px solid' }}>
+                {Object.entries(THEMES).map(([key, t]) => (
+                  <button
+                    key={key}
+                    onClick={() => setTheme(key)}
+                    className={`w-full text-left px-4 py-2.5 text-sm transition-all transition-all ${
+                      theme === key ? 'bg-purple-600 text-white' : 'hover:bg-white/5'
+                    }`}
+                  >
+                    {t.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {autoRefresh && (
               <span className="hidden sm:flex items-center gap-1.5 text-xs text-emerald-400 font-semibold">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -608,7 +702,7 @@ const MonitorEntregas = () => {
             <button
               onClick={() => toggleFullscreen()}
               title="Fullscreen (Ctrl+Shift+F)"
-              className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition"
+              className="w-9 h-9 rounded-xl flex items-center justify-center transition" style={{ backgroundColor: `${themeConfig.card}` }}
             >
               <FaExpand size={14} />
             </button>
@@ -624,8 +718,8 @@ const MonitorEntregas = () => {
         </div>
       </header>
 
-      {/* ── MAIN CONTENT ── */}
-      <main className="max-w-screen-2xl mx-auto px-4 lg:px-8 py-8 space-y-8">
+      {/* Main Content - Full Width */}
+      <main className="w-full px-4 lg:px-8 py-8 space-y-8">
 
         {/* ── PERIOD SELECTOR ── */}
         <div className="flex items-center gap-3 flex-wrap">
