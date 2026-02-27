@@ -3,9 +3,11 @@ import { useAuth } from '../services/authContext';
 import { useNavigate } from 'react-router-dom';
 import Toast from '../components/Toast';
 import { adminService } from '../services/authService';
-import { FaArrowLeft, FaEye, FaDownload, FaSync, FaFilter, FaTimes, FaTrash, FaEdit, FaExclamationTriangle } from 'react-icons/fa';
+import { FaArrowLeft, FaEye, FaDownload, FaSync, FaFilter, FaTimes, FaTrash, FaEdit, FaExclamationTriangle, FaShareAlt } from 'react-icons/fa';
 import manaConfig from '../config/cities/manaus.json';
 import itajaiConfig from '../config/cities/itajai.json';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 const MonitorEntregas = () => {
   const { user } = useAuth();
@@ -382,6 +384,47 @@ const MonitorEntregas = () => {
       console.error('Erro ao baixar ZIP:', error);
       setToast({ message: 'Erro ao baixar ZIP: ' + (error.response?.data?.message || error.message), type: 'error' });
     }
+  };
+
+  // gera um PDF com informações da entrega para compartilhar/exportar
+  const handleShareDelivery = () => {
+    if (!selectedDelivery) return;
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text('GeoTransportes', 105, 20, { align: 'center' });
+
+    const rows = [];
+    const addRow = (label, value) => rows.push([label, value || '-']);
+
+    addRow('Número', selectedDelivery.deliveryNumber);
+    addRow('Contratado', selectedDelivery.userName);
+    addRow('Motorista', selectedDelivery.driverName);
+    addRow('Placa', selectedDelivery.vehiclePlate);
+    addRow('Status', formatStatus(selectedDelivery.status));
+    addRow('Agendamento', selectedDelivery.dataAgendamento ? new Date(selectedDelivery.dataAgendamento).toLocaleString('pt-BR') : '-');
+    addRow('Montagem container', selectedDelivery.containerMontadoAt ? new Date(selectedDelivery.containerMontadoAt).toLocaleString('pt-BR') : '-');
+    addRow('Chegada', selectedDelivery.horarioChegada ? new Date(selectedDelivery.horarioChegada).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-');
+    addRow('Início desova', selectedDelivery.horarioInicioDesova ? new Date(selectedDelivery.horarioInicioDesova).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-');
+    addRow('Fim desova', selectedDelivery.horarioFimDesova ? new Date(selectedDelivery.horarioFimDesova).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-');
+
+    const history = getFlowHistory(selectedDelivery);
+    if (history.length > 0) {
+      history.forEach(ev => addRow(ev.label, new Date(ev.date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })));
+    }
+
+    if (selectedDelivery.observations) addRow('Observações', selectedDelivery.observations);
+    if (selectedDelivery.observacoes) addRow('Observações (alt.)', selectedDelivery.observacoes);
+    if (selectedDelivery.documentsJustification) addRow('Justificativa docs', selectedDelivery.documentsJustification);
+    if (selectedDelivery.submissionObservation) addRow('Obs. submissão', selectedDelivery.submissionObservation);
+
+    doc.autoTable({
+      startY: 30,
+      head: [['Campo', 'Valor']],
+      body: rows,
+      styles: { fontSize: 10 }
+    });
+
+    doc.save(`Entrega_${selectedDelivery.deliveryNumber}.pdf`);
   };
 
   const handleDelete = async (deliveryId) => {
@@ -1031,18 +1074,18 @@ const MonitorEntregas = () => {
                 <div className="space-y-2">
                   <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded shadow-sm">
                     <p className="text-xs font-bold text-blue-800 uppercase mb-1">📝 Observações do Fluxo</p>
-                    {selectedDelivery.observations && (
-                      <p className="text-gray-800 text-sm whitespace-pre-wrap">{selectedDelivery.observations}</p>
-                    )}
-                    {selectedDelivery.observacoes && (
-                      <p className="text-gray-800 text-sm whitespace-pre-wrap">{selectedDelivery.observacoes}</p>
-                    )}
                     {/* renderir histórico automático baseado nas timestamps */}
                     {flowHistory.map((ev, idx) => (
                       <p key={idx} className="text-gray-800 text-sm">
                         {ev.label} em {new Date(ev.date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
                       </p>
                     ))}
+                    {selectedDelivery.observations && (
+                      <p className="text-gray-800 text-sm whitespace-pre-wrap">{selectedDelivery.observations}</p>
+                    )}
+                    {selectedDelivery.observacoes && (
+                      <p className="text-gray-800 text-sm whitespace-pre-wrap">{selectedDelivery.observacoes}</p>
+                    )}
                     {!selectedDelivery.observations && !selectedDelivery.observacoes && flowHistory.length === 0 && (
                       <p className="text-gray-600 text-sm">-</p>
                     )}
@@ -1068,12 +1111,20 @@ const MonitorEntregas = () => {
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <p className="text-sm font-bold text-gray-700 uppercase tracking-wide">📦 Documentos e Fotos do Fluxo</p>
-                  <button
-                    onClick={() => handleDownloadAll(selectedDelivery._id)}
-                    className="px-3 py-2 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 transition font-semibold flex items-center gap-2"
-                  >
-                    <FaDownload /> Baixar Pasta
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleShareDelivery()}
+                      className="px-3 py-2 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700 transition font-semibold flex items-center gap-2"
+                    >
+                      <FaShareAlt /> Compartilhar
+                    </button>
+                    <button
+                      onClick={() => handleDownloadAll(selectedDelivery._id)}
+                      className="px-3 py-2 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 transition font-semibold flex items-center gap-2"
+                    >
+                      <FaDownload /> Baixar Pasta
+                    </button>
+                  </div>
                 </div>
                 <div className="grid grid-cols-1 gap-3">
                   {(() => {
