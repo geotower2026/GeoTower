@@ -66,16 +66,26 @@ const MonitorEntregas = () => {
     CANCELADO: ['CANCELADO']
   };
   const [showFilters, setShowFilters] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Update current time every second for live timer
+  useEffect(() => {
+    const interval = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Period filter for stats
   const [statsPeriod, setStatsPeriod] = useState('today'); // 'today', 'yesterday', 'tomorrow'
 
-  // Calcular tempo decorrido no cliente (chegada até fim desova)
-  const calculateCliTime = (delivery) => {
-    if (!delivery.horarioChegada || !delivery.horarioFimDesova) return null;
+  // Calcular tempo decorrido no cliente (chegada até agora ou até fim desova)
+  const calculateCliTime = (delivery, now = new Date()) => {
+    if (!delivery.horarioChegada) return null;
     const chegada = new Date(delivery.horarioChegada);
-    const fim = new Date(delivery.horarioFimDesova);
-    const diffMs = fim - chegada;
+    
+    // Se já finalizou (tem data de fim desova), usa aquela
+    // Senão, usa tempo atual (contador live)
+    const referencia = delivery.horarioFimDesova ? new Date(delivery.horarioFimDesova) : now;
+    const diffMs = referencia - chegada;
     if (diffMs < 0) return null;
     const totalMinutos = Math.floor(diffMs / 60000);
     const horas = Math.floor(totalMinutos / 60);
@@ -852,7 +862,7 @@ const MonitorEntregas = () => {
                     <td className="px-2 py-2 text-gray-700 whitespace-nowrap text-center">{delivery.horarioFimDesova ? new Date(delivery.horarioFimDesova).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
                     <td className="px-2 py-2 text-center font-semibold bg-amber-50">
                       {(() => {
-                        const tempo = calculateCliTime(delivery);
+                        const tempo = calculateCliTime(delivery, currentTime);
                         return tempo ? <span className="text-amber-700 font-bold">{tempo}</span> : <span className="text-gray-500">-</span>;
                       })()}
                     </td>
