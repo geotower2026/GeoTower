@@ -45,6 +45,18 @@ const AdminDashboard = () => {
       .slice(0, 5);
   }, [deliveries]);
 
+  // arrays for charts
+  const recebedorCountData = React.useMemo(() => {
+    return topRecebedores.map(r => ({ name: r.recebedor, count: r.count }));
+  }, [topRecebedores]);
+
+  const recebedorAvgData = React.useMemo(() => {
+    return Object.entries(avgCliByRecebedor)
+      .map(([recebedor, avg]) => ({ name: recebedor, avg }))
+      .sort((a, b) => b.avg - a.avg)
+      .slice(0, 5);
+  }, [avgCliByRecebedor]);
+
   const avgCliByRecebedor = React.useMemo(() => {
     const sums = {};
     const counts = {};
@@ -263,22 +275,35 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* Top recebedores com média de tempo CLI */}
+        {/* Gráficos de recebedores */}
         {deliveries.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-6 mb-8">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Top Recebedores &amp; Tempo médio no cliente</h3>
-            <ul className="space-y-2">
-              {topRecebedores.map(r => (
-                <li key={r.recebedor} className="flex justify-between">
-                  <span>{r.recebedor}</span>
-                  <span className="font-semibold">
-                    {r.count} entrega(s); média {formatMinutes(avgCliByRecebedor[r.recebedor])}
-                  </span>
-                </li>
-              ))}
-            </ul>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-bold text-gray-800 mb-4">Entregas por Recebedor</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={recebedorCountData} layout="vertical" margin={{ top: 20, right: 20, left: 20, bottom: 20 }}>
+                  <XAxis type="number" />
+                  <YAxis type="category" dataKey="name" width={150} />
+                  <Tooltip formatter={(value) => `${value} entrega(s)`} />
+                  <Bar dataKey="count" fill="#3b82f6" radius={[0, 8, 8, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-bold text-gray-800 mb-4">Tempo Médio no Cliente</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={recebedorAvgData} layout="vertical" margin={{ top: 20, right: 20, left: 20, bottom: 20 }}>
+                  <XAxis type="number" tickFormatter={(v) => formatMinutes(v)} />
+                  <YAxis type="category" dataKey="name" width={150} />
+                  <Tooltip formatter={(value) => formatMinutes(value)} />
+                  <Bar dataKey="avg" fill="#10b981" radius={[0, 8, 8, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         )}
+
+        {/* Filters */}
 
         {/* Filters */}
         <div className="bg-white rounded-lg shadow p-4 mb-6">
