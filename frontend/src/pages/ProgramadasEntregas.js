@@ -125,6 +125,13 @@ const ProgramadasEntregas = () => {
   const [returnProof, setReturnProof] = useState(null);
   const [returnSubmitting, setReturnSubmitting] = useState(false);
 
+  // Filter and sort states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('data'); // 'data', 'tamanho'
+  const [sortOrder, setSortOrder] = useState('desc'); // 'asc', 'desc'
+
+
   useEffect(() => {
     loadProgramacoes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -748,9 +755,50 @@ function dataURLtoFile(dataurl, filename) {
     return new Blob([u8arr], { type: mime });
   };
 
+  // Filter and sort programações
+  const getFilteredAndSorted = () => {
+    let result = programacoes;
+
+    // Apply search filter
+    if (searchTerm.trim()) {
+      const needle = searchTerm.toUpperCase();
+      result = result.filter(p =>
+        String(p.processo || '').toUpperCase().includes(needle) ||
+        String(p.container || '').toUpperCase().includes(needle) ||
+        String(p.recebedor || '').toUpperCase().includes(needle)
+      );
+    }
+
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      result = result.filter(p => (p.status || 'pending').toUpperCase() === statusFilter.toUpperCase());
+    }
+
+    // Sort
+    result = [...result].sort((a, b) => {
+      let aVal, bVal;
+      if (sortBy === 'data') {
+        aVal = new Date(a.dataAgendamento || 0).getTime();
+        bVal = new Date(b.dataAgendamento || 0).getTime();
+      } else if (sortBy === 'tamanho') {
+        // tamanho = quantidade de items (usar string length como proxy)
+        aVal = String(a.container || '').length;
+        bVal = String(b.container || '').length;
+      } else {
+        aVal = a.processo;
+        bVal = b.processo;
+      }
+      return sortOrder === 'desc' ? (bVal - aVal || String(bVal).localeCompare(String(aVal))) : (aVal - bVal || String(aVal).localeCompare(String(bVal)));
+    });
+
+    return result;
+  };
+
+  const filteredProgramacoes = getFilteredAndSorted();
+
   return (
-    <div className="bg-gray-100">
-      <div className="max-w-6xl mx-auto p-4 pb-20">
+    <div className="bg-gray-100 min-h-screen">
+      <div className="w-full p-3 md:p-4 lg:p-6 pb-20">
         <button
           onClick={() => navigate('/home')}
           className="flex items-center gap-2 text-purple-600 hover:text-purple-800 font-semibold mb-6 transition"
@@ -761,17 +809,92 @@ function dataURLtoFile(dataurl, filename) {
 
         <h2 className="text-3xl font-bold text-gray-800 mb-6">Entregas Programadas</h2>
 
+        {/* Filters and Sort */}
+        <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-6 border border-gray-200">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+            {/* Search */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Buscar</label>
+              <input
+                type="text"
+                placeholder="Processo, Container, Recebedor..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Status Filter */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Status</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">Todos</option>
+                <option value="pending">Agendado</option>
+                <option value="CONTAINER_MONTADO">Container Montado</option>
+                <option value="A_CAMINHO_DO_CLIENTE">A Caminho</option>
+                <option value="ENTREGUE">Entregue</option>
+              </select>
+            </div>
+
+            {/* Sort By */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Ordenar por</label>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="data">Data</option>
+                <option value="tamanho">Tamanho</option>
+              </select>
+            </div>
+
+            {/* Sort Order */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Ordem</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setSortOrder('desc')}
+                  className={`flex-1 px-3 py-2 rounded-lg font-semibold transition ${
+                    sortOrder === 'desc'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  ↓ Maior
+                </button>
+                <button
+                  onClick={() => setSortOrder('asc')}
+                  className={`flex-1 px-3 py-2 rounded-lg font-semibold transition ${
+                    sortOrder === 'asc'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  ↑ Menor
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="mt-3 text-sm text-gray-600 font-semibold">
+            {filteredProgramacoes.length} resultado(s) encontrado(s)
+          </div>
+        </div>
         {loading ? (
           <div className="text-center py-10">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mx-auto" />
           </div>
-        ) : programacoes.length === 0 ? (
+        ) : filteredProgramacoes.length === 0 ? (
           <div className="bg-white rounded-lg shadow p-8 text-center">
             <p className="text-gray-600 text-lg mb-4">Nenhuma entrega programada encontrada</p>
           </div>
         ) : (
           <div className="space-y-4">
-            {programacoes.map((p) => (
+            {filteredProgramacoes.map((p) => (
               <div key={p._id} className="bg-white rounded-lg shadow p-4 hover:shadow-lg transition">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="flex-1 w-full">
