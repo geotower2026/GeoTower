@@ -163,6 +163,46 @@ const MotoristaManagement = () => {
     });
   };
 
+  // Format CPF
+  const formatCPFData = (value) => {
+    const digits = String(value || '').replace(/\D/g, '');
+    if (digits.length !== 11) return null;
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9, 11)}`;
+  };
+
+  // Format Telefone
+  const formatPhoneData = (value) => {
+    const digits = String(value || '').replace(/\D/g, '');
+    if (digits.length !== 11) return null;
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
+  };
+
+  // Download Template
+  const downloadTemplate = () => {
+    const template = [
+      {
+        transportadora: 'GEO TRANSPORTES',
+        nome: 'João da Silva',
+        cpf: '123.456.789-10',
+        vinculo: 'AGREGADO',
+        rastreador: 'SASCAR',
+        'exp cadastro motorista': '2025-12-31',
+        cavalo: 'GES-0001',
+        'rastreador cavalo': 'SASCAR',
+        'exp cadastro cavalo': '2025-12-31',
+        carreta: 'GES-00001',
+        'rastreador carreta': 'SASCAR',
+        'exp cadastro carreta': '2025-12-31',
+        telefone: '92985284321',
+        observacoes: 'Observações do motorista'
+      }
+    ];
+    const ws = XLSX.utils.json_to_sheet(template);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Motoristas');
+    XLSX.writeFile(wb, 'template_motoristas.xlsx');
+  };
+
   // Import Excel
   const handleImportFile = async (event) => {
     const file = event.target.files[0];
@@ -193,8 +233,8 @@ const MotoristaManagement = () => {
       };
 
       // map row keys to form keys
-      const mapped = rows.map(r => {
-        const out = {};
+      const mapped = rows.map((r, idx) => {
+        const out = { rowIndex: idx + 2 }; // Excel row number
         Object.keys(headersMap).forEach(key => {
           const vals = headersMap[key];
           const found = Object.keys(r).find(h => vals.includes(normalize(h)));
@@ -203,27 +243,90 @@ const MotoristaManagement = () => {
         return out;
       });
 
+      // validate and format before sending
+      const validVinculos = ['PRÓPRIO', 'AGREGADO', 'TERCEIRO'];
+      const errors = [];
+      const success = [];
+
       // send each to backend. update if CPF already exists
       const existing = (await adminService.getMotoristas()).data.motoristas || [];
       const normalizeCpf = s => String(s || '').replace(/\D/g, '');
+      
       for (const m of mapped) {
         try {
-          const match = existing.find(e => normalizeCpf(e.cpf) === normalizeCpf(m.cpf));
-          if (match) {
-            await adminService.updateMotorista(match._id, m);
-          } else {
-            await adminService.createMotorista(m);
+          // Validate required fields
+          if (!m.transportadora || !m.transportadora.toString().trim()) {
+            throw new Error('Transportadora obrigatória');
           }
+          if (!m.nome || !m.nome.toString().trim()) {
+            throw new Error('Nome obrigatório');
+          }
+          if (!m.cpf) {
+            throw new Error('CPF obrigatório');
+          }
+          if (!m.telefone) {
+            throw new Error('Telefone obrigatório');
+          }
+
+          // Format CPF
+          const cpfFormatted = formatCPFData(m.cpf);
+          if (!cpfFormatted) {
+            throw new Error(`CPF deve ter 11 dígitos: ${m.cpf}`);
+          }
+
+          // Format Telefone
+          const telefoneFormatted = formatPhoneData(m.telefone);
+          if (!telefoneFormatted) {
+            throw new Error(`Telefone deve ter 11 dígitos: ${m.telefone}`);
+          }
+
+          // Validate Vinculo
+          const vinculo = (m.vinculo || 'AGREGADO').toUpperCase().trim();
+          if (!validVinculos.includes(vinculo)) {
+            throw new Error(`Vínculo inválido: ${m.vinculo}. Aceitos: ${validVinculos.join(', ')}`);
+          }
+
+          const prepared = {
+            transportadora: m.transportadora.toString().trim(),
+            nome: m.nome.toString().trim(),
+            cpf: cpfFormatted,
+            vinculo: vinculo,
+            rastreador: m.rastreador ? m.rastreador.toString().trim() : '-',
+            expCadastroMotorista: m.expCadastroMotorista ? m.expCadastroMotorista : null,
+            cavalo: m.cavalo ? m.cavalo.toString().trim() : '',
+            rastreadorCavalo: m.rastreadorCavalo ? m.rastreadorCavalo.toString().trim() : '',
+            expCadastroCavalo: m.expCadastroCavalo ? m.expCadastroCavalo : null,
+            carreta: m.carreta ? m.carreta.toString().trim() : '',
+            rastreadorCarreta: m.rastreadorCarreta ? m.rastreadorCarreta.toString().trim() : '',
+            expCadastroCarreta: m.expCadastroCarreta ? m.expCadastroCarreta : null,
+            telefone: telefoneFormatted,
+            observacoes: m.observacoes ? m.observacoes.toString().trim() : ''
+          };
+
+          const match = existing.find(e => normalizeCpf(e.cpf) === normalizeCpf(prepared.cpf));
+          if (match) {
+            await adminService.updateMotorista(match._id, prepared);
+          } else {
+            await adminService.createMotorista(prepared);
+          }
+          success.push(`Linha ${m.rowIndex}: OK`);
         } catch (err) {
-          console.warn('Erro importar linha', m, err);
+          const msg = err.response?.data?.message || err.message || 'Erro desconhecido';
+          errors.push(`Linha ${m.rowIndex}: ${msg}`);
         }
       }
 
-      setToast({ message: 'Importação concluída', type: 'success' });
+      // Show results
+      if (errors.length === 0) {
+        setToast({ message: `✅ Importação completa! ${success.length} motorista(s) importado(s).`, type: 'success' });
+      } else {
+        setToast({ message: `⚠️ ${success.length} importado(s), ${errors.length} erro(s): ${errors.slice(0, 3).join('; ')}${errors.length > 3 ? '...' : ''}`, type: 'warning' });
+      }
+      
       loadMotoristas();
     } catch (err) {
       console.error(err);
-      setToast({ message: 'Erro ao importar arquivo', type: 'error' });
+      setToast({ message: 'Erro ao importar arquivo: ' + (err.message || 'erro desconhecido'), type: 'error' });
     } finally {
       setImportLoading(false);
       event.target.value = '';
@@ -314,7 +417,7 @@ const MotoristaManagement = () => {
               <p className="text-gray-600 mt-1">Gerencie os motoristas da sua frota</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setShowForm(true)}
               className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold"
@@ -331,6 +434,13 @@ const MotoristaManagement = () => {
                 disabled={importLoading}
               />
             </label>
+            <button
+              onClick={downloadTemplate}
+              className="flex items-center gap-2 px-5 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-semibold"
+              title="Baixar template de exemplo"
+            >
+              <FaFileExcel /> Template
+            </button>
           </div>
         </div>
 
