@@ -3,7 +3,7 @@ import { useAuth } from '../services/authContext';
 import { useNavigate } from 'react-router-dom';
 import Toast from '../components/Toast';
 import { adminService } from '../services/authService';
-import { FaArrowLeft, FaEye, FaDownload, FaSync, FaFilter, FaTimes, FaTrash, FaEdit, FaExclamationTriangle, FaShareAlt } from 'react-icons/fa';
+import { FaArrowLeft, FaEye, FaDownload, FaSync, FaFilter, FaTimes, FaTrash, FaEdit, FaExclamationTriangle, FaShareAlt, FaCalendarAlt, FaClock, FaBox, FaTruck, FaCheckCircle, FaTimesCircle, FaFilePdf, FaUsers, FaDolly } from 'react-icons/fa';
 import manaConfig from '../config/cities/manaus.json';
 import itajaiConfig from '../config/cities/itajai.json';
 import jsPDF from 'jspdf';
@@ -144,28 +144,43 @@ const MonitorEntregas = () => {
   // Quando existe uma entrega selecionada, fornece o histórico de etapas para renderizar
   const flowHistory = selectedDelivery ? getFlowHistory(selectedDelivery) : [];
 
-  // Semantic color map for dashboard visibility
+  // Semantic color map for dashboard visibility - Elegant & Subtle Professional Palette
   const cardColors = {
-    // Programadas = cyan/teal
-    PROGRAMADAS: 'from-cyan-600 to-cyan-800 text-white border-cyan-900',
-    // Em andamento/agendamento = blue-teal gradient
-    AGENDADO: 'from-blue-500 to-teal-600 text-white border-teal-700',
-    'A CAMINHO DO CLIENTE': 'from-blue-500 to-teal-600 text-white border-teal-700',
-    'CONTAINER MONTADO': 'from-blue-500 to-teal-600 text-white border-teal-700',
-    // Em desova = purple
-    'EM DESOVA': 'from-purple-600 to-purple-800 text-white border-purple-900',
-    // Pendência = yellow
-    'AGUARDANDO DESOVA': 'from-yellow-500 to-yellow-700 text-white border-yellow-800',
-    'ENTREGUE COM PENDENCIA CANHOTO': 'from-yellow-500 to-yellow-700 text-white border-yellow-800',
-    // Documentos = pink
-    'ANEXANDO DOCUMENTOS FINAIS': 'from-pink-600 to-pink-800 text-white border-pink-900',
-    // Finalizado = emerald
-    ENTREGUE: 'from-emerald-600 to-emerald-800 text-white border-emerald-900',
-    // Problema = rose
-    CANCELADO: 'from-rose-600 to-rose-800 text-white border-rose-900',
-    // Motoristas = indigo
-    MOTORISTAS: 'from-indigo-600 to-indigo-800 text-white border-indigo-900',
-    default: 'from-gray-500 to-gray-700 text-white border-gray-800'
+    // Programadas = Slate/Gray subtle
+    PROGRAMADAS: 'from-slate-400 to-slate-500 text-white border-slate-600',
+    // Em andamento/agendamento = Sky Blue subtle
+    AGENDADO: 'from-sky-400 to-blue-400 text-white border-sky-500',
+    'A CAMINHO DO CLIENTE': 'from-sky-400 to-blue-400 text-white border-sky-500',
+    'CONTAINER MONTADO': 'from-sky-400 to-blue-400 text-white border-sky-500',
+    // Em desova = Lilac/Purple subtle
+    'EM DESOVA': 'from-purple-300 to-purple-400 text-gray-800 border-purple-500',
+    // Pendência = Amber/Orange subtle
+    'AGUARDANDO DESOVA': 'from-amber-300 to-orange-400 text-gray-800 border-amber-500',
+    'ENTREGUE COM PENDENCIA CANHOTO': 'from-amber-300 to-orange-400 text-gray-800 border-amber-500',
+    // Documentos = Rose subtle
+    'ANEXANDO DOCUMENTOS FINAIS': 'from-rose-300 to-pink-400 text-gray-800 border-rose-500',
+    // Finalizado = Mint/Emerald subtle
+    ENTREGUE: 'from-emerald-300 to-teal-400 text-gray-800 border-emerald-500',
+    // Problema = Warm gray
+    CANCELADO: 'from-stone-400 to-gray-500 text-white border-stone-600',
+    // Motoristas = Indigo/Blue subtle
+    MOTORISTAS: 'from-indigo-300 to-blue-400 text-gray-800 border-indigo-500',
+    default: 'from-gray-400 to-gray-500 text-white border-gray-600'
+  };
+
+  // Icon map for each status
+  const statusIcons = {
+    PROGRAMADAS: <FaCalendarAlt className="text-2xl lg:text-3xl" />,
+    AGENDADO: <FaClock className="text-2xl lg:text-3xl" />,
+    'A CAMINHO DO CLIENTE': <FaTruck className="text-2xl lg:text-3xl" />,
+    'CONTAINER MONTADO': <FaBox className="text-2xl lg:text-3xl" />,
+    'EM DESOVA': <FaDolly className="text-2xl lg:text-3xl" />,
+    'AGUARDANDO DESOVA': <FaExclamationTriangle className="text-2xl lg:text-3xl" />,
+    'ENTREGUE COM PENDENCIA CANHOTO': <FaExclamationTriangle className="text-2xl lg:text-3xl" />,
+    'ANEXANDO DOCUMENTOS FINAIS': <FaFilePdf className="text-2xl lg:text-3xl" />,
+    ENTREGUE: <FaCheckCircle className="text-2xl lg:text-3xl" />,
+    CANCELADO: <FaTimesCircle className="text-2xl lg:text-3xl" />,
+    MOTORISTAS: <FaUsers className="text-2xl lg:text-3xl" />
   };
 
   // (icons removed - only colors used now)
@@ -232,10 +247,10 @@ const MonitorEntregas = () => {
         }
         periodDate = today.toLocaleDateString('pt-BR');
       }
-      console.log('🔍 Enviando filtros ao backend:', backendFilters, 'período:', statsPeriod, 'data:', periodDate);
+      console.log('Enviando filtros ao backend:', backendFilters, 'período:', statsPeriod, 'data:', periodDate);
       const response = await adminService.getDeliveries(backendFilters, statsPeriod, periodDate);
       const data = response.data.deliveries || [];
-      console.log('📥 Resposta do backend:', data.length, 'entregas');
+      console.log('Resposta do backend:', data.length, 'entregas');
       setDeliveries(data);
       
       // Calcula stats com base nos dados retornados
@@ -483,7 +498,7 @@ const MonitorEntregas = () => {
 
   const handleEditStart = (delivery) => {
     if (isGeoMar()) {
-      setToast({ type: 'error', message: '👁️ Modo Visualização: você não pode editar entregas' });
+      setToast({ type: 'error', message: '<FaEye/> Modo Visualização: você não pode editar entregas' });
       return;
     }
     setEditingDelivery(delivery._id);
@@ -620,11 +635,11 @@ const MonitorEntregas = () => {
 
   // Default labels for Manaus; we will pick per-delivery labels when showing modal
   const defaultDocumentLabels = manaConfig.documents || {
-    canhotNF: '📄 NF',
-    canhotCTE: '📦 CTE',
-    diarioBordo: '📓 Diário',
-    devolucaoVazio: '🚛 Vazio',
-    retiradaCheio: '🚚 Cheio'
+    canhotNF: 'NF',
+    canhotCTE: 'CTE',
+    diarioBordo: 'Diário',
+    devolucaoVazio: 'Vazio',
+    retiradaCheio: 'Cheio'
   };
 
   const getLabelsForDelivery = (delivery) => {
@@ -719,7 +734,7 @@ const MonitorEntregas = () => {
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
-            📅 Ontem
+            <FaCalendarAlt className="inline mr-2" /> Ontem
           </button>
           <button
             onClick={() => setStatsPeriod('today')}
@@ -729,7 +744,7 @@ const MonitorEntregas = () => {
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
-            🕐 Hoje
+            <FaClock className="inline mr-2" /> Hoje
           </button>
           <button
             onClick={() => setStatsPeriod('tomorrow')}
@@ -739,7 +754,7 @@ const MonitorEntregas = () => {
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
-            📆 Amanhã
+<FaCalendarAlt className="inline mr-2" /> Amanhã
           </button>
         </div>
 
@@ -747,6 +762,7 @@ const MonitorEntregas = () => {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-3 mb-6 lg:mb-8">
           {/* programadas */}
           <div className={`bg-gradient-to-r rounded-2xl shadow-2xl p-6 lg:p-8 border-l-8 flex flex-col items-center justify-center hover:scale-105 transition-transform duration-300 ease-in-out cursor-pointer ring-4 ring-white ring-opacity-20 ${getCardClasses('PROGRAMADAS')}`}> 
+            {statusIcons.PROGRAMADAS}
             <p className="text-xs lg:text-sm font-extrabold uppercase tracking-widest text-center mb-2">PROGRAMADAS</p>
             <p className="text-2xl lg:text-4xl font-extrabold drop-shadow">{stats.total}</p>
           </div>
@@ -779,6 +795,7 @@ const MonitorEntregas = () => {
                   key={status}
                   className={`bg-gradient-to-r rounded-xl shadow-xl p-3 lg:p-5 border-l-4 flex flex-col items-center justify-center hover:scale-110 transition-transform cursor-pointer ${getCardClasses(label || status)}`}
                 >
+                  {statusIcons[label] || statusIcons[status]}
                   <p className="text-xs lg:text-sm font-extrabold uppercase tracking-widest text-center mb-2 line-clamp-2">
                     {label.length > 18 ? label.substring(0, 15) + '...' : label}
                   </p>
@@ -791,9 +808,10 @@ const MonitorEntregas = () => {
           })()}
 
           {/* motoristas */}
-          <div className="bg-gradient-to-r from-purple-600 to-purple-800 rounded-2xl shadow-2xl p-6 lg:p-8 border-l-8 border-purple-900 flex flex-col items-center justify-center hover:scale-105 transition-transform duration-300 ease-in-out cursor-pointer ring-4 ring-white ring-opacity-20">
-            <p className="text-xs lg:text-sm font-extrabold text-white uppercase tracking-widest text-center mb-2">MOTORISTAS</p>
-            <p className="text-2xl lg:text-4xl font-extrabold text-white drop-shadow">{stats.byDriver}</p>
+          <div className={`bg-gradient-to-r rounded-2xl shadow-2xl p-6 lg:p-8 border-l-8 flex flex-col items-center justify-center hover:scale-105 transition-transform duration-300 ease-in-out cursor-pointer ring-4 ring-white ring-opacity-20 ${getCardClasses('MOTORISTAS')}`}>
+            {statusIcons.MOTORISTAS}
+            <p className="text-xs lg:text-sm font-extrabold uppercase tracking-widest text-center mb-2">MOTORISTAS</p>
+            <p className="text-2xl lg:text-4xl font-extrabold drop-shadow">{stats.byDriver}</p>
           </div>
         </div>
 
@@ -1135,7 +1153,7 @@ const MonitorEntregas = () => {
 
                   {selectedDelivery.documentsJustification && (
                     <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded shadow-sm">
-                      <p className="text-xs font-bold text-yellow-800 uppercase mb-1">⚠️ Justificativa de Documentos</p>
+                      <p className="text-xs font-bold text-yellow-800 uppercase mb-1"><FaExclamationTriangle className="inline mr-2" />Justificativa de Documentos</p>
                       <p className="text-gray-800 text-sm whitespace-pre-wrap">{selectedDelivery.documentsJustification}</p>
                     </div>
                   )}
@@ -1152,7 +1170,7 @@ const MonitorEntregas = () => {
               {/* Documentos e Fotos do Fluxo */}
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <p className="text-sm font-bold text-gray-700 uppercase tracking-wide">📦 Documentos e Fotos do Fluxo</p>
+                  <p className="text-sm font-bold text-gray-700 uppercase tracking-wide"><FaBox className="inline mr-2" />Documentos e Fotos do Fluxo</p>
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleShareDelivery()}
@@ -1363,7 +1381,7 @@ const MonitorEntregas = () => {
 
             {isGeoMar() && (
               <div className="mb-4 p-3 bg-amber-50 border-l-4 border-amber-400 rounded">
-                <p className="text-sm text-amber-800 font-semibold">👁️ Modo Visualização</p>
+                <p className="text-sm text-amber-800 font-semibold"><FaEye className="inline mr-2" />Modo Visualização</p>
                 <p className="text-xs text-amber-700">Este formulário está bloqueado para visualização apenas</p>
               </div>
             )}
