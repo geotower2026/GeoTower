@@ -259,6 +259,7 @@ const ProgramadasEntregas = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [driverFilter, setDriverFilter] = useState('all');
   const [sortBy, setSortBy] = useState('data');
   const [sortOrder, setSortOrder] = useState('desc');
 
@@ -298,16 +299,15 @@ const ProgramadasEntregas = () => {
       const map = {};
       deliveries.forEach(d => { map[(d.deliveryNumber || '').toUpperCase()] = d; });
       setDeliveriesMap(map);
-      // Mostrar todas MENOS as finalizadas, canceladas ou pendentes com devolução já feita
+      // Remover TODAS que foram devolvidas (qualquer status) ou finalizadas/canceladas
       const visibleProgramacoes = filtradas.filter(p => {
         const status = String(p.status || '').toUpperCase();
         if (['FINALIZADO', 'CANCELADO'].includes(status)) return false;
-        if (status === 'ENTREGUE_COM_PENDENCIA_CANHOTO') {
-          const key = ((p.container || p.processo || '').toUpperCase());
-          const del = map[key];
-          if (del && del.documents && del.documents.devolucaoContainerVazio && del.documents.devolucaoContainerVazio.length > 0) {
-            return false;
-          }
+        // Verificar se tem comprovante de devolução - se tiver, não mostra
+        const key = ((p.container || p.processo || '').toUpperCase());
+        const del = map[key];
+        if (del && del.documents && del.documents.devolucaoContainerVazio && del.documents.devolucaoContainerVazio.length > 0) {
+          return false;
         }
         return true;
       });
@@ -642,6 +642,7 @@ const ProgramadasEntregas = () => {
       result = result.filter(p => String(p.processo || '').toUpperCase().includes(needle) || String(p.container || '').toUpperCase().includes(needle) || String(p.recebedor || '').toUpperCase().includes(needle));
     }
     if (statusFilter !== 'all') result = result.filter(p => (p.status || 'pending').toUpperCase() === statusFilter.toUpperCase());
+    if (driverFilter !== 'all') result = result.filter(p => String(p.motorista || '').trim().toUpperCase() === driverFilter.toUpperCase());
     result = [...result].sort((a, b) => {
       let aVal = sortBy === 'data' ? new Date(a.dataAgendamento || 0).getTime() : String(a.container || '').length;
       let bVal = sortBy === 'data' ? new Date(b.dataAgendamento || 0).getTime() : String(b.container || '').length;
@@ -784,7 +785,17 @@ const ProgramadasEntregas = () => {
             />
           </div>
           {/* Filter row */}
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
+            <select
+              value={driverFilter}
+              onChange={e => setDriverFilter(e.target.value)}
+              className="px-3 py-2.5 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-400 text-sm appearance-none"
+            >
+              <option value="all" className="bg-gray-900">Todos os motoristas</option>
+              {programacoes && [...new Set(programacoes.map(p => p.motorista).filter(Boolean))].sort().map(driver => (
+                <option key={driver} value={driver} className="bg-gray-900">{driver}</option>
+              ))}
+            </select>
             <select
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value)}
