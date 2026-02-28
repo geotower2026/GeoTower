@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import Toast from '../components/Toast';
 import { FaSave, FaKey, FaUser } from 'react-icons/fa';
 import { authService } from '../services/authService';
-import { useTheme, THEMES } from '../contexts/ThemeContext';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -52,27 +51,11 @@ const Profile = () => {
     }
   };
 
-  const { theme, setTheme } = useTheme();
-
   return (
     <div className="bg-gray-50 min-h-screen pb-20">
       <div className="max-w-3xl mx-auto p-6">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">Ajustes do Perfil</h1>
-        </div>
-
-        {/* theme selection */}
-        <div className="bg-white shadow rounded p-6 mb-6">
-          <h2 className="font-semibold mb-4">Tema</h2>
-          <select
-            value={theme}
-            onChange={e => setTheme(e.target.value)}
-            className="px-3 py-2 border rounded"
-          >
-            {Object.entries(THEMES).map(([k, v]) => (
-              <option key={k} value={k}>{v.name}</option>
-            ))}
-          </select>
         </div>
 
         <div className="bg-white shadow rounded p-6 mb-6">

@@ -32,13 +32,9 @@ const Header = () => {
     return () => document.removeEventListener('keydown', onKeyDown);
   }, []);
 
-  const { theme } = useTheme();
-  const themeCfg = THEMES[theme] || THEMES.dark;
+  const { theme, setTheme } = useTheme();
   return (
-    <header
-      className={`sticky top-0 z-50 shadow-xl backdrop-blur-sm ${themeCfg.header} ${themeCfg.border}`}
-      style={{ color: themeCfg.text }}
-    >
+    <header className="sticky top-0 z-50 text-white shadow-xl bg-gradient-to-r from-purple-700 via-purple-600 to-emerald-600/90 backdrop-blur-sm">
       {/* Top bar - Full width responsivo */}
       <div className="w-full px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex items-center justify-between">
         {/* Logo + Nome */}
@@ -157,6 +153,29 @@ const Header = () => {
                   <FaSignOutAlt className="text-red-600 text-lg" />
                   <span className="text-xs">Sair</span>
                 </button>
+              </div>
+
+              {/* Theme Selector */}
+              <div className="border-t pt-4">
+                <p className="text-xs font-bold text-gray-700 mb-3 px-2">🎨 TEMA</p>
+                <div className="space-y-2">
+                  {Object.entries(THEMES).map(([key, t]) => (
+                    <button
+                      key={key}
+                      onClick={() => {
+                        setTheme(key);
+                        setMenuOpen(false);
+                      }}
+                      className={`w-full px-4 py-2.5 rounded-lg text-sm font-semibold transition-all text-left ${
+                        theme === key
+                          ? 'bg-purple-600 text-white shadow-md'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {t.name}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
