@@ -610,12 +610,6 @@ const ProgramadasEntregas = () => {
       setShowContainerReturnModal(false);
       setCurrentProgramacaoForReturn(null);
       setContainerVazioProof(null);
-      // Redirect user to appropriate screen
-      if (finalStatus === 'ENTREGUE_COM_PENDENCIA_CANHOTO') {
-        navigate('/entregas-canhotos-pendentes', { state: { toast: { message: msg, type: 'success' } } });
-      } else {
-        navigate('/minhas-entregas', { state: { toast: { message: msg, type: 'success' } } });
-      }
     } catch (err) {
       setToast({ message: 'Erro ao registrar devolução do container vazio', type: 'error' });
     } finally {
