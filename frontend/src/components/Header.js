@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../services/authContext';
 import { useCity } from '../contexts/CityContext';
+import { useTheme, THEMES } from '../contexts/ThemeContext';
 import { FaSignOutAlt, FaUser, FaBars, FaHome, FaTimes } from 'react-icons/fa';
 
 const Header = () => {
@@ -31,8 +32,13 @@ const Header = () => {
     return () => document.removeEventListener('keydown', onKeyDown);
   }, []);
 
+  const { theme } = useTheme();
+  const themeCfg = THEMES[theme] || THEMES.dark;
   return (
-    <header className="sticky top-0 z-50 text-white shadow-xl bg-gradient-to-r from-purple-700 via-purple-600 to-emerald-600/90 backdrop-blur-sm">
+    <header
+      className={`sticky top-0 z-50 shadow-xl backdrop-blur-sm ${themeCfg.header} ${themeCfg.border}`}
+      style={{ color: themeCfg.text }}
+    >
       {/* Top bar - Full width responsivo */}
       <div className="w-full px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex items-center justify-between">
         {/* Logo + Nome */}

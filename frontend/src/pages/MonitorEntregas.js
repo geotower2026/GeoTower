@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTheme, THEMES } from '../contexts/ThemeContext';
 import { useAuth } from '../services/authContext';
 import { useNavigate } from 'react-router-dom';
 import Toast from '../components/Toast';
@@ -16,55 +17,7 @@ import itajaiConfig from '../config/cities/itajai.json';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
-/* ─────────────────────────────────────────────────────────────
-   TEMA SYSTEM
-   ───────────────────────────────────────────────────────────── */
-const THEMES = {
-  dark: {
-    name: '🌙 Escuro',
-    bg: '#0f0f1a',
-    bgSecondary: '#1a1a2e',
-    text: '#ffffff',
-    textSecondary: '#e0e0e0',
-    border: 'border-white/10',
-    header: 'bg-[#0f0f1a]/90',
-    card: 'bg-white/5',
-    cardHover: 'hover:bg-white/10',
-  },
-  black: {
-    name: '⚫ Preto Puro',
-    bg: '#000000',
-    bgSecondary: '#0a0a0a',
-    text: '#ffffff',
-    textSecondary: '#d0d0d0',
-    border: 'border-white/[0.08]',
-    header: 'bg-black/95',
-    card: 'bg-white/[0.03]',
-    cardHover: 'hover:bg-white/[0.06]',
-  },
-  light: {
-    name: '☀️ Claro',
-    bg: '#eef2f6',            // slight gray so white text still visible if not overridden
-    bgSecondary: '#ffffff',
-    text: '#1a1a1a',
-    textSecondary: '#404040',
-    border: 'border-gray-300',
-    header: 'bg-white/95',
-    card: 'bg-white/60',
-    cardHover: 'hover:bg-white/70',
-  },
-  company: {
-    name: '🎨 Cores Empresa',
-    bg: '#f3e5f5',
-    bgSecondary: '#ffffff',
-    text: '#1a0033',
-    textSecondary: '#4a0080',
-    border: 'border-purple-200',
-    header: 'bg-gradient-to-r from-purple-700 to-indigo-700',
-    card: 'bg-purple-50',
-    cardHover: 'hover:bg-purple-100',
-  },
-};
+/* themes are provided by ThemeContext; imported at top of file */
 
 /* ─────────────────────────────────────────────────────────────
    DESIGN TOKENS
@@ -330,13 +283,9 @@ const MonitorEntregas = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [statsPeriod, setStatsPeriod] = useState('today');
   const [stats, setStats] = useState({ total: 0, statusCounts: {}, byDriver: 0 });
-  const [theme, setTheme] = useState(() => localStorage.getItem('torreControleTema') || 'dark');
-  const themeConfig = THEMES[theme];
-
-  // Persist theme choice
-  useEffect(() => {
-    localStorage.setItem('torreControleTema', theme);
-  }, [theme]);
+  // theme comes from context so it's globally available
+  const { theme, setTheme } = useTheme();
+  const themeConfig = THEMES[theme] || THEMES.dark;
 
   const statusMapToBackend = {
     // 'Operação finalizada' should include any delivery that reached a terminal state

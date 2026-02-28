@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './services/authContext';
 import PrivateRoute from './components/PrivateRoute';
 import AppLayout from './components/AppLayout';
 import { CityProvider, useCity } from './contexts/CityContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import CitySelector from './components/CitySelector';
 import PoliticaPrivacidade from './pages/PoliticaPrivacidade';
 import TermosUso from './pages/TermosUso';
@@ -230,7 +231,9 @@ function App() {
     <Router>
       <CityProvider>
         <AuthProvider>
-          <AppContent />
+          <ThemeProvider>
+            <AppContent />
+          </ThemeProvider>
         </AuthProvider>
       </CityProvider>
     </Router>
