@@ -367,7 +367,6 @@ const ProgramadasEntregas = () => {
   const closeModal = () => {
     setShowModal(false); setCurrentStep('welcome'); setCurrentDelivery(null); setCurrentProgramacao(null);
     setPhotos([]); setObservations(''); setJustification(''); setDocumentsUpload({}); setDocumentsJustification('');
-    setContainerReturnProof(null); setPendingContainerReturnStatus(null);
     loadProgramacoes();
   };
 
