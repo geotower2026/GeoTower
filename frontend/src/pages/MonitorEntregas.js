@@ -339,7 +339,10 @@ const MonitorEntregas = () => {
   }, [theme]);
 
   const statusMapToBackend = {
-    OPERACAO_FINALIZADA: ['ENTREGUE', 'submitted', 'ENTREGUE_COM_PENDENCIA_CANHOTO', 'FINALIZADO'],
+    // 'Operação finalizada' should include any delivery that reached a terminal state
+    // final status is now either ENTREGUE or FINALIZADO (we converted legacy pendência
+    // records to FINALIZADO during load), so we don't send the old status anymore.
+    OPERACAO_FINALIZADA: ['ENTREGUE', 'submitted', 'FINALIZADO'],
     'A CAMINHO DO CLIENTE': ['pending', 'PENDING'],
     AGUARDANDO_DESOVA: ['AGUARDANDO_DESOVA'],
     EM_DESOVA: ['EM_DESOVA'],
@@ -398,12 +401,15 @@ const MonitorEntregas = () => {
 
   const formatStatus = (s, delivery) => {
     if (!s) return '-';
+    // legacy values are treated as finalizados with missing docs
+    if (s === 'ENTREGUE_COM_PENDENCIA_CANHOTO') {
+      s = 'FINALIZADO';
+    }
     if (s === 'FINALIZADO') {
       if (allModalDocsComplete(delivery)) return 'DOCUMENTOS ENTREGUES';
       return 'FINALIZADO';
     }
     if (s === 'ENTREGUE' || s === 'submitted') return 'OPERAÇÃO FINALIZADA';
-    if (s === 'ENTREGUE_COM_PENDENCIA_CANHOTO') return 'ENTREGUE (PENDÊNCIA)';
     if (s === 'pending' || s === 'PENDING') return 'A CAMINHO DO CLIENTE';
     return s.replace(/_/g, ' ');
   };
@@ -467,11 +473,16 @@ const MonitorEntregas = () => {
       }
       const response = await adminService.getDeliveries(backendFilters, statsPeriod, periodDate);
       const data = response.data.deliveries || [];
-      setDeliveries(data);
+      // Normalize legacy pendência status so it never surfaces separately in the UI
+      const normalized = data.map(d => {
+        if (d.status === 'ENTREGUE_COM_PENDENCIA_CANHOTO') d.status = 'FINALIZADO';
+        return d;
+      });
+      setDeliveries(normalized);
       const sc = {};
-      data.forEach(d => { const s = normalizeKey(d.status) || 'UNKNOWN'; sc[s] = (sc[s] || 0) + 1; });
-      const drivers = new Set(data.map(d => d.driverName).filter(Boolean));
-      setStats({ total: data.length, statusCounts: sc, byDriver: drivers.size });
+      normalized.forEach(d => { const s = normalizeKey(d.status) || 'UNKNOWN'; sc[s] = (sc[s] || 0) + 1; });
+      const drivers = new Set(normalized.map(d => d.driverName).filter(Boolean));
+      setStats({ total: normalized.length, statusCounts: sc, byDriver: drivers.size });
       setToast({ message: `${data.length} entregas carregadas`, type: 'success' });
       setTimeout(() => setToast(null), 3000);
     } catch {
@@ -502,7 +513,7 @@ const MonitorEntregas = () => {
     }
     if (statsPeriod === 'general' && filters.status !== 'all') {
       r = r.filter(d => {
-        if (filters.status === 'OPERACAO_FINALIZADA') return d.status === 'ENTREGUE' || d.status === 'submitted';
+        if (filters.status === 'OPERACAO_FINALIZADA') return d.status === 'ENTREGUE' || d.status === 'submitted' || d.status === 'FINALIZADO';
         if (filters.status === 'A CAMINHO DO CLIENTE') return d.status === 'pending' || d.status === 'PENDING';
         if (filters.status === 'DOCUMENTOS_ENTREGUES') return d.status === 'FINALIZADO' && allModalDocsComplete(d);
         if (filters.status === 'FINALIZADO') return d.status === 'FINALIZADO' && !allModalDocsComplete(d);

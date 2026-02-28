@@ -656,7 +656,8 @@ const ProgramadasEntregas = () => {
       }
       const fresh = await deliveryService.getDelivery(deliveryId);
       const currentStatus = fresh.data.delivery.status || '';
-      const finalStatus = currentStatus === 'ENTREGUE_COM_PENDENCIA_CANHOTO' ? 'ENTREGUE_COM_PENDENCIA_CANHOTO' : 'FINALIZADO';
+      // pendência status obsolete – always finalize normally
+      const finalStatus = 'FINALIZADO';
       const existingObs = fresh.data.delivery.observations || '';
       const timestamp = new Date().toLocaleString('pt-BR');
       const containerObs = `[${timestamp}] (CONTAINER_VAZIO_DEVOLVIDO) Container vazio devolvido com comprovante.`;
@@ -735,7 +736,7 @@ const ProgramadasEntregas = () => {
         </button>
       );
     }
-    if (['ENTREGUE', 'ENTREGUE_COM_PENDENCIA_CANHOTO', 'DEVOLVENDO_CONTAINER', 'FINALIZADO'].includes(s)) {
+    if (['ENTREGUE', 'DEVOLVENDO_CONTAINER', 'FINALIZADO'].includes(s)) {
       return (
         <button onClick={() => openContainerReturnModal(p)}
           className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-yellow-500 to-amber-600 text-white rounded-xl shadow-md hover:shadow-lg active:scale-95 transition font-bold text-sm"
@@ -744,7 +745,7 @@ const ProgramadasEntregas = () => {
         </button>
       );
     }
-    if (p.status && !['AGENDADO', 'CONTAINER_MONTADO', 'ENTREGUE', 'ENTREGUE_COM_PENDENCIA_CANHOTO', 'DEVOLVENDO_CONTAINER', 'CANCELADO', 'FINALIZADO', 'pending'].includes(s)) {
+    if (p.status && !['AGENDADO', 'CONTAINER_MONTADO', 'ENTREGUE', 'DEVOLVENDO_CONTAINER', 'CANCELADO', 'FINALIZADO', 'pending'].includes(s)) {
       return (
         <button onClick={() => handleStartDelivery(p)}
           className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl shadow-md hover:shadow-lg active:scale-95 transition font-bold text-sm"

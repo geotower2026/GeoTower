@@ -45,7 +45,7 @@ const BaseDadosGeral = () => {
     'ENTREGUE',
     'submitted',
     'FINALIZADO',
-    'ENTREGUE_COM_PENDENCIA_CANHOTO',
+    // ENTREGUE_COM_PENDENCIA_CANHOTO is deprecated and should be treated as FINALIZADO
     'pending',
     'PENDING',
     'AGUARDANDO_DESOVA',
@@ -60,9 +60,12 @@ const BaseDadosGeral = () => {
   // Função para formatar status (sincronizado com Torre de Controle)
   const formatStatus = (status) => {
     if (!status) return '-';
+    if (status === 'ENTREGUE_COM_PENDENCIA_CANHOTO') {
+      // treat legacy pendência as finalizado
+      status = 'FINALIZADO';
+    }
     if (status === 'FINALIZADO') return 'FINALIZADO';
     if (status === 'ENTREGUE' || status === 'submitted') return 'OPERAÇÃO FINALIZADA';
-    if (status === 'ENTREGUE_COM_PENDENCIA_CANHOTO') return 'ENTREGUE (PENDÊNCIA)';
     if (status === 'pending' || status === 'PENDING') return 'A CAMINHO DO CLIENTE';
     return status.replace(/_/g, ' ');
   };
