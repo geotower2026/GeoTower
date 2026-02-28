@@ -396,9 +396,12 @@ const MonitorEntregas = () => {
 
   const flowHistory = selectedDelivery ? getFlowHistory(selectedDelivery) : [];
 
-  const formatStatus = (s) => {
+  const formatStatus = (s, delivery) => {
     if (!s) return '-';
-    if (s === 'FINALIZADO') return 'FINALIZADO';
+    if (s === 'FINALIZADO') {
+      if (allModalDocsComplete(delivery)) return 'DOCUMENTOS ENTREGUES';
+      return 'FINALIZADO';
+    }
     if (s === 'ENTREGUE' || s === 'submitted') return 'OPERAÇÃO FINALIZADA';
     if (s === 'ENTREGUE_COM_PENDENCIA_CANHOTO') return 'ENTREGUE (PENDÊNCIA)';
     if (s === 'pending' || s === 'PENDING') return 'A CAMINHO DO CLIENTE';
@@ -435,6 +438,13 @@ const MonitorEntregas = () => {
     }).filter(Boolean);
     if (typeof docData === 'object') return [docData.url || (docData.path && `/uploads/${docData.path}`) || docData.link || docData.webViewLink].filter(Boolean);
     return [];
+  };
+
+  // verifica se todos os documentos/fotos do modal foram anexados
+  const allModalDocsComplete = (d) => {
+    if (!d) return false;
+    const keys = ['retiradaCheio','canhotCTE','diarioBordo','canhotNF','devolucaoVazio','chegadaCliente','inicioDesova','fimDesova'];
+    return keys.every(k => getDocumentUrlsArray(d.documents?.[k]).length > 0);
   };
 
   const removeProgramacaoInfo = (obs) => obs ? obs.replace(/Criada a partir da Programação [A-Z0-9]+/g, '').trim() : '';
@@ -494,6 +504,8 @@ const MonitorEntregas = () => {
       r = r.filter(d => {
         if (filters.status === 'OPERACAO_FINALIZADA') return d.status === 'ENTREGUE' || d.status === 'submitted';
         if (filters.status === 'A CAMINHO DO CLIENTE') return d.status === 'pending' || d.status === 'PENDING';
+        if (filters.status === 'DOCUMENTOS_ENTREGUES') return d.status === 'FINALIZADO' && allModalDocsComplete(d);
+        if (filters.status === 'FINALIZADO') return d.status === 'FINALIZADO' && !allModalDocsComplete(d);
         return d.status === filters.status;
       });
     }
@@ -562,7 +574,7 @@ const MonitorEntregas = () => {
       add('Contratado', selectedDelivery.userName);
       add('Motorista', selectedDelivery.driverName);
       add('Placa', selectedDelivery.vehiclePlate);
-      add('Status', formatStatus(selectedDelivery.status));
+      add('Status', formatStatus(selectedDelivery.status, selectedDelivery));
       add('Agendamento', selectedDelivery.dataAgendamento ? new Date(selectedDelivery.dataAgendamento).toLocaleString('pt-BR') : '-');
       add('Chegada', selectedDelivery.horarioChegada ? new Date(selectedDelivery.horarioChegada).toLocaleString('pt-BR') : '-');
       add('Início desova', selectedDelivery.horarioInicioDesova ? new Date(selectedDelivery.horarioInicioDesova).toLocaleString('pt-BR') : '-');
@@ -851,6 +863,8 @@ const MonitorEntregas = () => {
                 >
                   <option value="all" className="bg-gray-900">Todos</option>
                   <option value="OPERACAO_FINALIZADA" className="bg-gray-900">Operação Finalizada</option>
+                  <option value="DOCUMENTOS_ENTREGUES" className="bg-gray-900">Documentos Entregues</option>
+                  <option value="FINALIZADO" className="bg-gray-900">Finalizado (sem docs)</option>
                   <option value="A CAMINHO DO CLIENTE" className="bg-gray-900">A Caminho do Cliente</option>
                   <option value="AGENDADO" className="bg-gray-900">Agendado</option>
                   <option value="AGUARDANDO_DESOVA" className="bg-gray-900">Aguardando Desova</option>
@@ -961,7 +975,12 @@ const MonitorEntregas = () => {
                           <td className="px-3 py-3 text-gray-300 max-w-[120px] truncate" title={d.userName}>{d.userName}</td>
                           <td className="px-3 py-3 text-gray-300 whitespace-nowrap">{d.driverName || '—'}</td>
                           <td className="px-3 py-3 text-gray-400">{d.recebedor || '—'}</td>
-                          <td className="px-3 py-3"><Badge status={d.status} /></td>
+                          <td className="px-3 py-3">
+                            {(() => {
+                              const disp = d.status === 'FINALIZADO' && allModalDocsComplete(d) ? 'DOCUMENTOS ENTREGUES' : d.status;
+                              return <Badge status={disp} />;
+                            })()}
+                          </td>
                           <td className="px-3 py-3"><ProgressDots delivery={d} /></td>
                           {/* DT Retirada */}
                           <td className="px-3 py-3 text-sky-400 whitespace-nowrap text-center font-semibold">
@@ -1039,7 +1058,7 @@ const MonitorEntregas = () => {
                 </h2>
               </div>
               <div className="flex items-center gap-3">
-                <Badge status={selectedDelivery.status} />
+                <Badge status={(selectedDelivery.status === 'FINALIZADO' && allModalDocsComplete(selectedDelivery)) ? 'DOCUMENTOS ENTREGUES' : selectedDelivery.status} />
                 <button
                   onClick={() => setSelectedDelivery(null)}
                   className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition"
