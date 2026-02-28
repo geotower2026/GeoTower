@@ -306,6 +306,9 @@ const ProgramadasEntregas = () => {
         const status = String(p.status || '').toUpperCase();
         if (['FINALIZADO', 'CANCELADO'].includes(status)) return false;
         
+        // Se marcada como containerReturned, não mostra
+        if (p.containerReturned === true) return false;
+        
         // Tentar buscar o delivery por linkedDeliveryId primeiro
         if (p.linkedDeliveryId) {
           const del = deliveries.find(d => d._id === p.linkedDeliveryId);
@@ -603,7 +606,14 @@ const ProgramadasEntregas = () => {
         return;
       }
       if (containerVazioProof) {
-        await deliveryService.uploadDocument(deliveryId, 'devolucaoContainerVazio', containerVazioProof);
+        try {
+          await deliveryService.uploadDocument(deliveryId, 'devolucaoContainerVazio', containerVazioProof);
+        } catch (uploadErr) {
+          console.error('Erro ao fazer upload:', uploadErr);
+          setToast({ message: 'Erro ao fazer upload do comprovante: ' + (uploadErr?.response?.data?.message || uploadErr.message), type: 'error' });
+          setContainerVazioSubmitting(false);
+          return;
+        }
       }
       const fresh = await deliveryService.getDelivery(deliveryId);
       const currentStatus = fresh.data.delivery.status || '';
@@ -614,7 +624,7 @@ const ProgramadasEntregas = () => {
       const newObs = `${existingObs ? existingObs + '\n' : ''}${containerObs}`;
       await deliveryService.updateDelivery(deliveryId, { status: finalStatus, observations: newObs });
       try {
-        await adminService.updateProgramacao(currentProgramacaoForReturn._id, { status: finalStatus, linkedDeliveryId: deliveryId });
+        await adminService.updateProgramacao(currentProgramacaoForReturn._id, { status: finalStatus, linkedDeliveryId: deliveryId, containerReturned: true });
       } catch (_) {}
       const msg = finalStatus === 'FINALIZADO' ? 'Entrega finalizada com sucesso!' : 'Container devolvido. Canhoto pendente!';
       setToast({ message: msg, type: 'success' });
