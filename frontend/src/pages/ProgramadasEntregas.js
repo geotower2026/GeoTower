@@ -293,8 +293,12 @@ const ProgramadasEntregas = () => {
       if (user) nomeFiltro = (user.username || user.name || '').trim().toUpperCase();
       let filtradas = [];
       if (nomeFiltro) filtradas = todas.filter(p => String(p.contratado).trim().toUpperCase() === nomeFiltro);
-      const withoutPendingCanhotos = filtradas.filter(p => String(p.status || '').toUpperCase() !== 'ENTREGUE_COM_PENDENCIA_CANHOTO');
-      setProgramacoes(withoutPendingCanhotos);
+      // Mostrar todas MENOS as finalizadas e canceladas
+      const visibleProgramacoes = filtradas.filter(p => {
+        const status = String(p.status || '').toUpperCase();
+        return !['FINALIZADO', 'CANCELADO'].includes(status);
+      });
+      setProgramacoes(visibleProgramacoes);
       const deliveriesRes = await deliveryService.getMyDeliveries({});
       const deliveries = deliveriesRes.data.deliveries || [];
       const map = {};
