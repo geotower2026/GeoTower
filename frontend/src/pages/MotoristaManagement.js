@@ -5,7 +5,7 @@ import { adminService } from '../services/authService';
 import {
   FiArrowLeft, FiEdit2, FiTrash2, FiPlus, FiTruck,
   FiUploadCloud, FiDownload, FiSearch, FiFilter,
-  FiChevronUp, FiChevronDown, FiChevronsUpDown, FiX,
+  FiChevronUp, FiChevronDown, FiX,
   FiUser, FiPhone, FiCpu, FiCalendar, FiAlertCircle
 } from 'react-icons/fi';
 import * as XLSX from 'xlsx';
@@ -40,7 +40,7 @@ const StatusBadge = ({ status }) => {
 
 /* ─── Sort Icon ─── */
 const SortIcon = ({ column, sort }) => {
-  if (sort.column !== column) return <FiChevronsUpDown size={12} className="text-slate-400 ml-1 inline" />;
+  if (sort.column !== column) return <FiChevronDown size={12} className="text-slate-400 ml-1 inline" />;
   return sort.direction === 'asc'
     ? <FiChevronUp size={12} className="text-indigo-500 ml-1 inline" />
     : <FiChevronDown size={12} className="text-indigo-500 ml-1 inline" />;
