@@ -44,6 +44,7 @@ const BaseDadosGeral = () => {
   const statusOptions = [
     'ENTREGUE',
     'submitted',
+    'FINALIZADO',
     'ENTREGUE_COM_PENDENCIA_CANHOTO',
     'pending',
     'PENDING',
@@ -59,6 +60,7 @@ const BaseDadosGeral = () => {
   // Função para formatar status (sincronizado com Torre de Controle)
   const formatStatus = (status) => {
     if (!status) return '-';
+    if (status === 'FINALIZADO') return 'FINALIZADO';
     if (status === 'ENTREGUE' || status === 'submitted') return 'OPERAÇÃO FINALIZADA';
     if (status === 'ENTREGUE_COM_PENDENCIA_CANHOTO') return 'ENTREGUE (PENDÊNCIA)';
     if (status === 'pending' || status === 'PENDING') return 'A CAMINHO DO CLIENTE';

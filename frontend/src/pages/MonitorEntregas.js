@@ -339,7 +339,7 @@ const MonitorEntregas = () => {
   }, [theme]);
 
   const statusMapToBackend = {
-    OPERACAO_FINALIZADA: ['ENTREGUE', 'submitted', 'ENTREGUE_COM_PENDENCIA_CANHOTO'],
+    OPERACAO_FINALIZADA: ['ENTREGUE', 'submitted', 'ENTREGUE_COM_PENDENCIA_CANHOTO', 'FINALIZADO'],
     'A CAMINHO DO CLIENTE': ['pending', 'PENDING'],
     AGUARDANDO_DESOVA: ['AGUARDANDO_DESOVA'],
     EM_DESOVA: ['EM_DESOVA'],
@@ -398,6 +398,7 @@ const MonitorEntregas = () => {
 
   const formatStatus = (s) => {
     if (!s) return '-';
+    if (s === 'FINALIZADO') return 'FINALIZADO';
     if (s === 'ENTREGUE' || s === 'submitted') return 'OPERAÇÃO FINALIZADA';
     if (s === 'ENTREGUE_COM_PENDENCIA_CANHOTO') return 'ENTREGUE (PENDÊNCIA)';
     if (s === 'pending' || s === 'PENDING') return 'A CAMINHO DO CLIENTE';

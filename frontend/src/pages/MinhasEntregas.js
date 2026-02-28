@@ -57,16 +57,19 @@ const MinhasEntregas = () => {
 
     // Filter by status
     if (filter === 'pendentes') {
-      // Pendentes: não ENTREGUE e não CANCELADO
+      // Pendentes: não ENTREGUE, não FINALIZADO e não CANCELADO
       filtered = filtered.filter(
-        p => !['ENTREGUE', 'CANCELADO'].includes(String(p.status || '').toUpperCase())
+        p => !['ENTREGUE', 'FINALIZADO', 'CANCELADO'].includes(String(p.status || '').toUpperCase())
       );
     } else if (filter === 'enviadas') {
-      // Enviadas: ENTREGUE ou CANCELADO
+      // Enviadas: ENTREGUE, FINALIZADO ou CANCELADO
       filtered = filtered.filter(
-        p => ['ENTREGUE', 'CANCELADO'].includes(String(p.status || '').toUpperCase())
+        p => ['ENTREGUE', 'FINALIZADO', 'CANCELADO'].includes(String(p.status || '').toUpperCase())
       );
     }
+
+    // remove any programacoes that still have pending documents (they belong to documentos pendentes screen)
+    filtered = filtered.filter(p => !(Array.isArray(p.missingDocumentsAtSubmit) && p.missingDocumentsAtSubmit.length > 0));
 
     // Filter by search term (processo, container, recebedor, motorista)
     if (debouncedSearch && debouncedSearch.trim() !== '') {

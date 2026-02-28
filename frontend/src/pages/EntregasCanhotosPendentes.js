@@ -36,7 +36,8 @@ const EntregasCanhotosPendentes = () => {
       const todas = res.data.programacoes || [];
       const nomeFiltro = (user?.username || user?.name || '').trim().toUpperCase();
       const minhas = todas.filter(p => String(p.contratado).trim().toUpperCase() === nomeFiltro);
-      const pendentes = minhas.filter(p => String(p.status || '').toUpperCase() === 'ENTREGUE_COM_PENDENCIA_CANHOTO');
+      // use missingDocumentsAtSubmit array provided by admin enrichment
+    const pendentes = minhas.filter(p => Array.isArray(p.missingDocumentsAtSubmit) && p.missingDocumentsAtSubmit.length > 0);
       setItems(pendentes);
     } catch (err) {
       console.error('Erro ao carregar pendentes:', err);
@@ -89,7 +90,9 @@ const EntregasCanhotosPendentes = () => {
           await deliveryService.uploadDocument(deliveryId, docType, f);
         }
       }
-      // finalize
+      // after uploading missing docs, submit again to clear the pendências
+      await deliveryService.submitDelivery(deliveryId);
+      // mark final status as well (submission sets 'submitted' so we force FINALIZADO)
       await deliveryService.updateDelivery(deliveryId, { status: 'FINALIZADO' });
       try { await adminService.updateProgramacao(modalProgramacao._id, { status: 'FINALIZADO' }); } catch(_){}
       setToast({ message: 'Documentos anexados, entrega finalizada!', type: 'success' });
