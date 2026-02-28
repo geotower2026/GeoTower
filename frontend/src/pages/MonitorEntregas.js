@@ -8,6 +8,7 @@ import {
   FaArrowLeft, FaEye, FaDownload, FaSync, FaFilter, FaTimes,
   FaTrash, FaEdit, FaExclamationTriangle, FaShareAlt, FaCalendarAlt,
   FaClock, FaBox, FaTruck, FaCheckCircle, FaTimesCircle, FaFilePdf,
+  FaFileCheck, FaFileTimes,
   FaUsers, FaDolly, FaSearch, FaChevronDown, FaChevronRight,
   FaExpand, FaBell, FaMapMarkerAlt, FaPalette
 } from 'react-icons/fa';
@@ -225,7 +226,12 @@ const getProgress = (delivery) => {
 };
 
 const ProgressDots = ({ delivery }) => {
-  const p = getProgress(delivery);
+  let p = getProgress(delivery);
+  // override for finalizado / docs delivered
+  if (normalizeKey(delivery.status) === 'FINALIZADO') {
+    if (allModalDocsComplete(delivery)) p = 100;
+    else p = 90;
+  }
   const total = 7;
   const filled = Math.ceil((p / 100) * total);
   const colorDot =
@@ -990,12 +996,11 @@ const MonitorEntregas = () => {
                           </td>
                           {/* Docs */}
                           <td className="px-3 py-3 text-center">
-                            <span
-                              title={docStatus}
-                              className={`inline-flex items-center justify-center w-5 h-5 rounded-full ${isComplete ? 'bg-emerald-500/20 ring-2 ring-emerald-500' : 'bg-red-500/20 ring-2 ring-red-500'}`}
-                            >
-                              <span className={`w-2 h-2 rounded-full ${isComplete ? 'bg-emerald-400' : 'bg-red-400'}`} />
-                            </span>
+                            {isComplete ? (
+                              <FaFileCheck className="text-emerald-400" title={docStatus} size={18} />
+                            ) : (
+                              <FaFileTimes className="text-red-400" title={docStatus} size={18} />
+                            )}
                           </td>
                           {/* Actions */}
                           <td className="px-3 py-3 text-center">
@@ -1077,7 +1082,11 @@ const MonitorEntregas = () => {
                 <p className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold mb-3">Progresso da Entrega</p>
                 <div className="flex items-center gap-1.5">
                   {progressStatuses.map((s, i) => {
-                    const p = getProgress(selectedDelivery);
+                    let p = getProgress(selectedDelivery);
+                    if (normalizeKey(selectedDelivery.status) === 'FINALIZADO') {
+                      if (allModalDocsComplete(selectedDelivery)) p = 100;
+                      else p = 90;
+                    }
                     const filled = Math.ceil((p / 100) * progressStatuses.length);
                     const cfg = STATUS_CONFIG[s];
                     return (
