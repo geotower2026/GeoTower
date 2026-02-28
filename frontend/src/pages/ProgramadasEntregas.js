@@ -318,6 +318,10 @@ const ProgramadasEntregas = () => {
         if (byProg && byProg.documents && byProg.documents.devolucaoContainerVazio && byProg.documents.devolucaoContainerVazio.length > 0) {
           return false;
         }
+        // also hide if delivery has observation marker (in case document upload failed)
+        if (byProg && byProg.observations && byProg.observations.includes('(CONTAINER_VAZIO_DEVOLVIDO)')) {
+          return false;
+        }
         
         // Tentar buscar o delivery por linkedDeliveryId primeiro
         if (p.linkedDeliveryId) {
@@ -1176,7 +1180,7 @@ const ProgramadasEntregas = () => {
                 >
                   <FaCamera size={14} /> {containerVazioProof ? 'Trocar Foto' : 'Tirar Foto'}
                 </button>
-                <input ref={containerVazioProofRef} type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) setContainerVazioProof(f); }} className="hidden" />
+                <input ref={containerVazioProofRef} type="file" accept="image/*" capture="environment" onChange={e => { const f = e.target.files?.[0]; if (f) setContainerVazioProof(f); }} className="hidden" />
               </div>
 
               {containerVazioSubmitting && (
