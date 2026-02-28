@@ -121,7 +121,6 @@ const FLOW_STEPS = [
   { key: 'desovaProgress',  label: 'Progresso' },
   { key: 'askSchedule',     label: 'Devolução' },
   { key: 'finalDocs',       label: 'Docs' },
-  { key: 'containerReturn', label: 'Container' },
 ];
 const STEP_INDEX = Object.fromEntries(FLOW_STEPS.map((s, i) => [s.key, i]));
 
@@ -252,10 +251,11 @@ const ProgramadasEntregas = () => {
   const [returnProof, setReturnProof] = useState(null);
   const [returnSubmitting, setReturnSubmitting] = useState(false);
 
-  const [containerReturnProof, setContainerReturnProof] = useState(null);
-  const [containerReturnSubmitting, setContainerReturnSubmitting] = useState(false);
-  const [pendingContainerReturnStatus, setPendingContainerReturnStatus] = useState(null);
-  const containerReturnProofRef = useRef(null);
+  const [showContainerReturnModal, setShowContainerReturnModal] = useState(false);
+  const [currentProgramacaoForReturn, setCurrentProgramacaoForReturn] = useState(null);
+  const [containerVazioProof, setContainerVazioProof] = useState(null);
+  const [containerVazioSubmitting, setContainerVazioSubmitting] = useState(false);
+  const containerVazioProofRef = useRef(null);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -333,8 +333,7 @@ const ProgramadasEntregas = () => {
           case 'EM_DESOVA': restoredStep = 'desovaProgress'; break;
           case 'AGUARDANDO_ANEXO': case 'ANEXANDO_DOCUMENTOS_FINAIS': restoredStep = 'finalDocs'; break;
           case 'AGUARDANDO_AGENDAMENTO_DEVOLUCAO': restoredStep = 'askSchedule'; break;
-          case 'ENTREGUE': case 'DEVOLVENDO_CONTAINER': setPendingContainerReturnStatus('ENTREGUE'); restoredStep = 'containerReturn'; break;
-          case 'ENTREGUE_COM_PENDENCIA_CANHOTO': setPendingContainerReturnStatus('ENTREGUE_COM_PENDENCIA_CANHOTO'); restoredStep = 'containerReturn'; break;
+          case 'ENTREGUE': case 'ENTREGUE_COM_PENDENCIA_CANHOTO': case 'DEVOLVENDO_CONTAINER': restoredStep = 'welcome'; break;
           default: restoredStep = 'welcome';
         }
         setCurrentStep(existing.currentStep || restoredStep);
@@ -546,9 +545,12 @@ const ProgramadasEntregas = () => {
       const docsObs = documentsJustification ? `(JUSTIFICATIVA_DOCS) ${documentsJustification}` : '';
       const newObs = `${existingObs ? existingObs + '\n' : ''}${docsObs ? `[${timestamp}] ${docsObs}` : ''}`;
       await deliveryService.updateDelivery(currentDelivery._id, { status: docStatus, documentsJustification, observations: newObs });
-      setPendingContainerReturnStatus(docStatus);
-      setContainerReturnProof(null);
-      goToStep('containerReturn');
+      try {
+        await adminService.updateProgramacao(currentProgramacao._id, { status: docStatus });
+      } catch (_) {}
+      setToast({ message: 'Documentos enviados! Agora faça a devolução do container vazio.', type: 'success' });
+      await loadProgramacoes();
+      closeModal();
     } catch (err) {
       setToast({ message: 'Erro ao enviar documentos', type: 'error' });
     } finally {
@@ -557,36 +559,62 @@ const ProgramadasEntregas = () => {
   };
 
   const handleContainerReturn = async () => {
-    if (!currentProgramacao) return;
-    setContainerReturnSubmitting(true);
+    if (!currentProgramacaoForReturn) return;
+    setContainerVazioSubmitting(true);
     try {
-      if (!containerReturnProof) {
-        setToast({ message: 'Anexe o comprovante de devolução do container', type: 'error' });
-        setContainerReturnSubmitting(false);
+      if (!containerVazioProof) {
+        setToast({ message: 'Anexe o comprovante de devolução do container vazio', type: 'error' });
+        setContainerVazioSubmitting(false);
         return;
       }
-      if (containerReturnProof) {
-        await deliveryService.uploadDocument(currentDelivery._id, 'devolucaoContainer', containerReturnProof);
+      const deliveryNumber = (currentProgramacaoForReturn.container && currentProgramacaoForReturn.container.trim()) || (currentProgramacaoForReturn.processo && currentProgramacaoForReturn.processo.trim());
+      let deliveryId = currentProgramacaoForReturn.linkedDeliveryId;
+      if (!deliveryId && deliveryNumber) {
+        const resp = await deliveryService.getMyDeliveries({ searchTerm: deliveryNumber });
+        const found = resp.data.deliveries && resp.data.deliveries[0];
+        if (found) deliveryId = found._id;
       }
-      const finalStatus = pendingContainerReturnStatus === 'ENTREGUE_COM_PENDENCIA_CANHOTO' ? 'ENTREGUE_COM_PENDENCIA_CANHOTO' : 'FINALIZADO';
-      const fresh = await deliveryService.getDelivery(currentDelivery._id);
+      if (!deliveryId) {
+        setToast({ message: 'Entrega não encontrada', type: 'error' });
+        setContainerVazioSubmitting(false);
+        return;
+      }
+      if (containerVazioProof) {
+        await deliveryService.uploadDocument(deliveryId, 'devolucaoContainerVazio', containerVazioProof);
+      }
+      const fresh = await deliveryService.getDelivery(deliveryId);
+      const currentStatus = fresh.data.delivery.status || '';
+      const finalStatus = currentStatus === 'ENTREGUE_COM_PENDENCIA_CANHOTO' ? 'ENTREGUE_COM_PENDENCIA_CANHOTO' : 'FINALIZADO';
       const existingObs = fresh.data.delivery.observations || '';
       const timestamp = new Date().toLocaleString('pt-BR');
-      const containerObs = `[${timestamp}] (CONTAINER_DEVOLVIDO) Container devolvido com comprovante.`;
+      const containerObs = `[${timestamp}] (CONTAINER_VAZIO_DEVOLVIDO) Container vazio devolvido com comprovante.`;
       const newObs = `${existingObs ? existingObs + '\n' : ''}${containerObs}`;
-      await deliveryService.updateDelivery(currentDelivery._id, { status: finalStatus, observations: newObs });
+      await deliveryService.updateDelivery(deliveryId, { status: finalStatus, observations: newObs });
       try {
-        await adminService.updateProgramacao(currentProgramacao._id, { status: finalStatus });
+        await adminService.updateProgramacao(currentProgramacaoForReturn._id, { status: finalStatus });
       } catch (_) {}
       setToast({ message: finalStatus === 'FINALIZADO' ? 'Entrega finalizada com sucesso!' : 'Container devolvido. Canhoto pendente!', type: 'success' });
       await loadProgramacoes();
-      closeModal();
-      if (finalStatus === 'FINALIZADO') navigate('/minhas-entregas');
+      setShowContainerReturnModal(false);
+      setCurrentProgramacaoForReturn(null);
+      setContainerVazioProof(null);
     } catch (err) {
-      setToast({ message: 'Erro ao registrar devolução do container', type: 'error' });
+      setToast({ message: 'Erro ao registrar devolução do container vazio', type: 'error' });
     } finally {
-      setContainerReturnSubmitting(false);
+      setContainerVazioSubmitting(false);
     }
+  };
+
+  const openContainerReturnModal = (p) => {
+    setCurrentProgramacaoForReturn(p);
+    setContainerVazioProof(null);
+    setShowContainerReturnModal(true);
+  };
+
+  const closeContainerReturnModal = () => {
+    setShowContainerReturnModal(false);
+    setCurrentProgramacaoForReturn(null);
+    setContainerVazioProof(null);
   };
 
   const getFilteredAndSorted = () => {
@@ -629,10 +657,10 @@ const ProgramadasEntregas = () => {
     }
     if (['ENTREGUE', 'ENTREGUE_COM_PENDENCIA_CANHOTO', 'DEVOLVENDO_CONTAINER'].includes(s)) {
       return (
-        <button onClick={() => handleStartDelivery(p)}
+        <button onClick={() => openContainerReturnModal(p)}
           className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-yellow-500 to-amber-600 text-white rounded-xl shadow-md hover:shadow-lg active:scale-95 transition font-bold text-sm"
         >
-          <FaTruck size={14} /> Continuar Devolução
+          <FaTruck size={14} /> Devolver Container Vazio
         </button>
       );
     }
@@ -1031,6 +1059,87 @@ const ProgramadasEntregas = () => {
               >
                 ✅ Confirmar Container Montado
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════
+           MODAL: DEVOLUÇÃO CONTAINER VAZIO
+          ════════════════════════════════════════════ */}
+      {showContainerReturnModal && currentProgramacaoForReturn && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-white w-full sm:max-w-md sm:rounded-3xl rounded-t-3xl shadow-2xl overflow-hidden">
+            {/* Modal header */}
+            <div className="bg-gradient-to-r from-yellow-500 to-amber-600 p-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                    <FaTruck className="text-white" size={18} />
+                  </div>
+                  <div>
+                    <h2 className="text-white text-xl font-extrabold">Devolução Container Vazio</h2>
+                    <p className="text-white/70 text-sm">{currentProgramacaoForReturn.processo}</p>
+                  </div>
+                </div>
+                <button onClick={closeContainerReturnModal} className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition">
+                  <FaTimes size={14} />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <p className="text-gray-600 text-sm">Anexe o comprovante de devolução do container vazio para finalizar o processo.</p>
+
+              <div className={`rounded-2xl border-2 p-4 transition-all ${containerVazioProof ? 'border-yellow-400 bg-yellow-50' : 'border-dashed border-gray-300 bg-gray-50'}`}>
+                <div className="flex items-center gap-2 mb-3">
+                  <FaImage className="text-yellow-500" size={18} />
+                  <p className="font-bold text-gray-800 text-sm">Comprovante de Devolução</p>
+                </div>
+                {containerVazioProof ? (
+                  <div className="flex items-center justify-between bg-yellow-100 rounded-xl px-3 py-2 mb-3">
+                    <div className="flex items-center gap-2">
+                      <FaCheckCircle className="text-yellow-500" size={14} />
+                      <span className="text-xs font-bold text-yellow-700 truncate max-w-[150px]">{containerVazioProof.name}</span>
+                    </div>
+                    <button onClick={() => setContainerVazioProof(null)} className="text-red-500 hover:text-red-700">
+                      <FaTimes size={12} />
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 italic mb-3 text-center">Nenhuma foto selecionada</p>
+                )}
+                <button
+                  onClick={() => containerVazioProofRef.current?.click()}
+                  className="w-full py-3 rounded-xl bg-yellow-600 hover:bg-yellow-700 text-white font-bold text-sm flex items-center justify-center gap-2 transition"
+                >
+                  <FaCamera size={14} /> {containerVazioProof ? 'Trocar Foto' : 'Tirar Foto'}
+                </button>
+                <input ref={containerVazioProofRef} type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) setContainerVazioProof(f); }} className="hidden" />
+              </div>
+
+              {containerVazioSubmitting && (
+                <div className="flex items-center gap-3 p-3 bg-yellow-50 border border-yellow-300 rounded-xl">
+                  <svg className="animate-spin h-5 w-5 text-yellow-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                  </svg>
+                  <span className="text-yellow-700 font-semibold text-sm">Registrando devolução...</span>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  onClick={handleContainerReturn}
+                  disabled={containerVazioSubmitting || !containerVazioProof}
+                  className="flex-1 py-4 bg-gradient-to-r from-yellow-500 to-amber-600 text-white rounded-xl font-bold text-base shadow-lg active:scale-95 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  ✅ Confirmar Devolução
+                </button>
+                <button onClick={closeContainerReturnModal} className="flex-1 py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold text-base active:scale-95 transition">
+                  Cancelar
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1504,78 +1613,9 @@ const ProgramadasEntregas = () => {
                           </svg>
                           Enviando...
                         </span>
-                      ) : '✓ Próxima etapa'}
+                      ) : '✓ Documentos enviados'}
                     </button>
                     <button onClick={() => goToStep('askSchedule')} disabled={submitting}
-                      className="flex-1 py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl font-bold text-base active:scale-95 transition disabled:opacity-50">
-                      Voltar
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* ── STEP: containerReturn ── */}
-              {currentStep === 'containerReturn' && (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-8 h-8 rounded-xl bg-yellow-100 flex items-center justify-center">
-                      <FaTruck className="text-yellow-600" size={14} />
-                    </div>
-                    <h3 className="text-lg font-bold text-gray-900">Devolução do Container</h3>
-                  </div>
-                  <StepTimer start={currentDelivery?.arrivedAt || currentDelivery?.createdAt} label="Tempo total" />
-
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4">
-                    <p className="text-yellow-800 font-semibold text-sm mb-1">📦 Container deve ser devolvido</p>
-                    <p className="text-gray-600 text-sm">Anexe o comprovante de devolução para concluir esta etapa</p>
-                  </div>
-
-                  <div className={`rounded-2xl border-2 p-4 transition-all ${containerReturnProof ? 'border-yellow-400 bg-yellow-50' : 'border-dashed border-gray-300 bg-gray-50'}`}>
-                    <div className="flex items-center gap-2 mb-3">
-                      <FaImage className="text-yellow-500" size={18} />
-                      <p className="font-bold text-gray-800 text-sm">Comprovante de Devolução do Container</p>
-                    </div>
-                    {containerReturnProof ? (
-                      <div className="flex items-center justify-between bg-yellow-100 rounded-xl px-3 py-2 mb-3">
-                        <div className="flex items-center gap-2">
-                          <FaCheckCircle className="text-yellow-500" size={14} />
-                          <span className="text-xs font-bold text-yellow-700 truncate max-w-[180px]">{containerReturnProof.name}</span>
-                        </div>
-                        <button onClick={() => setContainerReturnProof(null)} className="text-red-500 hover:text-red-700">
-                          <FaTimes size={12} />
-                        </button>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-gray-400 italic mb-3 text-center">Nenhuma foto selecionada</p>
-                    )}
-                    <button
-                      onClick={() => containerReturnProofRef.current?.click()}
-                      className="w-full py-3 rounded-xl bg-yellow-600 hover:bg-yellow-700 text-white font-bold text-sm flex items-center justify-center gap-2 transition"
-                    >
-                      <FaCamera size={14} /> {containerReturnProof ? 'Trocar Foto' : 'Tirar Foto'}
-                    </button>
-                    <input ref={containerReturnProofRef} type="file" accept="image/*" onChange={e => { const f = e.target.files?.[0]; if (f) setContainerReturnProof(f); }} className="hidden" />
-                  </div>
-
-                  {containerReturnSubmitting && (
-                    <div className="flex items-center gap-3 p-3 bg-yellow-50 border border-yellow-300 rounded-xl">
-                      <svg className="animate-spin h-5 w-5 text-yellow-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                      </svg>
-                      <span className="text-yellow-700 font-semibold text-sm">Registrando devolução...</span>
-                    </div>
-                  )}
-
-                  <div className="flex gap-3">
-                    <button
-                      onClick={handleContainerReturn}
-                      disabled={containerReturnSubmitting || !containerReturnProof}
-                      className="flex-1 py-4 bg-gradient-to-r from-yellow-500 to-amber-600 text-white rounded-2xl font-bold text-base shadow-lg active:scale-95 transition disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      {pendingContainerReturnStatus === 'ENTREGUE_COM_PENDENCIA_CANHOTO' ? '✓ Container devolvido' : '✓ Finalizar entrega'}
-                    </button>
-                    <button onClick={() => goToStep('finalDocs')} disabled={containerReturnSubmitting}
                       className="flex-1 py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl font-bold text-base active:scale-95 transition disabled:opacity-50">
                       Voltar
                     </button>
