@@ -8,7 +8,6 @@ import {
   FaArrowLeft, FaEye, FaDownload, FaSync, FaFilter, FaTimes,
   FaTrash, FaEdit, FaExclamationTriangle, FaShareAlt, FaCalendarAlt,
   FaClock, FaBox, FaTruck, FaCheckCircle, FaTimesCircle, FaFilePdf,
-  FaFileCheck, FaFileTimes,
   FaUsers, FaDolly, FaSearch, FaChevronDown, FaChevronRight,
   FaExpand, FaBell, FaMapMarkerAlt, FaPalette
 } from 'react-icons/fa';
@@ -997,9 +996,9 @@ const MonitorEntregas = () => {
                           {/* Docs */}
                           <td className="px-3 py-3 text-center">
                             {isComplete ? (
-                              <FaFileCheck className="text-emerald-400" title={docStatus} size={18} />
+                              <FaCheckCircle className="text-emerald-400" title={docStatus} size={18} />
                             ) : (
-                              <FaFileTimes className="text-red-400" title={docStatus} size={18} />
+                              <FaTimesCircle className="text-red-400" title={docStatus} size={18} />
                             )}
                           </td>
                           {/* Actions */}
