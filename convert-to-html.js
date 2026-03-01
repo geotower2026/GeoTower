@@ -16,7 +16,7 @@ const template = `
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Guia de Uso - GeoTransportes PRO</title>
+    <title>Guia de Uso - GeoTransportes </title>
     <style>
         * {
             margin: 0;
@@ -98,6 +98,25 @@ const template = `
             margin: 20px 0;
             background: #f8f9ff;
             border-radius: 4px;
+        }
+        
+        /* Evitar quebras de página no meio de seções */
+        h2 + ol, h2 + ul,
+        h3 + ol, h3 + ul {
+            page-break-inside: avoid;
+        }
+        
+        li {
+            page-break-inside: avoid;
+        }
+        
+        img {
+            page-break-inside: avoid;
+        }
+        
+        /* Manter fluxos juntos */
+        section, article {
+            page-break-inside: avoid;
         }
         
         hr {
