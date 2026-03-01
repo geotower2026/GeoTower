@@ -1,0 +1,296 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guia de Uso - GeoTransportes PRO</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: #6b46c1;
+            margin: 30px 0 20px 0;
+            border-bottom: 3px solid #6b46c1;
+            padding-bottom: 10px;
+            font-size: 2.5em;
+        }
+        
+        h2 {
+            color: #8b5cf6;
+            margin: 25px 0 15px 0;
+            font-size: 1.8em;
+        }
+        
+        h3 {
+            color: #a78bfa;
+            margin: 20px 0 10px 0;
+            font-size: 1.4em;
+        }
+        
+        p {
+            margin: 12px 0;
+            color: #555;
+        }
+        
+        li {
+            margin: 8px 0;
+            color: #555;
+        }
+        
+        ul, ol {
+            margin: 20px 0 20px 20px;
+        }
+        
+        img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 20px 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            border: 1px solid #e0e0e0;
+        }
+        
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: #e83e8c;
+        }
+        
+        blockquote {
+            border-left: 4px solid #6b46c1;
+            padding: 15px 20px;
+            margin: 20px 0;
+            background: #f8f9ff;
+            border-radius: 4px;
+        }
+        
+        hr {
+            border: none;
+            border-top: 2px solid #e0e0e0;
+            margin: 30px 0;
+        }
+        
+        strong {
+            color: #6b46c1;
+            font-weight: 600;
+        }
+        
+        footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+            text-align: center;
+            color: #999;
+            font-size: 0.9em;
+        }
+        
+        @media print {
+            body {
+                padding: 0;
+                background: white;
+            }
+            .container {
+                box-shadow: none;
+                padding: 0;
+            }
+            img {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Guia de Uso do Aplicativo GeoTransportes</h1>
+<p>Este documento descreve o fluxo operacional completo, dividido entre as ações do <strong>Administrador/Administrador de Programação</strong> e do <strong>Motorista</strong>.</p>
+<p>As capturas de tela fornecidas pelo usuário devem ser copiadas para <code>docs/fluxos</code> e referenciadas abaixo. Cada seção inclui links Markdown para as imagens correspondentes; adicione os arquivos com nomes claros (ex.: <code>login.png</code>, <code>programacao.png</code>, <code>torre-controle.png</code>, <code>montagem.png</code>, etc.).</p>
+<blockquote>
+<p><strong>Observação:</strong> você pode arrastar os screenshots que enviou anteriormente para essa pasta ou renomeá-los conforme a sequência de uso.</p>
+</blockquote>
+<hr>
+<h2>1. Fluxo do Administrador</h2>
+<ol>
+<li>
+<p><strong>Acessar o sistema</strong></p>
+<ul>
+<li>Login com usuário administrador.</li>
+<li><img src="docs/fluxos/login.png" alt="Tela de login"></li>
+<li>Ao entrar, a página inicial apresenta ações rápidas e atalhos.</li>
+<li><img src="docs/fluxos/painel-inicial.png" alt="Página inicial"></li>
+</ul>
+</li>
+<li>
+<p><strong>Criar/Importar Programações de Entrega</strong></p>
+<ul>
+<li>Navegar até <em>Programação de Entregas</em> (menu de agendamentos).</li>
+<li><img src="docs/fluxos/programacao.png" alt="Programação de entregas"></li>
+<li>Clicar em <strong>&quot;Nova Programação&quot;</strong> para inserir manualmente ou usar <strong>&quot;Importar Excel&quot;</strong> para upload em massa.</li>
+<li>Preencher dados: processo, recebedor, container, contratante, motorista, data/hora e demais detalhes.</li>
+<li>Salvar a programação.</li>
+<li>O sistema permite revisar e editar antes de finalizar.</li>
+<li><img src="docs/fluxos/programacao-form.png" alt="Formulário de programação"></li>
+</ul>
+</li>
+<li>
+<p><strong>Atribuição automática aos motoristas</strong></p>
+<ul>
+<li>Cada entrega agendada é automaticamente relacionada à transportadora/contratado especificado.</li>
+<li>Motoristas vinculados ao contratado (por exemplo, <code>BANDEIRA</code>) receberão as entregas no aplicativo móvel.</li>
+</ul>
+</li>
+<li>
+<p><strong>Acompanhamento operacional (Torre de Controle)</strong></p>
+<ul>
+<li>A página <strong>Torre de Controle</strong> mostra o resumo operacional (programadas, agendadas, motoristas) e uma tabela detalhada com status e progresso.</li>
+<li><img src="docs/fluxos/torre-controle.png" alt="Torre de Controle"></li>
+<li>Usar filtros por data, motorista, status para monitorar atividades.</li>
+<li>Atualizações em tempo real (auto-refresh configurável) mostram mudanças realizadas pelos motoristas.</li>
+</ul>
+</li>
+<li>
+<p><strong>Outras funcionalidades</strong></p>
+<ul>
+<li>Editar ou excluir programações.</li>
+<li>Visualizar documentos enviados e anexos.</li>
+<li>Gerenciar transportadoras, motoristas e configurações gerais.</li>
+</ul>
+</li>
+</ol>
+<hr>
+<h2>2. Fluxo do Motorista</h2>
+<ol>
+<li>
+<p><strong>Login</strong></p>
+<ul>
+<li>Abrir o aplicativo/web e acessar com <strong>usuário da transportadora</strong> (por exemplo, <code>BANDEIRA</code>) e senha.</li>
+<li>Selecionar cidade (Manaus ou Itajaí).</li>
+<li><img src="docs/fluxos/login-motorista.png" alt="Login motorista"></li>
+<li>Após login, o motorista é direcionado ao painel inicial.</li>
+<li><img src="docs/fluxos/painel-motorista.png" alt="Painel motorista"></li>
+</ul>
+</li>
+<li>
+<p><strong>Entregas Programadas</strong></p>
+<ul>
+<li>O menu &quot;Minhas Entregas&quot; ou o atalho leva à tela de <strong>Entregas Programadas</strong>.</li>
+<li>Todas as entregas pendentes para sua transportadora ficam listadas.</li>
+<li><img src="docs/fluxos/entregas-programadas.png" alt="Entregas programadas"></li>
+<li>Usar campo de busca e filtros (status, motorista, data) para localizar a entrega desejada.</li>
+</ul>
+</li>
+<li>
+<p><strong>Montagem do Container</strong></p>
+<ul>
+<li>Após encontrar a entrega, clicar em <strong>&quot;Iniciar Montagem&quot;</strong>.</li>
+<li>Abrirá um modal com informações sobre o processo e o botão para anexar <strong>comprovante de montagem</strong> (foto do cheio).</li>
+<li><img src="docs/fluxos/modulo-montagem.png" alt="Modal montagem"></li>
+<li>Fazer upload da foto e confirmar com <em>&quot;Confirmar Container Montado&quot;</em>.</li>
+<li>O status da entrega muda para <code>CONTAINER_MONTADO</code>.</li>
+<li>O motorista volta automaticamente para a lista.</li>
+<li><img src="docs/fluxos/status-montado.png" alt="Status container montado"></li>
+</ul>
+</li>
+<li>
+<p><strong>Iniciar Entrega / Fluxo de Entrega</strong></p>
+<ul>
+<li>No momento em que estiver a caminho do cliente, localizar a mesma entrega e clicar em <strong>&quot;Iniciar Entrega&quot;</strong>.</li>
+<li>Aparece a barra de progresso com etapas: <em>Chegada</em> → <em>Desova</em> → <em>Progresso</em> → <em>Devolução</em> → <em>Docs</em>.</li>
+<li><img src="docs/fluxos/fluxo-entrega.png" alt="Fluxo de entrega"></li>
+<li>Seguir as etapas na ordem:
+<ol>
+<li>
+<p><strong>Cheguei no cliente</strong>: registra a hora de chegada e permite anexar fotos do local.</p>
+<p><img src="docs/fluxos/chegada.png" alt="Chegada"></p>
+</li>
+<li>
+<p><strong>Desova</strong>:</p>
+<ul>
+<li>Confirmar <em>início da desova</em> e depois <em>fim da desova</em>.</li>
+</ul>
+<p><img src="docs/fluxos/desova.png" alt="Desova"></p>
+</li>
+<li>
+<p><strong>Progresso</strong>: etapa transitória.</p>
+</li>
+<li>
+<p><strong>Devolução do Container</strong>:</p>
+<ul>
+<li>Ao finalizar a desova, opção para <strong>agendar devolução</strong> (notifica admin) ou apenas continuar.</li>
+</ul>
+<p><img src="docs/fluxos/devolucao.png" alt="Devolução agendada"></p>
+</li>
+<li>
+<p><strong>Documentos Finais</strong>:</p>
+<ul>
+<li>Fazer upload de <code>Canhoto CTE</code>, <code>Canhoto NF</code> e <code>Diário de Bordo</code>.</li>
+<li>Caso algum documento não esteja disponível (cliente reteve), escrever justificativa (como se faz no grupo de mensagens).</li>
+<li>Clicar em <strong>&quot;Documentos enviados&quot;</strong> para finalizar a entrega.</li>
+</ul>
+<p><img src="docs/fluxos/documentos.png" alt="Documentos finais"></p>
+</li>
+</ol>
+</li>
+<li>Ao concluir, o status atualiza para <code>PENDÊNTE DEVOLUÇÃO</code> e a entrega some da lista de programadas.</li>
+</ul>
+</li>
+<li>
+<p><strong>Devolução do Container</strong></p>
+<ul>
+<li>Qualquer motorista da mesma transportadora pode realizar a devolução.</li>
+<li>Basta abrir a tela <strong>Entregas Programadas</strong>, buscar a entrega com status <code>PENDÊNTE DEVOLUÇÃO</code> e clicar em <strong>&quot;Devolver Container Vazio&quot;</strong>.</li>
+<li><img src="docs/fluxos/modal-devolucao.png" alt="Modal devolução"></li>
+<li>Anexar foto do comprovante de devolução e confirmar. A entrega é removida totalmente da lista.</li>
+<li><img src="docs/fluxos/status-fechado.png" alt="Status fechado"></li>
+</ul>
+</li>
+<li>
+<p><strong>Documentos Pendentes</strong></p>
+<ul>
+<li>Se algum documento ficou faltando no passo 4, a entrega passa a figurar na tela <strong>Documentos Pendentes</strong>.</li>
+<li><img src="docs/fluxos/documentos-pendentes.png" alt="Documentos pendentes"></li>
+<li>Depois de obter o documento faltante, acessá-la nessa tela e anexar o arquivo para fechar o fluxo.</li>
+</ul>
+</li>
+</ol>
+<hr>
+<h3>Observações importantes</h3>
+<ul>
+<li>Todas as ações do motorista atualizam automaticamente a Torre de Controle do administrador.</li>
+<li>As imagens enviadas ficam armazenadas (local ou no S3/R2) e acessíveis via modal de documentos.</li>
+<li>O tempo presente em cada etapa é exibido para controle operacional.</li>
+<li>O sistema permite filtrar entregas concluídas, pendentes, canceladas e com documentos entregues.</li>
+</ul>
+<hr>
+<p>Este passo‑a‑passo reflete a operação padrão mostrada nas telas anexadas pelo usuário: login, programação, torre de controle, modal de montagem, fluxo de entrega com fotos, justificativas e devolução.</p>
+<p>Coloquei o material em <strong><code>USO_DO_APP.md</code></strong> no repositório. Sinta‑se livre para complementar ou reorganizar conforme a necessidade.</p>
+
+        <footer>
+            <p>Guia de Uso - GeoTransportes PRO | Gerado em 01/03/2026</p>
+        </footer>
+    </div>
+</body>
+</html>
