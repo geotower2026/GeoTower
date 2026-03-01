@@ -16,3 +16,5 @@ services:
         value: "5000"
       - key: JWT_SECRET
         value: "REPLACE_WITH_A_SECURE_SECRET"
+      - key: MONGODB_URI
+        value: "MONGODB_URI_REMOVED"
