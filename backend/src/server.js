@@ -52,16 +52,10 @@ process.on('unhandledRejection', (reason, p) => {
 // Middleware
 app.use(helmet());
 
-// ✅ CORS configurado com origens permitidas
-const allowedOrigins = [
-  'http://localhost',
-  'capacitor://localhost',
-  process.env.FRONTEND_URL,
-].filter(Boolean);
-
+// ✅ CORS permissivo (permite qualquer origem)
 app.use(
   cors({
-    origin: allowedOrigins.length > 0 ? allowedOrigins : "*",
+    origin: "*",
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-City"],
   })
