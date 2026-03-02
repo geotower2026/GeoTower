@@ -573,7 +573,7 @@ router.post("/:id/submit", auth, async (req, res) => {
     const city = delivery.city || req.city || 'manaus';
     const requiredDocs = city === 'itajai'
       ? ['ricAbastecimento', 'diarioBordo', 'ricBaixa', 'ricColeta', 'discoTacografo']
-      : ['canhotNF', 'canhotCTE', 'diarioBordo', 'devolucaoVazio', 'retiradaCheio'];
+       : ['canhotNF', 'canhotCTE', 'diarioBordo'];
 
     const missingDocs = requiredDocs.filter(doc => !docHasFiles(delivery.documents && delivery.documents[doc]));
 
