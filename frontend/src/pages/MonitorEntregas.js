@@ -443,8 +443,13 @@ const MonitorEntregas = () => {
       setStats({ total: normalized.length, statusCounts: sc, byDriver: drivers.size });
       setToast({ message: `${data.length} entregas carregadas`, type: 'success' });
       setTimeout(() => setToast(null), 3000);
-    } catch {
-      setToast({ message: 'Erro ao carregar entregas', type: 'error' });
+    } catch (err) {
+      if (err && err.response && err.response.status === 401) {
+        setToast({ message: 'Sessão expirada. Faça login novamente.', type: 'error' });
+        setTimeout(() => { window.location.href = '/login'; }, 1200);
+      } else {
+        setToast({ message: 'Erro ao carregar entregas. Se o problema persistir, faça login novamente.', type: 'error' });
+      }
     } finally { setLoading(false); }
   }, [filters, statsPeriod]);
 
@@ -485,13 +490,30 @@ const MonitorEntregas = () => {
           .some(v => (v || '').toLowerCase().includes(q))
       );
     }
+    // Date filtering: compare YYYY-MM-DD strings derived from the delivery's
+    // local date to avoid timezone shifts (server timestamps in UTC can roll
+    // the local date back to the previous day). This makes "today" match
+    // deliveries whose local calendar date is today.
+    const pad = (v) => String(v).padStart(2, '0');
     if (filters.startDate) {
-      const sd = new Date(filters.startDate); sd.setHours(0,0,0,0);
-      r = r.filter(d => d.dataAgendamento && new Date(d.dataAgendamento) >= sd);
+      const sdStr = filters.startDate; // YYYY-MM-DD from date input
+      r = r.filter(d => {
+        if (!d.dataAgendamento) return false;
+        const dt = new Date(d.dataAgendamento);
+        const y = dt.getFullYear(); const m = pad(dt.getMonth() + 1); const day = pad(dt.getDate());
+        const dStr = `${y}-${m}-${day}`;
+        return dStr >= sdStr;
+      });
     }
     if (filters.endDate) {
-      const ed = new Date(filters.endDate); ed.setHours(23,59,59,999);
-      r = r.filter(d => d.dataAgendamento && new Date(d.dataAgendamento) <= ed);
+      const edStr = filters.endDate;
+      r = r.filter(d => {
+        if (!d.dataAgendamento) return false;
+        const dt = new Date(d.dataAgendamento);
+        const y = dt.getFullYear(); const m = pad(dt.getMonth() + 1); const day = pad(dt.getDate());
+        const dStr = `${y}-${m}-${day}`;
+        return dStr <= edStr;
+      });
     }
     setFilteredDeliveries(r);
   }, [deliveries, filters, sortBy, sortDir, statsPeriod]);
@@ -631,7 +653,12 @@ const MonitorEntregas = () => {
     try {
       await adminService.updateDelivery(editingDelivery, payload);
       setToast({ message:'Entrega atualizada', type:'success' });
-      setEditingDelivery(null); loadDeliveries();
+      setEditingDelivery(null);
+      // Update selectedDelivery to reflect changes immediately in modal
+      if (selectedDelivery && selectedDelivery._id === editingDelivery) {
+        setSelectedDelivery({ ...selectedDelivery, ...editForm });
+      }
+      loadDeliveries();
     } catch { setToast({ message:'Erro ao atualizar', type:'error' }); }
   };
 
