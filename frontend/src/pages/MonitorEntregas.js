@@ -1,4 +1,3 @@
-
 import React, {
   useState, useEffect, useCallback, useRef, useMemo, useLayoutEffect
 } from 'react';
@@ -238,7 +237,7 @@ const getProgress = (delivery) => {
 };
 
 /* ─────────────────────────────────────────────────────────────
-   PONTUALIDADE CHIP  (redesenhado)
+   PONTUALIDADE CHIP
    ───────────────────────────────────────────────────────────── */
 const PunctualityCell = ({ p }) => {
   const styles = {
@@ -249,17 +248,17 @@ const PunctualityCell = ({ p }) => {
   };
   const s = styles[p.type] || styles.unknown;
   return (
-    <div className="flex flex-col items-center gap-1 min-w-[110px]">
-      <span className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-bold uppercase tracking-wide ${s.bg} ${s.border} ${s.text} shadow-md ${s.ring}`}>
-        <span className={`w-1.5 h-1.5 rounded-full ${s.dot} ${p.type === 'late' ? 'animate-pulse' : ''}`} />
+    <div className="flex flex-col items-center gap-1 min-w-[100px]">
+      <span className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[10px] font-bold uppercase tracking-wide ${s.bg} ${s.border} ${s.text} shadow-md ${s.ring}`}>
+        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${s.dot} ${p.type === 'late' ? 'animate-pulse' : ''}`} />
         {p.label}
       </span>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         {p.eta !== null && p.eta > 0 && (
-          <span className="text-[10px] text-gray-500 font-mono">ETA {p.eta}m</span>
+          <span className="text-[9px] text-gray-500 font-mono">ETA {p.eta}m</span>
         )}
         {p.lateBy != null && p.lateBy !== 0 && (
-          <span className={`text-[10px] font-bold font-mono ${p.lateBy > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+          <span className={`text-[9px] font-bold font-mono ${p.lateBy > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
             {p.lateBy > 0 ? `+${p.lateBy}m` : `${p.lateBy}m`}
           </span>
         )}
@@ -294,19 +293,15 @@ const SettingsPanel = ({
 
   return (
     <>
-      {/* Overlay */}
       <div
         className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-40 transition-opacity"
         style={{ opacity: open ? 1 : 0 }}
         onClick={onClose}
       />
-
-      {/* Drawer */}
       <div
         className={`fixed right-0 top-0 h-full w-full max-w-sm z-50 flex flex-col shadow-2xl ${open ? 'panel-enter' : 'panel-exit'}`}
         style={{ backgroundColor: '#13131f', borderLeft: '1px solid rgba(255,255,255,0.08)' }}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 bg-gradient-to-r from-purple-900/40 to-indigo-900/40 flex-shrink-0">
           <div className="flex items-center gap-2">
             <span className="w-7 h-7 rounded-lg bg-purple-600/30 flex items-center justify-center">
@@ -323,7 +318,6 @@ const SettingsPanel = ({
         </div>
 
         <div className="overflow-y-auto flex-1 p-5 space-y-6">
-
           {/* ── TEMA ── */}
           <section>
             <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-3 flex items-center gap-2">
@@ -344,9 +338,7 @@ const SettingsPanel = ({
                     theme === key ? 'border-purple-400' : 'border-gray-600'
                   }`} style={{ background: t.bg }} />
                   {t.name}
-                  {theme === key && (
-                    <FaCheckCircle className="ml-auto text-purple-400 text-xs" />
-                  )}
+                  {theme === key && <FaCheckCircle className="ml-auto text-purple-400 text-xs" />}
                 </button>
               ))}
             </div>
@@ -370,7 +362,6 @@ const SettingsPanel = ({
                   <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-transform duration-300 ${autoRefresh ? 'translate-x-5' : ''}`} />
                 </span>
               </label>
-
               {autoRefresh && (
                 <div>
                   <label className="block text-xs text-gray-500 mb-2">Intervalo (segundos)</label>
@@ -380,9 +371,7 @@ const SettingsPanel = ({
                         key={v}
                         onClick={() => setRefreshInterval(v)}
                         className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                          refreshInterval === v
-                            ? 'bg-emerald-600 text-white shadow-md'
-                            : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                          refreshInterval === v ? 'bg-emerald-600 text-white shadow-md' : 'bg-white/5 text-gray-400 hover:bg-white/10'
                         }`}
                       >
                         {v}s
@@ -416,9 +405,7 @@ const SettingsPanel = ({
                 </button>
               )}
             </div>
-
             <div className="space-y-3">
-              {/* Status */}
               <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1.5">Status</label>
                 <select
@@ -439,8 +426,6 @@ const SettingsPanel = ({
                   <option value="CANCELADO" className="bg-gray-900">Cancelado</option>
                 </select>
               </div>
-
-              {/* Search */}
               <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1.5">Buscar</label>
                 <div className="relative">
@@ -454,8 +439,6 @@ const SettingsPanel = ({
                   />
                 </div>
               </div>
-
-              {/* Dates */}
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1.5">Data Inicial</label>
@@ -470,8 +453,6 @@ const SettingsPanel = ({
                     className={inputCls} />
                 </div>
               </div>
-
-              {/* Active filters badges */}
               {(filters.status !== 'all' || filters.searchTerm || filters.startDate || filters.endDate) && (
                 <div className="flex flex-wrap gap-2 pt-1">
                   {filters.status !== 'all' && (
@@ -522,7 +503,7 @@ const ProgressDots = ({ delivery, allModalDocsComplete }) => {
       <span className="text-[10px] font-bold text-gray-500 w-6 text-right">{p}%</span>
       <div className="flex gap-[3px]">
         {Array.from({ length: total }).map((_, i) => (
-          <span key={i} className={`block w-2.5 h-2.5 rounded-full transition-all ${
+          <span key={i} className={`block w-2 h-2 rounded-full transition-all ${
             i < filled
               ? `${colorDot} ${p < 100 && i === filled - 1 ? 'animate-pulse' : ''}`
               : 'bg-gray-700'
@@ -534,18 +515,96 @@ const ProgressDots = ({ delivery, allModalDocsComplete }) => {
 };
 
 /* ─────────────────────────────────────────────────────────────
-   COLUMN DEFINITION  (for the div-grid rows)
+   COLUMN DEFINITION
    ───────────────────────────────────────────────────────────── */
+// Colunas mais equilibradas para melhor visualização em telas grandes
 const COL_TEMPLATE =
-  '80px minmax(110px,1fr) 110px 90px 148px 108px 108px 108px 96px 90px 90px 130px 80px 52px 52px';
+  '72px minmax(120px,1.5fr) minmax(100px,1fr) minmax(90px,1fr) 150px 120px 110px 110px 100px 92px 92px 130px 80px 48px 48px';
+
+/* ─────────────────────────────────────────────────────────────
+   MOBILE CARD — layout para telas pequenas
+   ───────────────────────────────────────────────────────────── */
+const MobileDeliveryCard = ({ d, currentTime, allModalDocsComplete, getDocumentsStatus, getPunctualityStatus, recentlyUpdated, RISE_WINDOW, setSelectedDelivery }) => {
+  const now = Date.now();
+  const updatedAt = recentlyUpdated[d._id];
+  const isActive  = updatedAt && (now - updatedAt) < RISE_WINDOW;
+  const docStatus = getDocumentsStatus(d);
+  const isComplete = docStatus.includes('COMPLETO');
+  const punct = getPunctualityStatus(d, currentTime);
+  const dispStatus = d.status === 'FINALIZADO' && allModalDocsComplete(d) ? 'DOCUMENTOS ENTREGUES' : d.status;
+
+  return (
+    <div className={`
+      relative rounded-2xl border p-4 space-y-3 transition-all
+      ${isActive ? 'row-rise border-purple-500/60 bg-purple-900/10' : 'border-white/10 bg-white/[0.02]'}
+    `}
+      style={isActive ? { '--rise-from': '80px' } : {}}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="font-black text-purple-300 text-base">#{d.deliveryNumber}</span>
+          {isActive && (
+            <span className="badge-pop px-1.5 py-0.5 rounded-full bg-purple-600/80 text-white text-[9px] font-black">UP</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge status={dispStatus} />
+          <button
+            onClick={() => setSelectedDelivery(d)}
+            className="w-8 h-8 rounded-lg bg-purple-600/20 hover:bg-purple-600/50 text-purple-400 hover:text-white flex items-center justify-center transition"
+          >
+            <FaEye size={13} />
+          </button>
+        </div>
+      </div>
+
+      {/* Info grid */}
+      <div className="grid grid-cols-2 gap-2 text-xs">
+        <div>
+          <p className="text-gray-600 text-[10px] uppercase font-bold">Contratado</p>
+          <p className="text-gray-200 font-semibold truncate">{d.userName || '—'}</p>
+        </div>
+        <div>
+          <p className="text-gray-600 text-[10px] uppercase font-bold">Motorista</p>
+          <p className="text-gray-200 font-semibold truncate">{d.driverName || '—'}</p>
+        </div>
+        <div>
+          <p className="text-gray-600 text-[10px] uppercase font-bold">Agendamento</p>
+          <p className="text-gray-300 font-mono text-[11px]">
+            {d.dataAgendamento ? new Date(d.dataAgendamento).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—'}
+          </p>
+        </div>
+        <div>
+          <p className="text-gray-600 text-[10px] uppercase font-bold">Chegada</p>
+          <p className="text-gray-300 font-mono text-[11px]">
+            {d.horarioChegada ? new Date(d.horarioChegada).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—'}
+          </p>
+        </div>
+      </div>
+
+      {/* Bottom row */}
+      <div className="flex items-center justify-between pt-1 border-t border-white/5">
+        <ProgressDots delivery={d} allModalDocsComplete={allModalDocsComplete} />
+        <PunctualityCell p={punct} />
+        <div className="flex items-center gap-2">
+          {isComplete
+            ? <FaCheckCircle className="text-emerald-400" size={15} />
+            : <FaTimesCircle className="text-red-400/70" size={15} />
+          }
+        </div>
+      </div>
+    </div>
+  );
+};
 
 /* ─────────────────────────────────────────────────────────────
    MAIN COMPONENT
    ───────────────────────────────────────────────────────────── */
 const MonitorEntregas = () => {
   const { user } = useAuth();
-  const isGeoMar   = () => user?.role === 'geomar';
-  const canEdit    = () => user?.role === 'manager';
+  const isGeoMar = () => user?.role === 'geomar';
+  const canEdit  = () => user?.role === 'manager';
 
   const [viewingDocument, setViewingDocument] = useState(null);
   const [modalFotos, setModalFotos]           = useState(null);
@@ -558,8 +617,6 @@ const MonitorEntregas = () => {
   const [autoRefresh, setAutoRefresh]         = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(30);
   const [editingDelivery, setEditingDelivery] = useState(null);
-  const [sortBy, setSortBy]                   = useState(null);
-  const [sortDir, setSortDir]                 = useState('asc');
   const [editForm, setEditForm]               = useState({
     deliveryNumber:'', userName:'', driverName:'', vehiclePlate:'',
     recebedor:'', status:'', dataAgendamento:'', horarioChegada:'',
@@ -572,11 +629,11 @@ const MonitorEntregas = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   /* Animation state */
-  const [recentlyUpdated, setRecentlyUpdated] = useState({}); // { id: timestamp }
-  const prevStatusRef   = useRef({});  // { id: status }
-  const rowRefs         = useRef({});  // { id: DOM element }
-  const prevPositions   = useRef({});  // { id: { top } }
-  const RISE_WINDOW     = 8000;        // ms to keep rise animation active
+  const [recentlyUpdated, setRecentlyUpdated] = useState({});
+  const prevStatusRef  = useRef({});
+  const rowRefs        = useRef({});
+  const prevPositions  = useRef({});
+  const RISE_WINDOW    = 8000;
 
   const { theme, setTheme } = useTheme();
   const themeConfig = THEMES[theme] || THEMES.dark;
@@ -795,20 +852,10 @@ const MonitorEntregas = () => {
     }
   }, [loadDeliveries, autoRefresh, refreshInterval]);
 
-  /* ── FILTER + SORT ── */
+  /* ── FILTER (sem sort — sort removido para não interferir na animação) ── */
   useEffect(() => {
     let r = [...deliveries];
-    if (sortBy) {
-      r.sort((a,b) => {
-        if (sortBy === 'createdAt') {
-          const diff = new Date(a[sortBy])-new Date(b[sortBy]);
-          return sortDir==='asc' ? diff : -diff;
-        }
-        const sa = String(a[sortBy]||'').toLowerCase();
-        const sb = String(b[sortBy]||'').toLowerCase();
-        return sortDir==='asc' ? sa.localeCompare(sb) : sb.localeCompare(sa);
-      });
-    }
+
     if (statsPeriod==='general' && filters.status!=='all') {
       r = r.filter(d => {
         if (filters.status==='OPERACAO_FINALIZADA') return d.status==='ENTREGUE'||d.status==='submitted'||d.status==='FINALIZADO';
@@ -845,13 +892,12 @@ const MonitorEntregas = () => {
       });
     }
     setFilteredDeliveries(r);
-  }, [deliveries, filters, sortBy, sortDir, statsPeriod]);
+  }, [deliveries, filters, statsPeriod]);
 
   /* ── ANIMATION: detect status changes ── */
   useEffect(() => {
     if (filteredDeliveries.length === 0) return;
 
-    // Capture current DOM positions before any state change
     const capturedPositions = {};
     filteredDeliveries.forEach(d => {
       const el = rowRefs.current[d._id];
@@ -870,7 +916,6 @@ const MonitorEntregas = () => {
     if (Object.keys(updates).length > 0) {
       prevPositions.current = capturedPositions;
       setRecentlyUpdated(prev => ({ ...prev, ...updates }));
-      // Auto-clear after window
       setTimeout(() => {
         setRecentlyUpdated(prev => {
           const next = { ...prev };
@@ -881,7 +926,7 @@ const MonitorEntregas = () => {
     }
   }, [filteredDeliveries]);
 
-  /* Sorted display list: recently updated rows always float to top */
+  /* Sorted display list: recently updated rows float to top */
   const displayList = useMemo(() => {
     const now = Date.now();
     return [...filteredDeliveries].sort((a, b) => {
@@ -907,7 +952,6 @@ const MonitorEntregas = () => {
       const newTop = el.getBoundingClientRect().top;
       const delta = oldTop - newTop;
       if (Math.abs(delta) < 2) return;
-      // set CSS variable for rise distance
       el.style.setProperty('--rise-from', `${delta}px`);
     });
     prevPositions.current = {};
@@ -1051,7 +1095,6 @@ const MonitorEntregas = () => {
     return a.localeCompare(b);
   });
 
-  /* active filter count */
   const activeFilterCount = [
     filters.status !== 'all',
     !!filters.searchTerm,
@@ -1060,6 +1103,14 @@ const MonitorEntregas = () => {
   ].filter(Boolean).length;
 
   const flowHistory = selectedDelivery ? getFlowHistory(selectedDelivery) : [];
+
+  /* ── COLUMN HEADERS (sem sort) ── */
+  const HEADERS = [
+    'Nº', 'Contratado', 'Motorista', 'Recebedor',
+    'Status', 'Progresso', 'DT Retirada', 'Agendamento',
+    'Chegada', 'Início', 'Fim', 'Pontualidade',
+    '⏱ Tempo', 'Docs', 'Ações'
+  ];
 
   /* ────────────────────────────────────────
      RENDER
@@ -1082,8 +1133,7 @@ const MonitorEntregas = () => {
 
       {/* ── HEADER ── */}
       <header className={`sticky top-0 z-40 ${themeConfig.header} backdrop-blur-md border-b ${themeConfig.border}`}>
-        <div className="w-full px-4 lg:px-8 h-16 flex items-center gap-4">
-          {/* Back */}
+        <div className="w-full px-4 lg:px-8 h-16 flex items-center gap-3">
           <button
             onClick={() => navigate('/home')}
             className="flex items-center gap-2 text-sm font-semibold text-gray-400 hover:text-white transition flex-shrink-0"
@@ -1092,7 +1142,6 @@ const MonitorEntregas = () => {
             <span className="hidden sm:inline">Voltar</span>
           </button>
 
-          {/* Title */}
           <div className="flex items-center gap-3 flex-shrink-0">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-900/40">
               <MdDashboard className="text-white text-base" />
@@ -1102,16 +1151,13 @@ const MonitorEntregas = () => {
             </h1>
           </div>
 
-          {/* Spacer */}
           <div className="flex-1" />
 
-          {/* Clock */}
           <span className="hidden lg:flex items-center gap-1.5 text-sm font-mono font-semibold text-gray-400 tabular-nums">
             <FaClock className="text-purple-400" size={12} />
             {currentTime.toLocaleTimeString('pt-BR')}
           </span>
 
-          {/* Live indicator */}
           {autoRefresh && (
             <span className="hidden sm:flex items-center gap-1.5 text-xs text-emerald-400 font-bold">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -1119,7 +1165,6 @@ const MonitorEntregas = () => {
             </span>
           )}
 
-          {/* Fullscreen */}
           <button
             onClick={toggleFullscreen}
             title="Fullscreen (Ctrl+Shift+F)"
@@ -1128,7 +1173,6 @@ const MonitorEntregas = () => {
             <FaExpand size={14} />
           </button>
 
-          {/* Refresh */}
           <button
             onClick={loadDeliveries}
             disabled={loading}
@@ -1138,7 +1182,6 @@ const MonitorEntregas = () => {
             <FaSync size={13} className={loading ? 'animate-spin' : ''} />
           </button>
 
-          {/* Settings gear  */}
           <button
             onClick={() => setSettingsOpen(v => !v)}
             title="Configurações, Filtros & Tema"
@@ -1156,42 +1199,43 @@ const MonitorEntregas = () => {
       </header>
 
       {/* ── MAIN ── */}
-      <main className="w-full px-4 lg:px-8 py-8 space-y-8">
+      <main className="w-full px-3 sm:px-4 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8">
 
         {/* ── PERIOD + INFO BAR ── */}
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           <Pill active={statsPeriod==='general'}   onClick={() => setStatsPeriod('general')}   color="indigo">
-            <MdDashboard /> Geral
+            <MdDashboard className="text-xs" /> <span className="hidden sm:inline">Geral</span><span className="sm:hidden">Geral</span>
           </Pill>
           <Pill active={statsPeriod==='yesterday'} onClick={() => setStatsPeriod('yesterday')} color="gray">
-            <FaCalendarAlt /> Ontem
+            <FaCalendarAlt className="text-xs" /> <span className="hidden sm:inline">Ontem</span><span className="sm:hidden">Ontem</span>
           </Pill>
           <Pill active={statsPeriod==='today'}     onClick={() => setStatsPeriod('today')}     color="purple">
-            <FaClock /> Hoje
+            <FaClock className="text-xs" /> Hoje
           </Pill>
           <Pill active={statsPeriod==='tomorrow'}  onClick={() => setStatsPeriod('tomorrow')}  color="blue">
-            <FaCalendarAlt /> Amanhã
+            <FaCalendarAlt className="text-xs" /> <span className="hidden sm:inline">Amanhã</span><span className="sm:hidden">Amanhã</span>
           </Pill>
 
-          {/* Filter summary chips (read-only, click opens settings) */}
           {activeFilterCount > 0 && (
             <button
               onClick={() => setSettingsOpen(true)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-bold transition hover:bg-amber-500/25"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-bold transition hover:bg-amber-500/25"
             >
               <FaFilter size={10} />
-              {activeFilterCount} filtro{activeFilterCount > 1 ? 's' : ''} ativo{activeFilterCount > 1 ? 's' : ''}
+              {activeFilterCount} filtro{activeFilterCount > 1 ? 's' : ''}
             </button>
           )}
 
           <div className="ml-auto text-xs text-gray-500 font-semibold">
-            {filteredDeliveries.length} de {stats.total} programações
+            {filteredDeliveries.length} / {stats.total}
           </div>
         </div>
 
         {/* ── STATS CARDS ── */}
         <div>
-          <SectionTitle sub={`${stats.total} programações encontradas`}>Resumo Operacional</SectionTitle>
+          <SectionTitle sub={`${stats.total} programações encontradas — ${filteredDeliveries.length} exibidas`}>
+            Resumo Operacional
+          </SectionTitle>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-10 gap-3">
             <StatCard
               label="Programadas" value={stats.total}
@@ -1223,49 +1267,49 @@ const MonitorEntregas = () => {
 
         {/* ── DELIVERY LIST ── */}
         {displayList.length === 0 ? (
-          <div className="bg-white/5 rounded-2xl border border-white/10 p-16 text-center">
+          <div className="bg-white/5 rounded-2xl border border-white/10 p-12 sm:p-16 text-center">
             <MdLocalShipping className="mx-auto text-5xl text-gray-600 mb-4" />
             <p className="text-gray-400 text-lg font-semibold">Nenhuma entrega encontrada</p>
             <p className="text-gray-600 text-sm mt-1">Ajuste os filtros ou período nas configurações</p>
           </div>
         ) : (
           <div>
-            <SectionTitle sub={`${displayList.length} resultado(s)`}>Entregas</SectionTitle>
+            {/* ── MOBILE: cards (visível só em telas < md) ── */}
+            <div className="md:hidden space-y-3">
+              {displayList.map(d => (
+                <MobileDeliveryCard
+                  key={d._id}
+                  d={d}
+                  currentTime={currentTime}
+                  allModalDocsComplete={allModalDocsComplete}
+                  getDocumentsStatus={getDocumentsStatus}
+                  getPunctualityStatus={getPunctualityStatus}
+                  recentlyUpdated={recentlyUpdated}
+                  RISE_WINDOW={RISE_WINDOW}
+                  setSelectedDelivery={setSelectedDelivery}
+                />
+              ))}
+            </div>
 
-            {/* div-based scrollable grid */}
-            <div className="rounded-2xl border border-white/10 overflow-hidden shadow-2xl bg-black/20">
+            {/* ── DESKTOP: tabela com grid (visível só em md+) ── */}
+            <div className="hidden md:block rounded-2xl border border-white/10 overflow-hidden shadow-2xl bg-black/20">
               <div className="overflow-x-auto">
-                <div style={{ minWidth: '1380px' }}>
+                <div style={{ minWidth: '1300px' }}>
 
-                  {/* Header row */}
+                  {/* Header row — SEM sort, SEM setas */}
                   <div
                     className="grid text-[11px] font-bold uppercase tracking-wider text-gray-500 bg-white/[0.04] border-b border-white/10"
                     style={{ gridTemplateColumns: COL_TEMPLATE }}
                   >
-                    {[
-                      ['Nº','deliveryNumber'],['Contratado','userName'],['Motorista','driverName'],
-                      ['Recebedor','recebedor'],['Status',null],['Progresso',null],
-                      ['DT Retirada','containerMontadoAt'],['Agendamento','dataAgendamento'],
-                      ['Chegada','horarioChegada'],['Início','horarioInicioDesova'],
-                      ['Fim','horarioFimDesova'],['Pontualidade',null],
-                      ['⏱ Tempo',null],['Docs',null],['Ações',null]
-                    ].map(([col, field], ci) => (
+                    {HEADERS.map((col, ci) => (
                       <div
                         key={col}
-                        onClick={() => {
-                          if (!field) return;
-                          if (sortBy===field) setSortDir(d=>d==='asc'?'desc':'asc');
-                          else { setSortBy(field); setSortDir('asc'); }
-                        }}
-                        className={`px-3 py-3.5 flex items-center gap-1 whitespace-nowrap select-none
-                          ${ci >= 12 ? 'justify-center' : ''}
-                          ${field ? 'cursor-pointer hover:text-white transition-colors' : ''}
-                          ${ci === 12 ? 'text-amber-500' : ''}`}
+                        className={`px-3 py-3.5 flex items-center whitespace-nowrap select-none
+                          ${ci >= 4 ? 'justify-center' : ''}
+                          ${ci === 12 ? 'text-amber-500' : ''}
+                        `}
                       >
                         {col}
-                        {sortBy === field && (
-                          <span className="text-purple-400">{sortDir==='asc'?'↑':'↓'}</span>
-                        )}
                       </div>
                     ))}
                   </div>
@@ -1276,7 +1320,6 @@ const MonitorEntregas = () => {
                       const cliTime    = calculateCliTime(d, currentTime);
                       const docStatus  = getDocumentsStatus(d);
                       const isComplete = docStatus.includes('COMPLETO');
-                      const cfg        = resolveConfig(d.status);
                       const now        = Date.now();
                       const updatedAt  = recentlyUpdated[d._id];
                       const isRising   = updatedAt && (now - updatedAt) < 900;
@@ -1296,32 +1339,32 @@ const MonitorEntregas = () => {
                           style={{ gridTemplateColumns: COL_TEMPLATE, '--rise-from': '120px' }}
                         >
                           {/* Nº */}
-                          <div className="px-3 py-3 flex items-center gap-2">
-                            <span className="font-black text-purple-300 truncate">{d.deliveryNumber}</span>
+                          <div className="px-3 py-3 flex items-center gap-1.5 overflow-hidden">
+                            <span className="font-black text-purple-300 truncate text-[11px]">{d.deliveryNumber}</span>
                             {updatedAt && (now - updatedAt) < RISE_WINDOW && (
-                              <span className="badge-pop flex-shrink-0 px-1.5 py-0.5 rounded-full bg-purple-600/80 text-white text-[9px] font-black">
+                              <span className="badge-pop flex-shrink-0 px-1.5 py-0.5 rounded-full bg-purple-600/80 text-white text-[8px] font-black">
                                 UP
                               </span>
                             )}
                           </div>
 
                           {/* Contratado */}
-                          <div className="px-3 py-3 flex items-center text-gray-300 truncate" title={d.userName}>
-                            {d.userName}
+                          <div className="px-3 py-3 flex items-center overflow-hidden">
+                            <span className="text-gray-300 truncate text-[11px]" title={d.userName}>{d.userName || '—'}</span>
                           </div>
 
                           {/* Motorista */}
-                          <div className="px-3 py-3 flex items-center text-gray-300 whitespace-nowrap">
-                            {d.driverName || '—'}
+                          <div className="px-3 py-3 flex items-center overflow-hidden">
+                            <span className="text-gray-300 truncate text-[11px]" title={d.driverName}>{d.driverName || '—'}</span>
                           </div>
 
                           {/* Recebedor */}
-                          <div className="px-3 py-3 flex items-center text-gray-400 truncate">
-                            {d.recebedor || '—'}
+                          <div className="px-3 py-3 flex items-center overflow-hidden">
+                            <span className="text-gray-400 truncate text-[11px]" title={d.recebedor}>{d.recebedor || '—'}</span>
                           </div>
 
                           {/* Status */}
-                          <div className="px-3 py-3 flex items-center">
+                          <div className="px-2 py-3 flex items-center justify-center">
                             {(() => {
                               const disp = d.status==='FINALIZADO' && allModalDocsComplete(d) ? 'DOCUMENTOS ENTREGUES' : d.status;
                               return <Badge status={disp} />;
@@ -1329,60 +1372,70 @@ const MonitorEntregas = () => {
                           </div>
 
                           {/* Progresso */}
-                          <div className="px-3 py-3 flex items-center">
+                          <div className="px-2 py-3 flex items-center justify-center">
                             <ProgressDots delivery={d} allModalDocsComplete={allModalDocsComplete} />
                           </div>
 
                           {/* DT Retirada */}
-                          <div className="px-3 py-3 flex items-center justify-center text-sky-400 font-semibold whitespace-nowrap">
-                            {d.containerMontadoAt ? new Date(d.containerMontadoAt).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—'}
+                          <div className="px-2 py-3 flex items-center justify-center">
+                            <span className="text-sky-400 font-semibold text-[11px] tabular-nums whitespace-nowrap">
+                              {d.containerMontadoAt ? new Date(d.containerMontadoAt).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—'}
+                            </span>
                           </div>
 
                           {/* Agendamento */}
-                          <div className="px-3 py-3 flex items-center justify-center text-gray-400 whitespace-nowrap">
-                            {d.dataAgendamento ? new Date(d.dataAgendamento).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—'}
+                          <div className="px-2 py-3 flex items-center justify-center">
+                            <span className="text-gray-400 text-[11px] tabular-nums whitespace-nowrap">
+                              {d.dataAgendamento ? new Date(d.dataAgendamento).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—'}
+                            </span>
                           </div>
 
                           {/* Chegada */}
-                          <div className="px-3 py-3 flex items-center justify-center text-gray-300 whitespace-nowrap">
-                            {d.horarioChegada ? new Date(d.horarioChegada).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—'}
+                          <div className="px-2 py-3 flex items-center justify-center">
+                            <span className="text-gray-300 text-[11px] tabular-nums whitespace-nowrap">
+                              {d.horarioChegada ? new Date(d.horarioChegada).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—'}
+                            </span>
                           </div>
 
                           {/* Início desova */}
-                          <div className="px-3 py-3 flex items-center justify-center text-gray-400 whitespace-nowrap">
-                            {d.horarioInicioDesova ? new Date(d.horarioInicioDesova).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—'}
+                          <div className="px-2 py-3 flex items-center justify-center">
+                            <span className="text-gray-400 text-[11px] tabular-nums whitespace-nowrap">
+                              {d.horarioInicioDesova ? new Date(d.horarioInicioDesova).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—'}
+                            </span>
                           </div>
 
                           {/* Fim desova */}
-                          <div className="px-3 py-3 flex items-center justify-center text-gray-400 whitespace-nowrap">
-                            {d.horarioFimDesova ? new Date(d.horarioFimDesova).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—'}
+                          <div className="px-2 py-3 flex items-center justify-center">
+                            <span className="text-gray-400 text-[11px] tabular-nums whitespace-nowrap">
+                              {d.horarioFimDesova ? new Date(d.horarioFimDesova).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—'}
+                            </span>
                           </div>
 
-                          {/* Pontualidade — REDESENHADA */}
-                          <div className="px-2 py-3 flex items-center justify-center">
+                          {/* Pontualidade */}
+                          <div className="px-1 py-3 flex items-center justify-center">
                             <PunctualityCell p={getPunctualityStatus(d, currentTime)} />
                           </div>
 
                           {/* Tempo CLI */}
-                          <div className="px-3 py-3 flex items-center justify-center bg-amber-900/10">
+                          <div className="px-2 py-3 flex items-center justify-center bg-amber-900/10">
                             {cliTime.tempo ? (
-                              <span className={`font-black tabular-nums text-sm ${cliTime.isActive ? 'text-amber-400' : 'text-amber-600'}`}>
+                              <span className={`font-black tabular-nums text-[12px] ${cliTime.isActive ? 'text-amber-400' : 'text-amber-600'}`}>
                                 {cliTime.tempo}
-                                {cliTime.isActive && <span className="ml-1 animate-pulse">⏱</span>}
+                                {cliTime.isActive && <span className="ml-0.5 animate-pulse">⏱</span>}
                               </span>
                             ) : <span className="text-gray-600">—</span>}
                           </div>
 
                           {/* Docs */}
-                          <div className="px-3 py-3 flex items-center justify-center">
+                          <div className="px-2 py-3 flex items-center justify-center">
                             {isComplete
-                              ? <FaCheckCircle className="text-emerald-400" title={docStatus} size={16} />
-                              : <FaTimesCircle className="text-red-400/70"  title={docStatus} size={16} />
+                              ? <FaCheckCircle className="text-emerald-400" title={docStatus} size={15} />
+                              : <FaTimesCircle className="text-red-400/70"  title={docStatus} size={15} />
                             }
                           </div>
 
                           {/* Ações */}
-                          <div className="px-3 py-3 flex items-center justify-center">
+                          <div className="px-2 py-3 flex items-center justify-center">
                             <button
                               onClick={() => setSelectedDelivery(d)}
                               title="Visualizar"
@@ -1409,14 +1462,14 @@ const MonitorEntregas = () => {
           MODAL: DETALHES DA ENTREGA
           ═══════════════════════════════════════ */}
       {selectedDelivery && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#1a1a2e] rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl border border-white/10 flex flex-col">
-            <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-purple-700/60 to-indigo-700/60 border-b border-white/10 flex-shrink-0">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
+          <div className="bg-[#1a1a2e] rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden shadow-2xl border border-white/10 flex flex-col">
+            <div className="flex items-center justify-between px-5 sm:px-6 py-4 sm:py-5 bg-gradient-to-r from-purple-700/60 to-indigo-700/60 border-b border-white/10 flex-shrink-0">
               <div>
                 <p className="text-xs text-purple-300 uppercase tracking-widest font-semibold mb-0.5">Entrega</p>
                 <h2 className="text-xl font-black text-white tracking-wide">#{selectedDelivery.deliveryNumber}</h2>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <Badge status={(selectedDelivery.status==='FINALIZADO' && allModalDocsComplete(selectedDelivery)) ? 'DOCUMENTOS ENTREGUES' : selectedDelivery.status} />
                 <button onClick={() => setSelectedDelivery(null)}
                   className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition">
@@ -1425,8 +1478,8 @@ const MonitorEntregas = () => {
               </div>
             </div>
 
-            <div className="overflow-y-auto flex-1 p-6 space-y-6">
-              <div className="grid grid-cols-2 gap-3">
+            <div className="overflow-y-auto flex-1 p-4 sm:p-6 space-y-5">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 {[
                   ['Contratado', selectedDelivery.userName],
                   ['Motorista', selectedDelivery.driverName||'—'],
@@ -1438,7 +1491,7 @@ const MonitorEntregas = () => {
                   ['Início Desova', selectedDelivery.horarioInicioDesova ? new Date(selectedDelivery.horarioInicioDesova).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—'],
                   ['Fim Desova', selectedDelivery.horarioFimDesova ? new Date(selectedDelivery.horarioFimDesova).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—'],
                 ].map(([label, value]) => (
-                  <div key={label} className="bg-white/5 rounded-xl px-4 py-3 border border-white/5">
+                  <div key={label} className="bg-white/5 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 border border-white/5">
                     <p className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold mb-0.5">{label}</p>
                     <p className="text-sm text-gray-100 font-semibold">{value}</p>
                   </div>
@@ -1448,7 +1501,7 @@ const MonitorEntregas = () => {
               {/* Progress visual */}
               <div className="bg-white/5 rounded-xl p-4 border border-white/5">
                 <p className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold mb-3">Progresso da Entrega</p>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1">
                   {progressStatuses.map((s, i) => {
                     let p = getProgress(selectedDelivery);
                     if (normalizeKey(selectedDelivery.status)==='FINALIZADO')
@@ -1520,11 +1573,11 @@ const MonitorEntregas = () => {
                   <div className="flex gap-2">
                     <button onClick={handleShareDelivery}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 hover:text-emerald-200 text-xs font-semibold rounded-lg transition border border-emerald-500/20">
-                      <FaShareAlt /> Compartilhar
+                      <FaShareAlt /> <span className="hidden sm:inline">Compartilhar</span>
                     </button>
                     <button onClick={() => handleDownloadAll(selectedDelivery._id)}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 hover:text-blue-200 text-xs font-semibold rounded-lg transition border border-blue-500/20">
-                      <FaDownload /> Baixar Tudo
+                      <FaDownload /> <span className="hidden sm:inline">Baixar Tudo</span>
                     </button>
                   </div>
                 </div>
@@ -1536,9 +1589,9 @@ const MonitorEntregas = () => {
                       .map(k => {
                         const present = !!selectedDelivery.documents[k];
                         return (
-                          <div key={k} className={`flex items-center justify-between px-4 py-3 rounded-xl border ${present?'bg-white/5 border-white/10':'bg-white/[0.02] border-white/5 opacity-50'}`}>
+                          <div key={k} className={`flex items-center justify-between px-3 sm:px-4 py-3 rounded-xl border ${present?'bg-white/5 border-white/10':'bg-white/[0.02] border-white/5 opacity-50'}`}>
                             <div className="flex items-center gap-3">
-                              <span className={`w-2 h-2 rounded-full ${present?'bg-emerald-400':'bg-gray-600'}`} />
+                              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${present?'bg-emerald-400':'bg-gray-600'}`} />
                               <span className="text-sm text-gray-300 font-semibold">{labels[k]||k}</span>
                               {!present && <span className="text-xs text-gray-600">Não anexado</span>}
                             </div>
@@ -1566,9 +1619,9 @@ const MonitorEntregas = () => {
                       const files   = getDocumentUrlsArray(selectedDelivery.documents?.[f.key]);
                       const present = files.length > 0;
                       return (
-                        <div key={f.key} className={`flex items-center justify-between px-4 py-3 rounded-xl border ${present?'bg-white/5 border-white/10':'bg-white/[0.02] border-white/5 opacity-50'}`}>
+                        <div key={f.key} className={`flex items-center justify-between px-3 sm:px-4 py-3 rounded-xl border ${present?'bg-white/5 border-white/10':'bg-white/[0.02] border-white/5 opacity-50'}`}>
                           <div className="flex items-center gap-3">
-                            <span className={`w-2 h-2 rounded-full ${present?'bg-sky-400':'bg-gray-600'}`} />
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${present?'bg-sky-400':'bg-gray-600'}`} />
                             <span className="text-sm text-gray-300 font-semibold">{f.label}</span>
                             {present && <span className="text-xs text-gray-500">{files.length} foto(s)</span>}
                             {!present && <span className="text-xs text-gray-600">Não anexado</span>}
@@ -1603,7 +1656,7 @@ const MonitorEntregas = () => {
             </div>
 
             {canEdit() && (
-              <div className="flex-shrink-0 px-6 py-4 border-t border-white/10 bg-white/[0.02] flex justify-end gap-3">
+              <div className="flex-shrink-0 px-5 sm:px-6 py-4 border-t border-white/10 bg-white/[0.02] flex justify-end gap-3">
                 <button onClick={() => handleEditStart(selectedDelivery)}
                   className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 hover:text-blue-200 text-sm font-semibold transition border border-blue-500/20">
                   <FaEdit /> Editar
@@ -1622,7 +1675,7 @@ const MonitorEntregas = () => {
           MODAL: FOTOS
           ═══════════════════════════════════════ */}
       {modalFotos && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-3 sm:p-4">
           <div className="bg-[#1a1a2e] rounded-2xl w-full max-w-lg border border-white/10 shadow-2xl overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
               <h2 className="text-base font-bold text-white">{modalFotos.label}</h2>
@@ -1646,7 +1699,7 @@ const MonitorEntregas = () => {
           MODAL: VISUALIZAR DOCUMENTO
           ═══════════════════════════════════════ */}
       {viewingDocument && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-3 sm:p-4">
           <div className="bg-[#1a1a2e] rounded-2xl w-full max-w-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 flex-shrink-0">
               <h2 className="text-base font-bold text-white">{viewingDocument.label}</h2>
@@ -1687,8 +1740,8 @@ const MonitorEntregas = () => {
           MODAL: EDIÇÃO
           ═══════════════════════════════════════ */}
       {editingDelivery && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#1a1a2e] rounded-3xl w-full max-w-lg border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
+          <div className="bg-[#1a1a2e] rounded-3xl w-full max-w-lg border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
             <div className="flex items-center justify-between px-6 py-5 border-b border-white/10 flex-shrink-0">
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-widest mb-0.5">Edição</p>
