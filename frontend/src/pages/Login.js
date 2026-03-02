@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/authContext';
 import { useCity } from '../contexts/CityContext';
@@ -13,6 +13,16 @@ const Login = () => {
   const [toast, setToast] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const { city, setCity } = useCity();
+
+  const [debugVisible, setDebugVisible] = useState(false);
+  const [lastError, setLastError] = useState(null);
+
+  useEffect(() => {
+    try {
+      const e = localStorage.getItem('lastLoginError');
+      if (e) setLastError(JSON.parse(e));
+    } catch (e) {}
+  }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -34,10 +44,15 @@ const Login = () => {
       setToast({ message: 'Login realizado com sucesso!', type: 'success' });
       setTimeout(() => navigate('/home'), 900);
     } catch (error) {
-      setToast({
-        message: error.response?.data?.message || 'Erro ao fazer login',
-        type: 'error'
-      });
+      console.error('Login error (Login.js):', error);
+      const serverMsg = error?.response?.data || error?.message || 'Erro ao fazer login';
+      const toastMsg = typeof serverMsg === 'string' ? serverMsg : (serverMsg.message || JSON.stringify(serverMsg));
+      setToast({ message: toastMsg, type: 'error' });
+      try {
+        const errObj = { time: new Date().toISOString(), serverMsg, stack: error?.stack || null };
+        localStorage.setItem('lastLoginError', JSON.stringify(errObj));
+        setLastError(errObj);
+      } catch (e) {}
     } finally {
       setLoading(false);
     }
@@ -166,6 +181,19 @@ const Login = () => {
           </button>
         </div>
       </div>
+
+      {lastError && (
+        <div className="mt-4 text-sm text-left">
+          <button type="button" onClick={() => setDebugVisible(v => !v)} className="text-xs text-gray-500 underline mb-2">
+            {debugVisible ? 'Ocultar debug' : 'Mostrar últimos logs'}
+          </button>
+          {debugVisible && (
+            <pre className="whitespace-pre-wrap bg-gray-100 p-3 rounded text-xs text-red-600">
+              {JSON.stringify(lastError, null, 2)}
+            </pre>
+          )}
+        </div>
+      )}
 
       {toast && (
         <Toast

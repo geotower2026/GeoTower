@@ -157,7 +157,12 @@ const AdminDashboard = () => {
   const [exporting,   setExporting]   = useState({ pdf: false, excel: false });
   const [toast,       setToast]       = useState(null);
   const [activeBar,   setActiveBar]   = useState(null);
+  // filters sent to the backend. We keep searchTerm separate so we can
+  // debounce the request while the user is typing, otherwise every keystroke
+  // refires the effect and the whole dashboard reloads (annoying for
+  // long reports).
   const [filters, setFilters] = useState({ searchTerm: '', startDate: '', endDate: '' });
+  const [searchInput, setSearchInput] = useState('');
 
   const chartRefs = {
     area:        useRef(null),
@@ -184,6 +189,16 @@ const AdminDashboard = () => {
     }
   }, [period, filters]);
 
+  // update filters when the debounced search input changes
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setFilters(f => ({ ...f, searchTerm: searchInput }));
+    }, 500); // wait for half a second of inactivity
+
+    return () => clearTimeout(handler);
+  }, [searchInput]);
+
+  // whenever filters or period change we reload data
   useEffect(() => { loadData(); }, [loadData]);
 
   const getCliMinutes = (d) => {
@@ -402,6 +417,7 @@ const AdminDashboard = () => {
                 onClick={() => {
                   setPeriod('month');
                   setFilters({ searchTerm: '', startDate: '', endDate: '' });
+                  setSearchInput('');
                 }}
                 className="text-xs px-3 py-1.5 bg-white/[0.05] hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 border border-white/10 rounded-lg font-semibold text-slate-400 transition-all duration-200"
               >
@@ -416,8 +432,8 @@ const AdminDashboard = () => {
                 <input
                   type="text"
                   placeholder="Buscar entrega ou motorista..."
-                  value={filters.searchTerm}
-                  onChange={e => setFilters({ ...filters, searchTerm: e.target.value })}
+                  value={searchInput}
+                  onChange={e => setSearchInput(e.target.value)}
                   className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-white/[0.09] bg-white/[0.06] text-slate-100 placeholder-slate-600 focus:border-indigo-400/60 focus:bg-white/[0.09] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition"
                 />
               </div>

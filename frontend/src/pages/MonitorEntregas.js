@@ -230,7 +230,10 @@ const getProgress = (delivery) => {
 const MonitorEntregas = () => {
   const { user } = useAuth();
   const isGeoMar = () => user?.role === 'geomar';
-  const canEdit = () => !isGeoMar();
+  // only users with "manager" profile should be allowed to modify
+  // programações from the control tower modal. admins no longer get the
+  // buttons so they can only view.
+  const canEdit = () => user?.role === 'manager';
 
   const [viewingDocument, setViewingDocument] = useState(null);
   const [modalFotos, setModalFotos] = useState(null);

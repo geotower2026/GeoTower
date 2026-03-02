@@ -272,9 +272,12 @@ const UserManagement = () => {
 
                 <tbody className="divide-y divide-slate-50">
                   {filtered.map((u) => {
-                    const showActions =
-                      (isAdmin) ||
-                      (isManager && u.role !== 'admin');
+                    // managers should be able to touch any account, including
+                    // admins; earlier we blocked edits/deletes of admins when
+                    // logged in as manager which prevented the reported
+                    // behaviour.  We'll keep the simple rule: if you're a manager
+                    // or admin, show the buttons.
+                    const showActions = isAdmin || isManager;
 
                     return (
                       <tr

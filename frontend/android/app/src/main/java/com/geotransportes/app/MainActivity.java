@@ -1,4 +1,4 @@
-package com.entregascomgeotransportes.app;
+package com.geotransportes.app;
 
 import com.getcapacitor.BridgeActivity;
 
