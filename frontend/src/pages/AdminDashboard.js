@@ -192,8 +192,8 @@ const AdminDashboard = () => {
   // update filters when the debounced search input changes
   useEffect(() => {
     const handler = setTimeout(() => {
-      setFilters(f => ({ ...f, searchTerm: searchInput }));
-    }, 500); // wait for half a second of inactivity
+      setFilters(f => ({ ...f, searchTerm: searchInput.trim() }));
+    }, 700); // wait for 700ms of inactivity
 
     return () => clearTimeout(handler);
   }, [searchInput]);
@@ -434,6 +434,13 @@ const AdminDashboard = () => {
                   placeholder="Buscar entrega ou motorista..."
                   value={searchInput}
                   onChange={e => setSearchInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      // apply immediately on Enter
+                      setFilters(f => ({ ...f, searchTerm: searchInput.trim() }));
+                    }
+                  }}
                   className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl border border-white/[0.09] bg-white/[0.06] text-slate-100 placeholder-slate-600 focus:border-indigo-400/60 focus:bg-white/[0.09] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition"
                 />
               </div>
