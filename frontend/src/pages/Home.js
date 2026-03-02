@@ -698,12 +698,30 @@ const Home = () => {
         const total      = list.length;
         const completed  = list.filter(e => String(e.status).toUpperCase() === 'ENTREGUE').length;
         const inProgress = list.filter(e => String(e.status).toUpperCase() === 'EM_ROTA').length;
-        return { total, completed, inProgress, onTimePercentage: 100 };
+
+        // Pontualidade: considera entregas com horário agendado e horário de chegada
+        let onTimeCount = 0;
+        let punctualTotal = 0;
+        list.forEach(e => {
+          const sched = e.dataAgendamento || e.data; // suporte a ambas chaves
+          const arrival = e.horarioChegada || e.arrivedAt || null;
+          if (sched && arrival) {
+            punctualTotal += 1;
+            const schedDate = new Date(sched);
+            const arrivalDate = new Date(arrival);
+            if (arrivalDate.getTime() <= schedDate.getTime()) onTimeCount += 1;
+          }
+        });
+
+        const onTimePercentage = punctualTotal === 0 ? 100 : Math.round((onTimeCount / punctualTotal) * 100);
+        return { total, completed, inProgress, onTimePercentage };
       };
 
       const d = new Date(); d.setHours(0,0,0,0);
       const hoje = mine.filter(e => {
-        const ed = new Date(e.data); ed.setHours(0,0,0,0);
+        const dataStr = e.dataAgendamento || e.data;
+        if (!dataStr) return false;
+        const ed = new Date(dataStr); ed.setHours(0,0,0,0);
         return ed.getTime() === d.getTime();
       });
 

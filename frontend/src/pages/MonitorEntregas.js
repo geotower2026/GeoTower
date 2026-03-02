@@ -321,6 +321,52 @@ const MonitorEntregas = () => {
     return ev.sort((a, b) => new Date(a.date) - new Date(b.date));
   };
 
+  // Pontualidade e ETA: calcula status com base em agendamento, inicio da rota e chegada
+  const getPunctualityStatus = (d, now = new Date()) => {
+    if (!d) return { label: '-', type: 'unknown', eta: null, lateBy: null };
+    const schedStr = d.dataAgendamento || d.data;
+    if (!schedStr) return { label: 'Sem agendamento', type: 'unknown', eta: null, lateBy: null };
+    const scheduled = new Date(schedStr);
+    const arrival = d.horarioChegada ? new Date(d.horarioChegada) : null;
+    const start = d.createdAt ? new Date(d.createdAt) : null;
+    const travel = Number(d.estimatedTravelMinutes || d.minimumTravelMinutes || 40);
+
+    // Helper to compute eta from start
+    const computeEta = () => {
+      if (!start) return null;
+      const expectedArrival = new Date(start.getTime() + travel * 60000);
+      const diff = Math.round((expectedArrival - now) / 60000);
+      return diff < 0 ? 0 : diff;
+    };
+
+    if (arrival) {
+      const lateBy = Math.round((arrival - scheduled) / 60000); // positive = late
+      return {
+        label: arrival.getTime() <= scheduled.getTime() ? 'Pontual' : 'Atrasado',
+        type: arrival.getTime() <= scheduled.getTime() ? 'ok' : 'late',
+        eta: 0,
+        lateBy
+      };
+    }
+
+    // No arrival yet
+    const eta = computeEta();
+
+    if (!start) {
+      if (now.getTime() >= scheduled.getTime()) return { label: 'Atrasado', type: 'late', eta, lateBy: null };
+      return { label: 'Sem início', type: 'unknown', eta, lateBy: null };
+    }
+
+    const expectedArrival = new Date(start.getTime() + travel * 60000);
+    if (expectedArrival.getTime() > scheduled.getTime()) {
+      if (now.getTime() >= scheduled.getTime()) return { label: 'Atrasado', type: 'late', eta, lateBy: null };
+      return { label: 'Possível atraso', type: 'possible', eta, lateBy: null };
+    }
+
+    if (now.getTime() >= scheduled.getTime()) return { label: 'Atrasado', type: 'late', eta, lateBy: null };
+    return { label: 'No prazo', type: 'ok', eta, lateBy: null };
+  };
+
   const flowHistory = selectedDelivery ? getFlowHistory(selectedDelivery) : [];
 
   const formatStatus = (s, delivery) => {
@@ -991,7 +1037,7 @@ const MonitorEntregas = () => {
                         ['Recebedor','recebedor'],['Status',null],['Progresso',null],
                         ['DT Retirada','containerMontadoAt'],['Agendamento','dataAgendamento'],
                         ['Chegada','horarioChegada'],['Início','horarioInicioDesova'],
-                        ['Fim','horarioFimDesova']
+                        ['Fim','horarioFimDesova'], ['Pontualidade', null]
                       ].map(([col, field]) => (
                         <th
                           key={col}
@@ -1052,6 +1098,34 @@ const MonitorEntregas = () => {
                           </td>
                           <td className="px-3 py-3 text-gray-400 whitespace-nowrap text-center">
                             {d.horarioFimDesova ? new Date(d.horarioFimDesova).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—'}
+                          </td>
+                          {/* Pontualidade */}
+                          <td className="px-3 py-3 text-center">
+                            {(() => {
+                              const p = getPunctualityStatus(d, currentTime);
+                              const cls =
+                                p.type === 'ok' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                                p.type === 'possible' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
+                                p.type === 'late' ? 'bg-red-100 text-red-700 border border-red-200' :
+                                'bg-gray-100 text-gray-700 border border-gray-200';
+                              return (
+                                <div className="flex flex-col items-center gap-1">
+                                  <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold ${cls}`}>
+                                    <span>{p.label}</span>
+                                  </span>
+                                  {p.eta !== null && (
+                                    <span className="text-[10px] text-gray-500">
+                                      ETA: {p.eta}m
+                                    </span>
+                                  )}
+                                  {p.lateBy != null && p.lateBy !== 0 && (
+                                    <span className="text-[10px] text-red-700">
+                                      {p.lateBy > 0 ? `+${p.lateBy}m` : `${p.lateBy}m`}
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </td>
                           {/* Tempo CLI */}
                           <td className="px-3 py-3 text-center bg-amber-900/10">
