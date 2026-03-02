@@ -321,7 +321,23 @@ const MonitorEntregas = () => {
     return ev.sort((a, b) => new Date(a.date) - new Date(b.date));
   };
 
-  // Pontualidade e ETA: calcula status com base em agendamento, inicio da rota e chegada
+  // Pontualidade e tempo estimado de chegada: calcula status com base em agendamento, inicio da rota e chegada
+  //
+  // O campo "ETA" representa quantos minutos faltam para a chegada prevista,
+  // assumindo um tempo mínimo de viagem (40m por padrão ou valor presente em
+  // estimatedTravelMinutes/minimumTravelMinutes). Se o motorista já confirmou
+  // chegada, eta = 0 e lateBy indica quantos minutos de atraso (+) ou adiantado (-)
+  // em relação ao horário agendado.
+  //
+  // A lógica também aplica a regra desejada: caso o entregador inicie a rota
+  // tarde demais para conseguir cumprir o agendamento com o tempo mínimo,
+  // o status imediatamente vira "Possível atraso". Exemplo:
+  //   agendamento 08:00, início em 07:30, mínimo 40m → chegada prevista 08:10
+  //   (08:10 > 08:00) → possível atraso mesmo que ainda sejam 30 minutos para o horário.
+  //
+  // » start + travelMinutes > scheduled  => "Possível atraso" ou "Atrasado"
+  // » chegada registrada determina "Pontual"/"Atrasado" e lateBy
+  //
   const getPunctualityStatus = (d, now = new Date()) => {
     if (!d) return { label: '-', type: 'unknown', eta: null, lateBy: null };
     const schedStr = d.dataAgendamento || d.data;
@@ -1115,7 +1131,7 @@ const MonitorEntregas = () => {
                                   </span>
                                   {p.eta !== null && (
                                     <span className="text-[10px] text-gray-500">
-                                      ETA: {p.eta}m
+                                      Chegada em {p.eta}m
                                     </span>
                                   )}
                                   {p.lateBy != null && p.lateBy !== 0 && (
