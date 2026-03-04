@@ -795,7 +795,7 @@ const MonitorEntregas = () => {
       } catch (_) {}
     }
     const pageW = doc.internal.pageSize.getWidth();
-    const marginX = 40; // ensure available for fallback text-mode
+    const marginX = 40; // global margin for PDF (used even in fallback)
     // fallback if autoTable still not available
     let useFallback = typeof doc.autoTable !== 'function';
     if (!useFallback) {
@@ -836,7 +836,6 @@ const MonitorEntregas = () => {
       return { blob, fileName };
     }
     const pageH = doc.internal.pageSize.getHeight();
-    const marginX = 40;
 
     const dispStatus =
       delivery.status === 'FINALIZADO' && allModalDocsComplete(delivery)
