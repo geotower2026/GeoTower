@@ -795,6 +795,7 @@ const MonitorEntregas = () => {
       } catch (_) {}
     }
     const pageW = doc.internal.pageSize.getWidth();
+    const marginX = 40; // ensure available for fallback text-mode
     // fallback if autoTable still not available
     let useFallback = typeof doc.autoTable !== 'function';
     if (!useFallback) {
