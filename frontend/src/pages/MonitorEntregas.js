@@ -879,8 +879,6 @@ const MonitorEntregas = () => {
 
     doc.setTextColor(20,20,20);
 
-    const safe = (v) => (v == null || v === '') ? '—' : String(v);
-
     const infoRows = [
       ['Contratado', safe(delivery.userName)],
       ['Motorista', safe(delivery.driverName)],
