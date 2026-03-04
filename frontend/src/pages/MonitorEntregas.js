@@ -25,7 +25,7 @@ import 'jspdf-autotable';
    ───────────────────────────────────────────────────────────── */
 const STATUS_CONFIG = {
   AGENDADO: {
-    label: 'Agendado',
+    label: 'Não Iniciado',
     bg: 'bg-indigo-600', light: 'bg-indigo-50', text: 'text-indigo-700',
     border: 'border-indigo-300',
     badge: 'bg-indigo-100 text-indigo-800 border border-indigo-300',
