@@ -796,7 +796,18 @@ const MonitorEntregas = () => {
     }
     const pageW = doc.internal.pageSize.getWidth();
     // fallback if autoTable still not available
-    const useFallback = typeof doc.autoTable !== 'function';
+    let useFallback = typeof doc.autoTable !== 'function';
+    if (!useFallback) {
+      // ensure autoTable calls won't crash—if they do, switch to fallback
+      try {
+        // quick no-op check: do not modify doc, just ensure function is callable
+        // some builds may expose autoTable but it may throw when used; we catch it later too
+        if (typeof doc.autoTable !== 'function') throw new Error('autoTable not a function');
+      } catch (err) {
+        console.error('autoTable availability check failed', err);
+        useFallback = true;
+      }
+    }
     const safe = (v) => (v == null || v === '') ? '—' : String(v);
     if (useFallback) {
       // write minimal info as plain text
@@ -892,33 +903,40 @@ const MonitorEntregas = () => {
       ['Fim Desova', formatDT(delivery.horarioFimDesova)],
     ];
 
-    // MAIN TABLE
-    doc.autoTable({
-      startY: 115,
-      head: [['Campo', 'Valor']],
-      body: infoRows,
-      theme: 'grid',
-      styles: { font: 'helvetica', fontSize: 10, cellPadding: 6 },
-      headStyles: { fillColor: [rgb.r, rgb.g, rgb.b], textColor: [255,255,255] },
-      columnStyles: { 0: { cellWidth: 160 }, 1: { cellWidth: pageW - marginX*2 - 160 } },
-      margin: { left: marginX, right: marginX },
-    });
+    // MAIN TABLE (try autotable, otherwise fallback to text-only)
+    if (!useFallback) {
+      try {
+        doc.autoTable({
+          startY: 115,
+          head: [['Campo', 'Valor']],
+          body: infoRows,
+          theme: 'grid',
+          styles: { font: 'helvetica', fontSize: 10, cellPadding: 6 },
+          headStyles: { fillColor: [rgb.r, rgb.g, rgb.b], textColor: [255,255,255] },
+          columnStyles: { 0: { cellWidth: 160 }, 1: { cellWidth: pageW - marginX*2 - 160 } },
+          margin: { left: marginX, right: marginX },
+        });
 
-    // FLOW HISTORY
-    const flow = getFlowHistory(delivery);
-    const flowRows = flow.length > 0
-      ? flow.map(ev => [ev.label, formatDT(ev.date)])
-      : [['Sem eventos registrados', '—']];
+        // FLOW HISTORY
+        const flow = getFlowHistory(delivery);
+        const flowRows = flow.length > 0
+          ? flow.map(ev => [ev.label, formatDT(ev.date)])
+          : [['Sem eventos registrados', '—']];
 
-    doc.autoTable({
-      startY: doc.lastAutoTable.finalY + 14,
-      head: [['Histórico do Fluxo', 'Data/Hora']],
-      body: flowRows,
-      theme: 'grid',
-      styles: { font: 'helvetica', fontSize: 10, cellPadding: 6 },
-      headStyles: { fillColor: [34, 36, 58], textColor: [255,255,255] },
-      margin: { left: marginX, right: marginX },
-    });
+        doc.autoTable({
+          startY: doc.lastAutoTable.finalY + 14,
+          head: [['Histórico do Fluxo', 'Data/Hora']],
+          body: flowRows,
+          theme: 'grid',
+          styles: { font: 'helvetica', fontSize: 10, cellPadding: 6 },
+          headStyles: { fillColor: [34, 36, 58], textColor: [255,255,255] },
+          margin: { left: marginX, right: marginX },
+        });
+      } catch (err) {
+        console.error('autoTable render failed, falling back to text PDF', err);
+        useFallback = true;
+      }
+    }
 
     // DOCUMENTS CHECKLIST
     const labels = getLabelsForDelivery(delivery);
@@ -941,22 +959,29 @@ const MonitorEntregas = () => {
       ];
     });
 
-    doc.autoTable({
-      startY: doc.lastAutoTable.finalY + 14,
-      head: [['Documentos / Fotos', 'Situação']],
-      body: checklistItems,
-      theme: 'grid',
-      styles: { font: 'helvetica', fontSize: 10, cellPadding: 6 },
-      headStyles: { fillColor: [88, 28, 135], textColor: [255,255,255] },
-      margin: { left: marginX, right: marginX },
-      didParseCell: (data) => {
-        if (data.section === 'body' && data.column.index === 1) {
-          const v = String(data.cell.raw || '');
-          if (v.startsWith('OK')) data.cell.styles.textColor = [16,185,129];
-          if (v === 'Pendente') data.cell.styles.textColor = [239,68,68];
-        }
+    if (!useFallback) {
+      try {
+        doc.autoTable({
+          startY: doc.lastAutoTable.finalY + 14,
+          head: [['Documentos / Fotos', 'Situação']],
+          body: checklistItems,
+          theme: 'grid',
+          styles: { font: 'helvetica', fontSize: 10, cellPadding: 6 },
+          headStyles: { fillColor: [88, 28, 135], textColor: [255,255,255] },
+          margin: { left: marginX, right: marginX },
+          didParseCell: (data) => {
+            if (data.section === 'body' && data.column.index === 1) {
+              const v = String(data.cell.raw || '');
+              if (v.startsWith('OK')) data.cell.styles.textColor = [16,185,129];
+              if (v === 'Pendente') data.cell.styles.textColor = [239,68,68];
+            }
+          }
+        });
+      } catch (err) {
+        console.error('autoTable checklist render failed, falling back to text PDF', err);
+        useFallback = true;
       }
-    });
+    }
 
     // OBS
     const obs =
