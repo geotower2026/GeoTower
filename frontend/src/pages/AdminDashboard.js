@@ -549,8 +549,7 @@ const AdminDashboard = () => {
                 />
               </div>
             </div>
-          </div>
-
+          </div>          )}
           {/* ══════ KPI CARDS ══════ */}
           {statistics && (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
