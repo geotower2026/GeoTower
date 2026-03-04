@@ -1280,6 +1280,7 @@ const MonitorEntregas = () => {
       });
       setTimeout(() => setToast(null), 3500);
     } catch (err) {
+      console.error('handleShareDelivery error', err);
       setToast({ type:'error', message:'Falha ao gerar/compartilhar PDF: ' + (err?.message || 'erro desconhecido') });
       setTimeout(() => setToast(null), 4500);
     }
