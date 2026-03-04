@@ -957,15 +957,16 @@ const MonitorEntregas = () => {
 
   /* Sorted display list: recently updated rows float to top */
   const displayList = useMemo(() => {
-    const now = Date.now();
+    // sort so that any delivery which has been updated at least once
+    // lives at the top; newest updates first. animation still uses
+    // recentlyUpdated timestamps and RISE_WINDOW but ordering no
+    // longer depends on the window.
     return [...filteredDeliveries].sort((a, b) => {
       const aT = recentlyUpdated[a._id];
       const bT = recentlyUpdated[b._id];
-      const aActive = aT && (now - aT) < RISE_WINDOW;
-      const bActive = bT && (now - bT) < RISE_WINDOW;
-      if (aActive && !bActive) return -1;
-      if (!aActive && bActive) return  1;
-      if (aActive && bActive)  return bT - aT;
+      if (aT && !bT) return -1;
+      if (!aT && bT) return 1;
+      if (aT && bT) return bT - aT;
       return 0;
     });
   }, [filteredDeliveries, recentlyUpdated]);

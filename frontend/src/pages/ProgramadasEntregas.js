@@ -502,7 +502,15 @@ const ProgramadasEntregas = () => {
 
   const handleCameraCapture = (e) => {
     const file = e.target.files?.[0];
-    if (file) { const reader = new FileReader(); reader.onload = ev => addPhoto(ev.target?.result); reader.readAsDataURL(file); }
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = ev => addPhoto(ev.target?.result);
+      reader.readAsDataURL(file);
+    }
+    // clear the input value so the same camera action can be
+    // triggered repeatedly, otherwise the second photo may not
+    // fire the change event if the file object hasn't changed.
+    e.target.value = '';
   };
 
   function dataURLtoFile(dataurl, filename) {
