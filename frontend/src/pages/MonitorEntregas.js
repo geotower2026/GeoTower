@@ -517,9 +517,10 @@ const ProgressDots = ({ delivery, allModalDocsComplete }) => {
 /* ─────────────────────────────────────────────────────────────
    COLUMN DEFINITION  ← ATUALIZADO
    ───────────────────────────────────────────────────────────── */
-const DEFAULT_COL_TEMPLATE =
-  // fixed pixel widths; agendamento/chegada/início/fim maiores para evitar colapso de datas
-  '110px 160px 140px 180px 138px 112px 105px 140px 140px 140px 140px 120px 72px 42px 42px';
+// each of the 15 columns gets an equal share and can shrink to 0 —
+// this guarantees every column will always be visible regardless of
+// screen width, as requested for TV displays and other wide panels.
+const DEFAULT_COL_TEMPLATE = 'repeat(15, minmax(0, 1fr))';
 
 /* ─────────────────────────────────────────────────────────────
    MOBILE CARD — layout para telas pequenas
@@ -853,22 +854,18 @@ const MonitorEntregas = () => {
     }
   }, [loadDeliveries, autoRefresh, refreshInterval]);
 
-  /* responsive columns for towers and big screens (TV) */
+  /* responsive columns for towers and big screens (TV)
+     -------------------------------------------------------
+     Always use the default template; every column is `minmax(0,1fr)` so
+     they shrink evenly and stay visible. The previous breakpoints and
+     fixed pixel widths caused some columns to overflow, forcing horizontal
+     scroll on large TVs. The container min-width has also been removed
+     below. */
   useEffect(() => {
-    const update = () => {
-      const w = window.innerWidth || 1200;
-      if (w >= 1920) {
-        // distribute columns evenly on very large screens
-        setColTemplate(Array(15).fill('minmax(100px,1fr)').join(' '));
-      } else if (w >= 1400) {
-        setColTemplate('120px 180px 140px 1fr 120px 1fr 140px 140px 120px 120px 120px 120px 90px 60px 60px');
-      } else {
-        setColTemplate(DEFAULT_COL_TEMPLATE);
-      }
-    };
-    update();
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
+    setColTemplate(DEFAULT_COL_TEMPLATE);
+    const onResize = () => setColTemplate(DEFAULT_COL_TEMPLATE);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
   }, []);
 
   /* ── FILTER ── */
@@ -1313,7 +1310,7 @@ const MonitorEntregas = () => {
             {/* ── DESKTOP: tabela grid ── */}
             <div className="hidden md:block rounded-2xl border border-white/10 overflow-hidden shadow-2xl bg-black/20">
               <div className="overflow-x-auto">
-                <div style={{ minWidth: '1220px' }}>
+                <div style={{ width: '100%' }}>
 
                   {/* Header row */}
                   <div
