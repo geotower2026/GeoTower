@@ -62,11 +62,11 @@ const Login = () => {
         <div className="text-center mb-8">
           <img
             src="/GeoTransportesLogo.svg.png"
-            alt="GeoTransportes Logo"
+            alt="GeoTower Logo"
             className="h-20 w-auto mx-auto mb-4"
           />
           <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-purple-700 to-blue-700 bg-clip-text text-transparent mb-2">
-            GeoTransportes
+            GeoTower
           </h1>
           <p className="text-gray-700 font-semibold">
             Logística Rodoviária com Excelência

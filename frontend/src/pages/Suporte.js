@@ -2,8 +2,8 @@ import React from 'react';
 
 const Suporte = () => (
   <div className="max-w-3xl mx-auto p-6 bg-white rounded shadow mt-8">
-    <h1 className="text-2xl font-bold mb-4">Suporte — Sistema GeoLog</h1>
-    <p>Bem-vindo à Central de Suporte do Sistema GeoLog.</p>
+    <h1 className="text-2xl font-bold mb-4">Suporte — Sistema GeoTower</h1>
+    <p>Bem-vindo à Central de Suporte do Sistema GeoTower.</p>
     <p>Nossa equipe está disponível para auxiliar usuários Administradores, Contratados e Motoristas em dúvidas, dificuldades técnicas ou orientações relacionadas ao uso da plataforma.</p>
     <hr className="my-4" />
     <h2 className="text-xl font-bold mt-6 mb-2">📌 Canais Oficiais de Atendimento</h2>
@@ -24,13 +24,13 @@ const Suporte = () => (
     <h2 className="text-xl font-bold mt-6 mb-2">🔒 Orientações de Segurança</h2>
     <ul className="list-disc ml-6 mb-2">
       <li>Nunca compartilhe sua senha com terceiros.</li>
-      <li>O suporte oficial do Sistema GeoLog não solicita códigos ou dados sensíveis fora dos canais oficiais.</li>
+      <li>O suporte oficial do Sistema GeoTower não solicita códigos ou dados sensíveis fora dos canais oficiais.</li>
       <li>Problemas relacionados à conexão de internet ou configuração do dispositivo podem afetar o funcionamento da plataforma.</li>
     </ul>
-    <h2 className="text-xl font-bold mt-6 mb-2">⚙️ Sobre o Sistema GeoLog</h2>
-    <p>O Sistema GeoLog é uma plataforma de gestão inteligente de entregas, desenvolvida para facilitar o controle logístico, acompanhamento operacional e administração de usuários em diferentes níveis de acesso.</p>
+    <h2 className="text-xl font-bold mt-6 mb-2">⚙️ Sobre o Sistema GeoTower</h2>
+    <p>O Sistema GeoTower é uma plataforma de gestão inteligente de entregas, desenvolvida para facilitar o controle logístico, acompanhamento operacional e administração de usuários em diferentes níveis de acesso.</p>
     <hr className="my-4" />
-    <p className="mt-6 font-semibold">Sistema GeoLog — Gestão Inteligente de Entregas</p>
+    <p className="mt-6 font-semibold">Sistema GeoTower — Gestão Inteligente de Entregas</p>
   </div>
 );
 

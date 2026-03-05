@@ -61,7 +61,7 @@ const Breadcrumb = ({ pathname }) => {
   return (
     <div className="hidden sm:flex items-center gap-1.5 text-xs text-white/50 ml-1 mt-0.5">
       <FaTruck className="text-[9px]" />
-      <span>GeoTransportes</span>
+      <span>GeoTower</span>
       <FaChevronRight className="text-[8px]" />
       <span className="text-white/80 font-medium">{label}</span>
     </div>
@@ -250,7 +250,7 @@ const Drawer = ({ open, onClose, user, onLogout, navigate }) => {
             <div className="flex items-center gap-2">
               <FaTruck className="text-purple-400 text-xs" />
               <span className="text-[11px] text-gray-400 font-semibold">
-                GeoTransportes
+                GeoTower
               </span>
             </div>
             <kbd className="text-[10px] text-gray-400 bg-white border border-gray-200
@@ -311,7 +311,7 @@ const Header = () => {
             <div className="relative shrink-0">
               <img
                 src="/images/geotransporteslogo.svg"
-                alt="GeoTransportes"
+                alt="GeoTower"
                 className="h-9 sm:h-10 w-auto group-hover:scale-105
                   transition-transform duration-300 drop-shadow-md"
                 onError={(e) => {
@@ -325,7 +325,7 @@ const Header = () => {
               <div className="flex items-baseline gap-1.5">
                 <span className="text-base sm:text-lg font-extrabold tracking-tight
                   text-white drop-shadow-sm">
-                  GeoTransportes
+                  GeoTower
                 </span>
                 <span className="hidden sm:inline text-[10px] font-bold
                   bg-white/20 border border-white/25 rounded px-1.5 py-0.5

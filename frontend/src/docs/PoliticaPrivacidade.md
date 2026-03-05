@@ -1,12 +1,12 @@
-# POLÍTICA DE PRIVACIDADE — SISTEMA GEOLOG
+(# POLÍTICA DE PRIVACIDADE — SISTEMA GEOTOWER
 
 Última atualização: 24 de fevereiro de 2026
 
-Esta Política de Privacidade descreve como o **Sistema GeoLog**, plataforma de gestão logística e controle de entregas, coleta, utiliza, armazena e protege as informações dos usuários que acessam o sistema por meio do site e/ou aplicativo mobile disponível em:
+Esta Política de Privacidade descreve como o **Sistema GeoTower**, plataforma de gestão logística e controle de entregas, coleta, utiliza, armazena e protege as informações dos usuários que acessam o sistema por meio do site e/ou aplicativo mobile disponível em:
 
 https://entregascomgeotransportes.onrender.com
 
-Ao utilizar o Sistema GeoLog, o usuário declara estar ciente e de acordo com os termos desta Política, bem como com a legislação vigente, especialmente a Lei Geral de Proteção de Dados Pessoais — LGPD (Lei nº 13.709/2018).
+Ao utilizar o Sistema GeoTower, o usuário declara estar ciente e de acordo com os termos desta Política, bem como com a legislação vigente, especialmente a Lei Geral de Proteção de Dados Pessoais — LGPD (Lei nº 13.709/2018).
 
 ---
 
@@ -14,7 +14,7 @@ Ao utilizar o Sistema GeoLog, o usuário declara estar ciente e de acordo com os
 
 Para fins desta Política:
 
-* **Plataforma**: Sistema GeoLog (site e aplicativo).
+* **Plataforma**: Sistema GeoTower (site e aplicativo).
 * **Usuário**: qualquer pessoa com acesso autorizado ao sistema, incluindo Administradores, Contratados e Motoristas.
 * **Dados Pessoais**: informações que identificam ou podem identificar uma pessoa natural.
 
@@ -22,7 +22,7 @@ Para fins desta Política:
 
 ## 2. DADOS COLETADOS
 
-O Sistema GeoLog poderá coletar e tratar as seguintes informações:
+O Sistema GeoTower poderá coletar e tratar as seguintes informações:
 
 ### 2.1 Dados fornecidos pelo usuário
 
@@ -57,7 +57,7 @@ Os dados coletados são utilizados para:
 
 ## 4. BASE LEGAL (LGPD)
 
-O tratamento de dados pessoais pelo Sistema GeoLog ocorre com base nas seguintes hipóteses legais:
+O tratamento de dados pessoais pelo Sistema GeoTower ocorre com base nas seguintes hipóteses legais:
 
 * Execução de contrato e procedimentos preliminares
 * Cumprimento de obrigação legal ou regulatória
@@ -67,7 +67,7 @@ O tratamento de dados pessoais pelo Sistema GeoLog ocorre com base nas seguintes
 
 ## 5. COMPARTILHAMENTO DE DADOS
 
-O Sistema GeoLog não comercializa dados pessoais.
+O Sistema GeoTower não comercializa dados pessoais.
 
 As informações poderão ser compartilhadas apenas quando necessário com:
 
@@ -117,7 +117,7 @@ As solicitações podem ser feitas através dos canais oficiais da plataforma.
 
 ## 9. PRIVACIDADE NO APLICATIVO MOBILE
 
-Caso o Sistema GeoLog seja disponibilizado em aplicativos móveis (Android ou iOS):
+Caso o Sistema GeoTower seja disponibilizado em aplicativos móveis (Android ou iOS):
 
 * Nenhum dado é coletado fora das funcionalidades logísticas do sistema.
 * O aplicativo não acessa contatos pessoais, fotos ou arquivos do dispositivo sem autorização explícita.
@@ -143,8 +143,8 @@ Esta Política poderá ser atualizada a qualquer momento para refletir melhorias
 
 ## 12. CONTATO E RESPONSÁVEL PELO TRATAMENTO
 
-Para dúvidas, solicitações ou informações relacionadas à privacidade e proteção de dados, o usuário deve utilizar os canais oficiais do Sistema GeoLog disponibilizados na própria plataforma.
+Para dúvidas, solicitações ou informações relacionadas à privacidade e proteção de dados, o usuário deve utilizar os canais oficiais do Sistema GeoTower disponibilizados na própria plataforma.
 
 ---
 
-**Sistema GeoLog — Gestão Inteligente de Entregas**
+**Sistema GeoTower — Gestão Inteligente de Entregas**

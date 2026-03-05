@@ -2,7 +2,7 @@
 
 ## Resumo dos Perfis
 
-O sistema GeoTransportes possui 4 perfis de usuário com diferentes níveis de acesso:
+O sistema GeoTower possui 4 perfis de usuário com diferentes níveis de acesso:
 
 ---
 

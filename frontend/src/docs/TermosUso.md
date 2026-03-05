@@ -1,8 +1,8 @@
-# TERMOS DE USO — SISTEMA GEOLOG
+# TERMOS DE USO — SISTEMA GEOTOWER
 
 Última atualização: 24 de fevereiro de 2026
 
-Estes Termos de Uso regulam o acesso e utilização do Sistema GeoLog, plataforma digital de gestão logística e acompanhamento de entregas, disponível em:
+Estes Termos de Uso regulam o acesso e utilização do Sistema GeoTower, plataforma digital de gestão logística e acompanhamento de entregas, disponível em:
 
 https://entregascomgeotransportes.onrender.com
 
@@ -12,7 +12,7 @@ Ao acessar ou utilizar a plataforma, o usuário declara que leu, compreendeu e c
 
 ## 1. SOBRE A PLATAFORMA
 
-O Sistema GeoLog é uma ferramenta destinada à gestão de operações logísticas, permitindo o controle de entregas, usuários e informações operacionais por meio de diferentes níveis de acesso, incluindo:
+O Sistema GeoTower é uma ferramenta destinada à gestão de operações logísticas, permitindo o controle de entregas, usuários e informações r meio de diferentes níveis de acesso, incluindo:
 
 * Administrador
 * Contratado
@@ -30,7 +30,7 @@ O usuário é responsável por:
 * Não compartilhar login e senha
 * Utilizar o sistema apenas para fins profissionais e autorizados
 
-O Sistema GeoLog poderá suspender acessos em caso de uso indevido ou suspeita de violação.
+O Sistema GeoTower poderá suspender acessos em caso de uso indevido ou suspeita de violação.
 
 ---
 
@@ -47,7 +47,7 @@ Ao utilizar a plataforma, o usuário concorda em:
 
 ## 4. DISPONIBILIDADE DO SERVIÇO
 
-O Sistema GeoLog busca manter o funcionamento contínuo, porém não garante disponibilidade ininterrupta, podendo ocorrer:
+O Sistema GeoTower busca manter o funcionamento contínuo, porém não garante disponibilidade ininterrupta, podendo ocorrer:
 
 * Manutenções técnicas
 * Atualizações do sistema
@@ -57,7 +57,7 @@ O Sistema GeoLog busca manter o funcionamento contínuo, porém não garante dis
 
 ## 5. LIMITAÇÃO DE RESPONSABILIDADE
 
-O Sistema GeoLog não se responsabiliza por:
+O Sistema GeoTower não se responsabiliza por:
 
 * Problemas decorrentes de uso inadequado da plataforma
 * Falhas de conexão do usuário
@@ -83,4 +83,4 @@ Estes Termos são regidos pelas leis da República Federativa do Brasil.
 
 ---
 
-**Sistema GeoLog — Gestão Inteligente de Entregas**
+**Sistema GeoTower — Gestão Inteligente de Entregas**

@@ -65,7 +65,7 @@ const Register = () => {
         <div className="text-center mb-8">
           <img
             src="/images/geotransporteslogo.svg"
-            alt="GeoTransportes Logo"
+            alt="GeoTower Logo"
             className="h-20 w-auto mx-auto mb-4"
             onError={(e) => {
               console.warn('Register logo failed to load; trying alternate path');
@@ -75,7 +75,7 @@ const Register = () => {
             onLoad={() => console.debug('Register logo loaded')}
           />
           <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-2">
-            GeoTransportes
+            GeoTower
           </h1>
           <p className="text-gray-600 font-semibold">Novo Usuário</p>
           <p className="text-gray-500 text-sm mt-1">Criar conta para usar o sistema</p>

@@ -1,7 +1,7 @@
 {
   "name": "delivery-docs-app",
   "version": "1.0.0",
-  "description": "Delivery Documentation App for GeoTransportes",
+  "description": "Delivery Documentation App for GeoTower",
   "private": true,
   "engines": {
     "node": "18.x",

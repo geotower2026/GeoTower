@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.geotransportes.app',
+  appId: 'com.geotower.app',
   appName: 'GeoTransporte',
   webDir: 'build'
 };

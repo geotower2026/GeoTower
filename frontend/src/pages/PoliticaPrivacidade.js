@@ -2,15 +2,15 @@ import React from 'react';
 
 const PoliticaPrivacidade = () => (
   <div className="max-w-3xl mx-auto p-6 bg-white rounded shadow mt-8">
-    <h1 className="text-2xl font-bold mb-4">Política de Privacidade — Sistema GeoLog</h1>
+    <h1 className="text-2xl font-bold mb-4">Política de Privacidade — Sistema GeoTower</h1>
     <p className="mb-2 font-semibold">Última atualização: 24 de fevereiro de 2026</p>
-    <p>Esta Política de Privacidade descreve como o <b>Sistema GeoLog</b>, plataforma de gestão logística e controle de entregas, coleta, utiliza, armazena e protege as informações dos usuários que acessam o sistema por meio do site e/ou aplicativo mobile disponível em:</p>
+    <p>Esta Política de Privacidade descreve como o <b>Sistema GeoTower</b>, plataforma de gestão logística e controle de entregas, coleta, utiliza, armazena e protege as informações dos usuários que acessam o sistema por meio do site e/ou aplicativo mobile disponível em:</p>
     <p className="mb-4"><a href="https://entregascomgeotransportes.onrender.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">https://entregascomgeotransportes.onrender.com</a></p>
-    <p>Ao utilizar o Sistema GeoLog, o usuário declara estar ciente e de acordo com os termos desta Política, bem como com a legislação vigente, especialmente a Lei Geral de Proteção de Dados Pessoais — LGPD (Lei nº 13.709/2018).</p>
+    <p>Ao utilizar o Sistema GeoTower, o usuário declara estar ciente e de acordo com os termos desta Política, bem como com a legislação vigente, especialmente a Lei Geral de Proteção de Dados Pessoais — LGPD (Lei nº 13.709/2018).</p>
     <hr className="my-4" />
     <h2 className="text-xl font-bold mt-6 mb-2">1. Definições</h2>
     <ul className="list-disc ml-6 mb-4">
-      <li><b>Plataforma:</b> Sistema GeoLog (site e aplicativo).</li>
+      <li><b>Plataforma:</b> Sistema GeoTower (site e aplicativo).</li>
       <li><b>Usuário:</b> qualquer pessoa com acesso autorizado ao sistema, incluindo Administradores, Contratados e Motoristas.</li>
       <li><b>Dados Pessoais:</b> informações que identificam ou podem identificar uma pessoa natural.</li>
     </ul>
@@ -36,7 +36,7 @@ const PoliticaPrivacidade = () => (
       <li>Legítimo interesse para operação logística e segurança da plataforma</li>
     </ul>
     <h2 className="text-xl font-bold mt-6 mb-2">5. Compartilhamento de Dados</h2>
-    <p>O Sistema GeoLog não comercializa dados pessoais. As informações poderão ser compartilhadas apenas quando necessário com serviços de hospedagem, infraestrutura em nuvem, ferramentas técnicas essenciais ao funcionamento da plataforma e autoridades legais, mediante obrigação jurídica.</p>
+    <p>O Sistema GeoTower não comercializa dados pessoais. As informações poderão ser compartilhadas apenas quando necessário com serviços de hospedagem, infraestrutura em nuvem, ferramentas técnicas essenciais ao funcionamento da plataforma e autoridades legais, mediante obrigação jurídica.</p>
     <h2 className="text-xl font-bold mt-6 mb-2">6. Segurança das Informações</h2>
     <ul className="list-disc ml-6 mb-2">
       <li>Controle de acesso por perfil</li>
@@ -62,9 +62,9 @@ const PoliticaPrivacidade = () => (
     <h2 className="text-xl font-bold mt-6 mb-2">11. Alterações desta Política</h2>
     <p>Esta Política poderá ser atualizada a qualquer momento para refletir melhorias técnicas, mudanças legais ou atualizações da plataforma. A versão mais recente estará sempre disponível no sistema.</p>
     <h2 className="text-xl font-bold mt-6 mb-2">12. Contato e Responsável pelo Tratamento</h2>
-    <p>Para dúvidas, solicitações ou informações relacionadas à privacidade e proteção de dados, o usuário deve utilizar os canais oficiais do Sistema GeoLog disponibilizados na própria plataforma.</p>
+    <p>Para dúvidas, solicitações ou informações relacionadas à privacidade e proteção de dados, o usuário deve utilizar os canais oficiais do Sistema GeoTower disponibilizados na própria plataforma.</p>
     <hr className="my-4" />
-    <p className="mt-6 font-semibold">Sistema GeoLog — Gestão Inteligente de Entregas</p>
+    <p className="mt-6 font-semibold">Sistema GeoTower — Gestão Inteligente de Entregas</p>
   </div>
 );
 

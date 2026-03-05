@@ -14,7 +14,7 @@ const Footer = () => {
             <div className="mb-6">
               <img 
                 src="https://www.geotransportes.com.br/lovable-uploads/1370f489-a7bc-4d3b-a916-4e11a73378f0.png" 
-                alt="GeoTransportes" 
+                alt="GeoTower" 
                 className="h-12 md:h-14 mb-4" 
               />
               <h3 className="text-2xl font-bold mb-2">
@@ -36,7 +36,7 @@ const Footer = () => {
                 <FaInstagram className="text-white text-lg" />
               </a>
               <a 
-                href="mailto:contato@geotransportes.com.br" 
+                href="mailto:contato@geotower.com.br" 
                 className="w-10 h-10 rounded-lg bg-slate-700 hover:bg-gray-600 flex items-center justify-center transition-colors duration-300"
                 title="Email"
               >
@@ -130,7 +130,7 @@ const Footer = () => {
         {/* Bottom Section */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <p className="text-gray-400 text-sm text-center md:text-left">
-            © {currentYear} <span className="font-semibold text-white">GeoTransportes</span> • Todos os direitos reservados
+            © {currentYear} <span className="font-semibold text-white">GeoTower</span> • Todos os direitos reservados
           </p>
           <div className="flex gap-6 text-gray-400 text-xs">
             <a href="/politica-privacidade" className="hover:text-white transition-colors">Política de Privacidade</a>

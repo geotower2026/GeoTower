@@ -828,7 +828,7 @@ const Home = () => {
                     color: '#C4B5FD',
                   }}
                 >
-                  <FaTruck style={{ fontSize: '0.7rem' }} /> GeoLog
+                  <FaTruck style={{ fontSize: '0.7rem' }} /> GeoTower
                 </div>
 
                 {/* Clock */}
@@ -861,7 +861,7 @@ const Home = () => {
               <p className="text-sm sm:text-base text-white/55 max-w-md leading-relaxed font-medium">
                 Bem-vindo ao painel de{' '}
                 <span style={{ color: '#C4B5FD' }}>Gerenciamento Logístico</span>{' '}
-                da <span style={{ color: '#6EE7B7' }}>GeoLog</span>.
+                da <span style={{ color: '#6EE7B7' }}>GeoTower</span>.
                 Tudo em um só lugar.
               </p>
 
@@ -1161,7 +1161,7 @@ const Home = () => {
                 </div>
                 <div>
                   <p className="text-sm font-black" style={{ color: B.txt, letterSpacing: '-.01em' }}>
-                    Sistema GeoLog — Operacional
+                    Sistema GeoTower — Operacional
                   </p>
                   <p className="text-xs mt-0.5 font-medium" style={{ color: B.txt2 }}>
                     Todas as funcionalidades estão ativas e funcionando normalmente.
