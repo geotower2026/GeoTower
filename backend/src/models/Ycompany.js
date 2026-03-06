@@ -273,4 +273,4 @@ ycompanySchema.index({ situacao: 1, city: 1 });
 ycompanySchema.index({ cliente: 1, city: 1 });
 ycompanySchema.index({ dtInicio: -1, city: 1 });
 
-module.exports = mongoose.model('Ycompany', ycompanySchema);
+module.exports = mongoose.model('Ycompany', ycompanySchema, 'basegeomars');
