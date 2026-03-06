@@ -16,7 +16,7 @@ const FIELD_MAP = {
   'Código':                   'codigo',
   'N° GeoMarítima':           'processo',                // show processo field
   'Status':                   'status',
-  'Dt. início rota':          'dtInicio',               // use same dtInicio value
+  'Dt. início rota':          'dtInicioRota',            // use dtInicioRota field
   'Dt. chegada cliente':      'dtChegada',
   'Dt. agendamento descarga': 'dtAgendamentoDescarga',
   'Dt. início descarga':      'dtInicioDescarga',

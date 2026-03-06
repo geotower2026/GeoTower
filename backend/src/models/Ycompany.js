@@ -18,6 +18,9 @@ const ycompanySchema = new mongoose.Schema({
     type: Date,
     default: new Date(),
   },
+  dtInicioRota: {
+    type: Date,
+  },
   dtSM: {
     type: Date,
   },
