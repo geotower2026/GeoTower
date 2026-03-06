@@ -1,16 +1,51 @@
 import axios from 'axios';
 
 // URL remota de produção (Render) – também será usada pelo APK se nenhuma outra
-// variable de ambiente for definida.
+// variável de ambiente for definida.
 const DEFAULT_BACKEND = 'https://grupogeobackend.onrender.com/api';
 
-// Em builds de produção (incluindo o APK) queremos sempre apontar para o
-// backend remoto. Em desenvolvimento local via `npm start`, o CRA injeta um
-// proxy para `/api`, por isso usamos '/api' quando NODE_ENV não é 'production'.
-// A variável REACT_APP_API_URL permite sobrescrever isso (por exemplo, testes).
-// At runtime we'll pick the correct backend; also log values to help debugging.
+// Normalizamos o endereço base do backend com algumas regras:
+// 1. Se o dev definiu REACT_APP_API_URL, usamos isso.
+// 2. Em produção, nunca retornamos um caminho relativo como '/api' ou um
+//    endereço 'localhost' – nesses casos o frontend estaria apontando para
+//    si próprio, o que funciona apenas quando ambos estão no mesmo container.
+//    Para deployments no Render os serviços são separados, portanto usamos o
+//    DEFAULT_BACKEND quando não há outra opção válida.
+// 3. Em desenvolvimento local, é conveniente usar '/api' para tirar proveito
+//    do proxy do CRA, mas apenas se a app estiver rodando em localhost.
+
+// manter esta variável globalmente para os logs posteriores
 const rawEnvUrl = process.env.REACT_APP_API_URL;
-const API_URL = rawEnvUrl || DEFAULT_BACKEND;
+
+const computeApiUrl = () => {
+  let url = rawEnvUrl || '';
+
+  if (!url) {
+    if (process.env.NODE_ENV === 'production') {
+      url = DEFAULT_BACKEND;
+    } else {
+      // dev server proxy
+      url = '/api';
+    }
+  }
+
+  // corrigir situações onde um build de produção foi gerado com '/api' ou
+  // com localhost. Isso pode acontecer se a variável de ambiente estava
+  // incorreta na hora do build. Garantimos que no Render usemos o backend
+  // remoto.
+  if (process.env.NODE_ENV === 'production') {
+    if (url.startsWith('/') || url.includes('localhost')) {
+      console.warn('🔧 api.js: substituindo url inválida em produção', url, '->', DEFAULT_BACKEND);
+      url = DEFAULT_BACKEND;
+    }
+  }
+
+  return url;
+};
+
+const API_URL = computeApiUrl();
+
+export { API_URL };
 
 console.debug('🌐 api.js init:', {
   NODE_ENV: process.env.NODE_ENV,
@@ -30,6 +65,7 @@ const api = axios.create({
   baseURL: API_URL,
   timeout: 60000  // 60 segundos para redes lentas
 });
+
 
 // Add token to requests
 api.interceptors.request.use((config) => {

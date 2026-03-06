@@ -1,8 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaArrowLeft, FaDownload, FaFilter, FaSearch } from 'react-icons/fa';
+import { API_URL } from '../services/api';
+import api from '../services/api';
 
-const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:3000/api';
+// Ycompany previously built its own `API_BASE` string which sometimes ended up
+// sendo "/api" ou "http://localhost:3000/api" no ambiente de desenvolvimento
+// ou quando a variável de ambiente estava ausente. Ao usar o cliente axios
+// centralizado (`api`) temos certeza de que o endereço respeita a lógica acima
+// e não faz chamadas para localhost quando o frontend estiver hospedado no
+// Render com o backend remoto.
+
+// (NOTE: o valor `API_URL` ainda está disponível para debugging ou casos onde
+// seja necessário montar URLs manualmente.)
+const API_BASE = API_URL;
 
 const Ycompany = () => {
   const navigate = useNavigate();
@@ -79,19 +90,9 @@ const Ycompany = () => {
       setError(null);
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`${API_BASE}/ycompany`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'X-City': localStorage.getItem('userCity') || 'default',
-          },
-        });
-        
-        if (!response.ok) {
-          throw new Error('Falha ao carregar dados');
-        }
-        
-        const result = await response.json();
-        setData(result.data || []);
+        // axios `api` already includes token and X-City interceptors
+    const response = await api.get('/ycompany');
+    setData(response.data?.data || []);
       } catch (err) {
         console.error('Erro ao buscar dados:', err);
         setError('Falha ao carregar dados da Ycompany');
@@ -110,15 +111,8 @@ const Ycompany = () => {
     if (!value.trim()) {
       // Se vazio, recarrega todos os dados
       try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_BASE}/ycompany`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'X-City': localStorage.getItem('userCity') || 'default',
-          },
-        });
-        const result = await response.json();
-        setData(result.data || []);
+        const response = await api.get('/ycompany');
+        setData(response.data?.data || []);
       } catch (err) {
         console.error('Erro ao recarregar dados:', err);
       }
@@ -128,20 +122,10 @@ const Ycompany = () => {
     // Busca com termo
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE}/ycompany/search?q=${encodeURIComponent(value)}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'X-City': localStorage.getItem('userCity') || 'default',
-        },
+      const response = await api.get('/ycompany/search', {
+        params: { q: value }
       });
-      
-      if (!response.ok) {
-        throw new Error('Falha na busca');
-      }
-      
-      const result = await response.json();
-      setData(result.data || []);
+      setData(response.data?.data || []);
     } catch (err) {
       console.error('Erro na busca:', err);
       setError('Falha ao buscar registros');
@@ -152,19 +136,8 @@ const Ycompany = () => {
 
   const handleExport = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE}/ycompany/export`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'X-City': localStorage.getItem('userCity') || 'default',
-        },
-      });
-      
-      if (!response.ok) {
-        throw new Error('Falha ao exportar');
-      }
-
-      const blob = await response.blob();
+      const response = await api.get('/ycompany/export', { responseType: 'blob' });
+      const blob = response.data;
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

@@ -111,7 +111,7 @@ Pasta `build/` pronta para deploy.
 ```
 Verificar:
 1. Backend rodando em http://localhost:5000
-2. REACT_APP_API_URL em .env correto
+2. REACT_APP_API_URL em .env correto (para deploy em Render, garanta que a variável de ambiente do serviço frontend aponte para o domínio do backend). 
 3. CORS habilitado no backend
 ```
 
