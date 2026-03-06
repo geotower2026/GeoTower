@@ -14,8 +14,14 @@ const API_BASE = API_URL;
 /* ─── Mapeamento colunas ────────────────────────────────────────── */
 const FIELD_MAP = {
   'Código':                   'codigo',
-  'N° GeoMarítima':           'geomaritima',
-  'Dt. início':               'dtInicio',
+  'N° GeoMarítima':           'processo',                // show processo field
+  'Status':                   'status',
+  'Dt. início rota':          'dtInicio',               // use same dtInicio value
+  'Dt. chegada cliente':      'dtChegada',
+  'Dt. agendamento descarga': 'dtAgendamentoDescarga',
+  'Dt. início descarga':      'dtInicioDescarga',
+  'Dt. fim descarga':         'dtFimDescarga',
+  'Dt. retirada P.D.':        'dtRetiraPD',
   'Situação':                 'situacao',
   'Cliente':                  'cliente',
   'Remetente':                'remetente',
@@ -34,13 +40,8 @@ const FIELD_MAP = {
   'Vl. pedágio':              'vlPedagio',
   'Vl. frete lista':          'vlFreteLista',
   'Vl. abastecimento':        'vlAbastecimento',
-  'Dt. agendamento descarga': 'dtAgendamentoDescarga',
-  'Dt. chegada':              'dtChegada',
-  'Dt. início descarga':      'dtInicioDescarga',
   'Hr. início descarga':      'hrInicioDescarga',
   'Dt. descida CNTR/Carga':   'dtDescidaCNTRCarga',
-  'Dt. retirada P.D.':        'dtRetiraPD',
-  'Dt. fim descarga':         'dtFimDescarga',
   'Dt. devolução CNTR':       'dtDevolucaoCNTR',
   'Terminal':                 'terminal',
   'Destino':                  'destino',
@@ -57,7 +58,7 @@ const FIELD_MAP = {
   'N° booking agendamento':   'numBookingAgendamento',
   'Armador':                  'armador',
   'Navio':                    'navio',
-  'Número':                   'numero',
+  'Número':                   'containerNumero',        // map to containerNumero
   'Tara':                     'tara',
   'Lacre':                    'lacre',
   'Payload':                  'payload',
