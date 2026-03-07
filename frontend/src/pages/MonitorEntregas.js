@@ -1303,7 +1303,10 @@ const MonitorEntregas = () => {
       driverName: d.driverName||'', vehiclePlate: d.vehiclePlate||'',
       recebedor: d.recebedor||'', status: d.status||'',
       dataAgendamento: d.dataAgendamento?.slice(0,16)||'',
-      horarioDevolucaoVazio: d.horarioDevolucaoVazio?.slice(0,16)||'',
+      horarioDevolucaoVazio: d.horarioDevolucaoVazio?.slice(0,16) ||
+        (d.observations && d.observations.includes('(CONTAINER_VAZIO_DEVOLVIDO)')
+          ? (new Date((d.observations.match(/\[(.*?)\]/)||[])[1])).toISOString().slice(0,16)
+          : ''),
       horarioChegada: d.horarioChegada?.slice(0,16)||'',
       horarioInicioDesova: d.horarioInicioDesova?.slice(0,16)||'',
       horarioFimDesova: d.horarioFimDesova?.slice(0,16)||'',
@@ -1717,7 +1720,23 @@ const MonitorEntregas = () => {
                 {[
                   ['Contratado', selectedDelivery.userName],
                   ['Motorista', selectedDelivery.driverName||'—'],
-                  ['Data Devolução Container Vazio', selectedDelivery.horarioDevolucaoVazio ? new Date(selectedDelivery.horarioDevolucaoVazio).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—'],
+                  ['Data Devolução Container Vazio', (() => {
+                  if (selectedDelivery.horarioDevolucaoVazio) {
+                    return new Date(selectedDelivery.horarioDevolucaoVazio)
+                      .toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
+                  }
+                  // fallback: parse timestamp from observations marker if present
+                  if (selectedDelivery.observations && selectedDelivery.observations.includes('(CONTAINER_VAZIO_DEVOLVIDO)')) {
+                    const m = selectedDelivery.observations.match(/\[(.*?)\]/);
+                    if (m && m[1]) {
+                      const d = new Date(m[1]);
+                      if (!isNaN(d)) {
+                        return d.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
+                      }
+                    }
+                  }
+                  return '—';
+                })()],
                   ['Recebedor', selectedDelivery.recebedor||'—'],
                   ['Agendamento', selectedDelivery.dataAgendamento ? new Date(selectedDelivery.dataAgendamento).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—'],
                   ['Montagem Container', selectedDelivery.containerMontadoAt ? new Date(selectedDelivery.containerMontadoAt).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '—'],
