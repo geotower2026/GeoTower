@@ -40,12 +40,10 @@ const DeliverySchema = new mongoose.Schema(
     missingDocumentsAtSubmit: { type: [String], default: [] },
     documentsJustification: { type: String, default: "" },
 
-    // Referência ao registro Ycompany correspondente (se existir)
-    linkedYcompanyId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Ycompany',
-      default: null
-    },
+    // usuário que criou (motorista/admin)
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    userName: { type: String, default: "" },
+    userEmail: { type: String, default: "" },
 
     deliveryDate: { type: Date, default: Date.now },
 
