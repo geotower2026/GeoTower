@@ -93,6 +93,10 @@ const formatCurrency = (val) => {
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
+const CURRENCY_FIELDS = new Set([
+  'vlFreteProcesso', 'vlPedagio', 'vlFreteLista', 'vlAbastecimento'
+]);
+
 const DATE_FIELDS = new Set([
   'dtInicioRota', 'dtInicioDescarga', 'dtFimDescarga', 'dtRetiraPD', 'dtDevolucaoCNTR',
   'dtInicio', 'dtSM', 'dtAgendamentoDescarga', 'dtChegada', 'dtDescidaCNTRCarga',
