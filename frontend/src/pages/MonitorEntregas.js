@@ -2040,5 +2040,5 @@ const MonitorEntregas = () => {
   );
 };
 
-// Atualizado em 07/03/2026 - Campo Data Devolução Container Vazio adicionado
+// Atualizado em 07/03/2026 - Campo Data Devolução Container Vazio adicionado (v2)
 export default MonitorEntregas;
