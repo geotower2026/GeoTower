@@ -28,7 +28,17 @@ router.get('/', async (req, res) => {
       .sort({ updatedAt: -1, _id: -1 })
       .limit(2000)
       .toArray();
-    res.json({ ok: true, count: data.length, data });
+    // Serializar datas para ISO string
+    const serialized = data.map(doc => {
+      const obj = { ...doc };
+      if (obj.dtInicioRota && obj.dtInicioRota instanceof Date) obj.dtInicioRota = obj.dtInicioRota.toISOString();
+      if (obj.dtInicioDescarga && obj.dtInicioDescarga instanceof Date) obj.dtInicioDescarga = obj.dtInicioDescarga.toISOString();
+      if (obj.dtFimDescarga && obj.dtFimDescarga instanceof Date) obj.dtFimDescarga = obj.dtFimDescarga.toISOString();
+      if (obj.dtRetiraPD && obj.dtRetiraPD instanceof Date) obj.dtRetiraPD = obj.dtRetiraPD.toISOString();
+      if (obj.dtDevolucaoCNTR && obj.dtDevolucaoCNTR instanceof Date) obj.dtDevolucaoCNTR = obj.dtDevolucaoCNTR.toISOString();
+      return obj;
+    });
+    res.json({ ok: true, count: serialized.length, data: serialized });
   } catch (e) {
     console.error('Ycompany GET / error:', e);
     res.status(500).json({ ok: false, error: 'Erro ao buscar dados' });
@@ -56,7 +66,17 @@ router.get('/search', async (req, res) => {
       .sort({ updatedAt: -1, _id: -1 })
       .limit(Math.min(parseInt(limit, 10) || 500, 2000))
       .toArray();
-    res.json({ ok: true, count: data.length, data });
+    // Serializar datas para ISO string
+    const serialized = data.map(doc => {
+      const obj = { ...doc };
+      if (obj.dtInicioRota && obj.dtInicioRota instanceof Date) obj.dtInicioRota = obj.dtInicioRota.toISOString();
+      if (obj.dtInicioDescarga && obj.dtInicioDescarga instanceof Date) obj.dtInicioDescarga = obj.dtInicioDescarga.toISOString();
+      if (obj.dtFimDescarga && obj.dtFimDescarga instanceof Date) obj.dtFimDescarga = obj.dtFimDescarga.toISOString();
+      if (obj.dtRetiraPD && obj.dtRetiraPD instanceof Date) obj.dtRetiraPD = obj.dtRetiraPD.toISOString();
+      if (obj.dtDevolucaoCNTR && obj.dtDevolucaoCNTR instanceof Date) obj.dtDevolucaoCNTR = obj.dtDevolucaoCNTR.toISOString();
+      return obj;
+    });
+    res.json({ ok: true, count: serialized.length, data: serialized });
   } catch (e) {
     console.error('Ycompany search error:', e);
     res.status(500).json({ ok: false, error: 'Erro ao buscar dados' });
