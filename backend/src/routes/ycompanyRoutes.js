@@ -5,7 +5,8 @@ const { MongoClient } = require("mongodb");
 
 const MONGODB_URI = process.env.MONGODB_URI; // ⚠️ no Render tem que ser esse nome
 const DB_NAME = process.env.MONGO_DB || "delivery-docs";
-const COLLECTION = process.env.MONGO_COLLECTION || "basegeomars";
+// default collection should match the mongoose model (ycompany) unless overridden by env
+const COLLECTION = process.env.MONGO_COLLECTION || "ycompany";
 
 let _client, _col;
 async function col() {
