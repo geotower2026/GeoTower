@@ -222,6 +222,57 @@ router.put("/:id", auth, async (req, res) => {
         console.warn('[DELIVERY] erro sync programacao:', syncErr.message || syncErr);
       }
     }
+
+    // Sincronizar com Ycompany se aplicável
+    try {
+      const Ycompany = require('../models/Ycompany');
+      const deliveryNum = String(delivery.deliveryNumber || '').trim().toUpperCase();
+      let ycompanyRecord = null;
+
+      if (deliveryNum) {
+        // Buscar por processo ou container
+        ycompanyRecord = await Ycompany.findOne({
+          $or: [
+            { processo: new RegExp(`^${deliveryNum}$`, 'i') },
+            { numero: new RegExp(`^${deliveryNum}$`, 'i') },
+            { containerNumero: new RegExp(`^${deliveryNum}$`, 'i') }
+          ]
+        });
+      }
+
+      if (ycompanyRecord) {
+        const ycompanyUpdates = {};
+
+        // Mapear campos do delivery para Ycompany
+        if (req.body.status === 'A_CAMINHO_DO_CLIENTE' && !ycompanyRecord.dtInicioRota) {
+          ycompanyUpdates.dtInicioRota = new Date();
+        }
+        if (req.body.desovaStartAt !== undefined && req.body.desovaStartAt && !ycompanyRecord.dtInicioDescarga) {
+          ycompanyUpdates.dtInicioDescarga = new Date(req.body.desovaStartAt);
+        }
+        if (req.body.desovaEndAt !== undefined && req.body.desovaEndAt && !ycompanyRecord.dtFimDescarga) {
+          ycompanyUpdates.dtFimDescarga = new Date(req.body.desovaEndAt);
+        }
+        if (req.body.containerMontadoAt !== undefined && req.body.containerMontadoAt && !ycompanyRecord.dtRetiraPD) {
+          ycompanyUpdates.dtRetiraPD = new Date(req.body.containerMontadoAt);
+        }
+        if (req.body.horarioDevolucaoVazio !== undefined && req.body.horarioDevolucaoVazio && !ycompanyRecord.dtDevolucaoCNTR) {
+          ycompanyUpdates.dtDevolucaoCNTR = new Date(req.body.horarioDevolucaoVazio);
+        }
+        // Verificar se observations contém CONTAINER_VAZIO_DEVOLVIDO
+        if (req.body.observations !== undefined && req.body.observations && req.body.observations.includes('(CONTAINER_VAZIO_DEVOLVIDO)') && !ycompanyRecord.dtDevolucaoCNTR) {
+          ycompanyUpdates.dtDevolucaoCNTR = new Date();
+        }
+
+        if (Object.keys(ycompanyUpdates).length > 0) {
+          await Ycompany.findByIdAndUpdate(ycompanyRecord._id, ycompanyUpdates);
+          console.log('[DELIVERY] sincronizado campos do Ycompany', ycompanyRecord._id, Object.keys(ycompanyUpdates));
+        }
+      }
+    } catch (syncErr) {
+      console.warn('[DELIVERY] erro sync Ycompany:', syncErr.message || syncErr);
+    }
+
     if (req.body.arrivedAt !== undefined) updates.arrivedAt = req.body.arrivedAt;
     if (req.body.containerMontadoAt !== undefined) updates.containerMontadoAt = req.body.containerMontadoAt ? new Date(req.body.containerMontadoAt) : null;
     if (req.body.currentStep !== undefined) updates.currentStep = req.body.currentStep;
@@ -230,6 +281,7 @@ router.put("/:id", auth, async (req, res) => {
     if (req.body.desovaStartAt !== undefined) updates.desovaStartAt = req.body.desovaStartAt;
     if (req.body.desovaEndAt !== undefined) updates.desovaEndAt = req.body.desovaEndAt;
     if (req.body.recebedor !== undefined) updates.recebedor = req.body.recebedor;
+    if (req.body.horarioDevolucaoVazio !== undefined) updates.horarioDevolucaoVazio = req.body.horarioDevolucaoVazio;
 
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ message: 'Nada para atualizar' });

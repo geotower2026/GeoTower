@@ -93,8 +93,10 @@ const formatCurrency = (val) => {
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
-const CURRENCY_FIELDS = new Set([
-  'vlFreteProcesso', 'vlPedagio', 'vlFreteLista', 'vlAbastecimento'
+const DATE_FIELDS = new Set([
+  'dtInicioRota', 'dtInicioDescarga', 'dtFimDescarga', 'dtRetiraPD', 'dtDevolucaoCNTR',
+  'dtInicio', 'dtSM', 'dtAgendamentoDescarga', 'dtChegada', 'dtDescidaCNTRCarga',
+  'dtAverbacaoMDFE', 'dtSM'
 ]);
 
 const renderCell = (fieldKey, rawValue) => {
@@ -107,6 +109,19 @@ const renderCell = (fieldKey, rawValue) => {
     </span>
   );
   if (CURRENCY_FIELDS.has(fieldKey)) return formatCurrency(rawValue);
+  if (DATE_FIELDS.has(fieldKey) && rawValue) {
+    try {
+      const date = new Date(rawValue);
+      if (!isNaN(date.getTime())) {
+        return date.toLocaleString('pt-BR', { 
+          dateStyle: 'short', 
+          timeStyle: 'short' 
+        });
+      }
+    } catch (e) {
+      // fallback to raw value
+    }
+  }
   return rawValue;
 };
 
