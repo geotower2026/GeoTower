@@ -104,6 +104,47 @@ router.post("/", auth, async (req, res) => {
       console.warn('[DELIVERY] Falha ao sincronizar programacao:', syncErr.message || syncErr);
     }
 
+    // Sincronizar com Ycompany se aplicável
+    try {
+      const Ycompany = require('../models/Ycompany');
+      const deliveryNum = String(deliveryNumber || '').trim().toUpperCase();
+      let ycompanyRecord = null;
+
+      if (deliveryNum) {
+        // Buscar por processo ou container - expandir busca
+        ycompanyRecord = await Ycompany.findOne({
+          $or: [
+            { processo: new RegExp(`^${deliveryNum}$`, 'i') },
+            { numero: new RegExp(`^${deliveryNum}$`, 'i') },
+            { containerNumero: new RegExp(`^${deliveryNum}$`, 'i') },
+            { geomaritima: new RegExp(`^${deliveryNum}$`, 'i') },
+            { codigo: new RegExp(`^${deliveryNum}$`, 'i') },
+            { processo: deliveryNum },
+            { numero: deliveryNum },
+            { containerNumero: deliveryNum },
+            { geomaritima: deliveryNum },
+            { codigo: deliveryNum }
+          ]
+        });
+      }
+
+      if (ycompanyRecord) {
+        const ycompanyUpdates = {};
+
+        // Mapear campos do delivery para Ycompany
+        if (containerMontadoAt && !ycompanyRecord.dtRetiraPD) {
+          ycompanyUpdates.dtRetiraPD = new Date(containerMontadoAt);
+        }
+
+        if (Object.keys(ycompanyUpdates).length > 0) {
+          await Ycompany.findByIdAndUpdate(ycompanyRecord._id, ycompanyUpdates);
+          console.log('[DELIVERY] sincronizado campos do Ycompany', ycompanyRecord._id, Object.keys(ycompanyUpdates));
+        }
+      }
+    } catch (syncErr) {
+      console.warn('[DELIVERY] erro sync Ycompany:', syncErr.message || syncErr);
+    }
+
     res.status(201).json({ delivery });
   } catch (err) {
     console.error(err);
