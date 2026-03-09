@@ -86,7 +86,7 @@ const STATUS_COLUMNS = [
     lightBg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700',
     badge: 'bg-green-100 text-green-700',
     // show when programacao marked returned by motorista
-    filter: (p) => p.containerReturned === true || p.status === 'ENTREGUE_COM_PENDENCIA_CANHOTO',
+    filter: (p) => p.containerReturned || p.status === 'ENTREGUE_COM_PENDENCIA_CANHOTO',
   },
 ];
 

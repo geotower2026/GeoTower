@@ -331,15 +331,13 @@ router.put("/:id", auth, async (req, res) => {
     await db.updateOne("deliveries", { _id: id }, updates);
     const updated = await db.findById("deliveries", id);
 
-    // se houve devolução de vazio e a entrega estava vinculada a uma programação,
-    // também marcamos a programação como containerReturned = true para que o kanban
-    // mostre imediatamente na coluna correta (sem necessidade de rota admin).
-    if (updates.horarioDevolucaoVazio && updated.programacaoId) {
+    // se a entrega está vinculada a uma programação e já existe horário de devolução
+    // (criado em qualquer chamada anterior ou nesta), atualizamos a programação.
+    if (updated.programacaoId && updated.horarioDevolucaoVazio) {
       try {
         const ProgramacaoEntrega = require("../models/ProgramacaoEntrega");
         await ProgramacaoEntrega.findByIdAndUpdate(updated.programacaoId, {
           containerReturned: true,
-          // opcionalmente podemos garantir status FINALIZADO caso não esteja
           status: (updated.status !== 'FINALIZADO' ? 'FINALIZADO' : updated.status)
         });
       } catch (e) {

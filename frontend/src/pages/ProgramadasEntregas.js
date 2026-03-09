@@ -688,6 +688,8 @@ const ProgramadasEntregas = () => {
       setToast({ message: msg, type: 'success' });
       // Remove local programação immediately so it disappears from Programadas
       setProgramacoes(prev => prev.filter(p => p._id !== currentProgramacaoForReturn._id));
+      // notify other screens that programacoes data changed (e.g. kanban)
+      window.dispatchEvent(new Event('programacoesUpdated'));
       setShowContainerReturnModal(false);
       setCurrentProgramacaoForReturn(null);
       setContainerVazioProof(null);
