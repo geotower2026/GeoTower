@@ -713,28 +713,6 @@ const MonitorProcessos = () => {
   const [lastUpdate,   setLastUpdate]   = useState(null);
   const [activeTab,    setActiveTab]    = useState('kanban'); // 'kanban' | 'analytics'
 
-  useEffect(() => {
-    if (!user) return;
-    if (!['manager','admin','geomar'].includes(user.role)) { navigate('/home'); return; }
-    loadProgramacoes();
-
-    const handler = () => {
-      loadProgramacoes();
-    };
-    window.addEventListener('programacoesUpdated', handler);
-    return () => window.removeEventListener('programacoesUpdated', handler);
-  }, [user, navigate]);
-
-  // refresh periodically when Kanban tab is active so that updates from other screens
-  // (e.g. motorista confirming return) appear without manual click
-  useEffect(() => {
-    if (activeTab !== 'kanban') return;
-    const iv = setInterval(() => {
-      if (!loading) loadProgramacoes();
-    }, 30_000);
-    return () => clearInterval(iv);
-  }, [activeTab, loading, loadProgramacoes]);
-
   const loadProgramacoes = useCallback(async () => {
     try {
       setLoading(true);
@@ -753,6 +731,28 @@ const MonitorProcessos = () => {
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    if (!['manager','admin','geomar'].includes(user.role)) { navigate('/home'); return; }
+    loadProgramacoes();
+
+    const handler = () => {
+      loadProgramacoes();
+    };
+    window.addEventListener('programacoesUpdated', handler);
+    return () => window.removeEventListener('programacoesUpdated', handler);
+  }, [user, navigate, loadProgramacoes]);
+
+  // refresh periodically when Kanban tab is active so that updates from other screens
+  // (e.g. motorista confirming return) appear without manual click
+  useEffect(() => {
+    if (activeTab !== 'kanban') return;
+    const iv = setInterval(() => {
+      if (!loading) loadProgramacoes();
+    }, 30_000);
+    return () => clearInterval(iv);
+  }, [activeTab, loading, loadProgramacoes]);
 
   const getProcesses = (filterFn) => {
     if (!Array.isArray(programacoes) || typeof filterFn !== 'function') return [];
