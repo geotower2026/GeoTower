@@ -322,6 +322,11 @@ router.put("/:id", auth, async (req, res) => {
     if (req.body.desovaStartAt !== undefined) updates.desovaStartAt = req.body.desovaStartAt;
     if (req.body.desovaEndAt !== undefined) updates.desovaEndAt = req.body.desovaEndAt;
     if (req.body.recebedor !== undefined) updates.recebedor = req.body.recebedor;
+    
+    // Se programacaoId for fornecido, guardar (será usado para atualizar depois)
+    const programacaoIdFromBody = req.body.programacaoId;
+    if (programacaoIdFromBody !== undefined) updates.programacaoId = programacaoIdFromBody;
+    
     if (req.body.horarioDevolucaoVazio !== undefined) updates.horarioDevolucaoVazio = req.body.horarioDevolucaoVazio;
 
     if (Object.keys(updates).length === 0) {
@@ -331,17 +336,22 @@ router.put("/:id", auth, async (req, res) => {
     await db.updateOne("deliveries", { _id: id }, updates);
     const updated = await db.findById("deliveries", id);
 
-    // se a entrega está vinculada a uma programação e já existe horário de devolução
-    // (criado em qualquer chamada anterior ou nesta), atualizamos a programação.
-    if (updated.programacaoId && updated.horarioDevolucaoVazio) {
+    // Se houver horário de devolução vazio agora (seja de antes ou desta chamada),
+    // marca containerReturned na programação vinculada
+    const shouldMarkReturned = updated.horarioDevolucaoVazio;
+    const programacaoToUpdate = programacaoIdFromBody || updated.programacaoId;
+    
+    if (shouldMarkReturned && programacaoToUpdate) {
       try {
         const ProgramacaoEntrega = require("../models/ProgramacaoEntrega");
-        await ProgramacaoEntrega.findByIdAndUpdate(updated.programacaoId, {
+        console.log(`[CONTAINER_RETURN] Marcando containerReturned=true na programação ${programacaoToUpdate}`);
+        await ProgramacaoEntrega.findByIdAndUpdate(programacaoToUpdate, {
           containerReturned: true,
-          status: (updated.status !== 'FINALIZADO' ? 'FINALIZADO' : updated.status)
+          status: 'FINALIZADO'
         });
+        console.log(`[CONTAINER_RETURN] ✅ Programação ${programacaoToUpdate} atualizada`);
       } catch (e) {
-        console.warn('[DELIVERY] falha ao atualizar programação relacionada:', e.message || e);
+        console.error('[CONTAINER_RETURN] Erro ao atualizar programação:', e.message);
       }
     }
 

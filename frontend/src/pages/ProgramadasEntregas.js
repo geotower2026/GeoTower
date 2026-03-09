@@ -675,17 +675,19 @@ const ProgramadasEntregas = () => {
       const containerObs = `[${timestamp}] (CONTAINER_VAZIO_DEVOLVIDO) Container vazio devolvido com comprovante.`;
       const newObs = `${existingObs ? existingObs + '\n' : ''}${containerObs}`;
       const horarioDevolucaoVazio = new Date().toISOString();
-      await deliveryService.updateDelivery(deliveryId, { status: finalStatus, observations: newObs, horarioDevolucaoVazio });
-      // persist association delivery -> programacao so client can match after reload
-      try {
-        await deliveryService.updateDelivery(deliveryId, { programacaoId: currentProgramacaoForReturn._id });
-      } catch (_) {}
-      // try updating programacao in admin (may 403 for drivers) but it's optional
-      try {
-        await adminService.updateProgramacao(currentProgramacaoForReturn._id, { status: finalStatus, linkedDeliveryId: deliveryId, containerReturned: true });
-      } catch (_) {}
+      
+      // Atualizar entrega com horário de devolução (backend marcará containerReturned na programação)
+      await deliveryService.updateDelivery(deliveryId, { 
+        status: finalStatus, 
+        observations: newObs, 
+        horarioDevolucaoVazio,
+        programacaoId: currentProgramacaoForReturn._id 
+      });
+
       const msg = finalStatus === 'FINALIZADO' ? 'Entrega finalizada com sucesso!' : 'Container devolvido. Canhoto pendente!';
       setToast({ message: msg, type: 'success' });
+      console.log('[CONTAINER_RETURN] Devolução confirmada. Disparando event programacoesUpdated');
+      
       // Remove local programação immediately so it disappears from Programadas
       setProgramacoes(prev => prev.filter(p => p._id !== currentProgramacaoForReturn._id));
       // notify other screens that programacoes data changed (e.g. kanban)
