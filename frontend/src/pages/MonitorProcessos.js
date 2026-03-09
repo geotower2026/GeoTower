@@ -67,21 +67,14 @@ const STATUS_COLUMNS = [
     filter: (p) => p.status === 'EM_DESOVA',
   },
   {
-    key: 'OPERACAO_FINALIZADA', title: 'Op. Finalizada', description: 'Desova concluída',
+    key: 'OPERACAO_FINALIZADA', title: 'Op. Finalizada', description: 'Desova concluida Anexando canhotos',
     icon: FaCheckCircle, gradient: 'from-teal-500 to-emerald-600',
     lightBg: 'bg-teal-50', border: 'border-teal-200', text: 'text-teal-700',
     badge: 'bg-teal-100 text-teal-700',
-    filter: (p) => p.status === 'FINALIZADO' || p.status === 'ENTREGUE',
-  },
-  {
-    key: 'ANEXANDO_DOCUMENTOS', title: 'Documentação', description: 'Anexando documentos',
-    icon: FaFileAlt, gradient: 'from-indigo-500 to-blue-700',
-    lightBg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-700',
-    badge: 'bg-indigo-100 text-indigo-700',
     filter: (p) => p.status === 'ANEXANDO_DOCUMENTOS_FINAIS',
   },
   {
-    key: 'VIAGEM_RETORNO', title: 'Retorno', description: 'Em rota de retorno',
+    key: 'VIAGEM_RETORNO', title: 'Retorno', description: 'Devolução do container',
     icon: FaUndo, gradient: 'from-cyan-500 to-sky-600',
     lightBg: 'bg-cyan-50', border: 'border-cyan-200', text: 'text-cyan-700',
     badge: 'bg-cyan-100 text-cyan-700',
@@ -92,7 +85,7 @@ const STATUS_COLUMNS = [
     icon: FaCheckCircle, gradient: 'from-green-600 to-teal-700',
     lightBg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700',
     badge: 'bg-green-100 text-green-700',
-    filter: (p) => p.status === 'ENTREGUE',
+    filter: (p) => p.status === 'ENTREGUE_COM_PENDENCIA_CANHOTO',
   },
 ];
 
@@ -835,12 +828,13 @@ const MonitorProcessos = () => {
       {/* ── Corpo ── */}
       <div className="px-6 py-6">
 
-        {/* KPIs topo — sempre visíveis */}
-        <StatsBar programacoes={programacoes} />
-
         {/* Analytics section */}
-        {(activeTab === 'analytics' || activeTab === 'kanban') && (
-          <DashboardSection programacoes={programacoes} />
+        {activeTab === 'analytics' && (
+          <>
+            {/* KPIs topo */}
+            <StatsBar programacoes={programacoes} />
+            <DashboardSection programacoes={programacoes} />
+          </>
         )}
 
         {/* Kanban Board */}
