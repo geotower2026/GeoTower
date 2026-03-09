@@ -78,7 +78,7 @@ const STATUS_COLUMNS = [
     icon: FaUndo, gradient: 'from-cyan-500 to-sky-600',
     lightBg: 'bg-cyan-50', border: 'border-cyan-200', text: 'text-cyan-700',
     badge: 'bg-cyan-100 text-cyan-700',
-    filter: (p) => p.status === 'FINALIZADO' && !p.containerReturned,
+    filter: (p) => p.status === 'FINALIZADO' && p.containerReturned !== true,
   },
   {
     key: 'CNTR_ENTREGUE', title: 'CNTR Entregue', description: 'Container devolvido',
@@ -86,7 +86,7 @@ const STATUS_COLUMNS = [
     lightBg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700',
     badge: 'bg-green-100 text-green-700',
     // show when programacao marked returned by motorista
-    filter: (p) => p.containerReturned || p.status === 'ENTREGUE_COM_PENDENCIA_CANHOTO',
+    filter: (p) => p.containerReturned === true || p.status === 'ENTREGUE_COM_PENDENCIA_CANHOTO',
   },
 ];
 
@@ -712,6 +712,7 @@ const MonitorProcessos = () => {
   const [toast,        setToast]        = useState(null);
   const [lastUpdate,   setLastUpdate]   = useState(null);
   const [activeTab,    setActiveTab]    = useState('kanban'); // 'kanban' | 'analytics'
+  const [forceRefresh, setForceRefresh] = useState(0);
 
   const loadProgramacoes = useCallback(async () => {
     try {
@@ -739,6 +740,7 @@ const MonitorProcessos = () => {
 
     const handler = () => {
       loadProgramacoes();
+      setForceRefresh(prev => prev + 1);
     };
     window.addEventListener('programacoesUpdated', handler);
     return () => window.removeEventListener('programacoesUpdated', handler);
@@ -779,7 +781,7 @@ const MonitorProcessos = () => {
   if (!['manager','admin','geomar'].includes(user.role)) { navigate('/home'); return null; }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-100">
+    <div key={forceRefresh} className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-100">
       <Toast toast={toast} setToast={setToast} />
 
       {/* ── Header fixo ── */}
