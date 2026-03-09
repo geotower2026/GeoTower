@@ -1367,6 +1367,9 @@ router.get("/programacoes", auth, async (req, res) => {
           const existing = allDeliveries.find(d => String(d._id) === String(obj.linkedDeliveryId));
           if (existing) {
             obj.missingDocumentsAtSubmit = existing.missingDocumentsAtSubmit || [];
+            if (existing.horarioDevolucaoVazio) {
+              obj.horarioDevolucaoVazio = existing.horarioDevolucaoVazio;
+            }
           }
         }
         return obj;
@@ -1381,6 +1384,9 @@ router.get("/programacoes", auth, async (req, res) => {
       obj.linkedDeliveryId = match ? match._id : null;
       if (match) {
         obj.missingDocumentsAtSubmit = match.missingDocumentsAtSubmit || [];
+        if (match.horarioDevolucaoVazio) {
+          obj.horarioDevolucaoVazio = match.horarioDevolucaoVazio;
+        }
       }
       return obj;
     });

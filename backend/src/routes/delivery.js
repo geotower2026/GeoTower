@@ -330,6 +330,23 @@ router.put("/:id", auth, async (req, res) => {
 
     await db.updateOne("deliveries", { _id: id }, updates);
     const updated = await db.findById("deliveries", id);
+
+    // se houve devolução de vazio e a entrega estava vinculada a uma programação,
+    // também marcamos a programação como containerReturned = true para que o kanban
+    // mostre imediatamente na coluna correta (sem necessidade de rota admin).
+    if (updates.horarioDevolucaoVazio && updated.programacaoId) {
+      try {
+        const ProgramacaoEntrega = require("../models/ProgramacaoEntrega");
+        await ProgramacaoEntrega.findByIdAndUpdate(updated.programacaoId, {
+          containerReturned: true,
+          // opcionalmente podemos garantir status FINALIZADO caso não esteja
+          status: (updated.status !== 'FINALIZADO' ? 'FINALIZADO' : updated.status)
+        });
+      } catch (e) {
+        console.warn('[DELIVERY] falha ao atualizar programação relacionada:', e.message || e);
+      }
+    }
+
     res.json({ delivery: normalizeDeliveryForResponse(updated) });
   } catch (err) {
     console.error('Error updating delivery', err);
