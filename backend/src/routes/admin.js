@@ -843,15 +843,12 @@ router.post("/users", auth, managerOnly, async (req, res) => {
     const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
 
     const newUser = {
-      _id: 'user_' + crypto.randomUUID(),
       username: normalizedUsername,
       email: normalizedEmail,
       name,
-      fullName: name,
       password: hashedPassword,
       role: role || 'driver',
-      phoneNumber: '',
-      cnh: '',
+      phone: '',
       isActive: true,
       createdAt: new Date()
     };

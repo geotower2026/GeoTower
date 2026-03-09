@@ -12,7 +12,7 @@ import {
   // ── novos ──
   FaUserTie, FaWater, FaBullseye, FaSatelliteDish,
   FaCog, FaChartLine, FaDatabase, FaSun, FaMoon,
-  FaCloudSun,
+  FaCloudSun, FaTasks, FaClipboardList,
 } from 'react-icons/fa';
 import { HiSparkles } from 'react-icons/hi';
 
@@ -1077,6 +1077,18 @@ const Home = () => {
                 description="Monitore todas as entregas em tempo real com filtros avançados, busca inteligente e rastreamento completo da operação."
                 viewOnly={isViewOnly()}
                 delay={120}
+              />
+              <MonitorCard
+                onClick={() => navigate('/monitor-processos')}
+                disabled={isViewOnly()}
+                accentColor="#059669"
+                accentDark="#047857"
+                icon={<FaTasks />}
+                titleIcon={<FaClipboardList />}
+                title="Monitor de Processos"
+                description="Acompanhe o fluxo completo dos processos de entrega por status, desde agendamento até finalização."
+                viewOnly={isViewOnly()}
+                delay={180}
               />
             </div>
 
