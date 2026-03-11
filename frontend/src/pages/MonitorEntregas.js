@@ -5,6 +5,7 @@ import { useTheme, THEMES } from '../contexts/ThemeContext';
 import { useAuth } from '../services/authContext';
 import { useNavigate } from 'react-router-dom';
 import Toast from '../components/Toast';
+import KanbanProcessosPanel from '../components/KanbanProcessosPanel';
 import { adminService } from '../services/authService';
 import {
   FaArrowLeft, FaEye, FaDownload, FaSync, FaFilter, FaTimes,
@@ -16,8 +17,6 @@ import { MdLocalShipping, MdDashboard } from 'react-icons/md';
 import manaConfig from '../config/cities/manaus.json';
 import itajaiConfig from '../config/cities/itajai.json';
 import jsPDF from 'jspdf';
-// plugin will be loaded dynamically inside generator if needed
-
 
 /* ─────────────────────────────────────────────────────────────
    DESIGN TOKENS
@@ -103,9 +102,6 @@ const resolveConfig = (rawStatus) => {
   return STATUS_CONFIG[key] || null;
 };
 
-/* ─────────────────────────────────────────────────────────────
-   GLOBAL ANIMATION STYLES
-   ───────────────────────────────────────────────────────────── */
 const GLOBAL_STYLES = `
 @keyframes riseToTop {
   0%   { opacity: 0.6; transform: translateY(var(--rise-from, 120px)) scale(1.025);
@@ -134,9 +130,6 @@ const GLOBAL_STYLES = `
 .cell-trunc { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 `;
 
-/* ─────────────────────────────────────────────────────────────
-   SMALL COMPONENTS
-   ───────────────────────────────────────────────────────────── */
 const Badge = ({ status }) => {
   const cfg = resolveConfig(status);
   const label = cfg?.label || normalizeKey(status);
@@ -148,32 +141,6 @@ const Badge = ({ status }) => {
     </span>
   );
 };
-
-const StatCard = ({ label, value, icon, gradient, ring, onClick, pulse }) => (
-  <button
-    onClick={onClick}
-    className={`relative overflow-hidden rounded-2xl p-5 flex flex-col items-start justify-between
-      bg-gradient-to-br ${gradient} shadow-lg hover:shadow-2xl ring-2 ${ring}
-      hover:-translate-y-1 hover:scale-[1.02] transition-all duration-300 ease-out text-white w-full group`}
-  >
-    <span className="absolute -top-6 -right-6 w-24 h-24 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-500" />
-    <span className="absolute -bottom-8 -left-4 w-20 h-20 bg-white/5 rounded-full" />
-    <div className="relative flex w-full items-start justify-between">
-      <span className="text-[11px] font-bold uppercase tracking-widest text-white/80 leading-tight max-w-[80%]">{label}</span>
-      <span className="text-white/70 text-xl">{icon}</span>
-    </div>
-    <div className="relative mt-3 flex items-end gap-1">
-      <span className={`text-4xl font-black tabular-nums ${pulse ? 'animate-pulse' : ''}`}>{value}</span>
-    </div>
-  </button>
-);
-
-const SectionTitle = ({ children, sub }) => (
-  <div className="mb-4">
-    <h2 className="text-sm font-extrabold text-gray-400 uppercase tracking-[0.2em]">{children}</h2>
-    {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
-  </div>
-);
 
 const Pill = ({ active, onClick, children, color = 'purple' }) => {
   const base = 'px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2 border';
@@ -191,9 +158,6 @@ const Pill = ({ active, onClick, children, color = 'purple' }) => {
   );
 };
 
-/* ─────────────────────────────────────────────────────────────
-   PROGRESS DOTS
-   ───────────────────────────────────────────────────────────── */
 const progressStatuses = [
   'AGENDADO','CONTAINER MONTADO','A CAMINHO DO CLIENTE',
   'AGUARDANDO DESOVA','EM DESOVA','ANEXANDO DOCUMENTOS FINAIS','ENTREGUE'
@@ -211,9 +175,6 @@ const getProgress = (delivery) => {
   return Math.round((idx / (progressStatuses.length - 1)) * 100);
 };
 
-/* ─────────────────────────────────────────────────────────────
-   PONTUALIDADE CHIP
-   ───────────────────────────────────────────────────────────── */
 const PunctualityCell = ({ p }) => {
   const styles = {
     ok:       { bg: 'bg-emerald-500/15', border: 'border-emerald-500/40', text: 'text-emerald-300', dot: 'bg-emerald-400', ring: 'shadow-emerald-500/20' },
@@ -242,9 +203,6 @@ const PunctualityCell = ({ p }) => {
   );
 };
 
-/* ─────────────────────────────────────────────────────────────
-   SETTINGS PANEL (drawer)
-   ───────────────────────────────────────────────────────────── */
 const SettingsPanel = ({
   open, onClose, theme, setTheme,
   autoRefresh, setAutoRefresh, refreshInterval, setRefreshInterval,
@@ -292,7 +250,6 @@ const SettingsPanel = ({
         </div>
 
         <div className="overflow-y-auto flex-1 p-5 space-y-6">
-          {/* ── TEMA ── */}
           <section>
             <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-3 flex items-center gap-2">
               <FaPalette className="text-purple-400" /> Tema
@@ -318,7 +275,6 @@ const SettingsPanel = ({
             </div>
           </section>
 
-          {/* ── AUTO-REFRESH ── */}
           <section>
             <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-3 flex items-center gap-2">
               <FaSync className="text-emerald-400" /> Auto-Refresh
@@ -364,7 +320,6 @@ const SettingsPanel = ({
             </div>
           </section>
 
-          {/* ── FILTROS ── */}
           <section>
             <div className="flex items-center justify-between mb-3">
               <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] flex items-center gap-2">
@@ -438,9 +393,6 @@ const SettingsPanel = ({
   );
 };
 
-/* ─────────────────────────────────────────────────────────────
-   PROGRESS DOTS component
-   ───────────────────────────────────────────────────────────── */
 const ProgressDots = ({ delivery, allModalDocsComplete }) => {
   let p = getProgress(delivery);
   if (normalizeKey(delivery.status) === 'FINALIZADO') {
@@ -471,9 +423,6 @@ const ProgressDots = ({ delivery, allModalDocsComplete }) => {
 
 const DEFAULT_COL_TEMPLATE = 'repeat(15, minmax(0, 1fr))';
 
-/* ─────────────────────────────────────────────────────────────
-   MOBILE CARD
-   ───────────────────────────────────────────────────────────── */
 const MobileDeliveryCard = ({ d, currentTime, allModalDocsComplete, getDocumentsStatus, getPunctualityStatus, recentlyUpdated, RISE_WINDOW, setSelectedDelivery }) => {
   const now = Date.now();
   const updatedAt = recentlyUpdated[d._id];
@@ -545,9 +494,6 @@ const MobileDeliveryCard = ({ d, currentTime, allModalDocsComplete, getDocuments
   );
 };
 
-/* ─────────────────────────────────────────────────────────────
-   MAIN COMPONENT
-   ───────────────────────────────────────────────────────────── */
 const MonitorEntregas = () => {
   const { user } = useAuth();
   const isGeoMar = () => user?.role === 'geomar';
@@ -576,7 +522,6 @@ const MonitorEntregas = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [colTemplate, setColTemplate] = useState(DEFAULT_COL_TEMPLATE);
 
-  /* Animation state */
   const [recentlyUpdated, setRecentlyUpdated] = useState({});
   const prevStatusRef  = useRef({});
   const rowRefs        = useRef({});
@@ -597,13 +542,11 @@ const MonitorEntregas = () => {
     CANCELADO:           ['CANCELADO']
   };
 
-  /* clock */
   useEffect(() => {
     const t = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
 
-  /* Inject global animation CSS */
   useEffect(() => {
     const el = document.createElement('style');
     el.id = 'monitor-anim-styles';
@@ -612,7 +555,6 @@ const MonitorEntregas = () => {
     return () => document.head.removeChild(el);
   }, []);
 
-  /* Light-theme overrides */
   useEffect(() => {
     const el = document.createElement('style');
     el.id = 'theme-overrides';
@@ -621,15 +563,14 @@ const MonitorEntregas = () => {
       .theme-light .text-white{color:#1a1a1a!important}
       .theme-light .text-gray-300{color:#4b5563!important}
       .theme-light .text-gray-400{color:#6b7280!important}
-      .theme-light .bg-white\/5{background-color:rgba(0,0,0,0.04)!important}
-      .theme-light .border-white\/10{border-color:rgba(0,0,0,0.1)!important}
+      .theme-light .bg-white\\/5{background-color:rgba(0,0,0,0.04)!important}
+      .theme-light .border-white\\/10{border-color:rgba(0,0,0,0.1)!important}
       .theme-light select,.theme-light input{background-color:#f3f4f6!important;color:#1a1a1a!important}
     `;
     document.head.appendChild(el);
     return () => document.head.removeChild(el);
   }, []);
 
-  /* fullscreen */
   const toggleFullscreen = async () => {
     if (!document.fullscreenElement) {
       try { await document.documentElement.requestFullscreen(); } catch {}
@@ -643,7 +584,6 @@ const MonitorEntregas = () => {
     return () => window.removeEventListener('keydown', h);
   }, []);
 
-  /* helpers */
   const calculateCliTime = (delivery, now = new Date()) => {
     if (!delivery.horarioChegada) return { tempo:null, isActive:false };
     const chegada = new Date(delivery.horarioChegada);
@@ -753,9 +693,6 @@ const MonitorEntregas = () => {
 
   const removeProgramacaoInfo = (obs) => obs ? obs.replace(/Criada a partir da Programação [A-Z0-9]+/g,'').trim() : '';
 
-  /* ─────────────────────────────────────────
-     PDF/COMPARTILHAMENTO (NOVO)
-     ───────────────────────────────────────── */
   const urlToDataUrl = async (url) => {
     try {
       const res = await fetch(url, { cache: 'force-cache' });
@@ -773,7 +710,7 @@ const MonitorEntregas = () => {
   };
 
   const hexToRgb = (hex) => {
-    if (!hex) return { r: 88, g: 28, b: 135 }; // fallback roxo
+    if (!hex) return { r: 88, g: 28, b: 135 };
     const h = hex.replace('#','').trim();
     const full = h.length === 3 ? h.split('').map(c => c+c).join('') : h;
     const n = parseInt(full, 16);
@@ -784,7 +721,6 @@ const MonitorEntregas = () => {
 
   const generateDeliveryReceiptPdf = async (delivery) => {
     const doc = new jsPDF({ unit:'pt', format:'a4' });
-    // ensure plugin attached, try dynamic import if missing
     if (typeof doc.autoTable !== 'function') {
       try {
         const atModule = await import('jspdf-autotable');
@@ -795,14 +731,10 @@ const MonitorEntregas = () => {
       } catch (_) {}
     }
     const pageW = doc.internal.pageSize.getWidth();
-    const pdfMargin = 40; // global margin for PDF (used even in fallback)
-    // fallback if autoTable still not available
+    const pdfMargin = 40;
     let useFallback = typeof doc.autoTable !== 'function';
     if (!useFallback) {
-      // ensure autoTable calls won't crash—if they do, switch to fallback
       try {
-        // quick no-op check: do not modify doc, just ensure function is callable
-        // some builds may expose autoTable but it may throw when used; we catch it later too
         if (typeof doc.autoTable !== 'function') throw new Error('autoTable not a function');
       } catch (err) {
         console.error('autoTable availability check failed', err);
@@ -811,7 +743,6 @@ const MonitorEntregas = () => {
     }
     const safe = (v) => (v == null || v === '') ? '—' : String(v);
     if (useFallback) {
-      // write minimal info as plain text
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
       let y = 100;
@@ -845,7 +776,6 @@ const MonitorEntregas = () => {
     const cfg = resolveConfig(dispStatus) || resolveConfig(delivery.status);
     const rgb = hexToRgb(cfg?.hex);
 
-    // HEADER
     doc.setFillColor(rgb.r, rgb.g, rgb.b);
     doc.rect(0, 0, pageW, 92, 'F');
 
@@ -856,7 +786,6 @@ const MonitorEntregas = () => {
 
     const logoDataUrl = await urlToDataUrl('/logo.png');
 
-    // logo
     if (logoDataUrl) {
       try {
         const imgProps = doc.getImageProperties(logoDataUrl);
@@ -866,7 +795,6 @@ const MonitorEntregas = () => {
       } catch {}
     }
 
-    // title
     doc.setTextColor(255,255,255);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
@@ -880,7 +808,6 @@ const MonitorEntregas = () => {
     doc.setFontSize(12);
     doc.text(`Entrega #${delivery.deliveryNumber || '—'}`, pageW - pdfMargin, 74, { align:'right' });
 
-    // status pill (simple)
     doc.setFillColor(255,255,255);
     doc.roundedRect(pdfMargin, 62, 185, 22, 11, 11, 'F');
     doc.setTextColor(rgb.r, rgb.g, rgb.b);
@@ -903,7 +830,6 @@ const MonitorEntregas = () => {
       ['Fim Desova', formatDT(delivery.horarioFimDesova)],
     ];
 
-    // MAIN TABLE (try autotable, otherwise fallback to text-only)
     if (!useFallback) {
       try {
         doc.autoTable({
@@ -917,7 +843,6 @@ const MonitorEntregas = () => {
           margin: { left: pdfMargin, right: pdfMargin },
         });
 
-        // FLOW HISTORY
         const flow = getFlowHistory(delivery);
         const flowRows = flow.length > 0
           ? flow.map(ev => [ev.label, formatDT(ev.date)])
@@ -938,7 +863,6 @@ const MonitorEntregas = () => {
       }
     }
 
-    // DOCUMENTS CHECKLIST
     const labels = getLabelsForDelivery(delivery);
     const docs = delivery.documents || {};
 
@@ -983,7 +907,6 @@ const MonitorEntregas = () => {
       }
     }
 
-    // OBS
     const obs =
       delivery.observations ||
       delivery.observacoes ||
@@ -1005,7 +928,6 @@ const MonitorEntregas = () => {
       doc.text(lines, pdfMargin, y + 16);
     }
 
-    // FOOTER
     const footerY = pageH - 42;
     doc.setDrawColor(230);
     doc.line(pdfMargin, footerY - 14, pageW - pdfMargin, footerY - 14);
@@ -1024,13 +946,11 @@ const MonitorEntregas = () => {
   const shareOrDownloadPdf = async ({ blob, fileName, title, text }) => {
     const file = new File([blob], fileName, { type: 'application/pdf' });
 
-    // Share API (mobile/tablet)
     if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
       await navigator.share({ files: [file], title, text });
       return { mode: 'share' };
     }
 
-    // Fallback: download
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -1042,7 +962,6 @@ const MonitorEntregas = () => {
     return { mode: 'download' };
   };
 
-  /* ── DATA LOADING ── */
   const loadDeliveries = useCallback(async () => {
     try {
       setLoading(true);
@@ -1091,7 +1010,6 @@ const MonitorEntregas = () => {
     }
   }, [loadDeliveries, autoRefresh, refreshInterval]);
 
-  /* responsive columns */
   useEffect(() => {
     const computeTemplate = () => {
       const cols = Array.from({ length: 15 }).map((_, idx) => {
@@ -1108,7 +1026,6 @@ const MonitorEntregas = () => {
     return () => window.removeEventListener('resize', apply);
   }, []);
 
-  /* ── FILTER ── */
   useEffect(() => {
     let r = [...deliveries];
 
@@ -1152,7 +1069,6 @@ const MonitorEntregas = () => {
     setFilteredDeliveries(r);
   }, [deliveries, filters, statsPeriod]);
 
-  /* ── ANIMATION: detect status changes ── */
   useEffect(() => {
     if (filteredDeliveries.length === 0) return;
 
@@ -1184,7 +1100,6 @@ const MonitorEntregas = () => {
     }
   }, [filteredDeliveries]);
 
-  /* Sorted display list */
   const displayList = useMemo(() => {
     const now = Date.now();
     return [...filteredDeliveries].sort((a, b) => {
@@ -1199,7 +1114,6 @@ const MonitorEntregas = () => {
     });
   }, [filteredDeliveries, recentlyUpdated]);
 
-  /* ── FLIP: apply translateY after reorder ── */
   useLayoutEffect(() => {
     if (!prevPositions.current || Object.keys(prevPositions.current).length === 0) return;
     displayList.forEach(d => {
@@ -1215,7 +1129,6 @@ const MonitorEntregas = () => {
     prevPositions.current = {};
   }, [displayList]);
 
-  /* ── ACTIONS ── */
   const handleDownload = async (id, type) => {
     try {
       const delivery = deliveries.find(d => d._id === id);
@@ -1259,7 +1172,6 @@ const MonitorEntregas = () => {
     } catch (e) { setToast({ message:'Erro ao baixar ZIP: '+(e.response?.data?.message||e.message), type:'error' }); }
   };
 
-  // ✅ NOVO: agora compartilha (Web Share) ou baixa (fallback)
   const handleShareDelivery = async () => {
     if (!selectedDelivery) return;
     try {
@@ -1334,17 +1246,6 @@ const MonitorEntregas = () => {
     } catch { setToast({ message:'Erro ao atualizar', type:'error' }); }
   };
 
-  const CARD_ORDER = [
-    'AGENDADO','CONTAINER MONTADO','A CAMINHO DO CLIENTE',
-    'AGUARDANDO DESOVA','EM DESOVA','ANEXANDO DOCUMENTOS FINAIS','ENTREGUE','CANCELADO'
-  ];
-  const sortedStatusEntries = Object.entries(stats.statusCounts).sort(([a],[b]) => {
-    const ia=CARD_ORDER.indexOf(a), ib=CARD_ORDER.indexOf(b);
-    if (ia!==-1&&ib!==-1) return ia-ib;
-    if (ia!==-1) return -1; if (ib!==-1) return 1;
-    return a.localeCompare(b);
-  });
-
   const activeFilterCount = [
     filters.status !== 'all',
     !!filters.searchTerm,
@@ -1361,9 +1262,6 @@ const MonitorEntregas = () => {
     '⏱ Tempo', 'Docs', 'Ações'
   ];
 
-  /* ────────────────────────────────────────
-     RENDER
-     ──────────────────────────────────────── */
   return (
     <div
       style={{ backgroundColor: themeConfig.bg, color: themeConfig.text }}
@@ -1474,38 +1372,7 @@ const MonitorEntregas = () => {
           </div>
         </div>
 
-        <div>
-          <SectionTitle sub={`${stats.total} programações encontradas — ${filteredDeliveries.length} exibidas`}>
-            Resumo Operacional
-          </SectionTitle>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-10 gap-3">
-            <StatCard
-              label="Programadas" value={stats.total}
-              icon={<FaCalendarAlt />}
-              gradient="from-purple-600 to-indigo-700"
-              ring="ring-purple-500/30" pulse={loading}
-            />
-            {sortedStatusEntries.map(([status, count]) => {
-              const cfg = STATUS_CONFIG[status] || null;
-              return (
-                <StatCard
-                  key={status}
-                  label={cfg?.label || status.replace(/_/g,' ')}
-                  value={count}
-                  icon={cfg?.icon || <FaBox />}
-                  gradient={cfg?.gradient || 'from-gray-500 to-gray-700'}
-                  ring={cfg?.ring || 'ring-gray-400/30'}
-                />
-              );
-            })}
-            <StatCard
-              label="Motoristas" value={stats.byDriver}
-              icon={<FaUsers />}
-              gradient="from-teal-500 to-cyan-700"
-              ring="ring-teal-400/30"
-            />
-          </div>
-        </div>
+        <KanbanProcessosPanel toastSetter={setToast} />
 
         {displayList.length === 0 ? (
           <div className="bg-white/5 rounded-2xl border border-white/10 p-12 sm:p-16 text-center">
@@ -1697,7 +1564,6 @@ const MonitorEntregas = () => {
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-      {/* MODAL: DETALHES */}
       {selectedDelivery && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
           <div className="bg-[#1a1a2e] rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden shadow-2xl border border-white/10 flex flex-col">
@@ -1725,7 +1591,6 @@ const MonitorEntregas = () => {
                     return new Date(selectedDelivery.horarioDevolucaoVazio)
                       .toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
                   }
-                  // fallback: parse timestamp from observations marker if present
                   if (selectedDelivery.observations && selectedDelivery.observations.includes('(CONTAINER_VAZIO_DEVOLVIDO)')) {
                     const m = selectedDelivery.observations.match(/\[(.*?)\]/);
                     if (m && m[1]) {
@@ -1751,7 +1616,6 @@ const MonitorEntregas = () => {
                 ))}
               </div>
 
-              {/* Flow history */}
               {flowHistory.length > 0 && (
                 <div className="bg-white/5 rounded-xl p-4 border border-white/5">
                   <p className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold mb-3">📍 Histórico do Fluxo</p>
@@ -1767,7 +1631,6 @@ const MonitorEntregas = () => {
                 </div>
               )}
 
-              {/* Observations */}
               {(selectedDelivery.observations||selectedDelivery.observacoes||selectedDelivery.documentsJustification||selectedDelivery.submissionObservation) && (
                 <div className="space-y-3">
                   {(selectedDelivery.observations||selectedDelivery.observacoes) && (
@@ -1792,7 +1655,6 @@ const MonitorEntregas = () => {
                 </div>
               )}
 
-              {/* Documents */}
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Documentos e Fotos</p>
@@ -1900,7 +1762,6 @@ const MonitorEntregas = () => {
         </div>
       )}
 
-      {/* MODAL: FOTOS */}
       {modalFotos && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-3 sm:p-4">
           <div className="bg-[#1a1a2e] rounded-2xl w-full max-w-lg border border-white/10 shadow-2xl overflow-hidden">
@@ -1922,7 +1783,6 @@ const MonitorEntregas = () => {
         </div>
       )}
 
-      {/* MODAL: VISUALIZAR DOCUMENTO */}
       {viewingDocument && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-3 sm:p-4">
           <div className="bg-[#1a1a2e] rounded-2xl w-full max-w-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -1961,7 +1821,6 @@ const MonitorEntregas = () => {
         </div>
       )}
 
-      {/* MODAL: EDIÇÃO */}
       {editingDelivery && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
           <div className="bg-[#1a1a2e] rounded-3xl w-full max-w-lg border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
@@ -2059,5 +1918,4 @@ const MonitorEntregas = () => {
   );
 };
 
-// Atualizado em 07/03/2026 - Campo Data Devolução Container Vazio adicionado (v2)
 export default MonitorEntregas;
