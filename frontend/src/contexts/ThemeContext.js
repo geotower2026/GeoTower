@@ -17,6 +17,9 @@ export const THEMES = {
     header: 'bg-[#0f0f1a]/90',
     card: 'bg-white/5',
     cardHover: 'hover:bg-white/10',
+    tableRow: 'bg-transparent',
+    tableRowAlt: 'bg-white/[0.015]',
+    tableRowHover: 'hover:bg-white/[0.04]'
   },
   black: {
     name: '⚫ Preto Puro',
@@ -28,7 +31,11 @@ export const THEMES = {
     header: 'bg-black/95',
     card: 'bg-white/[0.03]',
     cardHover: 'hover:bg-white/[0.06]',
+    tableRow: 'bg-transparent',
+    tableRowAlt: 'bg-white/[0.02]',
+    tableRowHover: 'hover:bg-white/[0.05]'
   },
+
   light: {
     name: '☀️ Claro',
     // softer off-white backgrounds for better contrast with rows
@@ -41,7 +48,11 @@ export const THEMES = {
     // cards and other surfaces slightly gray instead of pure white
     card: 'bg-gray-100',
     cardHover: 'hover:bg-gray-200',
+    tableRow: 'bg-gray-100',
+    tableRowAlt: 'bg-gray-200',
+    tableRowHover: 'hover:bg-gray-300'
   },
+
   company: {
     name: '🎨 Cores Empresa',
     bg: '#f3e5f5',
@@ -52,6 +63,9 @@ export const THEMES = {
     header: 'bg-gradient-to-r from-purple-700 to-indigo-700',
     card: 'bg-purple-50',
     cardHover: 'hover:bg-purple-100',
+    tableRow: 'bg-purple-50',
+    tableRowAlt: 'bg-purple-100',
+    tableRowHover: 'hover:bg-purple-200'
   },
   sunset: {
     name: '🌅 Pôr do Sol',

@@ -1665,7 +1665,7 @@ const MonitorEntregas = () => {
                         <div
                           key={d._id}
                           ref={(el) => { rowRefs.current[d._id] = el; }}
-                          className={`grid text-xs border-b border-white/[0.06] transition-colors hover:bg-white/[0.04] ${i % 2 === 0 ? 'bg-transparent' : 'bg-white/[0.015]'} ${isRising ? 'row-rise' : ''} ${isGlowing ? 'row-glow' : ''}`}
+                          className={`grid text-xs border-b border-white/[0.06] transition-colors ${i % 2 === 0 ? themeConfig.tableRow : themeConfig.tableRowAlt} ${themeConfig.tableRowHover} ${isRising ? 'row-rise' : ''} ${isGlowing ? 'row-glow' : ''}`}
                           style={{ gridTemplateColumns: colTemplate, '--rise-from': '120px' }}
                         >
                           <div className="px-3 py-3 flex items-center gap-1.5">
