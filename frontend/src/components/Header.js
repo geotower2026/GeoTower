@@ -312,7 +312,7 @@ const Header = () => {
               <img
                 src="/logo.png"
                 alt="GeoTower"
-                className="h-11 sm:h-12 w-auto group-hover:scale-105
+                className="h-16 sm:h-20 w-auto group-hover:scale-105
                   transition-transform duration-300 drop-shadow-md"
                 onError={(e) => {
                   e.target.onerror = null;
@@ -326,11 +326,6 @@ const Header = () => {
                 <span className="text-base sm:text-lg font-extrabold tracking-tight
                   text-white drop-shadow-sm">
                   GeoTower
-                </span>
-                <span className="hidden sm:inline text-[10px] font-bold
-                  bg-white/20 border border-white/25 rounded px-1.5 py-0.5
-                  text-white/80 uppercase tracking-wider">
-                  Pro
                 </span>
               </div>
               <Breadcrumb pathname={location.pathname} />
