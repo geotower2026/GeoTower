@@ -59,7 +59,7 @@ const Breadcrumb = ({ pathname }) => {
   const label = routeLabel[pathname];
   if (!label) return null;
   return (
-    <div className="hidden sm:flex items-center gap-1.5 text-xs text-white/50 ml-1 mt-0.5">
+    <div className="hidden lg:flex items-center gap-1.5 text-xs text-white/50 ml-1 mt-0.5">
       <FaTruck className="text-[9px]" />
       <span>GeoTower</span>
       <FaChevronRight className="text-[8px]" />
@@ -299,12 +299,12 @@ const Header = () => {
           bg-gradient-to-r from-purple-400 via-violet-300 to-emerald-400 opacity-60" />
 
         <div className="w-full px-4 sm:px-6 lg:px-8 py-3 sm:py-3.5
-          flex items-center justify-between gap-4">
+          flex flex-wrap items-center justify-between gap-2 sm:gap-4">
 
           {/* ── Logo + nome + breadcrumb ── */}
           <button
             onClick={() => navigate('/home')}
-            className="flex items-start gap-3 hover:opacity-90
+            className="flex items-start gap-2 sm:gap-3 hover:opacity-90
               transition-all duration-200 group min-w-0"
             aria-label="Ir para início"
           >
@@ -312,7 +312,7 @@ const Header = () => {
               <img
                 src="/logo.png"
                 alt="GeoTower"
-                className="h-13 sm:h-14 w-auto group-hover:scale-105
+                className="h-10 sm:h-13 lg:h-14 w-auto group-hover:scale-105
                   transition-transform duration-300 drop-shadow-md"
                 onError={(e) => {
                   e.target.onerror = null;
@@ -323,8 +323,8 @@ const Header = () => {
 
             <div className="leading-tight text-left min-w-0">
               <div className="flex items-baseline gap-1.5">
-                <span className="text-base sm:text-lg font-extrabold tracking-tight
-                  text-white drop-shadow-sm">
+                <span className="text-xs sm:text-base lg:text-lg font-extrabold tracking-tight
+                  text-white drop-shadow-sm truncate">
                   GeoTower
                 </span>
               </div>
@@ -333,7 +333,7 @@ const Header = () => {
           </button>
 
           {/* ── Ações ── */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3 shrink-0">
 
             {/* Pílula desktop */}
             <UserPill name={user?.name} />
@@ -349,14 +349,14 @@ const Header = () => {
             {/* Botão hamburger */}
             <button
               onClick={() => setMenuOpen(true)}
-              className="relative h-10 w-10 sm:h-11 sm:w-11 grid place-items-center
+              className="relative h-9 w-9 sm:h-10 sm:w-10 lg:h-11 lg:w-11 grid place-items-center
                 rounded-xl bg-white/10 border border-white/20
                 hover:bg-white/20 active:scale-95
                 transition-all duration-200 group
                 shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]"
               aria-label="Abrir menu"
             >
-              <FaBars className="text-base sm:text-lg
+              <FaBars className="text-sm sm:text-base lg:text-lg
                 group-hover:rotate-90 transition-transform duration-300" />
               {/* ping de notificação — remova se não usar */}
               <span className="absolute top-2 right-2 h-2 w-2 rounded-full
