@@ -856,7 +856,7 @@ const MonitorEntregas = () => {
     const el = document.createElement('style');
     el.id = 'theme-overrides';
     el.textContent = `
-      .theme-light { background-color:#eef2f6!important;color:#1a1a1a!important; }
+      .theme-light { background-color:#f5f7fa!important;color:#1a1a1a!important; }
       .theme-light .text-white{color:#1a1a1a!important}
       .theme-light .text-gray-300{color:#4b5563!important}
       .theme-light .text-gray-400{color:#6b7280!important}
@@ -866,6 +866,18 @@ const MonitorEntregas = () => {
     `;
     document.head.appendChild(el);
     return () => document.head.removeChild(el);
+  }, []);
+
+  // light theme row tweaks
+  useEffect(() => {
+    const el2 = document.createElement('style');
+    el2.id = 'theme-row-overrides';
+    el2.textContent = `
+      .theme-light .bg-white\/[0\.015]{background-color:rgba(0,0,0,0.02)!important}
+      .theme-light .hover\:bg-white\/[0\.04]:hover{background-color:rgba(0,0,0,0.025)!important}
+    `;
+    document.head.appendChild(el2);
+    return () => document.head.removeChild(el2);
   }, []);
 
   const toggleFullscreen = async () => {

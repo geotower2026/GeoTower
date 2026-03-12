@@ -31,14 +31,16 @@ export const THEMES = {
   },
   light: {
     name: '☀️ Claro',
-    bg: '#eef2f6',
+    // softer off-white backgrounds for better contrast with rows
+    bg: '#f5f7fa',
     bgSecondary: '#ffffff',
     text: '#1a1a1a',
     textSecondary: '#404040',
     border: 'border-gray-300',
     header: 'bg-white/95',
-    card: 'bg-white/60',
-    cardHover: 'hover:bg-white/70',
+    // cards and other surfaces slightly gray instead of pure white
+    card: 'bg-gray-100',
+    cardHover: 'hover:bg-gray-200',
   },
   company: {
     name: '🎨 Cores Empresa',
@@ -50,6 +52,28 @@ export const THEMES = {
     header: 'bg-gradient-to-r from-purple-700 to-indigo-700',
     card: 'bg-purple-50',
     cardHover: 'hover:bg-purple-100',
+  },
+  sunset: {
+    name: '🌅 Pôr do Sol',
+    bg: '#fff5f7',
+    bgSecondary: '#ffeef0',
+    text: '#4b1e3b',
+    textSecondary: '#6b2055',
+    border: 'border-pink-200',
+    header: 'bg-gradient-to-r from-pink-500 to-orange-500',
+    card: 'bg-pink-50',
+    cardHover: 'hover:bg-pink-100',
+  },
+  ocean: {
+    name: '🌊 Oceano',
+    bg: '#e0f7fa',
+    bgSecondary: '#ffffff',
+    text: '#00363a',
+    textSecondary: '#005662',
+    border: 'border-teal-200',
+    header: 'bg-gradient-to-r from-teal-400 to-blue-500',
+    card: 'bg-teal-50',
+    cardHover: 'hover:bg-teal-100',
   },
 };
 
