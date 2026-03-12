@@ -308,46 +308,46 @@ const DeliveryKanbanCard = ({ delivery, column, onOpen }) => (
   <button
     type="button"
     onClick={() => onOpen(delivery)}
-    className={`group relative w-full text-left bg-white rounded-xl border ${column.border} shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 overflow-hidden`}
+    className={`group relative w-full text-left bg-white rounded-lg border ${column.border} shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 overflow-hidden`}
   >
-    <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${column.gradient}`} />
-    <div className="pl-4 pr-3 pt-3 pb-3">
-      <div className="flex items-start justify-between gap-2 mb-2.5">
-        <span className="font-bold text-gray-800 text-sm leading-tight truncate">
+    <div className={`absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b ${column.gradient}`} />
+    <div className="pl-2.5 pr-2 pt-2 pb-2">
+      <div className="flex items-start justify-between gap-1.5 mb-1.5">
+        <span className="font-bold text-gray-800 text-xs leading-tight truncate">
           {/* sempre mostrar o processo CAB, não o número do container */}
           {delivery.processoCAB || '—'}
         </span>
-        <span className={`shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${column.badge} border ${column.border}`}>
+        <span className={`shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${column.badge} border ${column.border}`}>
           {/* Exibe placa, buscando da base ycompany se disponível */}
-          {delivery.placaYcompany || delivery.vehiclePlate || 'S/ placa'}
+          {delivery.placaYcompany || delivery.vehiclePlate || 'Placa'}
         </span>
       </div>
 
-      <div className="space-y-1.5">
+      <div className="space-y-0.5">
         {delivery.recebedor && (
-          <div className="flex items-center gap-1.5 text-[11px] text-gray-500">
-            <FaBuilding className="text-gray-400 shrink-0" />
+          <div className="flex items-center gap-1 text-[9px] text-gray-500">
+            <FaBuilding className="text-gray-400 shrink-0 text-[8px]" />
             <span className="truncate">{delivery.recebedor}</span>
           </div>
         )}
 
         {delivery.userName && (
-          <div className="flex items-center gap-1.5 text-[11px] text-gray-500">
-            <FaBoxOpen className="text-gray-400 shrink-0" />
+          <div className="flex items-center gap-1 text-[9px] text-gray-500">
+            <FaBoxOpen className="text-gray-400 shrink-0 text-[8px]" />
             <span className="truncate">{delivery.userName}</span>
           </div>
         )}
 
         {/* mostramos número do container no lugar do motorista */}
         {delivery.containerNumero && (
-          <div className={`flex items-center gap-1.5 text-[11px] font-medium ${column.text}`}>
-            <FaBoxOpen className="shrink-0" />
+          <div className={`flex items-center gap-1 text-[9px] font-medium ${column.text}`}>
+            <FaBoxOpen className="shrink-0 text-[8px]" />
             <span className="truncate">{delivery.containerNumero}</span>
           </div>
         )}
 
-        <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
-          <FaCalendarAlt className="shrink-0" />
+        <div className="flex items-center gap-1 text-[9px] text-gray-400">
+          <FaCalendarAlt className="shrink-0 text-[8px]" />
           <span className="truncate">{formatBoardDate(delivery.dataAgendamento)}</span>
         </div>
       </div>
@@ -358,18 +358,18 @@ const DeliveryKanbanCard = ({ delivery, column, onOpen }) => (
 const KanbanColumnHeader = ({ column, count }) => {
   const Icon = column.icon;
   return (
-    <div className={`px-4 py-3 ${column.lightBg} border-b ${column.border}`}>
+    <div className={`px-2.5 py-2 ${column.lightBg} border-b ${column.border}`}>
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${column.gradient} flex items-center justify-center shadow-sm`}>
-            <Icon className="text-white text-sm" />
+        <div className="flex items-center gap-1.5">
+          <div className={`w-6 h-6 rounded-lg bg-gradient-to-br ${column.gradient} flex items-center justify-center shadow-sm`}>
+            <Icon className="text-white text-xs" />
           </div>
           <div>
-            <p className={`text-sm font-bold ${column.text} leading-tight`}>{column.title}</p>
-            <p className="text-[10px] text-gray-500 leading-tight">{column.description}</p>
+            <p className={`text-xs font-bold ${column.text} leading-tight`}>{column.title}</p>
+            <p className="text-[8px] text-gray-500 leading-tight">{column.description}</p>
           </div>
         </div>
-        <span className={`min-w-[26px] h-6 px-1.5 rounded-full text-xs font-bold flex items-center justify-center bg-gradient-to-br ${column.gradient} text-white shadow-sm`}>
+        <span className={`min-w-[22px] h-5 px-1 rounded-full text-[9px] font-bold flex items-center justify-center bg-gradient-to-br ${column.gradient} text-white shadow-sm`}>
           {count}
         </span>
       </div>
@@ -382,14 +382,14 @@ const DeliveryKanbanColumn = ({ column, deliveries, onOpen }) => {
   const visible = expanded ? deliveries : deliveries.slice(0, 4);
 
   return (
-    <div className={`flex flex-col rounded-2xl border ${column.border} bg-white shadow-sm overflow-hidden min-w-[220px] max-w-[260px] flex-shrink-0`}>
+    <div className={`flex flex-col rounded-lg border ${column.border} bg-white shadow-sm overflow-hidden min-w-[160px] max-w-[200px] flex-shrink-0`}>
       <KanbanColumnHeader column={column} count={deliveries.length} />
 
-      <div className="flex-1 p-3 space-y-2.5 overflow-y-auto max-h-[430px]">
+      <div className="flex-1 p-2 space-y-1.5 overflow-y-auto max-h-[430px]">
         {deliveries.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10 text-gray-300">
-            <column.icon className="text-3xl mb-2" />
-            <p className="text-xs font-medium">Nenhuma entrega</p>
+          <div className="flex flex-col items-center justify-center py-8 text-gray-300">
+            <column.icon className="text-2xl mb-1" />
+            <p className="text-[8px] font-medium">Nenhuma</p>
           </div>
         ) : (
           <>
@@ -406,10 +406,10 @@ const DeliveryKanbanColumn = ({ column, deliveries, onOpen }) => {
               <button
                 type="button"
                 onClick={() => setExpanded(!expanded)}
-                className={`w-full text-xs font-semibold py-2 rounded-lg ${column.lightBg} ${column.text} border ${column.border} hover:opacity-80 transition-opacity flex items-center justify-center gap-1`}
+                className={`w-full text-[8px] font-semibold py-1.5 rounded-lg ${column.lightBg} ${column.text} border ${column.border} hover:opacity-80 transition-opacity flex items-center justify-center gap-1`}
               >
-                {expanded ? 'Ver menos' : `+${deliveries.length - 4} mais entregas`}
-                <FaChevronRight className={`transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`} />
+                {expanded ? 'Menos' : `+${deliveries.length - 4}`}
+                <FaChevronRight className={`transition-transform duration-200 text-[9px] ${expanded ? 'rotate-90' : ''}`} />
               </button>
             )}
           </>
@@ -1576,12 +1576,12 @@ const MonitorEntregas = () => {
 
         {/* KANBAN NO LUGAR DOS CARDS */}
         <div>
-          <SectionTitle sub={`${STATUS_COLUMNS.length} colunas do processo aplicadas dentro do Monitor de Entregas`}>
-            Board de Processos
+          <SectionTitle sub="Acompanhe o andamento de cada entrega em tempo real através de cada etapa do processo">
+            Fluxo de Entregas
           </SectionTitle>
 
-          <div className="overflow-x-auto pb-4">
-            <div className="flex gap-4" style={{ minWidth: 'max-content' }}>
+          <div className="overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-purple-400 scrollbar-track-gray-200">
+            <div className="flex gap-2" style={{ minWidth: 'max-content' }}>
               {STATUS_COLUMNS.map((column) => (
                 <DeliveryKanbanColumn
                   key={column.key}
