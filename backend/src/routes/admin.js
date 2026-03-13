@@ -731,7 +731,7 @@ router.get('/deliveries/:id/documents/zip', auth, onlyAdmin, async (req, res) =>
 router.put("/deliveries/:id", auth, onlyAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { deliveryNumber, userName, driverName, vehiclePlate, observations, dataAgendamento, horarioChegada, horarioDevolucaoVazio, horarioInicioDesova, horarioFimDesova } = req.body;
+    const { deliveryNumber, userName, driverName, vehiclePlate, observations, dataAgendamento, horarioChegada, horarioDevolucaoVazio, horarioInicioDesova, horarioFimDesova, status } = req.body;
 
     console.log('📝 Recebido PUT /deliveries/:id', { id, deliveryNumber, userName, driverName, vehiclePlate, observations, horarioDevolucaoVazio });
 
@@ -760,6 +760,13 @@ router.put("/deliveries/:id", auth, onlyAdmin, async (req, res) => {
     if (horarioDevolucaoVazio !== undefined && horarioDevolucaoVazio) updates.horarioDevolucaoVazio = new Date(horarioDevolucaoVazio);
     if (horarioInicioDesova !== undefined && horarioInicioDesova) updates.desovaStartAt = new Date(horarioInicioDesova);
     if (horarioFimDesova !== undefined && horarioFimDesova) updates.desovaEndAt = new Date(horarioFimDesova);
+    if (status !== undefined) {
+      updates.status = status;
+      // Se o status está mudando para "A CAMINHO DO CLIENTE", grava o horário
+      if (status === 'A CAMINHO DO CLIENTE' || status === 'pending' || status === 'PENDING') {
+        updates.tripStartedAt = new Date();
+      }
+    }
     updates.editedAt = new Date().toISOString();
     updates.editReason = observations;
 
