@@ -788,6 +788,22 @@ const MobileDeliveryCard = ({
 };
 
 /* ─────────────────────────────────────────────────────────────
+   FUNÇÃO PARA OBTER HORA DE ENTRADA NO STATUS ATUAL
+───────────────────────────────────────────────────────────── */
+const getStatusEntryTime = (delivery) => {
+  const status = normalizeKey(delivery.status);
+  if (status === 'AGENDADO') return delivery.dataAgendamento || delivery.createdAt;
+  if (status === 'CONTAINER MONTADO') return delivery.containerMontadoAt;
+  if (status === 'A CAMINHO DO CLIENTE' || status === 'PENDING') return delivery.horarioChegada; // assumindo início da viagem
+  if (status === 'AGUARDANDO DESOVA') return delivery.horarioChegada;
+  if (status === 'EM DESOVA') return delivery.horarioInicioDesova;
+  if (status === 'ANEXANDO DOCUMENTOS FINAIS') return delivery.horarioFimDesova;
+  if (status === 'FINALIZADO' || status === 'ENTREGUE' || status === 'DOCUMENTOS ENTREGUES') return delivery.horarioFimDesova || delivery.horarioChegada;
+  if (status === 'CANCELADO') return delivery.createdAt; // ou outro campo se disponível
+  return null;
+};
+
+/* ─────────────────────────────────────────────────────────────
    MAIN COMPONENT
 ───────────────────────────────────────────────────────────── */
 const MonitorEntregas = () => {
@@ -1744,32 +1760,31 @@ const MonitorEntregas = () => {
                           <div className="px-2 py-3 flex items-center justify-center min-w-0">
                             <span className="text-gray-400 text-[11px] tabular-nums" style={{ whiteSpace: 'normal', wordBreak: 'break-all' }}>
                               {(() => {
-                                if (d.status === 'CONTAINER MONTADO' && d.containerMontadoAt)
-                                  return new Date(d.containerMontadoAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-                                if ((d.status === 'A CAMINHO DO CLIENTE' || d.status === 'PENDING') && d.horarioInicioDesova)
-                                  return new Date(d.horarioInicioDesova).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-                                if (d.horarioChegada)
-                                  return new Date(d.horarioChegada).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-                                return '—';
+                                const entryTime = getStatusEntryTime(d);
+                                return entryTime ? new Date(entryTime).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—';
                               })()}
                             </span>
                           </div>
 
                           {/* TEMPO STATUS */}
                           <div className="px-2 py-3 flex items-center justify-center min-w-0">
-                            <span className="text-gray-400 text-[11px] tabular-nums" style={{ whiteSpace: 'normal', wordBreak: 'break-all' }}>
-                              {(() => {
-                                if (!d.horarioChegada) return '—';
-                                const ref = d.horarioFimDesova ? new Date(d.horarioFimDesova) : currentTime;
-                                const chegada = new Date(d.horarioChegada);
-                                const diffMs = ref - chegada;
-                                if (diffMs < 0) return '—';
-                                const totalMin = Math.floor(diffMs / 60000);
-                                const h = Math.floor(totalMin / 60);
-                                const m = totalMin % 60;
-                                return h > 0 ? `${h}h ${m}m` : `${m}m`;
-                              })()}
-                            </span>
+                            {(() => {
+                              const status = normalizeKey(d.status);
+                              if (status === 'FINALIZADO' || status === 'DOCUMENTOS ENTREGUES') {
+                                return <FaCheckCircle className="text-emerald-400" size={15} title="Status finalizado" />;
+                              }
+                              const entryTime = getStatusEntryTime(d);
+                              if (!entryTime) return <span className="text-gray-400 text-[11px]">—</span>;
+                              const now = currentTime;
+                              const diffMs = now - new Date(entryTime);
+                              if (diffMs < 0) return <span className="text-gray-400 text-[11px]">—</span>;
+                              const totalMin = Math.floor(diffMs / 60000);
+                              const h = Math.floor(totalMin / 60);
+                              const m = totalMin % 60;
+                              return <span className="text-gray-400 text-[11px] tabular-nums" style={{ whiteSpace: 'normal', wordBreak: 'break-all' }}>
+                                {h > 0 ? `${h}h ${m}m` : `${m}m`}
+                              </span>;
+                            })()}
                           </div>
 
                           <div className="px-2 py-3 flex items-center justify-center min-w-0">
