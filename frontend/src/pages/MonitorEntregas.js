@@ -792,14 +792,14 @@ const MobileDeliveryCard = ({
 ───────────────────────────────────────────────────────────── */
 const getStatusEntryTime = (delivery) => {
   const status = normalizeKey(delivery.status);
-  if (status === 'AGENDADO') return delivery.dataAgendamento || delivery.createdAt;
+  if (status === 'AGENDADO') return delivery.scheduledAt || delivery.dataAgendamento || delivery.createdAt;
   if (status === 'CONTAINER MONTADO') return delivery.containerMontadoAt;
-  if (status === 'A CAMINHO DO CLIENTE' || status === 'PENDING') return delivery.tripStartedAt || delivery.createdAt; // horário do botão "iniciar entrega"
-  if (status === 'AGUARDANDO DESOVA') return delivery.horarioChegada;
-  if (status === 'EM DESOVA') return delivery.horarioInicioDesova;
-  if (status === 'ANEXANDO DOCUMENTOS FINAIS') return delivery.horarioFimDesova;
-  if (status === 'FINALIZADO' || status === 'ENTREGUE' || status === 'DOCUMENTOS ENTREGUES') return delivery.horarioFimDesova || delivery.horarioChegada;
-  if (status === 'CANCELADO') return delivery.createdAt; // ou outro campo se disponível
+  if (status === 'A CAMINHO DO CLIENTE' || status === 'PENDING') return delivery.tripStartedAt;
+  if (status === 'AGUARDANDO DESOVA') return delivery.arrivedAt || delivery.horarioChegada;
+  if (status === 'EM DESOVA') return delivery.desovaStartedAt || delivery.horarioInicioDesova;
+  if (status === 'ANEXANDO DOCUMENTOS FINAIS') return delivery.docsStartedAt || delivery.horarioFimDesova;
+  if (status === 'FINALIZADO' || status === 'ENTREGUE' || status === 'DOCUMENTOS ENTREGUES') return delivery.finalizedAt || delivery.horarioFimDesova || delivery.horarioChegada;
+  if (status === 'CANCELADO') return delivery.cancelledAt || delivery.createdAt;
   return null;
 };
 

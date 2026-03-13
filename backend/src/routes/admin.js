@@ -762,9 +762,24 @@ router.put("/deliveries/:id", auth, onlyAdmin, async (req, res) => {
     if (horarioFimDesova !== undefined && horarioFimDesova) updates.desovaEndAt = new Date(horarioFimDesova);
     if (status !== undefined) {
       updates.status = status;
-      // Se o status está mudando para "A CAMINHO DO CLIENTE", grava o horário
-      if (status === 'A CAMINHO DO CLIENTE' || status === 'pending' || status === 'PENDING') {
-        updates.tripStartedAt = new Date();
+      // Grava o horário de entrada em cada status
+      const now = new Date();
+      if (status === 'AGENDADO') {
+        updates.scheduledAt = now;
+      } else if (status === 'CONTAINER MONTADO') {
+        updates.containerMontadoAt = now;
+      } else if (status === 'A CAMINHO DO CLIENTE' || status === 'pending' || status === 'PENDING') {
+        updates.tripStartedAt = now;
+      } else if (status === 'AGUARDANDO DESOVA') {
+        updates.arrivedAt = now;
+      } else if (status === 'EM DESOVA') {
+        updates.desovaStartedAt = now;
+      } else if (status === 'ANEXANDO DOCUMENTOS FINAIS') {
+        updates.docsStartedAt = now;
+      } else if (status === 'FINALIZADO' || status === 'ENTREGUE' || status === 'DOCUMENTOS ENTREGUES') {
+        updates.finalizedAt = now;
+      } else if (status === 'CANCELADO') {
+        updates.cancelledAt = now;
       }
     }
     updates.editedAt = new Date().toISOString();
