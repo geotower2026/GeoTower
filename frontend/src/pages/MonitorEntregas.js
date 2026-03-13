@@ -354,7 +354,14 @@ const DeliveryKanbanCard = ({ delivery, column, onOpen, currentTime }) => (
       return `${bgClass} ${shadowClass}`;
     })()}`}
   >
-    <div className={`absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b ${column.gradient}`} />
+    <div
+      className={`absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b ${(() => {
+        const punct = getPunctualityStatus(delivery, currentTime);
+        if (punct.label === 'Atrasado') return 'from-red-400 to-red-600';
+        if (punct.label === 'Pontual' || punct.label === 'No prazo') return 'from-green-400 to-green-600';
+        return column.gradient;
+      })()}`}
+    />
     <div className="pl-2.5 pr-2 pt-2 pb-2">
       <div className="flex items-start justify-between gap-1.5 mb-1.5">
         <span className="font-bold text-gray-800 text-xs leading-tight truncate">
