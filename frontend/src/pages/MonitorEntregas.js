@@ -1121,6 +1121,14 @@ const MonitorEntregas = () => {
     const pdfMargin = 40;
     const safe = (v) => (v == null || v === '' ? '—' : String(v));
 
+    const normalizeUrl = (u) => {
+      if (!u) return u;
+      if (u.startsWith('http://') || u.startsWith('https://')) return u;
+      if (u.startsWith('//')) return window.location.protocol + u;
+      if (u.startsWith('/')) return `${window.location.origin}${u}`;
+      return u;
+    };
+
     const dispStatus = delivery.status === 'FINALIZADO' && allModalDocsComplete(delivery)
       ? 'DOCUMENTOS ENTREGUES'
       : delivery.status;
@@ -1226,20 +1234,13 @@ const MonitorEntregas = () => {
         const label = labels[k] || fotoFields.find(f => f.key === k)?.label || k;
 
         if (urls.length > 0) {
-          // Para fotos, mostrar as URLs
-          if (['chegadaCliente', 'inicioDesova', 'fimDesova'].includes(k)) {
-            doc.text(`${label}:`, pdfMargin, y);
+          doc.text(`${label}:`, pdfMargin, y);
+          y += 14;
+          urls.forEach((url) => {
+            const fullUrl = normalizeUrl(url);
+            doc.text(fullUrl, pdfMargin + 10, y);
             y += 14;
-            urls.forEach((url) => {
-              const urlText = url.length > 60 ? url.substring(0, 60) + '...' : url;
-              doc.text(urlText, pdfMargin + 10, y);
-              y += 14;
-            });
-          } else {
-            // Para documentos, manter o formato anterior
-            doc.text(`${label}: ${urls.length} arquivo(s) anexado(s)`, pdfMargin, y);
-            y += 16;
-          }
+          });
         } else {
           doc.text(`${label}: Não anexado`, pdfMargin, y);
           y += 16;
