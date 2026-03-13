@@ -794,7 +794,7 @@ const getStatusEntryTime = (delivery) => {
   const status = normalizeKey(delivery.status);
   if (status === 'AGENDADO') return delivery.dataAgendamento || delivery.createdAt;
   if (status === 'CONTAINER MONTADO') return delivery.containerMontadoAt;
-  if (status === 'A CAMINHO DO CLIENTE' || status === 'PENDING') return delivery.horarioChegada; // assumindo início da viagem
+  if (status === 'A CAMINHO DO CLIENTE' || status === 'PENDING') return delivery.horarioInicioDesova; // horário do botão "iniciar entrega"
   if (status === 'AGUARDANDO DESOVA') return delivery.horarioChegada;
   if (status === 'EM DESOVA') return delivery.horarioInicioDesova;
   if (status === 'ANEXANDO DOCUMENTOS FINAIS') return delivery.horarioFimDesova;
