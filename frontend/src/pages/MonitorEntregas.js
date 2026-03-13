@@ -1477,18 +1477,20 @@ const MonitorEntregas = () => {
   ];
 
   const computeTemplate = () => {
-    // 11 colunas agora
-    const cols = Array.from({ length: 11 }).map((_, idx) => {
-      // Docs e Ações continuam mais estreitas
-      if (idx === 9) return 'minmax(56px, 0.45fr)';
-      if (idx === 10) return 'minmax(48px, 0.35fr)';
-      // Processo e Container um pouco maiores
-      if (idx === 0 || idx === 1) return 'minmax(110px, 1.1fr)';
-      // Hora Status e Tempo Status
-      if (idx === 4 || idx === 5) return 'minmax(90px, 0.9fr)';
-      return 'minmax(0, 1fr)';
-    });
-    return cols.join(' ');
+    // Ajuste para expandir a tabela conforme a tela, mantendo docs/ações menores
+    return [
+      'minmax(140px, 2fr)',   // Processo
+      'minmax(120px, 1.5fr)', // Container
+      'minmax(140px, 2fr)',   // Recebedor
+      'minmax(120px, 1.2fr)', // Status
+      'minmax(110px, 1fr)',   // Hora Status
+      'minmax(110px, 1fr)',   // Tempo Status
+      'minmax(120px, 1.2fr)', // Progresso
+      'minmax(140px, 1.5fr)', // Agendamento
+      'minmax(150px, 1.5fr)', // Pontualidade
+      'minmax(56px, 0.45fr)', // Docs
+      'minmax(48px, 0.35fr)'  // Ações
+    ].join(' ');
   };
 
   return (
@@ -1700,7 +1702,9 @@ const MonitorEntregas = () => {
                           {/* CONTAINER */}
                           <div className="px-3 py-3 flex items-center overflow-hidden min-w-0">
                             <span className="text-gray-300 truncate text-[10px] cell-trunc" title={d.containerNumero || d.container}>
-                              {d.containerNumero || d.container || '—'}
+                              {Array.isArray(d.containerNumero)
+                                ? d.containerNumero.join(', ')
+                                : (d.containerNumero || d.container || '—')}
                             </span>
                           </div>
 
