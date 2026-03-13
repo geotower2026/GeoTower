@@ -1691,9 +1691,9 @@ const MonitorEntregas = () => {
                         >
                           <div className="px-3 py-3 flex items-center gap-1.5">
                             <span className="font-black text-blue-300 text-[12px] leading-tight whitespace-nowrap">
-                              {Array.isArray(d.processo)
-                                ? d.processo.filter(p => p.startsWith('CAB')).join(', ') || '—'
-                                : (d.processo && String(d.processo).startsWith('CAB') ? d.processo : '—')}
+                              {Array.isArray(d.processoCAB)
+                                ? d.processoCAB.filter(p => p.startsWith('CAB')).join(', ') || '—'
+                                : (d.processoCAB && String(d.processoCAB).startsWith('CAB') ? d.processoCAB : '—')}
                             </span>
                           </div>
 
