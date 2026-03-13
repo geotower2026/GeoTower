@@ -1,4 +1,3 @@
-
 import React, {
   useState, useEffect, useCallback, useRef, useMemo, useLayoutEffect
 } from 'react';
@@ -781,7 +780,7 @@ const MobileDeliveryCard = ({
         <ProgressDots delivery={d} allModalDocsComplete={allModalDocsComplete} />
         <PunctualityCell p={punct} />
         <div className="flex items-center gap-2">
-          {isComplete ? <FaCheckCircle className="text-emerald-400" size={15} /> : <FaTimesCircle className="text-red-400/70" size={15} />}
+          {isComplete ? <FaCheckCircle className="text-emerald-400" /> : <FaTimesCircle className="text-red-400/70" />}
         </div>
       </div>
     </div>
@@ -1217,23 +1216,6 @@ const MonitorEntregas = () => {
   }, [loadDeliveries, autoRefresh, refreshInterval]);
 
   useEffect(() => {
-    const computeTemplate = () => {
-      // eight columns after removing several fields
-      const cols = Array.from({ length: 8 }).map((_, idx) => {
-        // last two columns (Docs and Ações) should be narrower
-        if (idx === 6) return 'minmax(56px, 0.45fr)';
-        if (idx === 7) return 'minmax(48px, 0.35fr)';
-        return 'minmax(0, 1fr)';
-      });
-      return cols.join(' ');
-    };
-    const apply = () => setColTemplate(computeTemplate());
-    apply();
-    window.addEventListener('resize', apply);
-    return () => window.removeEventListener('resize', apply);
-  }, []);
-
-  useEffect(() => {
     let r = [...deliveries];
 
     if (statsPeriod === 'general' && filters.status !== 'all') {
@@ -1485,10 +1467,29 @@ const MonitorEntregas = () => {
 
   const flowHistory = selectedDelivery ? getFlowHistory(selectedDelivery) : [];
   const HEADERS = [
+    'Processo', // NOVA COLUNA
     'Container', 'Recebedor',
-    'Status', 'Progresso', 'Agendamento',
+    'Status',
+    'Hora Status',
+    'Tempo Status',
+    'Progresso', 'Agendamento',
     'Pontualidade', 'Docs', 'Ações'
   ];
+
+  const computeTemplate = () => {
+    // 11 colunas agora
+    const cols = Array.from({ length: 11 }).map((_, idx) => {
+      // Docs e Ações continuam mais estreitas
+      if (idx === 9) return 'minmax(56px, 0.45fr)';
+      if (idx === 10) return 'minmax(48px, 0.35fr)';
+      // Processo e Container um pouco maiores
+      if (idx === 0 || idx === 1) return 'minmax(110px, 1.1fr)';
+      // Hora Status e Tempo Status
+      if (idx === 4 || idx === 5) return 'minmax(90px, 0.9fr)';
+      return 'minmax(0, 1fr)';
+    });
+    return cols.join(' ');
+  };
 
   return (
     <div
@@ -1689,14 +1690,9 @@ const MonitorEntregas = () => {
                           style={{ gridTemplateColumns: colTemplate, '--rise-from': '120px' }}
                         >
                           <div className="px-3 py-3 flex items-center gap-1.5">
-                            <span className="font-black text-purple-300 text-[12px] leading-tight whitespace-nowrap">
-                              {d.deliveryNumber}
+                            <span className="font-black text-blue-300 text-[12px] leading-tight whitespace-nowrap">
+                              {Array.isArray(d.processo) ? d.processo.find(p => p.startsWith('CAB')) || '—' : (d.processo && String(d.processo).startsWith('CAB') ? d.processo : '—')}
                             </span>
-                            {updatedAt && (now - updatedAt) < RISE_WINDOW && (
-                              <span className="badge-pop flex-shrink-0 px-1.5 py-0.5 rounded-full bg-purple-600/80 text-white text-[8px] font-black">
-                                UP
-                              </span>
-                            )}
                           </div>
 
                           <div className="px-3 py-3 flex items-center overflow-hidden min-w-0">
@@ -1712,6 +1708,30 @@ const MonitorEntregas = () => {
                                 : d.status;
                               return <Badge status={disp} />;
                             })()}
+                          </div>
+
+                          {/* HORA STATUS */}
+                          <div className="px-2 py-3 flex items-center justify-center min-w-0">
+                            <span className="text-gray-400 text-[10px] tabular-nums cell-trunc">
+                              {d.horarioChegada ? new Date(d.horarioChegada).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                            </span>
+                          </div>
+
+                          {/* TEMPO STATUS */}
+                          <div className="px-2 py-3 flex items-center justify-center min-w-0">
+                            <span className="text-gray-400 text-[10px] tabular-nums cell-trunc">
+                              {(() => {
+                                if (!d.horarioChegada) return '—';
+                                const ref = d.horarioFimDesova ? new Date(d.horarioFimDesova) : currentTime;
+                                const chegada = new Date(d.horarioChegada);
+                                const diffMs = ref - chegada;
+                                if (diffMs < 0) return '—';
+                                const totalMin = Math.floor(diffMs / 60000);
+                                const h = Math.floor(totalMin / 60);
+                                const m = totalMin % 60;
+                                return h > 0 ? `${h}h ${m}m` : `${m}m`;
+                              })()}
+                            </span>
                           </div>
 
                           <div className="px-2 py-3 flex items-center justify-center">
