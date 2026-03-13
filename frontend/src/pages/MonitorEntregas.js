@@ -844,7 +844,7 @@ const MonitorEntregas = () => {
     'minmax(180px, 1.5fr)',   // Agendamento
     'minmax(180px, 1.5fr)',   // Pontualidade
     'minmax(90px, 0.7fr)',    // Docs
-    'minmax(80px, 0.5fr)'     // Ações
+    'minmax(80px, 0.5fr)'     // Detalhes
   ].join(' ');
   const [colTemplate, setColTemplate] = useState(EXPANDED_COL_TEMPLATE);
 
@@ -1503,7 +1503,7 @@ const MonitorEntregas = () => {
     'Hora Status',
     'Tempo Status',
     'Progresso', 'Agendamento',
-    'Pontualidade', 'Docs', 'Ações'
+    'Pontualidade', 'Docs', 'Detalhes'
   ];
 
   const computeTemplate = () => {
@@ -1519,7 +1519,7 @@ const MonitorEntregas = () => {
       'minmax(160px, 1.5fr)',   // Agendamento
       'minmax(160px, 1.5fr)',   // Pontualidade
       'minmax(70px, 0.5fr)',    // Docs
-      'minmax(60px, 0.4fr)'     // Ações
+      'minmax(60px, 0.4fr)'     // Detalhes
     ].join(' ');
   };
 
