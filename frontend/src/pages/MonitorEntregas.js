@@ -816,7 +816,21 @@ const MonitorEntregas = () => {
   const [statsPeriod, setStatsPeriod] = useState('today');
   const [stats, setStats] = useState({ total: 0, statusCounts: {}, byDriver: 0 });
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [colTemplate, setColTemplate] = useState(DEFAULT_COL_TEMPLATE);
+  // Novo template para expandir a tabela e mostrar colunas completas
+  const EXPANDED_COL_TEMPLATE = [
+    'minmax(200px, 2.5fr)',   // Processo
+    'minmax(200px, 2.5fr)',   // Container
+    'minmax(220px, 3fr)',     // Recebedor
+    'minmax(160px, 1.5fr)',   // Status
+    'minmax(140px, 1fr)',     // Hora Status
+    'minmax(120px, 1fr)',     // Tempo Status
+    'minmax(160px, 1.2fr)',   // Progresso
+    'minmax(180px, 1.5fr)',   // Agendamento
+    'minmax(180px, 1.5fr)',   // Pontualidade
+    'minmax(90px, 0.7fr)',    // Docs
+    'minmax(80px, 0.5fr)'     // Ações
+  ].join(' ');
+  const [colTemplate, setColTemplate] = useState(EXPANDED_COL_TEMPLATE);
 
   const [recentlyUpdated, setRecentlyUpdated] = useState({});
   const prevStatusRef = useRef({});
@@ -1659,15 +1673,16 @@ const MonitorEntregas = () => {
 
             <div className="hidden md:block rounded-2xl border border-white/10 overflow-hidden shadow-2xl bg-black/20">
               <div className="overflow-x-auto">
-                <div style={{ width: '100%' }} className="monitor-table">
+                <div style={{ width: '100%' }} className="monitor-table min-w-full">
                   <div
-                    className="grid text-[10px] font-bold uppercase tracking-wider bg-white/[0.04] border-b border-white/10"
+                    className="grid text-[11px] font-bold uppercase tracking-wider bg-white/[0.04] border-b border-white/10"
                     style={{ gridTemplateColumns: colTemplate, color: themeConfig.textSecondary }}
                   >
                     {HEADERS.map((col, ci) => (
                       <div
                         key={col}
-                        className={`${ci >= 6 ? 'px-1 py-3.5' : 'px-3 py-3.5'} flex items-center min-w-0 select-none ${ci >= 2 ? 'justify-center' : ''}`}
+                        className={`${ci >= 6 ? 'px-2 py-3.5' : 'px-4 py-3.5'} flex items-center min-w-0 select-none ${ci >= 2 ? 'justify-center' : ''}`}
+                        style={{ whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip' }}
                       >
                         {col}
                       </div>
@@ -1693,15 +1708,15 @@ const MonitorEntregas = () => {
                         >
 
                           {/* PROCESSO */}
-                          <div className="px-3 py-3 flex items-center gap-1.5">
-                            <span className="font-black text-blue-300 text-[12px] leading-tight whitespace-nowrap">
+                          <div className="px-4 py-3 flex items-center gap-1.5 min-w-0" style={{ whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip' }}>
+                            <span className="font-black text-blue-300 text-[13px] leading-tight" style={{ whiteSpace: 'normal', wordBreak: 'break-all' }}>
                               {d.processoCAB || '—'}
                             </span>
                           </div>
 
                           {/* CONTAINER */}
-                          <div className="px-3 py-3 flex items-center overflow-hidden min-w-0">
-                            <span className="text-gray-300 truncate text-[10px] cell-trunc" title={d.containerNumero || d.container || d.deliveryNumber}>
+                          <div className="px-4 py-3 flex items-center min-w-0" style={{ whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip' }}>
+                            <span className="text-gray-300 text-[11px]" style={{ whiteSpace: 'normal', wordBreak: 'break-all' }} title={d.containerNumero || d.container || d.deliveryNumber}>
                               {Array.isArray(d.containerNumero)
                                 ? d.containerNumero.join(', ')
                                 : (d.containerNumero || d.container || d.deliveryNumber || '—')}
@@ -1709,14 +1724,14 @@ const MonitorEntregas = () => {
                           </div>
 
                           {/* RECEBEDOR */}
-                          <div className="px-3 py-3 flex items-center overflow-hidden min-w-0">
-                            <span className="text-gray-300 truncate text-[10px] cell-trunc" title={d.recebedor}>
+                          <div className="px-4 py-3 flex items-center min-w-0" style={{ whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip' }}>
+                            <span className="text-gray-300 text-[11px]" style={{ whiteSpace: 'normal', wordBreak: 'break-all' }} title={d.recebedor}>
                               {d.recebedor || '—'}
                             </span>
                           </div>
 
                           {/* STATUS */}
-                          <div className="px-2 py-3 flex items-center justify-center">
+                          <div className="px-2 py-3 flex items-center justify-center min-w-0">
                             {(() => {
                               const disp = d.status === 'FINALIZADO' && allModalDocsComplete(d)
                                 ? 'DOCUMENTOS ENTREGUES'
@@ -1727,7 +1742,7 @@ const MonitorEntregas = () => {
 
                           {/* HORA STATUS */}
                           <div className="px-2 py-3 flex items-center justify-center min-w-0">
-                            <span className="text-gray-400 text-[10px] tabular-nums cell-trunc">
+                            <span className="text-gray-400 text-[11px] tabular-nums" style={{ whiteSpace: 'normal', wordBreak: 'break-all' }}>
                               {(() => {
                                 if (d.status === 'CONTAINER MONTADO' && d.containerMontadoAt)
                                   return new Date(d.containerMontadoAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
@@ -1742,7 +1757,7 @@ const MonitorEntregas = () => {
 
                           {/* TEMPO STATUS */}
                           <div className="px-2 py-3 flex items-center justify-center min-w-0">
-                            <span className="text-gray-400 text-[10px] tabular-nums cell-trunc">
+                            <span className="text-gray-400 text-[11px] tabular-nums" style={{ whiteSpace: 'normal', wordBreak: 'break-all' }}>
                               {(() => {
                                 if (!d.horarioChegada) return '—';
                                 const ref = d.horarioFimDesova ? new Date(d.horarioFimDesova) : currentTime;
@@ -1757,24 +1772,24 @@ const MonitorEntregas = () => {
                             </span>
                           </div>
 
-                          <div className="px-2 py-3 flex items-center justify-center">
+                          <div className="px-2 py-3 flex items-center justify-center min-w-0">
                             <ProgressDots delivery={d} allModalDocsComplete={allModalDocsComplete} />
                           </div>
 
                           <div className="px-2 py-3 flex items-center justify-center min-w-0">
-                            <span className="text-gray-400 text-[10px] tabular-nums cell-trunc">
+                            <span className="text-gray-400 text-[11px] tabular-nums" style={{ whiteSpace: 'normal', wordBreak: 'break-all' }}>
                               {d.dataAgendamento ? new Date(d.dataAgendamento).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
                             </span>
                           </div>
 
-                          <div className="px-1 py-3 flex items-center justify-center">
+                          <div className="px-1 py-3 flex items-center justify-center min-w-0">
                             <PunctualityCell p={getPunctualityStatus(d, currentTime)} />
                           </div>
 
                           <div className="px-1 py-3 flex items-center justify-center min-w-0">
                             {isComplete
-                              ? <FaCheckCircle className="text-emerald-400" title={docStatus} size={13} />
-                              : <FaTimesCircle className="text-red-400/70" title={docStatus} size={13} />
+                              ? <FaCheckCircle className="text-emerald-400" title={docStatus} size={15} />
+                              : <FaTimesCircle className="text-red-400/70" title={docStatus} size={15} />
                             }
                           </div>
 
@@ -1782,9 +1797,9 @@ const MonitorEntregas = () => {
                             <button
                               onClick={() => setSelectedDelivery(d)}
                               title="Visualizar"
-                              className="w-6 h-6 rounded-lg bg-purple-600/20 hover:bg-purple-600/50 text-purple-400 hover:text-white flex items-center justify-center transition"
+                              className="w-7 h-7 rounded-lg bg-purple-600/20 hover:bg-purple-600/50 text-purple-400 hover:text-white flex items-center justify-center transition"
                             >
-                              <FaEye size={11} />
+                              <FaEye size={13} />
                             </button>
                           </div>
                         </div>
