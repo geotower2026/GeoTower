@@ -1463,7 +1463,9 @@ const MonitorEntregas = () => {
       return;
     }
 
-    setEditingDelivery(d._id);
+    // Some data sources may not include an _id field; try fallback to deliveryNumber/id.
+    const editId = d._id || d.id || d.deliveryNumber;
+    setEditingDelivery(editId);
     setEditForm({
       deliveryNumber: d.deliveryNumber || '',
       userName: d.userName || '',
@@ -1488,6 +1490,7 @@ const MonitorEntregas = () => {
 
     const motivo = editForm.observations.replace(/Criada a partir da Programação [A-Z0-9]+/g, '').trim();
     const prog = (editForm.observations.match(/Criada a partir da Programação [A-Z0-9]+/) || []).join(' ');
+
     const payload = {
       ...editForm,
       observations: prog ? `${motivo}\n${prog}` : motivo,
@@ -1495,16 +1498,31 @@ const MonitorEntregas = () => {
       editedAt: new Date().toISOString()
     };
 
+    const deliveryId = editingDelivery || selectedDelivery?._id || selectedDelivery?.deliveryNumber;
+    if (!deliveryId) {
+      setToast({ message: 'ID da entrega inválido para atualização', type: 'error' });
+      return;
+    }
+
     try {
-      await adminService.updateDelivery(editingDelivery, payload);
+      await adminService.updateDelivery(deliveryId, payload);
       setToast({ message: 'Entrega atualizada', type: 'success' });
       setEditingDelivery(null);
-      if (selectedDelivery && selectedDelivery._id === editingDelivery) {
+      if (selectedDelivery && (selectedDelivery._id === deliveryId || selectedDelivery.deliveryNumber === deliveryId)) {
         setSelectedDelivery({ ...selectedDelivery, ...editForm });
       }
       loadDeliveries();
-    } catch {
-      setToast({ message: 'Erro ao atualizar', type: 'error' });
+    } catch (err) {
+      const serverMessage = err?.response?.data?.message;
+      const status = err?.response?.status;
+      setToast({
+        message: serverMessage
+          ? `Erro ao atualizar: ${serverMessage}`
+          : status === 404
+            ? 'Entrega não encontrada (404) ao tentar atualizar.'
+            : 'Erro ao atualizar',
+        type: 'error'
+      });
     }
   };
 
