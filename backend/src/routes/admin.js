@@ -321,7 +321,11 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
 router.get("/deliveries/:id", auth, onlyAdmin, async (req, res) => {
   try {
     const db = await getDb(req);
-    const delivery = await db.findById("deliveries", req.params.id);
+    let delivery = await db.findById("deliveries", req.params.id);
+    // Fallback: em alguns casos usamos deliveryNumber como identificador
+    if (!delivery) {
+      delivery = await db.findOne("deliveries", { deliveryNumber: req.params.id });
+    }
     if (!delivery) return res.status(404).json({ message: "Entrega não encontrada" });
     
     // DEBUG: retorna entrega completa com documents raw
@@ -741,9 +745,12 @@ router.put("/deliveries/:id", auth, onlyAdmin, async (req, res) => {
       return res.status(400).json({ message: "Motivo da edição é obrigatório" });
     }
 
-    // Busca entrega
+    // Busca entrega (tenta por _id ou por deliveryNumber para suportar diferentes chaves de identificação)
     const db = await getDb(req);
-    const delivery = await db.findById("deliveries", req.params.id);
+    let delivery = await db.findById("deliveries", req.params.id);
+    if (!delivery) {
+      delivery = await db.findOne("deliveries", { deliveryNumber: req.params.id });
+    }
     console.log('🔍 Entrega encontrada:', delivery?.deliveryNumber);
     if (!delivery) {
       return res.status(404).json({ message: "Entrega não encontrada" });
@@ -787,7 +794,9 @@ router.put("/deliveries/:id", auth, onlyAdmin, async (req, res) => {
 
     console.log('🔄 Updates a fazer:', updates);
 
-    const updated = await db.updateOne("deliveries", { _id: id }, updates);
+    // Use o _id real encontrado para garantir a atualização correta (caso a rota tenha usado deliveryNumber em vez de _id)
+    const targetId = delivery._id || req.params.id;
+    const updated = await db.updateOne("deliveries", { _id: targetId }, updates);
     console.log('✅ Atualizado:', updated?.deliveryNumber);
     if (!updated) {
       return res.status(500).json({ message: "Erro ao atualizar entrega" });
