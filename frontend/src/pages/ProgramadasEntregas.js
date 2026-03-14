@@ -504,15 +504,18 @@ const ProgramadasEntregas = () => {
 
   const handleCameraCapture = (e) => {
     const files = Array.from(e.target.files || []);
-    // reset the input immediately so subsequent captures always
-    // fire a change event even if the same file name is returned
-    try { e.target.value = null; } catch(_) {}
     if (files.length === 0) return;
+    let filesProcessed = 0;
     files.forEach(file => {
       const reader = new FileReader();
       reader.onload = ev => {
         const data = ev.target?.result;
         if (data) addPhoto(data);
+        filesProcessed++;
+        if (filesProcessed === files.length) {
+          // reset input only after all files processed
+          try { e.target.value = null; } catch(_) {}
+        }
       };
       reader.readAsDataURL(file);
     });
