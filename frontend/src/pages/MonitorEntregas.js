@@ -1313,6 +1313,13 @@ const MonitorEntregas = () => {
         return d;
       });
 
+
+      // DEBUG: log entrega CAB43503
+      const cab43503 = normalized.find(d => d.deliveryNumber === 'CAB43503' || d.processoCAB === 'CAB43503');
+      if (cab43503) {
+        // eslint-disable-next-line no-console
+        console.log('DEBUG CAB43503:', cab43503);
+      }
       setDeliveries(normalized);
 
       const sc = {};
