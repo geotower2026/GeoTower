@@ -875,10 +875,7 @@ const Home = () => {
               </div>
             </div>
 
-            {/* RIGHT: Driver KPI */}
-            {role === 'driver' && !loading && (
-              <HeroKpiRow statsToday={statsToday} />
-            )}
+
 
             {/* RIGHT: Illustration (non-driver) */}
             {role !== 'driver' && (
@@ -926,119 +923,26 @@ const Home = () => {
       ══════════════════════════════════════════════════════ */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 pb-28">
 
-        {/* ─── DRIVER ─── */}
+        {/* ─── DRIVER: Seleção de Motorista ─── */}
         {role === 'driver' && (
           <>
-            {/* Stats header */}
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
-              <SectionHeader
-                icon={<FaChartBar style={{ color: B.v, fontSize: '0.85rem' }} />}
-                title="Seu Desempenho"
-                subtitle="Indicadores atualizados em tempo real"
-              />
-
-              {/* Tab switcher com ícones */}
-              <div
-                className="g-fade delay-2 self-start sm:self-auto flex gap-1 p-1 rounded-2xl flex-shrink-0"
-                style={{ background: B.vBg, border: `1.5px solid ${B.bdr}` }}
-              >
-                {TABS.map(({ id, label, Icon }) => (
-                  <button
-                    key={id}
-                    onClick={() => setStatsTodayTab(id)}
-                    className="g-btn px-4 py-2 rounded-xl text-[11px] font-black transition-all duration-250 flex items-center gap-1.5"
-                    style={
-                      statsTodayTab === id
-                        ? { background: B.v, color:'#fff', boxShadow: `0 4px 16px ${B.v}45` }
-                        : { color: B.txt3 }
-                    }
-                  >
-                    <Icon style={{ fontSize: '9px' }} />
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Stat grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-14">
-              <StatCard
-                icon={<FaCalendarAlt />}
-                label="Programadas"
-                value={stats.total}
-                sub="Agendadas"
-                accent={B.v}
-                loading={loading}
-                delay={0}
-              />
-              <StatCard
-                icon={<FaCheckCircle />}
-                label="Concluídas"
-                value={stats.completed}
-                sub="Com sucesso"
-                accent={B.m}
-                loading={loading}
-                delay={80}
-              />
-              <StatCard
-                icon={<FaChartLine />}
-                label="Pontualidade"
-                value={`${stats.onTimePercentage}%`}
-                sub="Taxa no prazo"
-                accent={B.accent}
-                progressValue={stats.onTimePercentage}
-                loading={loading}
-                delay={160}
-              />
-              <StatCard
-                icon={<FaTruck />}
-                label="Em Rota"
-                value={stats.inProgress}
-                sub="Em andamento"
-                accent={B.blue}
-                loading={loading}
-                delay={240}
-              />
-            </div>
-
-            {/* Driver quick-actions */}
             <SectionHeader
-              icon={<FaBullseye style={{ color: B.v, fontSize: '0.85rem' }} />}
-              title="Ações Rápidas"
-              subtitle="Acesse as funcionalidades mais utilizadas"
-              delay={80}
+              icon={<FaTruck style={{ color: B.m, fontSize: '0.95rem' }} />}
+              title="Selecione o motorista para ver as entregas"
+              subtitle="Clique no nome para visualizar as entregas programadas"
             />
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-14">
-              <DriverCard
-                onClick={() => navigate('/entregas-programadas')}
-                accentColor={B.v}
-                accentDark={B.vD}
-                icon={<FaCalendarAlt />}
-                title="Entregas Programadas"
-                description="Visualize todas as entregas agendadas vinculadas à sua transportadora com detalhes completos."
-                tag="Agendamento"
-                delay={0}
-              />
-              <DriverCard
-                onClick={() => navigate('/minhas-entregas')}
-                accentColor={B.m}
-                accentDark={B.mD}
-                icon={<FaBoxes />}
-                title="Minhas Entregas"
-                description="Acompanhe todas as suas entregas em tempo real, histórico e status atualizado."
-                tag="Operacional"
-                delay={80}
-              />
-              <DriverCard
-                onClick={() => navigate('/entregas-canhotos-pendentes')}
-                accentColor="#EC4899"
-                accentDark="#BE185D"
-                icon={<FaFileAlt />}
-                title="Canhotos Pendentes"
-                description="Anexe os canhotos das entregas abertas para manter toda documentação em dia."
-                tag="Documentação"
-                delay={160}
-              />
+            <div className="flex flex-wrap gap-3 mb-8">
+              {/* Exemplo de nomes, troque por sua lógica de motoristas se necessário */}
+              {['João', 'Maria', 'Carlos', 'Ana'].map((nome) => (
+                <button
+                  key={nome}
+                  onClick={() => navigate(`/entregas-programadas?motorista=${encodeURIComponent(nome)}`)}
+                  className="px-5 py-2 rounded-xl font-bold text-sm bg-white text-emerald-700 border shadow-sm border-emerald-200 transition"
+                  style={{ minWidth: 120 }}
+                >
+                  {nome}
+                </button>
+              ))}
             </div>
           </>
         )}
