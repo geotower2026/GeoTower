@@ -299,7 +299,7 @@ const ProgramadasEntregas = () => {
       const todas = res.data.programacoes || [];
       setAllProgramacoes(todas);
       let nomeFiltro = '';
-      if (user) nomeFiltro = (user.username || user.name || '').trim().toUpperCase();
+      if (user) nomeFiltro = (user.name || '').trim().toUpperCase();
       let filtradas = [];
       if (nomeFiltro) filtradas = todas.filter(p => String(p.contratado).trim().toUpperCase() === nomeFiltro);
       
