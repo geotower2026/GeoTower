@@ -127,7 +127,9 @@ const STATUS_COLUMNS = [
     badge: 'bg-cyan-100 text-cyan-700',
     filter: (p) => {
       const s = normalizeKey(p.status);
-      return s === 'PEND. DEVOLUCAO' || s === 'PEND. DEVOLUÇÃO';
+      const isPendDevolucao = s === 'PEND. DEVOLUCAO' || s === 'PEND. DEVOLUÇÃO';
+      const semDataDevolucao = !p.dtDevolucaoCNTR && !p.horarioDevolucaoVazio;
+      return isPendDevolucao && semDataDevolucao;
     },
   },
   {
