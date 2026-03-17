@@ -221,8 +221,6 @@ router.get("/relatorio-contratado", async (req, res) => {
     console.log('contratado:', contratado);
     console.log('dataInicio:', dataInicio);
     console.log('dataFim:', dataFim);
-    console.log('vlFreteMIN:', vlFreteMIN);
-    console.log('vlFreteMAX:', vlFreteMAX);
 
     const filter = {};
 
@@ -231,29 +229,22 @@ router.get("/relatorio-contratado", async (req, res) => {
       filter.contratado = { $regex: `^${contratado.trim()}$`, $options: 'i' };
     }
 
-    // Filtro de datas (usando dtAgendamentoDescarga)
-    // Aceita strings no formato YYYY-MM-DD e converte para Date
+    // Filtro de datas - tenta qtd diferente de campos possíveis
+    let dateRange = null;
     if (dataInicio || dataFim) {
-      filter.dtAgendamentoDescarga = {};
+      dateRange = {};
       
       if (dataInicio) {
-        // "2026-03-09" → Date ou usar $gte com string
         try {
           const parts = dataInicio.split('-');
           if (parts.length === 3) {
             const startDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 0, 0, 0);
-            console.log('Start Date:', startDate);
-            filter.dtAgendamentoDescarga.$gte = startDate;
+            dateRange.$gte = startDate;
           } else {
-            const start = new Date(dataInicio);
-            console.log('Start Date (parse):', start);
-            filter.dtAgendamentoDescarga.$gte = start;
+            dateRange.$gte = new Date(dataInicio);
           }
         } catch (e) {
-          console.error('Erro ao parsear dataInicio:', e);
-          const start = new Date(dataInicio);
-          console.log('Start Date (fallback):', start);
-          filter.dtAgendamentoDescarga.$gte = start;
+          dateRange.$gte = new Date(dataInicio);
         }
       }
       
@@ -262,22 +253,28 @@ router.get("/relatorio-contratado", async (req, res) => {
           const parts = dataFim.split('-');
           if (parts.length === 3) {
             const endDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 23, 59, 59, 999);
-            console.log('End Date:', endDate);
-            filter.dtAgendamentoDescarga.$lte = endDate;
+            dateRange.$lte = endDate;
           } else {
             const end = new Date(dataFim);
             end.setHours(23, 59, 59, 999);
-            console.log('End Date (parse):', end);
-            filter.dtAgendamentoDescarga.$lte = end;
+            dateRange.$lte = end;
           }
         } catch (e) {
-          console.error('Erro ao parsear dataFim:', e);
           const end = new Date(dataFim);
           end.setHours(23, 59, 59, 999);
-          console.log('End Date (fallback):', end);
-          filter.dtAgendamentoDescarga.$lte = end;
+          dateRange.$lte = end;
         }
       }
+    }
+
+    // Aplicar range de datas em múltiplos campos possíveis
+    if (dateRange) {
+      filter.$or = [
+        { dtAgendamentoDescarga: dateRange },
+        { dataAgendamento: dateRange },
+        { dtInicio: dateRange },
+        { createdAt: dateRange }
+      ];
     }
 
     // Filtro de valor de frete
@@ -297,11 +294,18 @@ router.get("/relatorio-contratado", async (req, res) => {
     // Buscar dados
     const dados = await c
       .find(filter)
-      .sort({ dtAgendamentoDescarga: -1, _id: -1 })
+      .sort({ dtAgendamentoDescarga: -1, dataAgendamento: -1, _id: -1 })
       .toArray();
 
     console.log('=== RESULTADO ===');
     console.log('Total encontrado:', dados.length);
+    if (dados.length > 0) {
+      console.log('Primeiro resultado:');
+      console.log('- Contratado:', dados[0].contratado);
+      console.log('- Processo:', dados[0].processo);
+      console.log('- dtAgendamentoDescarga:', dados[0].dtAgendamentoDescarga);
+      console.log('- dataAgendamento:', dados[0].dataAgendamento);
+    }
 
     // Calcular sumário
     const totalEntregas = dados.length;
