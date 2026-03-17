@@ -31,8 +31,8 @@ async function getDb(req) {
 
 function onlyAdmin(req, res, next) {
   const role = req.user?.role || "operacao";
-  // Aceita ambos 'gestor' e 'manager' como sinônimos de Gerente
-  if (role !== "admin" && role !== "gestor" && role !== "manager") {
+  // Libera acesso para admin, gestor, manager e geomar
+  if (role !== "admin" && role !== "gestor" && role !== "manager" && role !== "geomar") {
     return res.status(403).json({ message: "Sem permissão" });
   }
   next();
