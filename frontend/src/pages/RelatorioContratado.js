@@ -6,7 +6,9 @@ import {
 } from 'react-icons/fa';
 import Toast from '../components/Toast';
 import api from '../services/api';
-import { exportToExcel, exportToPDF } from '../services/exportService';
+import { exportToExcel } from '../services/exportService';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const RelatorioContratado = () => {
   const navigate = useNavigate();
@@ -107,11 +109,10 @@ const RelatorioContratado = () => {
     const exportDados = dados.map(d => ({
       'Código': d.codigo,
       'Contratado': d.contratado,
-      'Cliente': d.cliente,
-      'Remetente': d.remetente,
       'Destinatário': d.destinatario,
-      'Data Início': d.dtInicioRota ? new Date(d.dtInicioRota).toLocaleDateString('pt-BR') : '',
-      'Data Chegada': d.dtChegada ? new Date(d.dtChegada).toLocaleDateString('pt-BR') : '',
+      'Container': d.containerNumero || '—',
+      'Data Agendamento Descarga': d.dtAgendamentoDescarga ? new Date(d.dtAgendamentoDescarga).toLocaleDateString('pt-BR') : '—',
+      'Data Chegada': d.dtChegada ? new Date(d.dtChegada).toLocaleDateString('pt-BR') : '—',
       'Motorista': d.motorista,
       'Vl. Frete Processo': d.vlFreteProcesso ? `R$ ${d.vlFreteProcesso.toFixed(2).replace('.', ',')}` : 'R$ 0,00',
       'Vl. Pedágio': d.vlPedagio ? `R$ ${d.vlPedagio.toFixed(2).replace('.', ',')}` : 'R$ 0,00',
@@ -120,6 +121,87 @@ const RelatorioContratado = () => {
 
     exportToExcel(exportDados, 'Relatorio_Contratado');
     showToast('Relatório exportado em Excel');
+  };
+
+  const exportarPDF = () => {
+    if (dados.length === 0) {
+      showToast('Nenhum dado para exportar', 'warning');
+      return;
+    }
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 10;
+
+    // Título
+    doc.setFontSize(16);
+    doc.setFont('arial', 'bold');
+    doc.text('Relatório de Contratados', margin, 15);
+
+    // Filtros aplicados
+    doc.setFontSize(10);
+    doc.setFont('arial', 'normal');
+    let yPos = 25;
+    if (filtros.contratado) {
+      doc.text(`Contratado: ${filtros.contratado}`, margin, yPos);
+      yPos += 5;
+    }
+    if (filtros.dataInicio || filtros.dataFim) {
+      const dataStr = `${filtros.dataInicio || 'qualquer'} até ${filtros.dataFim || 'qualquer'}`;
+      doc.text(`Período: ${dataStr}`, margin, yPos);
+      yPos += 5;
+    }
+    doc.text(`Data do Relatório: ${new Date().toLocaleDateString('pt-BR')}`, margin, yPos);
+
+    // Tabela de resumo
+    yPos += 8;
+    doc.setFontSize(12);
+    doc.setFont('arial', 'bold');
+    doc.text('Resumo Geral', margin, yPos);
+    yPos += 6;
+
+    autoTable(doc, {
+      startY: yPos,
+      head: [['Métrica', 'Valor']],
+      body: [
+        ['Total de Entregas', resumo.totalEntregas.toString()],
+        ['Total de Frete', `R$ ${parseFloat(resumo.totalFrete).toFixed(2)}`],
+        ['Média de Frete', `R$ ${parseFloat(resumo.mediaFrete).toFixed(2)}`],
+        ['Total de Contratados', Object.keys(resumoPorContratado).length.toString()],
+      ],
+      margin: margin,
+      didDrawPage: () => {},
+    });
+
+    // Tabela de detalhamento
+    yPos = doc.lastAutoTable.finalY + 10;
+    doc.setFontSize(12);
+    doc.setFont('arial', 'bold');
+    doc.text('Detalhamento de Entregas', margin, yPos);
+    yPos += 6;
+
+    const tableData = dados.map(d => [
+      d.codigo,
+      d.contratado || '—',
+      d.destinatario || '—',
+      d.containerNumero || '—',
+      d.dtAgendamentoDescarga ? new Date(d.dtAgendamentoDescarga).toLocaleDateString('pt-BR') : '—',
+      d.motorista || '—',
+      `R$ ${(d.vlFreteProcesso || 0).toFixed(2)}`,
+      d.situacao || '—',
+    ]);
+
+    autoTable(doc, {
+      startY: yPos,
+      head: [['Código', 'Contratado', 'Destinatário', 'Container', 'Data Agendamento', 'Motorista', 'Vl. Frete', 'Situação']],
+      body: tableData,
+      margin: margin,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [245, 158, 11], textColor: [0, 0, 0], fontStyle: 'bold' },
+    });
+
+    doc.save(`Relatorio_Contratado_${new Date().toISOString().split('T')[0]}.pdf`);
+    showToast('Relatório exportado em PDF');
   };
 
   const formatCurrency = (value) => {
@@ -346,15 +428,24 @@ const RelatorioContratado = () => {
 
           {/* Tabela de Entregas */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 mb-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
               <h3 className="text-lg font-bold text-slate-900">Detalhamento de Entregas</h3>
-              <button
-                onClick={exportarExcel}
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white font-semibold rounded-lg hover:bg-emerald-600 active:scale-95 transition-all"
-              >
-                <FaDownload size={14} />
-                Exportar Excel
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={exportarPDF}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 active:scale-95 transition-all"
+                >
+                  <FaDownload size={14} />
+                  Exportar PDF
+                </button>
+                <button
+                  onClick={exportarExcel}
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white font-semibold rounded-lg hover:bg-emerald-600 active:scale-95 transition-all"
+                >
+                  <FaDownload size={14} />
+                  Exportar Excel
+                </button>
+              </div>
             </div>
 
             <div className="overflow-x-auto">
@@ -363,9 +454,9 @@ const RelatorioContratado = () => {
                   <tr className="border-b border-slate-200/80 bg-slate-50/50">
                     <th className="px-4 py-3 text-left font-semibold text-slate-600">Código</th>
                     <th className="px-4 py-3 text-left font-semibold text-slate-600">Contratado</th>
-                    <th className="px-4 py-3 text-left font-semibold text-slate-600">Cliente</th>
-                    <th className="px-4 py-3 text-left font-semibold text-slate-600">Data Início</th>
-                    <th className="px-4 py-3 text-left font-semibold text-slate-600">Data Chegada</th>
+                    <th className="px-4 py-3 text-left font-semibold text-slate-600">Destinatário</th>
+                    <th className="px-4 py-3 text-left font-semibold text-slate-600">Container</th>
+                    <th className="px-4 py-3 text-left font-semibold text-slate-600">Data Agendamento</th>
                     <th className="px-4 py-3 text-left font-semibold text-slate-600">Motorista</th>
                     <th className="px-4 py-3 text-right font-semibold text-slate-600">Vl. Frete</th>
                     <th className="px-4 py-3 text-left font-semibold text-slate-600">Situação</th>
@@ -376,9 +467,9 @@ const RelatorioContratado = () => {
                     <tr key={idx} className="border-b border-slate-100/50 hover:bg-blue-50/30 transition">
                       <td className="px-4 py-3 font-medium text-slate-900">{d.codigo}</td>
                       <td className="px-4 py-3 text-slate-700">{d.contratado || '—'}</td>
-                      <td className="px-4 py-3 text-slate-700">{d.cliente || '—'}</td>
-                      <td className="px-4 py-3 text-slate-700">{formatDate(d.dtInicioRota)}</td>
-                      <td className="px-4 py-3 text-slate-700">{formatDate(d.dtChegada)}</td>
+                      <td className="px-4 py-3 text-slate-700">{d.destinatario || '—'}</td>
+                      <td className="px-4 py-3 text-slate-700">{d.containerNumero || '—'}</td>
+                      <td className="px-4 py-3 text-slate-700">{formatDate(d.dtAgendamentoDescarga)}</td>
                       <td className="px-4 py-3 text-slate-700">{d.motorista || '—'}</td>
                       <td className="px-4 py-3 text-right font-semibold text-green-600">{formatCurrency(d.vlFreteProcesso)}</td>
                       <td className="px-4 py-3">

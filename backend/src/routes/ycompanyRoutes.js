@@ -224,17 +224,17 @@ router.get("/relatorio-contratado", async (req, res) => {
       filter.contratado = { $regex: `^${contratado.trim()}$`, $options: 'i' };
     }
 
-    // Filtro de datas (usando dtInicioRota ou dtChegada)
+    // Filtro de datas (usando dtAgendamentoDescarga)
     if (dataInicio || dataFim) {
-      filter.dtInicioRota = {};
+      filter.dtAgendamentoDescarga = {};
       if (dataInicio) {
         const start = new Date(dataInicio);
-        filter.dtInicioRota.$gte = start;
+        filter.dtAgendamentoDescarga.$gte = start;
       }
       if (dataFim) {
         const end = new Date(dataFim);
         end.setHours(23, 59, 59, 999);
-        filter.dtInicioRota.$lte = end;
+        filter.dtAgendamentoDescarga.$lte = end;
       }
     }
 
@@ -252,7 +252,7 @@ router.get("/relatorio-contratado", async (req, res) => {
     // Buscar dados
     const dados = await c
       .find(filter)
-      .sort({ dtInicioRota: -1, _id: -1 })
+      .sort({ dtAgendamentoDescarga: -1, _id: -1 })
       .toArray();
 
     // Calcular sumário
