@@ -5,8 +5,7 @@ import { adminService } from '../services/authService';
 import { exportToPDF, exportToExcel, formatMinutes as fmtMin } from '../services/exportService';
 import {
   FiArrowLeft, FiPackage, FiTruck, FiAward, FiClock,
-  FiTrendingUp, FiFilter, FiRefreshCw, FiCalendar,
-  FiSearch, FiBarChart2, FiDownload, FiFileText, FiGrid, FiSettings
+  FiTrendingUp, FiRefreshCw, FiBarChart2, FiDownload, FiFileText, FiSearch
 } from 'react-icons/fi';
 import {
   AreaChart, Area, BarChart, Bar,
@@ -121,29 +120,6 @@ const Skeleton = ({ className }) => (
   <div className={`animate-pulse bg-gradient-to-r from-slate-800 via-slate-700/50 to-slate-800 rounded-xl ${className}`} />
 );
 
-/* ─── Export Button ─── */
-const ExportButton = ({ onClick, loading, icon: Icon, label, colorClass, disabled }) => (
-  <button
-    onClick={onClick}
-    disabled={loading || disabled}
-    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 border 
-      ${loading || disabled
-        ? 'opacity-50 cursor-not-allowed bg-white/5 border-white/10 text-slate-500'
-        : colorClass
-      }`}
-  >
-    {loading ? (
-      <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-      </svg>
-    ) : (
-      <Icon size={13} />
-    )}
-    {loading ? 'Gerando...' : label}
-  </button>
-);
-
 /* ════════════════════════════════════════
    COMPONENTE PRINCIPAL
 ════════════════════════════════════════ */
@@ -157,9 +133,7 @@ const AdminDashboard = () => {
   const [exporting,   setExporting]   = useState({ pdf: false, excel: false });
   const [toast,       setToast]       = useState(null);
   const [activeBar,   setActiveBar]   = useState(null);
-  const [searchTerm,  setSearchTerm]  = useState('');
 
-  const searchTimerRef = React.useRef(null);
   const chartRefs = {
     area:        useRef(null),
     barDriver:   useRef(null),
@@ -167,26 +141,17 @@ const AdminDashboard = () => {
     barCli:      useRef(null),
   };
 
-  // Cleanup search timer on unmount
-  useEffect(() => {
-    return () => {
-      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    };
-  }, [searchTerm]);
-
   const loadData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     else setRefreshing(true);
     try {
       const [delivRes, statsRes] = await Promise.all([
-        adminService.getDeliveries({ searchTerm }),
+        adminService.getDeliveries({}),
         adminService.getStatistics({ period }),
       ]);
       setDeliveries(delivRes.data.deliveries);
       setStatistics(statsRes.data.statistics);
     } catch (err) {
-      // Attempt to provide a clearer message when session expired or network error
-      // If we can detect 401 from the response, ask user to login again
       if (err && err.response && err.response.status === 401) {
         setToast({ message: 'Sessão expirada. Faça login novamente.', type: 'error' });
         setTimeout(() => navigate('/login'), 1200);
@@ -197,19 +162,8 @@ const AdminDashboard = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [period, searchTerm]);
+  }, [period, navigate]);
 
-  // Debounced search input
-  const handleSearchChange = (value) => {
-    const trimmed = value.trim();
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = setTimeout(() => {
-      setSearchTerm(trimmed);
-      searchTimerRef.current = null;
-    }, 700);
-  };
-
-  // whenever searchTerm or period change we reload data
   useEffect(() => { 
     loadData(); 
   }, [loadData]);
@@ -397,8 +351,8 @@ const AdminDashboard = () => {
                 <input
                   type="text"
                   placeholder="Buscar entrega ou motorista..."
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  className="pl-9 pr-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-xs text-slate-100 placeholder-slate-500 transition"
+                  disabled
+                  className="pl-9 pr-3 py-2 rounded-xl bg-white/10 border border-white/10 text-xs text-slate-400 placeholder-slate-500 cursor-not-allowed"
                 />
               </div>
             </div>
