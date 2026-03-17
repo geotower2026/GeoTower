@@ -407,14 +407,11 @@ const AdminDashboard = () => {
         </div>
       </header>
 
-      {/* Settings drawer */}
-      <SettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
-
       {/* ══════ CONTEÚDO SCROLLÁVEL ══════ */}
       <div className="flex-1 overflow-y-auto">
         <div className="px-6 py-6 space-y-6 max-w-[1600px] mx-auto">
 
-          {/* filters removed from main view – only accessible via settings drawer now */}          {/* ══════ KPI CARDS ══════ */}
+          {/* ══════ KPI CARDS ══════ */}
           {statistics && (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
               <KpiCard
