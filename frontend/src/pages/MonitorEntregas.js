@@ -1427,9 +1427,26 @@ const MonitorEntregas = () => {
     }
   }, [filteredDeliveries]);
 
+  // Agrupa entregas por container
   const displayList = useMemo(() => {
     const now = Date.now();
-    return [...filteredDeliveries].sort((a, b) => {
+    // Agrupamento por container
+    const grouped = {};
+    filteredDeliveries.forEach((d) => {
+      const key = d.containerNumero || d.container || d.deliveryNumber;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(d);
+    });
+
+    // Para cada grupo, pega a entrega principal (primeira) e adiciona os recebedores
+    const result = Object.values(grouped).map((group) => {
+      const main = group[0];
+      main.fracionadas = group;
+      return main;
+    });
+
+    // Ordena por atualização
+    return result.sort((a, b) => {
       const aT = recentlyUpdated[a._id];
       const bT = recentlyUpdated[b._id];
       const aActive = aT && (now - aT) < RISE_WINDOW;
