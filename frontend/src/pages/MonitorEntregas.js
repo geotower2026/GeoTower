@@ -128,8 +128,9 @@ const STATUS_COLUMNS = [
     filter: (p) => {
       const s = normalizeKey(p.status);
       const isPendDevolucao = s === 'PEND. DEVOLUCAO' || s === 'PEND. DEVOLUÇÃO';
+      const isFinalizado = s === 'FINALIZADO';
       const semDataDevolucao = !p.dtDevolucaoCNTR && !p.horarioDevolucaoVazio;
-      return isPendDevolucao && semDataDevolucao;
+      return (isPendDevolucao || isFinalizado) && semDataDevolucao;
     },
   },
   {
