@@ -1201,7 +1201,7 @@ const MonitorEntregas = () => {
     [
       ['Contratado', safe(delivery.userName)],
       ['Motorista', safe(delivery.driverName)],
-      ['Placa', safe(delivery.vehiclePlate)],
+      ['Placa', safe(delivery.placaYcompany || delivery.vehiclePlate)],
       ['Recebedor', safe(delivery.recebedor)],
       ['Status', safe(formatStatus(delivery.status, delivery))],
       ['Agendamento', formatDT(delivery.dataAgendamento)],
