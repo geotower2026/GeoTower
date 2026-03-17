@@ -678,7 +678,7 @@ const Home = () => {
   }, []);
 
   const hasAccess      = (roles) => !!user?.role && roles.includes(user.role);
-  const isViewOnly     = () => user?.role === 'geomar';
+  const isViewOnly     = () => false; // Libera acesso total para geomar
   const canAccessAdmin = () => hasAccess(['manager','admin','geomar']);
 
   useEffect(() => {
@@ -980,26 +980,26 @@ const Home = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-14">
               <MonitorCard
                 onClick={() => navigate('/admin')}
-                disabled={isViewOnly()}
+                disabled={false}
                 accentColor={B.v}
                 accentDark={B.vD}
                 icon={<FaChartBar />}
                 titleIcon={<FaChartLine />}
                 title="Dashboard Analytics"
                 description="Análise completa com KPIs, gráficos interativos e relatórios detalhados sobre todas as operações logísticas da empresa."
-                viewOnly={isViewOnly()}
+                viewOnly={false}
                 delay={0}
               />
               <MonitorCard
                 onClick={() => navigate('/monitor-entregas')}
-                disabled={isViewOnly()}
+                disabled={false}
                 accentColor="#4F46E5"
                 accentDark="#3730A3"
                 icon={<FaTachometerAlt />}
                 titleIcon={<FaBullseye />}
                 title="Torre de Controle"
                 description="Monitore todas as entregas em tempo real com filtros avançados, busca inteligente e rastreamento completo da operação."
-                viewOnly={isViewOnly()}
+                viewOnly={false}
                 delay={120}
               />
             </div>
@@ -1027,26 +1027,26 @@ const Home = () => {
               )}
               <ManageCard
                 onClick={() => navigate('/motoristas')}
-                disabled={isViewOnly()}
+                disabled={false}
                 accentColor={B.m}
                 accentDark={B.mD}
                 icon={<FaIdCard />}
                 titleIcon={<FaTruck />}
                 title="Motoristas"
                 description="Gerenciar motoristas, dados, rastreadores e contatos da frota."
-                viewOnly={isViewOnly()}
+                viewOnly={false}
                 delay={80}
               />
               <ManageCard
                 onClick={() => navigate('/programacoes')}
-                disabled={isViewOnly()}
+                disabled={false}
                 accentColor="#0891B2"
                 accentDark="#0E7490"
                 icon={<FaLayerGroup />}
                 titleIcon={<FaBoxes />}
                 title="Programações"
                 description="Gerenciar programações de entregas com todos os detalhes e vínculos."
-                viewOnly={isViewOnly()}
+                viewOnly={false}
                 delay={160}
               />
               {hasAccess(['manager']) && (
