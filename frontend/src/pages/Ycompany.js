@@ -219,7 +219,8 @@ const Icompany = () => {
       const res = await api.get('/ycompany/compare');
       const compMap = {};
       res.data?.data?.forEach(comp => {
-        compMap[comp.processo] = comp.analysis;
+        // Mapear por múltiplos campos para garantir correspondência
+        if (comp.processo) compMap[comp.processo] = comp.analysis;
       });
       setExcelComparison(compMap);
     } catch (e) {
@@ -288,7 +289,9 @@ const Icompany = () => {
   /* ── Análise de sincronização ── */
   const syncAnalysi = data.map(record => {
     const syncStatus = calculateSyncStatus(record);
-    const excelData = excelComparison[record.geomaritima] || {};
+    // Tentar encontrar dados de comparação por múltiplos campos
+    const lookupKey = record.geomaritima || record.processo || record.codigo;
+    const excelData = excelComparison[lookupKey] || {};
     
     // Detectar DESYNC: quando uma coluna tem V em um lado e X no outro (discrepância)
     let hasDesync = false;
@@ -1250,20 +1253,20 @@ const Icompany = () => {
                       </div>
                     </div>
                     
-                    {rec.excelSync?.hasDesync && (
-                      <div style={{ fontSize: '0.7rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '4px', padding: '8px', color: '#991b1b' }}>
+                    {Object.keys(rec.excelSync?.excelData || {}).length > 0 && (
+                      <div style={{ fontSize: '0.7rem', background: rec.excelSync?.hasDesync ? '#fef2f2' : '#f0fdf4', border: `1px solid ${rec.excelSync?.hasDesync ? '#fecaca' : '#bbf7d0'}`, borderRadius: '4px', padding: '8px', color: rec.excelSync?.hasDesync ? '#991b1b' : '#15803d' }}>
                         <div style={{ fontWeight: 'bold', marginBottom: '6px', fontSize: '0.75rem' }}>📊 STATUS EXCEL vs SISTEMA:</div>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.65rem' }}>
                           <thead>
                             <tr>
-                              <th style={{ textAlign: 'left', padding: '3px 0', fontWeight: 'bold', borderBottom: '1px solid #fecaca' }}>Coluna</th>
-                              <th style={{ textAlign: 'center', padding: '3px 0', fontWeight: 'bold', borderBottom: '1px solid #fecaca', width: '50px' }}>GEO TOWER</th>
-                              <th style={{ textAlign: 'center', padding: '3px 0', fontWeight: 'bold', borderBottom: '1px solid #fecaca', width: '50px' }}>ICOMPANY</th>
+                              <th style={{ textAlign: 'left', padding: '3px 0', fontWeight: 'bold', borderBottom: `1px solid ${rec.excelSync?.hasDesync ? '#fecaca' : '#bbf7d0'}` }}>Coluna</th>
+                              <th style={{ textAlign: 'center', padding: '3px 0', fontWeight: 'bold', borderBottom: `1px solid ${rec.excelSync?.hasDesync ? '#fecaca' : '#bbf7d0'}`, width: '50px' }}>GEO TOWER</th>
+                              <th style={{ textAlign: 'center', padding: '3px 0', fontWeight: 'bold', borderBottom: `1px solid ${rec.excelSync?.hasDesync ? '#fecaca' : '#bbf7d0'}`, width: '50px' }}>ICOMPANY</th>
                             </tr>
                           </thead>
                           <tbody>
                             {Object.entries(rec.excelSync.excelData).map(([colName, comparison], j) => (
-                              <tr key={j} style={{ borderBottom: '1px solid #fef2f2' }}>
+                              <tr key={j} style={{ borderBottom: `1px solid ${rec.excelSync?.hasDesync ? '#fef2f2' : '#f0fdf4'}` }}>
                                 <td style={{ padding: '3px 0', textAlign: 'left' }}>
                                   <span style={{ fontWeight: 'bold' }}>{colName}</span>
                                 </td>
