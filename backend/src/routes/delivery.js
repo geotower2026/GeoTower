@@ -288,6 +288,9 @@ router.put("/:id", auth, async (req, res) => {
         if (req.body.status === 'A_CAMINHO_DO_CLIENTE' && !ycompanyRecord.dtInicioRota) {
           ycompanyUpdates.dtInicioRota = new Date();
         }
+        if (req.body.arrivedAt !== undefined && req.body.arrivedAt && !ycompanyRecord.arrivedAt) {
+          ycompanyUpdates.arrivedAt = new Date(req.body.arrivedAt);
+        }
         if (req.body.desovaStartAt !== undefined && req.body.desovaStartAt && !ycompanyRecord.desovaStartAt) {
           ycompanyUpdates.desovaStartAt = new Date(req.body.desovaStartAt);
         }
