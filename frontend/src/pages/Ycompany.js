@@ -91,6 +91,11 @@ const getSituacaoConfig = (value) => {
   return { bg: 'rgba(100,116,139,.1)', text: '#475569', dot: '#94a3b8', glow: 'none' };
 };
 
+// Função auxiliar para verificar se valor está vazio
+const isEmpty = (v) => {
+  return v === null || v === undefined || (typeof v === "string" && v.trim() === "");
+};
+
 // Campos de data para análise de sincronização
 const SYNC_DATE_FIELDS = [
   'dtInicioRota', 'dtAgendamentoDescarga', 'arrivedAt', 
