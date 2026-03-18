@@ -972,32 +972,36 @@ const Icompany = () => {
           overflow: hidden;
           border: 1px solid var(--ic-border);
           background: var(--ic-surface);
-          transition: box-shadow .15s;
+          transition: box-shadow .15s, transform .15s;
         }
-        .ic-prec:hover{ box-shadow: var(--ic-sh-sm); }
+        .ic-prec:hover{ box-shadow: var(--ic-sh-md); transform: translateY(-2px); }
 
         .ic-prec-head{
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 10px 12px;
-          gap: 10px;
+          padding: 16px 14px;
+          gap: 12px;
+          min-height: 62px;
+          background: linear-gradient(135deg, rgba(79,70,229,.02) 0%, rgba(6,182,212,.02) 100%);
         }
         .ic-prec-id{
-          font-size: .84rem;
+          font-size: 1rem;
           font-weight: 800;
           color: var(--ic-ink-2);
+          line-height: 1.3;
 
           /* evita quebrar layout em ids grandes */
           min-width: 0;
           overflow: hidden;
           text-overflow: ellipsis;
-          white-space: nowrap;
+          word-break: break-word;
+          flex: 1;
         }
         .ic-prec-badges{
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 8px;
           flex-shrink: 0;
           flex-wrap: wrap;
           justify-content: flex-end;
@@ -1005,13 +1009,14 @@ const Icompany = () => {
         .ic-prec-badge{
           display: inline-flex;
           align-items: center;
-          gap: 4px;
-          padding: 3px 8px;
-          border-radius: 7px;
-          font-size: .68rem;
+          gap: 5px;
+          padding: 5px 11px;
+          border-radius: 8px;
+          font-size: .73rem;
           font-weight: 900;
-          letter-spacing: .3px;
+          letter-spacing: .4px;
           text-transform: uppercase;
+          white-space: nowrap;
         }
 
         /* Comparação: sempre visível */
