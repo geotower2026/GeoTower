@@ -52,6 +52,11 @@ const ycompanySchema = new mongoose.Schema({
     type: Date,
   },
 
+  // Confirmação do motorista
+  arrivedAt: {
+    type: Date,
+  },
+
   // Situação
   situacao: {
     type: String,
