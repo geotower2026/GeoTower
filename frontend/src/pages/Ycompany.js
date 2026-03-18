@@ -1019,17 +1019,19 @@ const Icompany = () => {
           margin: 0 12px 12px;
           border-radius: 8px;
           overflow-x: auto;                 /* <- permite ver tudo em telas pequenas */
-          border: 1px solid var(--ic-border-2);
+          border: 1px solid #e5e7eb;
+          background: #fafbfc;
           -webkit-overflow-scrolling: touch;
+          box-shadow: inset 0 1px 3px rgba(0,0,0,.04);
         }
         .ic-comp-head{
-          padding: 7px 10px;
-          background: #f7f8fc;
-          border-bottom: 1px solid var(--ic-border-2);
-          font-size: .68rem;
-          font-weight: 800;
-          color: var(--ic-muted);
-          letter-spacing: .5px;
+          padding: 10px 14px;
+          background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+          border-bottom: 1px solid #4338ca;
+          font-size: .75rem;
+          font-weight: 900;
+          color: #fff;
+          letter-spacing: .6px;
           text-transform: uppercase;
           display: flex;
           align-items: center;
@@ -1041,28 +1043,30 @@ const Icompany = () => {
           width: max-content;
           min-width: 100%;
           border-collapse: collapse;
-          font-size: .72rem;
+          font-size: .78rem;
         }
         .ic-comp-table th{
-          padding: 6px 8px;
+          padding: 10px 12px;
           text-align: center;
-          background: #f7f8fc;
-          font-size: .64rem;
+          background: #f3f4f6;
+          font-size: .72rem;
           font-weight: 900;
-          color: var(--ic-muted);
+          color: #374151;
           letter-spacing: .4px;
           text-transform: uppercase;
-          border-bottom: 1px solid var(--ic-border-2);
+          border-bottom: 2px solid #d1d5db;
         }
         .ic-comp-table th:first-child{ text-align: left; }
 
         .ic-comp-table td{
-          padding: 6px 8px;
-          border-bottom: 1px solid #f5f3ff;
-          color: var(--ic-ink-3);
-          vertical-align: top;
+          padding: 10px 12px;
+          border-bottom: 1px solid #e5e7eb;
+          color: #1f2937;
+          vertical-align: middle;
+          font-weight: 500;
         }
-        .ic-comp-table tr:last-child td{ border-bottom: none; }
+        .ic-comp-table tr:last-child td{ border-bottom: 1px solid #e5e7eb; }
+        .ic-comp-table tr:hover td{ background: rgba(79,70,229,.03); }
 
         .ic-comp-table td:first-child{
           white-space: normal;              /* <- “Campo” quebra linha */
@@ -1538,6 +1542,7 @@ const Icompany = () => {
                   const hasDesync = rec.excelSync?.hasDesync;
                   const compData  = rec.excelSync?.excelData || {};
                   const hasComp   = Object.keys(compData).length > 0;
+
                   return (
                     <div key={i} className="ic-prec">
                       {/* Record head */}
