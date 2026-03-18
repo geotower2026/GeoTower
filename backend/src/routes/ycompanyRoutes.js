@@ -38,7 +38,6 @@ router.get('/', async (req, res) => {
       if (obj.dtRetiraPD && obj.dtRetiraPD instanceof Date) obj.dtRetiraPD = obj.dtRetiraPD.toISOString();
       if (obj.dtDevolucaoCNTR && obj.dtDevolucaoCNTR instanceof Date) obj.dtDevolucaoCNTR = obj.dtDevolucaoCNTR.toISOString();
       if (obj.arrivedAt && obj.arrivedAt instanceof Date) obj.arrivedAt = obj.arrivedAt.toISOString();
-      if (obj.desovaStartAt && obj.desovaStartAt instanceof Date) obj.desovaStartAt = obj.desovaStartAt.toISOString();
       return obj;
     });
     res.json({ ok: true, count: serialized.length, data: serialized });
@@ -78,7 +77,6 @@ router.get('/search', async (req, res) => {
       if (obj.dtRetiraPD && obj.dtRetiraPD instanceof Date) obj.dtRetiraPD = obj.dtRetiraPD.toISOString();
       if (obj.dtDevolucaoCNTR && obj.dtDevolucaoCNTR instanceof Date) obj.dtDevolucaoCNTR = obj.dtDevolucaoCNTR.toISOString();
       if (obj.arrivedAt && obj.arrivedAt instanceof Date) obj.arrivedAt = obj.arrivedAt.toISOString();
-      if (obj.desovaStartAt && obj.desovaStartAt instanceof Date) obj.desovaStartAt = obj.desovaStartAt.toISOString();
       return obj;
     });
     res.json({ ok: true, count: serialized.length, data: serialized });

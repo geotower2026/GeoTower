@@ -291,8 +291,11 @@ router.put("/:id", auth, async (req, res) => {
         if (req.body.arrivedAt !== undefined && req.body.arrivedAt && !ycompanyRecord.arrivedAt) {
           ycompanyUpdates.arrivedAt = new Date(req.body.arrivedAt);
         }
-        if (req.body.desovaStartAt !== undefined && req.body.desovaStartAt && !ycompanyRecord.desovaStartAt) {
-          ycompanyUpdates.desovaStartAt = new Date(req.body.desovaStartAt);
+        if (req.body.desovaStartAt !== undefined && req.body.desovaStartAt && !ycompanyRecord.dtInicioDescarga) {
+          const desovaDate = new Date(req.body.desovaStartAt);
+          ycompanyUpdates.dtInicioDescarga = desovaDate;
+          // Extrair hora no formato HH:MM:SS
+          ycompanyUpdates.hrInicioDescarga = desovaDate.toLocaleTimeString('pt-BR', { hour12: false });
         }
         if (req.body.desovaEndAt !== undefined && req.body.desovaEndAt && !ycompanyRecord.dtFimDescarga) {
           ycompanyUpdates.dtFimDescarga = new Date(req.body.desovaEndAt);
