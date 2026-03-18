@@ -159,7 +159,10 @@ function mapToEntrega(row) {
 
     nCTe: row["N° CT-e/NFS-e"] ?? null,
     nMDFE: row["N° MDFE"] ?? null,
-    situacaoMDFE: row["Situação MDFE"] ?? null
+    situacaoMDFE: row["Situação MDFE"] ?? null,
+
+    dtRetiraPD: toLocalDateTimeString(row["Dt. retirada P.D."]),
+    dtDevolucaoCNTR: toLocalDateTimeString(row["Dt. devolução CNTR"])
 
   };
 }
