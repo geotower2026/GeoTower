@@ -16,7 +16,7 @@ const FIELD_MAP = {
   'N° GeoMarítima':           'processo',
   'Status':                   'status',
   'Dt. início rota':          'dtInicioRota',
-  'Dt. chegada cliente':      'dtChegada',
+  'Dt. chegada cliente':      'arrivedAt',
   'Dt. agendamento descarga': 'dtAgendamentoDescarga',
   'Dt. início descarga':      'dtInicioDescarga',
   'Dt. fim descarga':         'dtFimDescarga',
@@ -94,7 +94,7 @@ const getSituacaoConfig = (value) => {
 const CURRENCY_FIELDS = new Set(['vlFreteProcesso','vlPedagio','vlFreteLista','vlAbastecimento']);
 const DATE_FIELDS = new Set([
   'dtInicioRota','dtInicioDescarga','dtFimDescarga','dtRetiraPD','dtDevolucaoCNTR',
-  'dtInicio','dtSM','dtAgendamentoDescarga','dtChegada','dtDescidaCNTRCarga','dtAverbacaoMDFE',
+  'dtInicio','dtSM','dtAgendamentoDescarga','dtDescidaCNTRCarga','dtAverbacaoMDFE','arrivedAt',
 ]);
 
 const formatCurrency = (val) => {
