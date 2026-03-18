@@ -28,10 +28,24 @@ function isEmpty(v) {
 router.get('/', async (req, res) => {
   try {
     const c = await col();
-    const data = await c.find({})
+    
+    // Construir filtro baseado na cidade do usuário
+    let filter = {};
+    const city = req.city || 'manaus'; // req.city vem do middleware city.js
+    
+    if (city === 'manaus') {
+      // Manaus: mostra apenas dados de MANAUS e MANAUS - COELTA BALY
+      filter.origem = { $in: ['MANAUS', 'MANAUS - COELTA BALY'] };
+    } else if (city === 'itajai') {
+      // Itajaí: mostra todos os dados que NÃO sejam de Manaus
+      filter.origem = { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] };
+    }
+    
+    const data = await c.find(filter)
       .sort({ updatedAt: -1, _id: -1 })
       .limit(2000)
       .toArray();
+    
     // Serializar datas para ISO string
     const serialized = data.map(doc => {
       const obj = { ...doc };
@@ -43,7 +57,7 @@ router.get('/', async (req, res) => {
       if (obj.arrivedAt && obj.arrivedAt instanceof Date) obj.arrivedAt = obj.arrivedAt.toISOString();
       return obj;
     });
-    res.json({ ok: true, count: serialized.length, data: serialized });
+    res.json({ ok: true, count: serialized.length, data: serialized, city: city });
   } catch (e) {
     console.error('Ycompany GET / error:', e);
     res.status(500).json({ ok: false, error: 'Erro ao buscar dados' });
@@ -61,6 +75,18 @@ router.get('/compare', async (req, res) => {
     const ycompanyCol = db.collection('ycompany');
     const excelCol = db.collection('programacaoentregas');
     
+    // Construir filtro baseado na cidade do usuário
+    let filter = {};
+    const city = req.city || 'manaus';
+    
+    if (city === 'manaus') {
+      // Manaus: mostra apenas dados de MANAUS e MANAUS - COELTA BALY
+      filter.origem = { $in: ['MANAUS', 'MANAUS - COELTA BALY'] };
+    } else if (city === 'itajai') {
+      // Itajaí: mostra todos os dados que NÃO sejam de Manaus
+      filter.origem = { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] };
+    }
+    
     // Mapeamento dos 4 campos para comparação
     // [fieldNameInGeoTower, fieldNameInIcompany, displayName]
     const COMPARE_FIELDS = [
@@ -70,7 +96,7 @@ router.get('/compare', async (req, res) => {
       ['dtDevolucaoCNTR', 'dtDevolucaoCNTR', 'Dt. Devolução CNTR']
     ];
     
-    const ycompanyRecords = await ycompanyCol.find({}).toArray();
+    const ycompanyRecords = await ycompanyCol.find(filter).toArray();
     const comparison = [];
     
     for (const yRecord of ycompanyRecords) {
@@ -132,7 +158,8 @@ router.get('/compare', async (req, res) => {
     res.json({
       ok: true,
       count: comparison.length,
-      data: comparison
+      data: comparison,
+      city: city
     });
   } catch (e) {
     console.error('Ycompany compare error:', e);
@@ -150,8 +177,18 @@ router.get('/debug-comparison', async (req, res) => {
     const ycompanyCol = db.collection('ycompany');
     const excelCol = db.collection('programacaoentregas');
     
+    // Construir filtro baseado na cidade do usuário
+    let filter = {};
+    const city = req.city || 'manaus';
+    
+    if (city === 'manaus') {
+      filter.origem = { $in: ['MANAUS', 'MANAUS - COELTA BALY'] };
+    } else if (city === 'itajai') {
+      filter.origem = { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] };
+    }
+    
     // Get 3 records from each collection for detailed analysis
-    const ycompanyRecords = await ycompanyCol.find({}).limit(5).toArray();
+    const ycompanyRecords = await ycompanyCol.find(filter).limit(5).toArray();
     const excelRecords = await excelCol.find({}).limit(5).toArray();
     
     // Map to compare side by side
@@ -211,7 +248,8 @@ router.get('/debug-comparison', async (req, res) => {
       ok: true,
       totalGeoTower: ycompanyRecords.length,
       totalExcel: excelRecords.length,
-      detailedComparison
+      detailedComparison,
+      city: city
     });
   } catch (e) {
     console.error('Debug comparison error:', e);
@@ -225,6 +263,14 @@ router.get('/search', async (req, res) => {
     const c = await col();
     const { q, limit = '500' } = req.query;
     const filter = {};
+    
+    // Filtro por cidade
+    const city = req.city || 'manaus';
+    if (city === 'manaus') {
+      filter.origem = { $in: ['MANAUS', 'MANAUS - COELTA BALY'] };
+    } else if (city === 'itajai') {
+      filter.origem = { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] };
+    }
     
     if (q && q.trim()) {
       filter.$or = [
@@ -252,7 +298,7 @@ router.get('/search', async (req, res) => {
       if (obj.arrivedAt && obj.arrivedAt instanceof Date) obj.arrivedAt = obj.arrivedAt.toISOString();
       return obj;
     });
-    res.json({ ok: true, count: serialized.length, data: serialized });
+    res.json({ ok: true, count: serialized.length, data: serialized, city: city });
   } catch (e) {
     console.error('Ycompany search error:', e);
     res.status(500).json({ ok: false, error: 'Erro ao buscar dados' });
@@ -262,7 +308,17 @@ router.get('/search', async (req, res) => {
 router.get('/export', async (req, res) => {
   try {
     const c = await col();
-    const records = await c.find({}).toArray();
+    
+    // Filtro por cidade
+    let filter = {};
+    const city = req.city || 'manaus';
+    if (city === 'manaus') {
+      filter.origem = { $in: ['MANAUS', 'MANAUS - COELTA BALY'] };
+    } else if (city === 'itajai') {
+      filter.origem = { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] };
+    }
+    
+    const records = await c.find(filter).toArray();
     
     if (!records.length) {
       return res.status(404).json({ ok: false, error: 'Nenhum registro para exportar' });
@@ -294,7 +350,15 @@ router.get("/entregas", async (req, res) => {
     const c = await col();
     const { status, q, limit = "500" } = req.query;
 
-    const filter = {};
+    // Filtro por cidade
+    let filter = {};
+    const city = req.city || 'manaus';
+    if (city === 'manaus') {
+      filter.origem = { $in: ['MANAUS', 'MANAUS - COELTA BALY'] };
+    } else if (city === 'itajai') {
+      filter.origem = { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] };
+    }
+
     if (status) filter.status = status;
 
     if (q && q.trim()) {
@@ -314,7 +378,7 @@ router.get("/entregas", async (req, res) => {
       .limit(Math.min(parseInt(limit, 10) || 500, 2000))
       .toArray();
 
-    res.json({ ok: true, total: data.length, data });
+    res.json({ ok: true, total: data.length, data, city: city });
   } catch (e) {
     console.error("YCompany list error:", e);
     res.status(500).json({ ok: false, error: "Erro ao buscar entregas" });
@@ -386,9 +450,18 @@ router.get("/relatorio-contratado", async (req, res) => {
   try {
     const c = await col();
     
-    // Buscar TODOS os dados sem filtro (filtragem será no frontend)
+    // Filtro por cidade
+    let filter = {};
+    const city = req.city || 'manaus';
+    if (city === 'manaus') {
+      filter.origem = { $in: ['MANAUS', 'MANAUS - COELTA BALY'] };
+    } else if (city === 'itajai') {
+      filter.origem = { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] };
+    }
+    
+    // Buscar dados com filtro de cidade
     const dados = await c
-      .find({})
+      .find(filter)
       .sort({ dtAgendamentoDescarga: -1, dataAgendamento: -1, createdAt: -1, _id: -1 })
       .toArray();
 
@@ -418,7 +491,8 @@ router.get("/relatorio-contratado", async (req, res) => {
         mediaFrete: parseFloat(mediaFrete.toFixed(2))
       },
       resumoPorContratado,
-      dados
+      dados,
+      city: city
     });
   } catch (e) {
     console.error("YCompany relatório error:", e);
@@ -433,8 +507,18 @@ router.get("/relatorio-contratado", async (req, res) => {
 router.get("/contratados-unicos", async (req, res) => {
   try {
     const c = await col();
-    const contratados = await c.distinct("contratado", { contratado: { $ne: null, $ne: "" } });
-    res.json({ ok: true, contratados: contratados.sort() });
+    
+    // Filtro por cidade
+    let filter = {};
+    const city = req.city || 'manaus';
+    if (city === 'manaus') {
+      filter.origem = { $in: ['MANAUS', 'MANAUS - COELTA BALY'] };
+    } else if (city === 'itajai') {
+      filter.origem = { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] };
+    }
+    
+    const contratados = await c.distinct("contratado", { ...filter, contratado: { $ne: null, $ne: "" } });
+    res.json({ ok: true, contratados: contratados.sort(), city: city });
   } catch (e) {
     console.error("YCompany contratados error:", e);
     res.status(500).json({ ok: false, error: "Erro ao buscar contratados" });

@@ -3,8 +3,17 @@ const Ycompany = require('../models/Ycompany');
 // GET all Ycompany records
 exports.getAll = async (req, res) => {
   try {
-    // Retorna TODOS os registros sem filtrar por cidade
-    const records = await Ycompany.find({})
+    // Filtrar por cidade do usuário
+    const city = req.city || 'manaus';
+    const filter = {};
+    
+    if (city === 'manaus') {
+      filter.origem = { $in: ['MANAUS', 'MANAUS - COELTA BALY'] };
+    } else if (city === 'itajai') {
+      filter.origem = { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] };
+    }
+    
+    const records = await Ycompany.find(filter)
       .sort({ createdAt: -1 })
       .lean();
 
@@ -12,6 +21,7 @@ exports.getAll = async (req, res) => {
       success: true,
       count: records.length,
       data: records,
+      city: city
     });
   } catch (error) {
     console.error('Erro ao buscar registros Ycompany:', error);
@@ -164,8 +174,16 @@ exports.delete = async (req, res) => {
 exports.search = async (req, res) => {
   try {
     const { q, situacao, cliente, limit = 100, skip = 0 } = req.query;
+    const city = req.city || 'manaus';
 
     const filter = {};
+    
+    // Filtro por cidade
+    if (city === 'manaus') {
+      filter.origem = { $in: ['MANAUS', 'MANAUS - COELTA BALY'] };
+    } else if (city === 'itajai') {
+      filter.origem = { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] };
+    }
 
     if (q) {
       filter.$or = [
@@ -202,6 +220,7 @@ exports.search = async (req, res) => {
       skip: parseInt(skip),
       limit: parseInt(limit),
       data: records,
+      city: city
     });
   } catch (error) {
     console.error('Erro ao buscar registros:', error);
