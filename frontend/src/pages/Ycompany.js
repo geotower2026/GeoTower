@@ -969,10 +969,13 @@ const Icompany = () => {
         /* Cards */
         .ic-prec{
           border-radius: 10px;
-          overflow: hidden;
+          overflow: visible;
           border: 1px solid var(--ic-border);
           background: var(--ic-surface);
           transition: box-shadow .15s, transform .15s;
+          display: flex;
+          flex-direction: column;
+          margin-bottom: 8px;
         }
         .ic-prec:hover{ box-shadow: var(--ic-sh-md); transform: translateY(-2px); }
 
@@ -1021,13 +1024,15 @@ const Icompany = () => {
 
         /* Comparação: sempre visível */
         .ic-comp{
-          margin: 0 12px 12px;
-          border-radius: 8px;
-          overflow-x: auto;                 /* <- permite ver tudo em telas pequenas */
+          margin: 0 0 14px 0;
+          border-radius: 0 0 10px 10px;
+          overflow-x: auto;
           border: 1px solid #e5e7eb;
+          border-top: none;
           background: #fafbfc;
           -webkit-overflow-scrolling: touch;
           box-shadow: inset 0 1px 3px rgba(0,0,0,.04);
+          min-height: 180px;
         }
         .ic-comp-head{
           padding: 10px 14px;
@@ -1064,11 +1069,13 @@ const Icompany = () => {
         .ic-comp-table th:first-child{ text-align: left; }
 
         .ic-comp-table td{
-          padding: 10px 12px;
+          padding: 14px 12px;
           border-bottom: 1px solid #e5e7eb;
           color: #1f2937;
           vertical-align: middle;
           font-weight: 500;
+          min-height: 28px;
+        }
         }
         .ic-comp-table tr:last-child td{ border-bottom: 1px solid #e5e7eb; }
         .ic-comp-table tr:hover td{ background: rgba(79,70,229,.03); }
