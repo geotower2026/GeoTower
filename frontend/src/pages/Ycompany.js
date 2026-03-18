@@ -964,6 +964,14 @@ const Icompany = () => {
               <FaFilter className="ic-filter-icon" />
               Filtros
             </button>
+            <button 
+              className="ic-filter-btn" 
+              onClick={() => setShowSyncPanel(!showSyncPanel)}
+              style={{ background: problemRecords.length > 0 ? '#ef4444' : '#6b7280', color: '#fff' }}
+              title={`${problemRecords.length} registros com problemas de sincronização`}
+            >
+              ⚠️ SYNC ({problemRecords.length})
+            </button>
           </div>
 
           {/* ══ TABLE CARD ══ */}
@@ -1037,6 +1045,9 @@ const Icompany = () => {
                 <table className="ic-table">
                   <thead className="ic-thead">
                     <tr>
+                      <th className="ic-th ic-th-sticky ic-th-sticky-0" style={{ minWidth: '120px', fontWeight: 'bold', backgroundColor: '#f1f5f9' }}>
+                        SYNC
+                      </th>
                       {COLUMNS.map((col, i) => (
                         <th key={col} className={`ic-th ${i < STICKY_COLS ? `ic-th-sticky ic-th-sticky-${i}` : ''}`}>
                           {col}
@@ -1045,8 +1056,16 @@ const Icompany = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.map((row, idx) => (
-                      <tr key={idx} className="ic-tr">
+                    {filteredData.map((row, idx) => {
+                      const syncSt = row.syncStatus;
+                      return (
+                      <tr key={idx} className="ic-tr" style={{ opacity: syncSt.severity !== 'success' ? 1 : 0.85 }}>
+                        <td className="ic-td ic-td-sticky ic-sticky-0" style={{ background: syncSt.color + '22', borderRight: `3px solid ${syncSt.color}` }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                            <span style={{ fontSize: '1.1rem' }}>{syncSt.icon}</span>
+                            <span style={{ color: syncSt.color }}>{syncSt.status}</span>
+                          </div>
+                        </td>
                         {COLUMNS.map((col, ci) => {
                           const fk  = FIELD_MAP[col];
                           const raw = row[fk];
@@ -1067,7 +1086,8 @@ const Icompany = () => {
                           );
                         })}
                       </tr>
-                    ))}
+                    );
+                    })}
                   </tbody>
                 </table>
               )}
@@ -1097,6 +1117,111 @@ const Icompany = () => {
             )}
           </div>
         </main>
+
+        {/* ═══ PAINEL DE SINCRONIZAÇÃO ═══ */}
+        {showSyncPanel && (
+          <div style={{
+            position: 'fixed', right: 0, top: 0, bottom: 0, width: '400px',
+            background: '#fff', borderLeft: '1px solid #e2e8f0', zIndex: 1000,
+            boxShadow: '-4px 0 16px rgba(0,0,0,.1)', overflowY: 'auto',
+            animation: 'slideInRight 0.3s ease-out'
+          }}>
+            <div style={{ padding: '20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#0f172a' }}>
+                Problemas de Sincronização
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>
+                  {problemRecords.length} registros com issues
+                </div>
+              </div>
+              <button onClick={() => setShowSyncPanel(false)} style={{
+                background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', color: '#64748b'
+              }}>
+                ✕
+              </button>
+            </div>
+
+            <div style={{ padding: '12px', display: 'flex', gap: '8px' }}>
+              <button onClick={() => setSyncFilter('all')} style={{
+                flex: 1, padding: '8px 12px', border: syncFilter === 'all' ? '2px solid #4f46e5' : '1px solid #e2e8f0',
+                background: syncFilter === 'all' ? '#ecf0ff' : '#fff', borderRadius: '6px', cursor: 'pointer',
+                fontSize: '0.8rem', fontWeight: syncFilter === 'all' ? 'bold' : 'normal'
+              }}>
+                Todos ({syncAnalysi.length})
+              </button>
+              <button onClick={() => setSyncFilter('partial')} style={{
+                flex: 1, padding: '8px 12px', border: syncFilter === 'partial' ? '2px solid #f59e0b' : '1px solid #e2e8f0',
+                background: syncFilter === 'partial' ? '#fffbeb' : '#fff', borderRadius: '6px', cursor: 'pointer',
+                fontSize: '0.8rem', fontWeight: syncFilter === 'partial' ? 'bold' : 'normal'
+              }}>
+                Parcial ({partialRecords.length})
+              </button>
+              <button onClick={() => setSyncFilter('empty')} style={{
+                flex: 1, padding: '8px 12px', border: syncFilter === 'empty' ? '2px solid #ef4444' : '1px solid #e2e8f0',
+                background: syncFilter === 'empty' ? '#fef2f2' : '#fff', borderRadius: '6px', cursor: 'pointer',
+                fontSize: '0.8rem', fontWeight: syncFilter === 'empty' ? 'bold' : 'normal'
+              }}>
+                Vazio ({emptyRecords.length})
+              </button>
+            </div>
+
+            <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
+              {problemRecords.length === 0 ? (
+                <div style={{ textAlign: 'center', color: '#64748b', padding: '32px 16px' }}>
+                  <div style={{ fontSize: '2rem', marginBottom: '8px' }}>✓</div>
+                  <div>Todos os registros estão sincronizados!</div>
+                </div>
+              ) : (
+                problemRecords.map((rec, i) => (
+                  <div key={i} style={{
+                    background: rec.syncStatus.color + '11',
+                    border: `1px solid ${rec.syncStatus.color}44`,
+                    borderRadius: '8px', padding: '12px',
+                    cursor: 'pointer'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '8px' }}>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#0f172a' }}>
+                        {rec.codigo || rec.processo || 'N/A'}
+                      </div>
+                      <span style={{
+                        fontSize: '1.2rem', background: rec.syncStatus.color + '22',
+                        color: rec.syncStatus.color, padding: '2px 8px', borderRadius: '4px'
+                      }}>
+                        {rec.syncStatus.icon}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '8px' }}>
+                      Status: <span style={{ fontWeight: 'bold', color: rec.syncStatus.color }}>
+                        {rec.syncStatus.status}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b', lineHeight: '1.5' }}>
+                      <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Campos vazios:</div>
+                      <ul style={{ margin: 0, paddingLeft: '16px' }}>
+                        {rec.syncStatus.issues.slice(0, 5).map((field, j) => (
+                          <li key={j} style={{ fontSize: '0.7rem' }}>
+                            {field.replace(/([A-Z])/g, ' $1').trim()}
+                          </li>
+                        ))}
+                        {rec.syncStatus.issues.length > 5 && (
+                          <li style={{ fontSize: '0.7rem', fontStyle: 'italic' }}>
+                            +{rec.syncStatus.issues.length - 5} mais
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <style>{`
+              @keyframes slideInRight {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+              }
+            `}</style>
+          </div>
+        )}
       </div>
     </>
   );
