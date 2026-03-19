@@ -418,8 +418,7 @@ const DeliveryKanbanCard = ({ delivery, column, onOpen, currentTime, city = 'man
         </div>
       </div>
     </button>
-  );
-};
+);
 
 const KanbanColumnHeader = ({ column, count }) => {
   const Icon = column.icon;
