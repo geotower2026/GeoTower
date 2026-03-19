@@ -787,14 +787,14 @@ const SettingsPanel = ({
 ───────────────────────────────────────────────────────────── */
 const MobileDeliveryCard = ({
   d, currentTime, allModalDocsComplete, getDocumentsStatus,
-  getPunctualityStatus, recentlyUpdated, RISE_WINDOW, setSelectedDelivery
+  getPunctualityStatus, recentlyUpdated, RISE_WINDOW, setSelectedDelivery, city
 }) => {
   const now = Date.now();
   const updatedAt = recentlyUpdated[d._id];
   const isActive = updatedAt && (now - updatedAt) < RISE_WINDOW;
   const docStatus = getDocumentsStatus(d);
   const isComplete = docStatus.includes('COMPLETO');
-  const punct = getPunctualityStatus(d, currentTime);
+  const punct = getPunctualityStatus(d, currentTime, city);
   const dispStatus = d.status === 'FINALIZADO' && allModalDocsComplete(d) ? 'DOCUMENTOS ENTREGUES' : d.status;
 
   return (
@@ -1834,6 +1834,7 @@ const MonitorEntregas = () => {
                   recentlyUpdated={recentlyUpdated}
                   RISE_WINDOW={RISE_WINDOW}
                   setSelectedDelivery={setSelectedDelivery}
+                  city={city}
                 />
               ))}
             </div>
@@ -1949,7 +1950,7 @@ const MonitorEntregas = () => {
                           </div>
 
                           <div className="px-1 py-3 flex items-center justify-center min-w-0">
-                            <PunctualityCell p={getPunctualityStatus(d, currentTime)} />
+                            <PunctualityCell p={getPunctualityStatus(d, currentTime, city)} />
                           </div>
 
                           <div className="px-1 py-3 flex items-center justify-center min-w-0">
