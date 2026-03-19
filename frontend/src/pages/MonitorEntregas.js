@@ -1612,7 +1612,7 @@ const MonitorEntregas = () => {
       vehiclePlate: d.vehiclePlate || '',
       recebedor: d.recebedor || '',
       status: d.status || '',
-      dataAgendamento: d.dataAgendamento?.slice(0, 16) || '',
+      dataAgendamento: getProgramacaoDate(d, city)?.slice(0, 16) || d.dataAgendamento?.slice(0, 16) || '',
       horarioDevolucaoVazio: d.horarioDevolucaoVazio?.slice(0, 16) || '',
       horarioChegada: d.horarioChegada?.slice(0, 16) || '',
       horarioInicioDesova: d.horarioInicioDesova?.slice(0, 16) || '',
