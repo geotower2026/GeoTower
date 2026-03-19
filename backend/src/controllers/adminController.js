@@ -4,9 +4,10 @@ const Driver = require('../models/Driver');
 // Get all deliveries (admin only)
 exports.getAllDeliveries = async (req, res) => {
   try {
+    const city = req.city || 'manaus';
     const { driverId, startDate, endDate, searchTerm, status } = req.query;
 
-    let query = { status: { $in: ['submitted', 'completed'] } };
+    let query = { status: { $in: ['submitted', 'completed'] }, cityCode: city };
 
     if (driverId) {
       query.driverId = driverId;
@@ -48,6 +49,7 @@ exports.getAllDeliveries = async (req, res) => {
 // Get delivery statistics
 exports.getStatistics = async (req, res) => {
   try {
+    const city = req.city || 'manaus';
     const { period = 'month' } = req.query;
 
     let dateFilter = {};
@@ -69,6 +71,7 @@ exports.getStatistics = async (req, res) => {
     // Total deliveries
     const totalDeliveries = await Delivery.countDocuments({
       status: { $in: ['submitted', 'completed'] },
+      cityCode: city,
       submittedAt: dateFilter
     });
 
@@ -77,6 +80,7 @@ exports.getStatistics = async (req, res) => {
       {
         $match: {
           status: { $in: ['submitted', 'completed'] },
+          cityCode: city,
           submittedAt: dateFilter
         }
       },
@@ -98,6 +102,7 @@ exports.getStatistics = async (req, res) => {
       {
         $match: {
           status: { $in: ['submitted', 'completed'] },
+          cityCode: city,
           submittedAt: { $gte: thirtyDaysAgo }
         }
       },
@@ -129,12 +134,18 @@ exports.getStatistics = async (req, res) => {
 // Get delivery details (admin)
 exports.getDeliveryDetails = async (req, res) => {
   try {
+    const city = req.city || 'manaus';
     const { id } = req.params;
 
     const delivery = await Delivery.findById(id).populate('driverId', 'name username email phone');
 
     if (!delivery) {
       return res.status(404).json({ success: false, message: 'Entrega não encontrada' });
+    }
+    
+    // Validação de cidade
+    if (delivery.cityCode !== city) {
+      return res.status(403).json({ success: false, message: 'Acesso negado - dados de outra cidade' });
     }
 
     res.json({ success: true, delivery });
@@ -146,12 +157,18 @@ exports.getDeliveryDetails = async (req, res) => {
 // Download document
 exports.downloadDocument = async (req, res) => {
   try {
+    const city = req.city || 'manaus';
     const { id, documentType } = req.params;
 
     const delivery = await Delivery.findById(id);
 
     if (!delivery) {
       return res.status(404).json({ success: false, message: 'Entrega não encontrada' });
+    }
+    
+    // Validação de cidade
+    if (delivery.cityCode !== city) {
+      return res.status(403).json({ success: false, message: 'Acesso negado - dados de outra cidade' });
     }
 
     const doc = delivery.documents[documentType];

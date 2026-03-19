@@ -47,6 +47,17 @@ const DeliverySchema = new mongoose.Schema(
 
     deliveryDate: { type: Date, default: Date.now },
 
+    // Identificação da cidade (Manaus, Itajaí, etc)
+    cityCode: { 
+      type: String, 
+      enum: ['manaus', 'itajai'], 
+      default: 'manaus',
+      required: true
+    },
+
+    // Relacionamento com ProgramacaoEntrega
+    linkedProgramacaoId: { type: mongoose.Schema.Types.ObjectId, ref: "ProgramacaoEntrega" },
+
     // caminhos/urls dos documentos
     documents: {
       canhotNF: { type: String, default: null },
@@ -61,5 +72,11 @@ const DeliverySchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Índices para filtrar por cidade
+DeliverySchema.index({ cityCode: 1 });
+DeliverySchema.index({ cityCode: 1, deliveryNumber: 1 });
+DeliverySchema.index({ cityCode: 1, status: 1 });
+DeliverySchema.index({ cityCode: 1, linkedProgramacaoId: 1 });
 
 module.exports = mongoose.model("Delivery", DeliverySchema);

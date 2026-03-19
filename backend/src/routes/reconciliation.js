@@ -72,11 +72,12 @@ function parseCSV(buffer) {
  */
 router.post('/upload', auth, onlyAdmin, upload.single('file'), async (req, res) => {
   try {
+    const city = req.city || 'manaus';
     if (!req.file) {
       return res.status(400).json({ message: 'Arquivo não fornecido' });
     }
 
-    console.log('📤 Upload de reconciliação recebido:', req.file.originalname);
+    console.log('📤 Upload de reconciliação recebido:', { arquivo: req.file.originalname, cidade: city });
 
     // Parseia arquivo
     let uploadedData;
@@ -90,7 +91,7 @@ router.post('/upload', auth, onlyAdmin, upload.single('file'), async (req, res) 
 
     // Busca todas as entregas no sistema (usando DB da cidade selecionada)
     const db = await getDb(req);
-    const systemDeliveries = await db.find('deliveries', {});
+    const systemDeliveries = await db.find('deliveries', { cityCode: city });
 
     // Comparação
     const results = {
@@ -162,18 +163,19 @@ router.post('/upload', auth, onlyAdmin, upload.single('file'), async (req, res) 
  */
 router.post('/apply', auth, onlyAdmin, async (req, res) => {
   try {
+    const city = req.city || 'manaus';
     const { updates } = req.body; // Array de { deliveryNumber, newStatus }
 
     if (!updates || !Array.isArray(updates)) {
       return res.status(400).json({ message: 'Updates array requerido' });
     }
 
-    console.log('🔄 Aplicando', updates.length, 'atualizações de status');
+    console.log('🔄 Aplicando', updates.length, 'atualizações de status (cidade:', city, ')');
 
     const results = [];
     const db = await getDb(req);
     for (const update of updates) {
-      const delivery = await db.findOne('deliveries', { deliveryNumber: update.deliveryNumber });
+      const delivery = await db.findOne('deliveries', { deliveryNumber: update.deliveryNumber, cityCode: city });
       if (delivery) {
         const updated = await db.updateOne('deliveries', { _id: delivery._id }, {
           status: update.newStatus,

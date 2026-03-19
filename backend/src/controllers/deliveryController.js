@@ -14,6 +14,7 @@ function getDocsForCity(city = 'manaus') {
 // Create a new delivery
 exports.createDelivery = async (req, res) => {
   try {
+    const city = req.city || 'manaus';
     const { deliveryNumber, vehiclePlate, observations, containerMontadoAt } = req.body;
     const driverId = req.user.id;
 
@@ -21,6 +22,7 @@ exports.createDelivery = async (req, res) => {
     const existingDelivery = await Delivery.findOne({ 
       deliveryNumber, 
       driverId,
+      cityCode: city,
       status: { $in: ['draft', 'submitted'] }
     });
 
@@ -40,6 +42,7 @@ exports.createDelivery = async (req, res) => {
       vehiclePlate,
       observations,
       containerMontadoAt: containerMontadoAt ? new Date(containerMontadoAt) : null,
+      cityCode: city,
       status: 'draft'
     });
 
@@ -59,9 +62,10 @@ exports.createDelivery = async (req, res) => {
 exports.getMyDeliveries = async (req, res) => {
   try {
     const driverId = req.user.id;
+    const city = req.city || 'manaus';
     const { status, searchTerm } = req.query;
 
-    let query = { driverId };
+    let query = { driverId, cityCode: city };
     
     if (status) {
       query.status = status;
@@ -82,6 +86,7 @@ exports.getMyDeliveries = async (req, res) => {
 // Get delivery by ID
 exports.getDeliveryById = async (req, res) => {
   try {
+    const city = req.city || 'manaus';
     const { id } = req.params;
 
     // Validar se é um ID MongoDB válido
@@ -99,6 +104,11 @@ exports.getDeliveryById = async (req, res) => {
     if (delivery.driverId.toString() !== req.user.id) {
       return res.status(403).json({ success: false, message: 'Acesso negado' });
     }
+    
+    // Check city
+    if (delivery.cityCode !== city) {
+      return res.status(403).json({ success: false, message: 'Acesso negado - dados de outra cidade' });
+    }
 
     res.json({ success: true, delivery });
   } catch (error) {
@@ -110,6 +120,7 @@ exports.getDeliveryById = async (req, res) => {
 // Update delivery document
 exports.updateDeliveryDocument = async (req, res) => {
   try {
+    const city = req.city || 'manaus';
     const { id, documentType } = req.params;
 
     if (!req.file) {
@@ -131,13 +142,18 @@ exports.updateDeliveryDocument = async (req, res) => {
     if (delivery.driverId.toString() !== req.user.id) {
       return res.status(403).json({ success: false, message: 'Acesso negado' });
     }
+    
+    // Check city
+    if (delivery.cityCode !== city) {
+      return res.status(403).json({ success: false, message: 'Acesso negado - dados de outra cidade' });
+    }
 
     // Check if delivery is submitted
     if (delivery.status === 'submitted') {
       return res.status(400).json({ success: false, message: 'Entrega já foi enviada' });
     }
 
-    const validDocuments = getDocsForCity(req.city || 'manaus');
+    const validDocuments = getDocsForCity(city);
     if (!validDocuments.includes(documentType)) {
       return res.status(400).json({ success: false, message: 'Tipo de documento inválido para esta cidade' });
     }
@@ -148,7 +164,6 @@ exports.updateDeliveryDocument = async (req, res) => {
     }
 
     // Move o arquivo para a pasta do container (padronizar comportamento com mock)
-    const city = req.city || 'manaus';
     const containerFolder = delivery.deliveryNumber || 'unknown';
     const containerDir = path.join(__dirname, '..', 'uploads', city, containerFolder);
     fs.mkdirSync(containerDir, { recursive: true });
@@ -181,6 +196,7 @@ exports.updateDeliveryDocument = async (req, res) => {
 // Submit delivery (check all documents are attached)
 exports.submitDelivery = async (req, res) => {
   try {
+    const city = req.city || 'manaus';
     const { id } = req.params;
 
     const delivery = await Delivery.findById(id);
@@ -193,6 +209,11 @@ exports.submitDelivery = async (req, res) => {
     if (delivery.driverId.toString() !== req.user.id) {
       return res.status(403).json({ success: false, message: 'Acesso negado' });
     }
+    
+    // Check city
+    if (delivery.cityCode !== city) {
+      return res.status(403).json({ success: false, message: 'Acesso negado - dados de outra cidade' });
+    }
 
     // Check if already submitted
     if (delivery.status === 'submitted') {
@@ -200,7 +221,6 @@ exports.submitDelivery = async (req, res) => {
     }
 
     // Check all documents are attached (city-specific)
-    const city = delivery.city || req.city || 'manaus';
     const requiredDocs = getDocsForCity(city);
     const missingDocs = requiredDocs.filter(doc => !delivery.documents || !delivery.documents[doc]);
 
@@ -246,6 +266,7 @@ exports.submitDelivery = async (req, res) => {
 // Delete delivery (only if draft)
 exports.deleteDelivery = async (req, res) => {
   try {
+    const city = req.city || 'manaus';
     const { id } = req.params;
 
     const delivery = await Delivery.findById(id);
@@ -257,6 +278,11 @@ exports.deleteDelivery = async (req, res) => {
     // Check if driver owns this delivery
     if (delivery.driverId.toString() !== req.user.id) {
       return res.status(403).json({ success: false, message: 'Acesso negado' });
+    }
+    
+    // Check city
+    if (delivery.cityCode !== city) {
+      return res.status(403).json({ success: false, message: 'Acesso negado - dados de outra cidade' });
     }
 
     // Only allow deletion of draft deliveries

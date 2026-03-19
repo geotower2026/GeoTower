@@ -107,12 +107,23 @@ router.get("/statistics", auth, onlyAdmin, async (req, res) => {
 router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
   try {
     const { status, q, startDate, endDate, period, periodDate } = req.query;
-    console.log('📋 GET /admin/deliveries recebido com filtros:', { status, q, startDate, endDate, period, periodDate });
+    const city = req.city || 'manaus';
+    console.log('📋 GET /admin/deliveries recebido com filtros:', { status, q, startDate, endDate, period, periodDate, city });
     
-    // Buscar programações
+    // Buscar programações filtradas por cidade
     const ProgramacaoEntrega = require('../models/ProgramacaoEntrega');
-    const programacoes = await ProgramacaoEntrega.find({});
-    console.log('  ℹ️  Total de programações:', programacoes ? programacoes.length : 0);
+    let progFilter = {};
+    if (city === 'manaus') {
+      progFilter.origem = { $in: ['MANAUS', 'MANAUS - COELTA BALY'] };
+    } else if (city === 'itajai') {
+      progFilter.$or = [
+        { origem: { $exists: false } },
+        { origem: '' },
+        { origem: { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] } }
+      ];
+    }
+    const programacoes = await ProgramacaoEntrega.find(progFilter);
+    console.log('  ℹ️  Total de programações (' + city + '):', programacoes ? programacoes.length : 0);
 
     // Calcula effectiveDate se period/periodDate fornecidos
     let effectiveDate = '';
@@ -135,8 +146,8 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
     // *** UNIFIED LOGIC BELOW ***
     // buscamos entregas iniciadas e também levamos em conta programações não iniciadas
     const db = await getDb(req);
-    const allDeliveries = await db.find("deliveries", {});
-    console.log('  ℹ️  Total de entregas na DB:', allDeliveries ? allDeliveries.length : 0);
+    const allDeliveries = await db.find("deliveries", { cityCode: city });
+    console.log('  ℹ️  Total de entregas na DB (' + city + '):', allDeliveries ? allDeliveries.length : 0);
 
     // Normaliza documentos para resposta
     const normalizedDeliveries = (allDeliveries || []).map(d => {
@@ -320,6 +331,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
  */
 router.get("/deliveries/:id", auth, onlyAdmin, async (req, res) => {
   try {
+    const city = req.city || 'manaus';
     const db = await getDb(req);
     let delivery = await db.findById("deliveries", req.params.id);
     // Fallback: em alguns casos usamos deliveryNumber como identificador
@@ -327,6 +339,11 @@ router.get("/deliveries/:id", auth, onlyAdmin, async (req, res) => {
       delivery = await db.findOne("deliveries", { deliveryNumber: req.params.id });
     }
     if (!delivery) return res.status(404).json({ message: "Entrega não encontrada" });
+    
+    // Validação de cidade
+    if (delivery.cityCode !== city) {
+      return res.status(403).json({ message: 'Acesso negado - dados de outra cidade' });
+    }
     
     // DEBUG: retorna entrega completa com documents raw
     console.log(`[DEBUG] Entrega ${req.params.id} encontrada:`, JSON.stringify(delivery, null, 2));
@@ -346,9 +363,10 @@ router.get("/deliveries/:id", auth, onlyAdmin, async (req, res) => {
  */
 router.get("/deliveries/:id/documents/:documentType/download", auth, onlyAdmin, async (req, res) => {
   try {
+    const city = req.city || 'manaus';
     const { id, documentType } = req.params;
     console.log(`\n${'='.repeat(80)}`);
-    console.log(`[DOWNLOAD] 🔴 ROTA ATINGIDA! id=${id}, documentType=${documentType}`);
+    console.log(`[DOWNLOAD] 🔴 ROTA ATINGIDA! id=${id}, documentType=${documentType}, city=${city}`);
     console.log(`[DOWNLOAD] query params:`, req.query);
     console.log(`${'='.repeat(80)}\n`);
 
@@ -358,6 +376,11 @@ router.get("/deliveries/:id/documents/:documentType/download", auth, onlyAdmin, 
     if (!delivery) {
       console.error(`[DOWNLOAD] Entrega não encontrada: ${id}`);
       return res.status(404).json({ message: "Entrega não encontrada" });
+    }
+    
+    // Validação de cidade
+    if (delivery.cityCode !== city) {
+      return res.status(403).json({ message: 'Acesso negado - dados de outra cidade' });
     }
 
     // Verifica se o tipo de documento é conhecido para esta entrega
@@ -734,10 +757,11 @@ router.get('/deliveries/:id/documents/zip', auth, onlyAdmin, async (req, res) =>
  */
 router.put("/deliveries/:id", auth, onlyAdmin, async (req, res) => {
   try {
+    const city = req.city || 'manaus';
     const { id } = req.params;
     const { deliveryNumber, userName, driverName, vehiclePlate, observations, dataAgendamento, horarioChegada, horarioDevolucaoVazio, horarioInicioDesova, horarioFimDesova, status } = req.body;
 
-    console.log('📝 Recebido PUT /deliveries/:id', { id, deliveryNumber, userName, driverName, vehiclePlate, observations, horarioDevolucaoVazio });
+    console.log('📝 Recebido PUT /deliveries/:id', { id, deliveryNumber, userName, driverName, vehiclePlate, observations, horarioDevolucaoVazio, city });
 
     // Validar se motivo da edição foi fornecido
     if (!observations || observations.trim() === '') {
@@ -754,6 +778,11 @@ router.put("/deliveries/:id", auth, onlyAdmin, async (req, res) => {
     console.log('🔍 Entrega encontrada:', delivery?.deliveryNumber);
     if (!delivery) {
       return res.status(404).json({ message: "Entrega não encontrada" });
+    }
+    
+    // Validação de cidade
+    if (delivery.cityCode !== city) {
+      return res.status(403).json({ message: 'Acesso negado - dados de outra cidade' });
     }
 
     // Atualiza campos
@@ -815,6 +844,7 @@ router.put("/deliveries/:id", auth, onlyAdmin, async (req, res) => {
  */
 router.delete("/deliveries/:id", auth, onlyAdmin, async (req, res) => {
   try {
+    const city = req.city || 'manaus';
     const { id } = req.params;
 
     // Busca entrega
@@ -822,6 +852,11 @@ router.delete("/deliveries/:id", auth, onlyAdmin, async (req, res) => {
     const delivery = await db.findById("deliveries", id);
     if (!delivery) {
       return res.status(404).json({ message: "Entrega não encontrada" });
+    }
+    
+    // Validação de cidade
+    if (delivery.cityCode !== city) {
+      return res.status(403).json({ message: 'Acesso negado - dados de outra cidade' });
     }
 
       // Remove associated files from disk/S3 before deleting
@@ -1488,9 +1523,10 @@ router.get("/programacoes", auth, async (req, res) => {
  */
 router.post("/programacoes", auth, managerOnly, async (req, res) => {
   try {
-    const { processo, recebedor, container, dataAgendamento, contratado, motorista, status, observacoes } = req.body;
+    const city = req.city || 'manaus';
+    const { processo, recebedor, container, dataAgendamento, contratado, motorista, status, observacoes, origem } = req.body;
 
-    console.log('[PROGRAMACAO] Criando:', { processo, recebedor, contratado });
+    console.log('[PROGRAMACAO] Criando:', { processo, recebedor, contratado, cidade: city });
 
     const ProgramacaoEntrega = require("../models/ProgramacaoEntrega");
 
@@ -1502,11 +1538,12 @@ router.post("/programacoes", auth, managerOnly, async (req, res) => {
       contratado,
       motorista,
       status,
-      observacoes
+      observacoes,
+      origem: origem || (city === 'manaus' ? 'MANAUS' : '')
     });
 
     await novaProgramacao.save();
-    console.log('[PROGRAMACAO] ✅ Criada:', { _id: novaProgramacao._id, processo });
+    console.log('[PROGRAMACAO] ✅ Criada:', { _id: novaProgramacao._id, processo, origem: novaProgramacao.origem });
 
     return res.status(201).json({
       success: true,
@@ -1530,18 +1567,30 @@ router.post("/programacoes", auth, managerOnly, async (req, res) => {
  */
 router.put("/programacoes/:id", auth, managerOnly, async (req, res) => {
   try {
+    const city = req.city || 'manaus';
     const { id } = req.params;
-    const { processo, recebedor, container, dataAgendamento, contratado, motorista, status, observacoes, containerReturned } = req.body;
+    const { processo, recebedor, container, dataAgendamento, contratado, motorista, status, observacoes, containerReturned, origem } = req.body;
     // Get editor name from logged-in user
     const editorName = req.user?.name || req.user?.username || req.user?._id || 'Desconhecido';
 
-    console.log('[PROGRAMACAO] Atualizando:', id);
+    console.log('[PROGRAMACAO] Atualizando:', { id, cidade: city });
 
     const ProgramacaoEntrega = require("../models/ProgramacaoEntrega");
     
     const programacao = await ProgramacaoEntrega.findById(id);
     if (!programacao) {
       return res.status(404).json({ message: "Programação não encontrada" });
+    }
+    
+    // Validação de cidade baseada no campo origem
+    if (city === 'manaus') {
+      if (programacao.origem && !['MANAUS', 'MANAUS - COELTA BALY'].includes(programacao.origem)) {
+        return res.status(403).json({ message: 'Acesso negado - programação de outra cidade' });
+      }
+    } else if (city === 'itajai') {
+      if (programacao.origem && ['MANAUS', 'MANAUS - COELTA BALY'].includes(programacao.origem)) {
+        return res.status(403).json({ message: 'Acesso negado - programação de outra cidade' });
+      }
     }
 
     // Atualizar apenas os campos fornecidos
@@ -1554,13 +1603,14 @@ router.put("/programacoes/:id", auth, managerOnly, async (req, res) => {
     if (status !== undefined) programacao.status = status;
     if (observacoes !== undefined) programacao.observacoes = observacoes;
     if (containerReturned !== undefined) programacao.containerReturned = containerReturned;
+    if (origem !== undefined) programacao.origem = origem;
     // Register editor and time
     programacao.editedBy = editorName;
     programacao.editedAt = new Date();
 
     try {
       await programacao.save();
-      console.log('[PROGRAMACAO] ✅ Atualizada:', { _id: id, processo: programacao.processo });
+      console.log('[PROGRAMACAO] ✅ Atualizada:', { _id: id, processo: programacao.processo, origem: programacao.origem });
       return res.json({
         success: true,
         message: "Programação atualizada com sucesso",
@@ -1590,14 +1640,26 @@ router.put("/programacoes/:id", auth, managerOnly, async (req, res) => {
  */
 router.delete("/programacoes/:id", auth, managerOnly, async (req, res) => {
   try {
+    const city = req.city || 'manaus';
     const { id } = req.params;
 
-    console.log('[PROGRAMACAO] Deletando:', id);
+    console.log('[PROGRAMACAO] Deletando:', { id, cidade: city });
 
     const ProgramacaoEntrega = require("../models/ProgramacaoEntrega");
     const programacao = await ProgramacaoEntrega.findById(id);
     if (!programacao) {
       return res.status(404).json({ message: "Programação não encontrada" });
+    }
+    
+    // Validação de cidade baseada no campo origem
+    if (city === 'manaus') {
+      if (programacao.origem && !['MANAUS', 'MANAUS - COELTA BALY'].includes(programacao.origem)) {
+        return res.status(403).json({ message: 'Acesso negado - programação de outra cidade' });
+      }
+    } else if (city === 'itajai') {
+      if (programacao.origem && ['MANAUS', 'MANAUS - COELTA BALY'].includes(programacao.origem)) {
+        return res.status(403).json({ message: 'Acesso negado - programação de outra cidade' });
+      }
     }
 
     await ProgramacaoEntrega.findByIdAndDelete(id);
@@ -1619,6 +1681,7 @@ router.delete("/programacoes/:id", auth, managerOnly, async (req, res) => {
  */
 router.post("/programacoes/import", auth, managerOnly, async (req, res) => {
   try {
+    const city = req.city || 'manaus';
     const programacoes = req.body;
 
     if (!Array.isArray(programacoes)) {
@@ -1629,7 +1692,7 @@ router.post("/programacoes/import", auth, managerOnly, async (req, res) => {
       return res.status(400).json({ message: "Nenhuma programação para importar" });
     }
 
-    console.log('[PROGRAMACAO] Importando', programacoes.length, 'programações em batch');
+    console.log('[PROGRAMACAO] Importando', programacoes.length, 'programações em batch (cidade:', city, ')');
 
     const ProgramacaoEntrega = require("../models/ProgramacaoEntrega");
     
@@ -1639,7 +1702,7 @@ router.post("/programacoes/import", auth, managerOnly, async (req, res) => {
 
     for (const prog of programacoes) {
       try {
-        const { processo, container, dataAgendamento, contratado, motorista, status, observacoes } = prog;
+        const { processo, container, dataAgendamento, contratado, motorista, status, observacoes, origem } = prog;
         // Case-insensitive recebedor field
         const recebedorField = prog.recebedor || prog.Recebedor || prog.RECEBEDOR || '';
 
@@ -1663,7 +1726,8 @@ router.post("/programacoes/import", auth, managerOnly, async (req, res) => {
           contratado,
           motorista: motorista || '',
           status: status || 'AGENDADO',
-          observacoes: observacoes || ''
+          observacoes: observacoes || '',
+          origem: origem || (city === 'manaus' ? 'MANAUS' : '')
         });
 
         await novaProgramacao.save();

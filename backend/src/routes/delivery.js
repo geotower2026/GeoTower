@@ -80,7 +80,8 @@ router.post("/", auth, async (req, res) => {
       status: status || "pending",
       currentStep: 'welcome',
       documents: {},
-      city
+      city,
+      cityCode: city
     });
 
     // Attempt to update matching programacao to indicate it is now em rota
@@ -160,7 +161,8 @@ router.get("/", auth, async (req, res) => {
   try {
     const db = await getDb(req);
     const { status, q } = req.query;
-    const query = { userId: req.user.id };
+    const city = req.city || 'manaus';
+    const query = { userId: req.user.id, cityCode: city };
     
     if (status && status !== 'all') {
       query.status = status;
@@ -195,8 +197,13 @@ router.get("/", auth, async (req, res) => {
 router.get("/:id", auth, async (req, res) => {
   try {
     const db = await getDb(req);
+    const city = req.city || 'manaus';
     const delivery = await db.findById("deliveries", req.params.id);
     if (!delivery) return res.status(404).json({ message: "Entrega não encontrada" });
+    // Verificar se pertence à cidade do usuário
+    if (delivery.cityCode !== city) {
+      return res.status(403).json({ message: 'Acesso negado - dados de outra cidade' });
+    }
     // drivers should only access their own deliveries; admins may view all
     if (req.user.role !== 'admin' && String(delivery.userId) !== String(req.user.id)) {
       return res.status(403).json({ message: 'Acesso negado' });
@@ -216,9 +223,14 @@ router.get("/:id", auth, async (req, res) => {
 router.put("/:id", auth, async (req, res) => {
   try {
     const db = await getDb(req);
+    const city = req.city || 'manaus';
     const { id } = req.params;
     const delivery = await db.findById("deliveries", id);
     if (!delivery) return res.status(404).json({ message: "Entrega não encontrada" });
+    // Verificar se pertence à cidade do usuário
+    if (delivery.cityCode !== city) {
+      return res.status(403).json({ message: 'Acesso negado - dados de outra cidade' });
+    }
     if (String(delivery.userId) !== String(req.user.id)) {
       return res.status(403).json({ message: 'Acesso negado' });
     }
@@ -419,13 +431,19 @@ router.get('/programacoes/mine', auth, async (req, res) => {
 router.post("/:id/documents/:type", auth, upload.array("file"), async (req, res) => {
   try {
     const { id, type } = req.params;
-    console.log(`[UPLOAD] Iniciando upload para entrega ${id}, tipo ${type}`);
+    const city = req.city || 'manaus';
+    console.log(`[UPLOAD] Iniciando upload para entrega ${id}, tipo ${type}, cidade ${city}`);
     console.log(`[UPLOAD] req.files:`, req.files);
     const db = await getDb(req);
     const delivery = await db.findById("deliveries", id);
     if (!delivery) {
       console.error(`[UPLOAD] Entrega não encontrada: ${id}`);
       return res.status(404).json({ message: "Entrega não encontrada" });
+    }
+    
+    // Validação de cidade
+    if (delivery.cityCode !== city) {
+      return res.status(403).json({ message: 'Acesso negado - dados de outra cidade' });
     }
 
     const typeNames = {
@@ -444,7 +462,6 @@ router.post("/:id/documents/:type", auth, upload.array("file"), async (req, res)
     };
     const baseName = typeNames[type] || type;
     const containerFolder = delivery.deliveryNumber;
-    const city = req.city || 'manaus';
     const containerDir = path.join(__dirname, "../uploads", city, containerFolder);
     try {
       fs.mkdirSync(containerDir, { recursive: true });
@@ -582,9 +599,15 @@ router.post("/:id/documents/:type", auth, upload.array("file"), async (req, res)
 router.delete('/:id/documents/:type/:index', auth, async (req, res) => {
   try {
     const { id, type, index } = req.params;
+    const city = req.city || 'manaus';
     const db = await getDb(req);
     const delivery = await db.findById('deliveries', id);
     if (!delivery) return res.status(404).json({ message: 'Entrega não encontrada' });
+    
+    // Validação de cidade
+    if (delivery.cityCode !== city) {
+      return res.status(403).json({ message: 'Acesso negado - dados de outra cidade' });
+    }
     
     const docs = delivery.documents || {};
     const docEntry = docs[type];
@@ -592,8 +615,6 @@ router.delete('/:id/documents/:type/:index', auth, async (req, res) => {
     if (!docEntry) return res.status(404).json({ message: 'Documento não encontrado' });
 
     const idx = parseInt(index, 10);
-
-    const city = req.city || 'manaus';
 
     // Se for string simples, só remove
     if (!Array.isArray(docEntry)) {
@@ -656,11 +677,17 @@ router.delete('/:id/documents/:type/:index', auth, async (req, res) => {
 // =======================
 router.post("/:id/submit", auth, async (req, res) => {
   try {
+    const city = req.city || 'manaus';
     const db = await getDb(req);
-    console.log('📩 Submit request', { id: req.params.id, body: req.body, headers: { 'x-city': req.header('x-city'), host: req.headers.host } });
+    console.log('📩 Submit request', { id: req.params.id, body: req.body, cidade: city, headers: { 'x-city': req.header('x-city'), host: req.headers.host } });
 
     const delivery = await db.findById('deliveries', req.params.id);
     if (!delivery) return res.status(404).json({ message: 'Entrega não encontrada' });
+    
+    // Validação de cidade
+    if (delivery.cityCode !== city) {
+      return res.status(403).json({ message: 'Acesso negado - dados de outra cidade' });
+    }
 
     // Check ownership: prefer driverId if present, else userId
     const ownerId = (delivery.driverId && String(delivery.driverId)) || (delivery.userId && String(delivery.userId));
@@ -694,7 +721,6 @@ router.post("/:id/submit", auth, async (req, res) => {
     };
 
     // Determine required docs for city
-    const city = delivery.city || req.city || 'manaus';
     const requiredDocs = city === 'itajai'
       ? ['ricAbastecimento', 'diarioBordo', 'ricBaixa', 'ricColeta', 'discoTacografo']
        : ['canhotNF', 'canhotCTE', 'diarioBordo'];
@@ -738,9 +764,15 @@ const { deleteDeliveryFiles, normalizeEntries } = require('../utils/storageUtils
 
 router.delete("/:id", auth, async (req, res) => {
   try {
+    const city = req.city || 'manaus';
     const db = req.mockdb;
     const delivery = await db.findById("deliveries", req.params.id);
     if (!delivery) return res.status(404).json({ message: "Entrega não encontrada" });
+    
+    // Validação de cidade
+    if (delivery.cityCode !== city) {
+      return res.status(403).json({ message: 'Acesso negado - dados de outra cidade' });
+    }
 
     if (delivery.status !== "pending") {
       return res.status(400).json({ message: "Entrega enviada não pode ser deletada" });
