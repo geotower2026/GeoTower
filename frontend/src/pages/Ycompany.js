@@ -19,6 +19,12 @@ const FIELD_MAP = {
   'Dt. agendamento descarga': 'dtAgendamentoDescarga',
   'Dt. início descarga':      'dtInicioDescarga',
   'Dt. fim descarga':         'dtFimDescarga',
+  'Dt. coleta':               'dtColeta',
+  'Dt. chegada planta':       'dtChegadaPlanta',
+  'Dt. início carregamento':  'dtInicioCarregamento',
+  'Dt. fim carregamento':     'dtFimCarregamento',
+  'Dt. saída planta':         'dtSaidaPlanta',
+  'Dt. entrada planta':       'dtEntradaPlanta',
   'Dt. retirada P.D.':        'dtRetiraPD',
   'Situação':                 'situacao',
   'Cliente':                  'cliente',
@@ -93,7 +99,8 @@ const getSituacaoConfig = (value) => {
 const SYNC_DATE_FIELDS = [
   'dtInicioRota', 'dtAgendamentoDescarga', 'arrivedAt',
   'dtInicioDescarga', 'dtFimDescarga', 'dtRetiraPD',
-  'dtDevolucaoCNTR', 'dtAverbacaoMDFE', 'dtDescidaCNTRCarga'
+  'dtDevolucaoCNTR', 'dtAverbacaoMDFE', 'dtDescidaCNTRCarga',
+  'dtColeta', 'dtChegadaPlanta', 'dtInicioCarregamento', 'dtFimCarregamento', 'dtSaidaPlanta', 'dtEntradaPlanta'
 ];
 
 const calculateSyncStatus = (record) => {
