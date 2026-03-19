@@ -1466,9 +1466,9 @@ router.get("/programacoes", auth, async (req, res) => {
     
     const programacoes = await ProgramacaoEntrega.find(cityFilter).sort({ dataAgendamento: -1 });
 
-    // também trazemos entregas para permitir associação com motoristas
+    // também trazemos entregas para permitir associação com motoristas (apenas da mesma cidade)
     const db = await getDb(req);
-    const allDeliveries = await db.find("deliveries", {});
+    const allDeliveries = await db.find("deliveries", { cityCode: city });
 
     // vincular id de entrega correspondente (se existir)
     const enriched = (programacoes || []).map(p => {

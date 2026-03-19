@@ -87,12 +87,20 @@ router.post("/", auth, async (req, res) => {
     // Attempt to update matching programacao to indicate it is now em rota
     try {
       const ProgramacaoEntrega = require('../models/ProgramacaoEntrega');
-      const prog = await ProgramacaoEntrega.findOne({
+      // Filtrar pelo origem também para garantir que é da mesma cidade
+      let progFilter = {
         $or: [
           { processo: new RegExp(`^${deliveryNumber}$`, 'i') },
           { container: new RegExp(`^${deliveryNumber}$`, 'i') }
         ]
-      });
+      };
+      // Adicionar filtro de cidade baseado na origem
+      if (city === 'manaus') {
+        progFilter.origem = { $in: ['MANAUS', 'MANAUS - COELTA BALY'] };
+      } else if (city === 'itajai') {
+        progFilter.$or.push({ origem: { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] } });
+      }
+      const prog = await ProgramacaoEntrega.findOne(progFilter);
       if (prog) {
         // Se status foi definido (ex: CONTAINER_MONTADO), usa esse, senão usa EM_ROTA
         prog.status = status === 'CONTAINER_MONTADO' ? 'CONTAINER_MONTADO' : 'EM_ROTA';
@@ -244,9 +252,22 @@ router.put("/:id", auth, async (req, res) => {
         let prog = null;
         const deliveryNum = String(delivery.deliveryNumber || '').trim().toUpperCase();
         
+        // Construir filtro de cidade
+        let cityFilter = {};
+        if (city === 'manaus') {
+          cityFilter.origem = { $in: ['MANAUS', 'MANAUS - COELTA BALY'] };
+        } else if (city === 'itajai') {
+          cityFilter.$or = [
+            { origem: { $exists: false } },
+            { origem: '' },
+            { origem: { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] } }
+          ];
+        }
+        
         // Approach 1: Exact match (case-insensitive)
         if (deliveryNum) {
           prog = await ProgramacaoEntrega.findOne({
+            ...cityFilter,
             $or: [
               { processo: new RegExp(`^${deliveryNum}$`, 'i') },
               { container: new RegExp(`^${deliveryNum}$`, 'i') }
@@ -257,6 +278,7 @@ router.put("/:id", auth, async (req, res) => {
         // Approach 2: If not found, try substring match
         if (!prog && deliveryNum) {
           prog = await ProgramacaoEntrega.findOne({
+            ...cityFilter,
             $or: [
               { processo: new RegExp(deliveryNum, 'i') },
               { container: new RegExp(deliveryNum, 'i') }
@@ -410,12 +432,27 @@ router.get('/programacoes/mine', auth, async (req, res) => {
 
     // Buscar todas as programações do contratado (case-insensitive), independente do status
     // Loga todas as programações encontradas
+    const city = req.city || 'manaus';
     const regex = new RegExp(`^${contratado}$`, 'i');
+    
+    // Construir filtro de cidade
+    let cityFilter = {};
+    if (city === 'manaus') {
+      cityFilter.origem = { $in: ['MANAUS', 'MANAUS - COELTA BALY'] };
+    } else if (city === 'itajai') {
+      cityFilter.$or = [
+        { origem: { $exists: false } },
+        { origem: '' },
+        { origem: { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] } }
+      ];
+    }
+    
     const programacoes = await ProgramacaoEntrega.find({
+      ...cityFilter,
       contratado: regex,
       ativo: { $ne: false }
     }).sort({ dataAgendamento: -1 });
-    console.log('[PROGRAMACAO] Lista completa:', programacoes.map(p => ({ id: p._id, status: p.status, ativo: p.ativo })));
+    console.log('[PROGRAMACAO] Lista completa (cidade:', city, '):', programacoes.map(p => ({ id: p._id, status: p.status, ativo: p.ativo })));
     console.log('[PROGRAMACAO] Encontradas', programacoes.length, 'programações para contratado', contratado);
     return res.json({ success: true, programacoes: programacoes || [] });
   } catch (err) {
