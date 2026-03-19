@@ -3,9 +3,11 @@ import React, {
 } from 'react';
 import { useTheme, THEMES } from '../contexts/ThemeContext';
 import { useAuth } from '../services/authContext';
+import { useCity } from '../contexts/CityContext';
 import { useNavigate } from 'react-router-dom';
 import Toast from '../components/Toast';
 import { adminService } from '../services/authService';
+import { getProgramacaoDate } from '../utils/programacaoDate';
 import {
   FaArrowLeft, FaEye, FaDownload, FaSync, FaFilter, FaTimes,
   FaTrash, FaEdit, FaExclamationTriangle, FaShareAlt, FaCalendarAlt,
@@ -311,9 +313,9 @@ const formatBoardDate = (value) => {
   }
 };
 
-const getPunctualityStatus = (d, now = new Date()) => {
+const getPunctualityStatus = (d, now = new Date(), city = 'manaus') => {
   if (!d) return { label: '-', type: 'unknown', eta: null, lateBy: null };
-  const schedStr = d.dataAgendamento || d.data;
+  const schedStr = getProgramacaoDate(d, city);
   if (!schedStr) return { label: 'Sem agendamento', type: 'unknown', eta: null, lateBy: null };
   const scheduled = new Date(schedStr);
   const arrival = d.horarioChegada ? new Date(d.horarioChegada) : null;
@@ -344,12 +346,12 @@ const getPunctualityStatus = (d, now = new Date()) => {
   return { label: 'No prazo', type: 'ok', eta, lateBy: null };
 };
 
-const DeliveryKanbanCard = ({ delivery, column, onOpen, currentTime }) => (
+const DeliveryKanbanCard = ({ delivery, column, onOpen, currentTime, city = 'manaus' }) => (
   <button
     type="button"
     onClick={() => onOpen(delivery)}
     className={`group relative w-full text-left rounded-lg border ${column.border} shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 overflow-hidden ${(() => {
-      const punct = getPunctualityStatus(delivery, currentTime);
+      const punct = getPunctualityStatus(delivery, currentTime, city);
       let bgClass = 'bg-white';
       let shadowClass = '';
       if (punct.label === 'Atrasado') {
@@ -367,7 +369,7 @@ const DeliveryKanbanCard = ({ delivery, column, onOpen, currentTime }) => (
   >
     <div
       className={`absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b ${(() => {
-        const punct = getPunctualityStatus(delivery, currentTime);
+        const punct = getPunctualityStatus(delivery, currentTime, city);
         if (punct.label === 'Atrasado') return 'from-red-400 to-red-600';
         if (punct.label === 'Pontual' || punct.label === 'No prazo') return 'from-green-400 to-green-600';
         if (punct.label === 'Possível atraso') return 'from-yellow-400 to-yellow-600';
@@ -411,7 +413,7 @@ const DeliveryKanbanCard = ({ delivery, column, onOpen, currentTime }) => (
 
         <div className="flex items-center gap-1 text-[9px] text-gray-400">
           <FaCalendarAlt className="shrink-0 text-[8px]" />
-          <span className="truncate">{formatBoardDate(delivery.dataAgendamento)}</span>
+          <span className="truncate">{formatBoardDate(getProgramacaoDate(delivery, city))}</span>
         </div>
       </div>
     </div>
@@ -440,7 +442,7 @@ const KanbanColumnHeader = ({ column, count }) => {
   );
 };
 
-const DeliveryKanbanColumn = ({ column, deliveries, onOpen, currentTime }) => {
+const DeliveryKanbanColumn = ({ column, deliveries, onOpen, currentTime, city = 'manaus' }) => {
   const [expanded, setExpanded] = useState(false);
   const visible = expanded ? deliveries : deliveries.slice(0, 4);
 
@@ -463,6 +465,7 @@ const DeliveryKanbanColumn = ({ column, deliveries, onOpen, currentTime }) => {
                 column={column}
                 onOpen={onOpen}
                 currentTime={currentTime}
+                city={city}
               />
             ))}
 
@@ -830,7 +833,7 @@ const MobileDeliveryCard = ({
         <div>
           <p className="text-gray-600 text-[10px] uppercase font-bold">Agendamento</p>
           <p className="text-gray-300 font-mono text-[11px]">
-            {d.dataAgendamento ? new Date(d.dataAgendamento).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+            {getProgramacaoDate(d, city) ? new Date(getProgramacaoDate(d, city)).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
           </p>
         </div>
         <div>
@@ -873,6 +876,7 @@ const getStatusEntryTime = (delivery) => {
 ───────────────────────────────────────────────────────────── */
 const MonitorEntregas = () => {
   const { user } = useAuth();
+  const { city } = useCity();
   const isGeoMar = () => false; // Libera edição para geomar
   const canEdit = () => user?.role === 'manager' || user?.role === 'geomar';
   const navigate = useNavigate();
@@ -1799,6 +1803,7 @@ const MonitorEntregas = () => {
                   deliveries={displayList.filter(column.filter)}
                   onOpen={setSelectedDelivery}
                   currentTime={currentTime}
+                  city={city}
                 />
               ))}
             </div>

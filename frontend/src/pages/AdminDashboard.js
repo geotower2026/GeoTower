@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Toast from '../components/Toast';
 import { adminService } from '../services/authService';
+import { useCity } from '../contexts/CityContext';
+import { getProgramacaoDate } from '../utils/programacaoDate';
 import { exportToPDF, exportToExcel, formatMinutes as fmtMin } from '../services/exportService';
 import {
   FiArrowLeft, FiPackage, FiTruck, FiAward, FiClock,
@@ -148,6 +150,7 @@ const ExportButton = ({ onClick, loading, icon: Icon, label, colorClass, disable
 ════════════════════════════════════════ */
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const { city } = useCity();
   const [deliveries,  setDeliveries]  = useState([]);
   const [statistics,  setStatistics]  = useState(null);
   const [loading,     setLoading]     = useState(true);
@@ -192,11 +195,11 @@ const AdminDashboard = () => {
     loadData(); 
   }, [loadData]);
 
-  // Filtrar entregas por dataAgendamento
+  // Filtrar entregas por data agendamento
   const filteredDeliveries = React.useMemo(() => {
     if (!filters.startDate && !filters.endDate) return deliveries;
     return deliveries.filter(d => {
-      const agendamento = d.dataAgendamento || d.scheduledAt || d.dtAgendamentoDescarga;
+      const agendamento = getProgramacaoDate(d, city);
       if (!agendamento) return false;
       const dt = new Date(agendamento);
       let ok = true;
@@ -210,7 +213,7 @@ const AdminDashboard = () => {
       }
       return ok;
     });
-  }, [deliveries, filters]);
+  }, [deliveries, filters, city]);
 
   const getCliMinutes = (d) => {
     if (!d.horarioChegada) return null;
