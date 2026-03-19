@@ -2020,7 +2020,7 @@ const MonitorEntregas = () => {
                   ['Placa', selectedDelivery.placaYcompany || selectedDelivery.vehiclePlate || '—'],
                   ['Data Devolução Container Vazio', selectedDelivery.horarioDevolucaoVazio ? new Date(selectedDelivery.horarioDevolucaoVazio).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'],
                   ['Recebedor', selectedDelivery.recebedor || '—'],
-                  ['Agendamento', selectedDelivery.dataAgendamento ? new Date(selectedDelivery.dataAgendamento).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'],
+                  ['Agendamento', getProgramacaoDate(selectedDelivery, city) ? new Date(getProgramacaoDate(selectedDelivery, city)).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'],
                   ['Montagem Container', selectedDelivery.containerMontadoAt ? new Date(selectedDelivery.containerMontadoAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'],
                   ['Chegada', selectedDelivery.horarioChegada ? new Date(selectedDelivery.horarioChegada).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'],
                   ['Início Desova', selectedDelivery.horarioInicioDesova ? new Date(selectedDelivery.horarioInicioDesova).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'],
