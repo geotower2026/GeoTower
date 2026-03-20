@@ -858,9 +858,13 @@ const MobileDeliveryCard = ({
 /* ─────────────────────────────────────────────────────────────
    FUNÇÃO PARA OBTER HORA DE ENTRADA NO STATUS ATUAL
 ───────────────────────────────────────────────────────────── */
-const getStatusEntryTime = (delivery) => {
+const getStatusEntryTime = (delivery, city) => {
   const status = normalizeKey(delivery.status);
-  if (status === 'AGENDADO') return delivery.scheduledAt || delivery.dataAgendamento || delivery.createdAt;
+  if (status === 'AGENDADO') {
+    // Usar getProgramacaoDate para considerar a cidade (Itajaí = dtColeta, Manaus = dataAgendamento)
+    const progDate = getProgramacaoDate(delivery, city);
+    return progDate || delivery.scheduledAt || delivery.dataAgendamento || delivery.createdAt;
+  }
   if (status === 'CONTAINER MONTADO') return delivery.containerMontadoAt;
   if (status === 'A CAMINHO DO CLIENTE' || status === 'PENDING') return delivery.tripStartedAt || delivery.createdAt; // fallback para createdAt se tripStartedAt não existir
   if (status === 'AGUARDANDO DESOVA') return delivery.arrivedAt || delivery.horarioChegada;
@@ -1940,7 +1944,7 @@ const MonitorEntregas = () => {
                           <div className="px-2 py-3 flex items-center justify-center min-w-0">
                             <span className="text-gray-400 text-[11px] tabular-nums" style={{ whiteSpace: 'normal', wordBreak: 'break-all' }}>
                               {(() => {
-                                const entryTime = getStatusEntryTime(d);
+                                const entryTime = getStatusEntryTime(d, city);
                                 return entryTime ? new Date(entryTime).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—';
                               })()}
                             </span>
@@ -1953,7 +1957,7 @@ const MonitorEntregas = () => {
                               if (status === 'FINALIZADO' || status === 'DOCUMENTOS ENTREGUES') {
                                 return <FaCheckCircle className="text-emerald-400" size={15} title="Status finalizado" />;
                               }
-                              const entryTime = getStatusEntryTime(d);
+                              const entryTime = getStatusEntryTime(d, city);
                               if (!entryTime) return <span className="text-gray-400 text-[11px]">—</span>;
                               const now = currentTime;
                               const diffMs = now - new Date(entryTime);
