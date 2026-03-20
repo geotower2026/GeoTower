@@ -1916,9 +1916,14 @@ router.get("/programacoes/sync/ycompany", auth, managerOnly, async (req, res) =>
 
         const dtColeta = formatSyncDate(y.dtColeta);
 
+        // Para Itajaí: puxar remetente | Para Manaus: puxar destinatário
+        const recebedorValue = city === 'itajai' 
+          ? String(y.remetente || '').trim() || 'N/A'
+          : String(y.destinatario || '').trim() || 'N/A';
+
         return {
           processo: String(y.processo || '').trim(),
-          recebedor: String(y.destinatario || '').trim() || 'N/A',
+          recebedor: recebedorValue,
           container: String(y.containerNumero || '').trim() || '',
           dataAgendamento: dataAgendamento,
           dtColeta,
