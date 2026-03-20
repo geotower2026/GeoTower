@@ -4,6 +4,7 @@ import Toast from '../components/Toast';
 import { adminService } from '../services/authService';
 import { useCity } from '../contexts/CityContext';
 import { getProgramacaoDate } from '../utils/programacaoDate';
+import { getRecebedorLabel } from '../utils/cityLabels';
 import { exportToPDF, exportToExcel, formatMinutes as fmtMin } from '../services/exportService';
 import {
   FiArrowLeft, FiPackage, FiTruck, FiAward, FiClock,
@@ -435,7 +436,7 @@ const AdminDashboard = () => {
                 sparkData={statistics.dailyDeliveries}
               />
               <KpiCard
-                title="Top Recebedor"
+                title={`Top ${getRecebedorLabel(city)}`}
                 value={topRecebedores[0]?.count ?? 0}
                 subtitle={topRecebedores[0]?.recebedor ?? '-'}
                 icon={FiAward}
@@ -596,8 +597,8 @@ const AdminDashboard = () => {
                 className="bg-gradient-to-br from-cyan-500/[0.10] via-white/[0.03] to-transparent backdrop-blur-xl rounded-2xl shadow-xl border border-white/[0.08] p-6 hover:border-cyan-500/30 hover:shadow-cyan-500/10 transition-all duration-300"
               >
                 <ChartHeader
-                  title="Entregas por Recebedor"
-                  subtitle="Top 5 recebedores no período"
+                  title={`Entregas por ${getRecebedorLabel(city)}`}
+                  subtitle={`Top 5 ${getRecebedorLabel(city).toLowerCase()}s no período`}
                   dotColor="#22d3ee"
                 />
                 <ResponsiveContainer width="100%" height={300}>
@@ -705,8 +706,8 @@ const AdminDashboard = () => {
             <div className="bg-gradient-to-br from-amber-500/[0.07] via-white/[0.03] to-transparent backdrop-blur-xl rounded-2xl shadow-xl border border-white/[0.08] p-6 hover:border-amber-500/20 transition-all duration-300">
               <div className="flex items-start justify-between mb-5">
                 <ChartHeader
-                  title="Ranking de Recebedores"
-                  subtitle="Desempenho detalhado por recebedor no período"
+                  title={`Ranking de ${getRecebedorLabel(city)}s`}
+                  subtitle={`Desempenho detalhado por ${getRecebedorLabel(city).toLowerCase()} no período`}
                   dotColor="#fbbf24"
                 />
                 <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-white/[0.05] border border-white/[0.08] px-2.5 py-1.5 rounded-lg">
@@ -719,7 +720,7 @@ const AdminDashboard = () => {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-white/[0.08]">
-                      {['Pos.', 'Recebedor', 'Entregas', 'Tempo Médio CLI', 'Participação'].map(h => (
+                      {['Pos.', getRecebedorLabel(city), 'Entregas', 'Tempo Médio CLI', 'Participação'].map(h => (
                         <th
                           key={h}
                           className="text-left pb-3 pt-1 text-xs font-bold text-slate-500 uppercase tracking-widest first:w-12"
