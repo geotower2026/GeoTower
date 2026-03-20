@@ -218,8 +218,18 @@ const BaseDadosGeral = () => {
         documentsJustification: editForm.documentsJustification
       };
 
-      if (item?._entrega?._id) {
-        await adminService.updateDelivery(item._entrega._id, deliveryPayload);
+      const deliveryId = item?._entrega?._id || item?._entrega?.deliveryNumber;
+      if (deliveryId) {
+        try {
+          await adminService.updateDelivery(deliveryId, deliveryPayload);
+        } catch (deliveryErr) {
+          if (deliveryErr?.response?.status === 404) {
+            console.warn('Entrega não encontrada ao atualizar (ignorado):', deliveryId);
+            // Não interrompe o fluxo; programacao já foi atualizada
+          } else {
+            throw deliveryErr;
+          }
+        }
       } else {
         // Para programações sem entrega (synthetic entries), não criar entrega nova ao editar
         // Apenas atualizar a programação (já feito acima)
