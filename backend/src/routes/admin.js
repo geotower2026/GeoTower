@@ -245,7 +245,8 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
           uploadedFiles: [],
           hasFiles: false,
           createdAt: prog.createdAt,
-          observations: prog.observacoes || ''
+          observations: prog.observacoes || '',
+          cityCode: city  // ← ADICIONADO: identificar a cidade desta programação
         });
       }
     });
