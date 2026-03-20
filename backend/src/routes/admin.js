@@ -1601,9 +1601,9 @@ router.get("/programacoes", auth, async (req, res) => {
 router.post("/programacoes", auth, managerOnly, async (req, res) => {
   try {
     const city = req.city || 'manaus';
-    const { processo, recebedor, container, dataAgendamento, contratado, motorista, status, observacoes, origem } = req.body;
+    const { processo, recebedor, container, dataAgendamento, dtColeta, contratado, motorista, status, observacoes, origem } = req.body;
 
-    console.log('[PROGRAMACAO] Criando:', { processo, recebedor, contratado, cidade: city });
+    console.log('[PROGRAMACAO] Criando:', { processo, recebedor, contratado, cidade: city, dtColeta });
 
     const ProgramacaoEntrega = require("../models/ProgramacaoEntrega");
 
@@ -1612,6 +1612,7 @@ router.post("/programacoes", auth, managerOnly, async (req, res) => {
       recebedor,
       container,
       dataAgendamento,
+      dtColeta: dtColeta || (city === 'itajai' ? dataAgendamento : ''),
       contratado,
       motorista,
       status,
@@ -1646,11 +1647,11 @@ router.put("/programacoes/:id", auth, managerOnly, async (req, res) => {
   try {
     const city = req.city || 'manaus';
     const { id } = req.params;
-    const { processo, recebedor, container, dataAgendamento, contratado, motorista, status, observacoes, containerReturned, origem } = req.body;
+    const { processo, recebedor, container, dataAgendamento, dtColeta, contratado, motorista, status, observacoes, containerReturned, origem } = req.body;
     // Get editor name from logged-in user
     const editorName = req.user?.name || req.user?.username || req.user?._id || 'Desconhecido';
 
-    console.log('[PROGRAMACAO] Atualizando:', { id, cidade: city });
+    console.log('[PROGRAMACAO] Atualizando:', { id, cidade: city, dtColeta });
 
     const ProgramacaoEntrega = require("../models/ProgramacaoEntrega");
     
@@ -1675,6 +1676,7 @@ router.put("/programacoes/:id", auth, managerOnly, async (req, res) => {
     if (recebedor !== undefined) programacao.recebedor = recebedor;
     if (container !== undefined) programacao.container = container;
     if (dataAgendamento !== undefined) programacao.dataAgendamento = dataAgendamento;
+    if (dtColeta !== undefined) programacao.dtColeta = dtColeta;
     if (contratado !== undefined) programacao.contratado = contratado;
     if (motorista !== undefined) programacao.motorista = motorista;
     if (status !== undefined) programacao.status = status;
