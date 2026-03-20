@@ -13,6 +13,7 @@ import { MdLocalShipping, MdAssignment } from 'react-icons/md';
 import { useAuth } from '../services/authContext';
 import { useCity } from '../contexts/CityContext';
 import { getProgramacaoDate } from '../utils/programacaoDate';
+import { getRecebedoresLabel } from '../utils/cityLabels';
 import { useTheme, THEMES } from '../contexts/ThemeContext';
 
 // ─────────────────────────────────────────────
@@ -909,7 +910,7 @@ const ProgramadasEntregas = () => {
             <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" size={14} />
             <input
               type="text"
-              placeholder="Buscar processo, container, recebedor..."
+              placeholder={`Buscar processo, container, ${city === 'itajai' ? 'remetente' : 'recebedor'}...`}
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-400 text-sm"
@@ -1012,7 +1013,7 @@ const ProgramadasEntregas = () => {
                     <div className="bg-gray-50 rounded-xl p-3">
                       <div className="flex items-center gap-1.5 mb-1">
                         <FaUser size={10} className="text-purple-500" />
-                        <span className="text-[11px] font-semibold text-gray-400 uppercase">Recebedores</span>
+                        <span className="text-[11px] font-semibold text-gray-400 uppercase">{getRecebedoresLabel(city)}</span>
                       </div>
                       <ul className="font-bold text-purple-700 text-sm leading-tight">
                         {p.fracionadas && p.fracionadas.map(f => (
@@ -1167,7 +1168,7 @@ const ProgramadasEntregas = () => {
               <div className="grid grid-cols-3 gap-3">
                 {[
                   { label: 'Container', value: montagemProgramacao.container || '-', icon: FaBox, color: 'text-blue-500' },
-                  { label: 'Recebedor', value: montagemProgramacao.recebedor || '-', icon: FaUser, color: 'text-purple-500' },
+                  { label: city === 'itajai' ? 'Remetente' : 'Recebedor', value: montagemProgramacao.recebedor || '-', icon: FaUser, color: 'text-purple-500' },
                   { label: 'Motorista', value: montagemProgramacao.motorista || '-', icon: FaTruck, color: 'text-emerald-500' },
                 ].map(item => (
                   <div key={item.label} className="bg-gray-50 rounded-xl p-3 text-center">

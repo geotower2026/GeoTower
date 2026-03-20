@@ -4,6 +4,7 @@ import { FaArrowLeft, FaFilter, FaSync, FaEdit, FaTrash, FaTimes } from 'react-i
 import { useNavigate } from 'react-router-dom';
 import { useCity } from '../contexts/CityContext';
 import { getProgramacaoDate } from '../utils/programacaoDate';
+import { getRecebedorLabel, getRecebedorPlaceholder, getRecebedorErrorMsg } from '../utils/cityLabels';
 import Toast from '../components/Toast';
 
 const BaseDadosGeral = () => {
@@ -189,7 +190,7 @@ const BaseDadosGeral = () => {
 
   const handleSave = async () => {
     if (!editForm.processo || !editForm.recebedor || !editForm.dataAgendamento || !editForm.contratado) {
-      setToast({ message: 'Preencha os campos obrigatórios (Processo, Recebedor, Data, Contratado)', type: 'error' });
+      setToast({ message: `Preencha os campos obrigatórios (Processo, ${getRecebedorLabel(city)}, Data, Contratado)`, type: 'error' });
       return;
     }
 
@@ -319,7 +320,7 @@ const BaseDadosGeral = () => {
                 <label className="block text-xs font-semibold text-gray-700 mb-2">Buscar</label>
                 <input
                   type="text"
-                  placeholder="Processo, Recebedor, Container..."
+                  placeholder={`Processo, ${getRecebedorLabel(city).toLowerCase()}, Container...`}
                   value={filters.searchTerm}
                   onChange={(e) => setFilters({...filters, searchTerm: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -388,7 +389,7 @@ const BaseDadosGeral = () => {
                 <thead className="bg-gradient-to-r from-purple-600 to-purple-700 text-white sticky top-0 z-10">
                   <tr>
                     <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Processo</th>
-                    <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Recebedor</th>
+                    <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">{getRecebedorLabel(city)}</th>
                     <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Container</th>
                     <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Data Agendamento</th>
                     <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Contratado</th>
@@ -477,7 +478,7 @@ const BaseDadosGeral = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Recebedor *</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">{getRecebedorLabel(city)} *</label>
                     <input type="text" value={editForm.recebedor} onChange={(e) => setEditForm({...editForm, recebedor: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />
                   </div>
 

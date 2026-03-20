@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { adminService } from '../services/authService';
 import { useAuth } from '../services/authContext';
 import { useCity } from '../contexts/CityContext';
+import { getRecebedorLabel, getRecebedorPlaceholder, getRecebedorErrorMsg } from '../utils/cityLabels';
 import {
   FaArrowLeft, FaPlus, FaEdit, FaTrash, FaFileDownload,
   FaFileExcel, FaSort, FaSortUp, FaSortDown, FaFilter,
@@ -346,7 +347,7 @@ const ProgramacaoManagement = () => {
       const erros = [];
       programacoesImport.forEach((prog, i) => {
         if (!prog.processo) erros.push(`Linha ${i+2}: Processo obrigatório`);
-        if (!prog.recebedor) erros.push(`Linha ${i+2}: Recebedor obrigatório`);
+        if (!prog.recebedor) erros.push(`Linha ${i+2}: ${getRecebedorErrorMsg(city)}`);
         if (!prog.dataAgendamento) erros.push(`Linha ${i+2}: Data obrigatória`);
         if (!prog.contratado) erros.push(`Linha ${i+2}: Contratado obrigatório`);
       });
@@ -362,7 +363,7 @@ const ProgramacaoManagement = () => {
 
   const downloadTemplate = () => {
     try {
-      const template = [{ 'Processo': 'CAB42196', 'Recebedor': 'AMERICANA DIST. BEBIDAS', 'Container': 'ECMU4814297', 'Data Agendamento': '12/02/2026 10:00', 'Contratado': 'GEO', 'Motorista': 'JOÃO SILVA', 'Status': 'AGENDADO', 'Observações': '' }];
+      const template = [{ 'Processo': 'CAB42196', [getRecebedorLabel(city)]: 'AMERICANA DIST. BEBIDAS', 'Container': 'ECMU4814297', 'Data Agendamento': '12/02/2026 10:00', 'Contratado': 'GEO', 'Motorista': 'JOÃO SILVA', 'Status': 'AGENDADO', 'Observações': '' }];
       const ws = XLSX.utils.json_to_sheet(template);
       ws['!cols'] = [15,30,15,20,15,20,15,30].map(w => ({ wch: w }));
       const wb = XLSX.utils.book_new();
@@ -514,7 +515,7 @@ const ProgramacaoManagement = () => {
                 <input
                   type="text" value={filters.search}
                   onChange={e => setFilters({...filters, search: e.target.value})}
-                  placeholder="Buscar processo, recebedor, motorista..."
+                  placeholder={`Buscar processo, ${getRecebedorLabel(city).toLowerCase()}, motorista...`}
                   style={{ ...inputStyle(false), paddingLeft: 36 }}
                 />
               </div>
@@ -564,7 +565,7 @@ const ProgramacaoManagement = () => {
                   <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e5e7eb' }}>
                     {[
                       { key: 'processo', label: 'Processo' },
-                      { key: 'recebedor', label: 'Recebedor' },
+                      { key: 'recebedor', label: getRecebedorLabel(city) },
                       { key: 'container', label: 'Container' },
                       { key: 'dataAgendamento', label: 'Data / Hora' },
                       { key: 'contratado', label: 'Contratado' },
@@ -763,10 +764,10 @@ const ProgramacaoManagement = () => {
               </div>
 
               <div>
-                <label style={labelStyle}>Recebedor <span style={{ color: '#ef4444' }}>*</span></label>
+                <label style={labelStyle}>{getRecebedorLabel(city)} <span style={{ color: '#ef4444' }}>*</span></label>
                 <input type="text" disabled={false} value={formData.recebedor}
                   onChange={e => setFormData({...formData, recebedor: e.target.value})}
-                  placeholder="Nome do recebedor" style={inputStyle(isGeoMar())} />
+                  placeholder={getRecebedorPlaceholder(city)} style={inputStyle(isGeoMar())} />
               </div>
 
               <div>
@@ -902,7 +903,7 @@ const ProgramacaoManagement = () => {
                 <p style={{ margin: '0 0 10px', fontWeight: 700, color: '#374151', fontSize: 13 }}>Colunas esperadas</p>
                 {[
                   ['Processo', 'Processo'],
-                  ['Recebedor', 'Recebedor'],
+                  [getRecebedorLabel(city), getRecebedorLabel(city)],
                   ['Container', 'Container, Nº container'],
                   ['Data Agendamento', 'Data Agendamento, Dt. Agendamento, Data'],
                   ['Contratado', 'Contratado, Transportadora, Empresa'],
