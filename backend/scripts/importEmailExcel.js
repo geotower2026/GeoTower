@@ -5,9 +5,7 @@ const XLSX = require("xlsx");
 const { MongoClient } = require("mongodb");
 const fs = require("fs");
 
-// caminho do excel exportado pelo ERP
 const EXCEL_PATH = "C:/Icompany/IcompanyErpGeoLogisticaNuvem/data/ic_uldPx00200.xls";
-
 
 // ---------- helpers ----------
 
@@ -23,7 +21,6 @@ function formatDateLocal(date) {
 }
 
 function excelSerialToDate(serial) {
-
   const utcDays = Math.floor(serial - 25569);
   const utcValue = utcDays * 86400;
   const dateInfo = new Date(utcValue * 1000);
@@ -48,7 +45,6 @@ function excelSerialToDate(serial) {
 }
 
 function parseBrazilianDateTimeString(value) {
-
   if (!value || typeof value !== "string") return null;
 
   const text = value.trim();
@@ -68,13 +64,10 @@ function parseBrazilianDateTimeString(value) {
   const minute = Number(mi);
   const second = Number(ss);
 
-  const d = new Date(year, month, day, hour, minute, second);
-
-  return d;
+  return new Date(year, month, day, hour, minute, second);
 }
 
 function toLocalDateTimeString(value) {
-
   if (value === null || value === undefined || value === "") return null;
 
   if (value instanceof Date && !isNaN(value.getTime())) {
@@ -87,7 +80,6 @@ function toLocalDateTimeString(value) {
   }
 
   if (typeof value === "string") {
-
     const brDate = parseBrazilianDateTimeString(value);
     if (brDate) return formatDateLocal(brDate);
 
@@ -111,9 +103,10 @@ function isEmpty(v) {
   return v === null || v === undefined || (typeof v === "string" && v.trim() === "");
 }
 
+// ---------- MAP ----------
+
 function mapToEntrega(row) {
 
-  // Colunas de data podem vir com nomes diferentes dependendo da exportação.
   const dtRetiraPDVal = toLocalDateTimeString(row["Dt. retirada P.D."] ?? row["Dt. Retirada porto"]);
   const dtColetaVal = toLocalDateTimeString(row["Dt. coleta"] ?? row["Data agendamento"] ?? row["Data Agendamento"]);
   const dtChegadaVal = toLocalDateTimeString(row["Dt. chegada planta"] ?? row["Dt. chegada cliente"]);
@@ -125,37 +118,28 @@ function mapToEntrega(row) {
   );
 
   return {
-
     codigo: row["Código"] ?? null,
     processo: row["N° GeoMaritima"] ?? row["Nº GeoMaritima"] ?? row["Processo"] ?? null,
-
     dtInicio: toLocalDateTimeString(row["Dt. início"]),
     situacao: row["Situação"] ?? null,
-
     cliente: row["Cliente"] ?? null,
     remetente: row["Remetente"] ?? null,
     destinatario: row["Destinatário"] ?? null,
     contratado: row["Contratado"] ?? null,
-
     tipo: row["Tipo"] ?? null,
     dtSM: toLocalDateTimeString(row["Dt. SM"]),
-
     motorista: row["Motorista"] ?? null,
     tracao: row["Tração"] ?? null,
     reboque: row["Reboque"] ?? null,
-
     origem: row["Origem"] ?? null,
     ufColeta: row["UF coleta"] ?? null,
     destino: row["Destino"] ?? null,
     ufEntrega: row["UF entrega"] ?? null,
-
     pagamento: row["Pagamento"] ?? null,
-
     vlFreteProcesso: row["Vl. frete processo"] ?? null,
     vlPedagio: row["Vl. pedágio"] ?? null,
     vlFreteLista: row["Vl. frete lista"] ?? null,
     vlAbastecimento: row["Vl. abastecimento"] ?? null,
-
     dtAgendamentoDescarga: toLocalDateTimeString(row["Dt. agendamento descarga"]),
     dtChegada: toLocalDateTimeString(row["Dt. chegada"]),
     dtInicioDescarga: toLocalDateTimeString(row["Dt.Início Descarga"]),
@@ -163,79 +147,46 @@ function mapToEntrega(row) {
     dtFimDescarga: toLocalDateTimeString(row["Dt. fim descarga"]),
     isValidDtInicioDescarga: !isEmpty(row["Dt.Início Descarga"]) ? "V" : "X",
     isValidDtFimDescarga: !isEmpty(row["Dt. fim descarga"]) ? "V" : "X",
-    
-    // Novos campos de data
     dtColeta: dtColetaVal,
     dtChegadaPlanta: dtChegadaVal,
     dtInicioCarregamento: toLocalDateTimeString(row["Dt início carregamento"]),
     dtFimCarregamento: toLocalDateTimeString(row["Dt fim carregamento"]),
     dtSaidaPlanta: toLocalDateTimeString(row["Dt saida planta"]),
     dtEntradaPlanta: dtEntradaVal,
-
     containerNumero: row["Número"] ?? null,
     tara: row["Tara"] ?? null,
     lacre: row["Lacre"] ?? null,
     payload: row["Payload"] ?? null,
     temperatura: row["Temperatura (C°)"] ?? null,
-
     nCTe: row["N° CT-e/NFS-e"] ?? null,
     nMDFE: row["N° MDFE"] ?? null,
     situacaoMDFE: row["Situação MDFE"] ?? null,
-
     dtRetiraPD: dtRetiraPDVal,
     dtDevolucaoCNTR: dtEntradaVal,
     isValidDtRetiraPD: dtRetiraPDVal ? "V" : "X",
     isValidDtDevolucaoCNTR: dtEntradaVal ? "V" : "X",
-
   };
 }
 
-function pickOnlyMissingFields(existingDoc, incomingDoc) {
-
-  const patch = {};
-
-  for (const [k, newVal] of Object.entries(incomingDoc)) {
-
-    if (k === "processo") continue;
-
-    if (isEmpty(newVal)) continue;
-
-    const oldVal = existingDoc ? existingDoc[k] : undefined;
-
-    if (isEmpty(oldVal)) patch[k] = newVal;
-
-  }
-
-  return patch;
-}
-
-
-// ---------- main ----------
+// ---------- MAIN ----------
 
 async function importarExcel() {
 
   const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
-  const MONGO_DB = process.env.MONGO_DB || "delivery-docs";
-  const MONGO_COLLECTION = process.env.MONGO_COLLECTION || "programacaoentregas";
-
   const mongo = new MongoClient(MONGO_URI);
   await mongo.connect();
 
-  const db = mongo.db(MONGO_DB);
-  const col = db.collection(MONGO_COLLECTION);
+  const col = mongo.db("delivery-docs").collection("programacaoentregas");
 
   console.log("📊 Lendo Excel...");
 
   const wb = XLSX.readFile(EXCEL_PATH, { cellDates: true });
-
   const sheet = wb.Sheets[wb.SheetNames[0]];
-
   const rows = XLSX.utils.sheet_to_json(sheet, { defval: null }).map(cleanRow);
 
   const docs = rows.map(mapToEntrega).filter((d) => d.processo);
 
   const processos = [...new Set(docs.map((d) => d.processo))];
-
   const existentes = await col.find({ processo: { $in: processos } }).toArray();
 
   const mapExist = new Map(existentes.map((x) => [x.processo, x]));
@@ -254,18 +205,25 @@ async function importarExcel() {
         if (!isEmpty(v)) toInsert[k] = v;
       }
 
+      // 🔥 ALTERAÇÃO AQUI (UPSERT)
       ops.push({
-        insertOne: {
-          document: {
-            ...toInsert,
-            processo: d.processo,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            ativo: true,
-            status: "AGENDADO",
-            _source: "erp_excel",
-            _lastImportAt: new Date()
-          }
+        updateOne: {
+          filter: { codigo: d.codigo },
+          update: {
+            $set: {
+              ...toInsert,
+              processo: d.processo,
+              updatedAt: new Date(),
+              _lastImportAt: new Date()
+            },
+            $setOnInsert: {
+              createdAt: new Date(),
+              ativo: true,
+              status: "AGENDADO",
+              _source: "erp_excel"
+            }
+          },
+          upsert: true
         }
       });
 
@@ -291,22 +249,16 @@ async function importarExcel() {
   }
 
   if (ops.length) {
-
     await col.bulkWrite(ops, { ordered: false });
-
     console.log("✅ Mongo atualizado:", ops.length);
-
   } else {
-
     console.log("➖ Nenhuma atualização necessária");
-
   }
 
   await mongo.close();
 }
 
-
-// ---------- monitor ----------
+// ---------- MONITOR ----------
 
 console.log("👀 Monitorando Excel...");
 
