@@ -4,7 +4,7 @@ import { FaArrowLeft, FaFilter, FaSync, FaEdit, FaTrash, FaTimes } from 'react-i
 import { useNavigate } from 'react-router-dom';
 import { useCity } from '../contexts/CityContext';
 import { getProgramacaoDate } from '../utils/programacaoDate';
-import { getRecebedorLabel, getRecebedorPlaceholder, getRecebedorErrorMsg } from '../utils/cityLabels';
+import { getRecebedorLabel, getRecebedorPlaceholder, getRecebedorErrorMsg, getDesovaStepLabel } from '../utils/cityLabels';
 import Toast from '../components/Toast';
 
 const BaseDadosGeral = () => {
@@ -397,8 +397,8 @@ const BaseDadosGeral = () => {
                     <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Status</th>
                     <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Data Retirada</th>
                     <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Chegada</th>
-                    <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Início Desova</th>
-                    <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Fim Desova</th>
+                    <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Início {getDesovaStepLabel(city)}</th>
+                    <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Fim {getDesovaStepLabel(city)}</th>
                     <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Docs</th>
                     <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Obs</th>
                     <th className="px-4 py-3 text-center font-semibold border border-purple-700 whitespace-nowrap">Ações</th>
@@ -530,12 +530,12 @@ const BaseDadosGeral = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Horário Início Desova</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Horário Início {getDesovaStepLabel(city)}</label>
                     <input type="datetime-local" value={editForm.horarioInicioDesova} onChange={(e) => setEditForm({...editForm, horarioInicioDesova: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Horário Fim Desova</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Horário Fim {getDesovaStepLabel(city)}</label>
                     <input type="datetime-local" value={editForm.horarioFimDesova} onChange={(e) => setEditForm({...editForm, horarioFimDesova: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />
                   </div>
 

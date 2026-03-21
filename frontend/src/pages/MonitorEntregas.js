@@ -20,6 +20,7 @@ import { MdLocalShipping, MdDashboard } from 'react-icons/md';
 import manaConfig from '../config/cities/manaus.json';
 import itajaiConfig from '../config/cities/itajai.json';
 import jsPDF from 'jspdf';
+import { getDesovaStatusLabel, getDesovaStepLabel } from '../utils/cityLabels';
 
 /* ─────────────────────────────────────────────────────────────
    KANBAN - MESMA LÓGICA DO MONITOR DE PROCESSOS
@@ -29,7 +30,7 @@ const normalizeKey = (s) => {
   return String(s).replace(/_/g, ' ').toUpperCase().trim();
 };
 
-const STATUS_COLUMNS = [
+const getStatusColumns = (city = 'manaus') => [
   {
     key: 'NOVO_PROCESSO',
     title: 'Novo Processo',
@@ -84,7 +85,7 @@ const STATUS_COLUMNS = [
   {
     key: 'CHEGADA_CLIENTE',
     title: 'No Cliente',
-    description: 'Aguardando desova',
+    description: `Aguardando ${getDesovaStepLabel(city).toLowerCase()}`,
     icon: FaMapMarkerAlt,
     gradient: 'from-yellow-500 to-amber-500',
     lightBg: 'bg-yellow-50',
@@ -95,7 +96,7 @@ const STATUS_COLUMNS = [
   },
   {
     key: 'OPERACAO_INICIADA',
-    title: 'Em Desova',
+    title: `Em ${getDesovaStepLabel(city)}`,
     description: 'Operação iniciada',
     icon: FaShippingFast,
     gradient: 'from-rose-500 to-red-600',
@@ -108,7 +109,7 @@ const STATUS_COLUMNS = [
   {
     key: 'OPERACAO_FINALIZADA',
     title: 'Op. Finalizada',
-    description: 'Desova concluída / anexando canhotos',
+    description: `${getDesovaStepLabel(city)} concluída / anexando canhotos`,
     icon: FaCheckCircle,
     gradient: 'from-teal-500 to-emerald-600',
     lightBg: 'bg-teal-50',
@@ -157,82 +158,86 @@ const STATUS_COLUMNS = [
 /* ─────────────────────────────────────────────────────────────
    DESIGN TOKENS
 ───────────────────────────────────────────────────────────── */
-const STATUS_CONFIG = {
-  AGENDADO: {
-    label: 'Não Iniciado',
-    bg: 'bg-indigo-600', light: 'bg-indigo-50', text: 'text-indigo-700',
-    border: 'border-indigo-300',
-    badge: 'bg-indigo-100 text-indigo-800 border border-indigo-300',
-    icon: <FaCalendarAlt />, gradient: 'from-indigo-500 to-indigo-700',
-    ring: 'ring-indigo-400/30', dot: 'bg-indigo-500', hex: '#6366f1'
-  },
-  'CONTAINER MONTADO': {
-    label: 'Container Montado',
-    bg: 'bg-sky-600', light: 'bg-sky-50', text: 'text-sky-700',
-    border: 'border-sky-300',
-    badge: 'bg-sky-100 text-sky-800 border border-sky-300',
-    icon: <FaBox />, gradient: 'from-sky-500 to-sky-700',
-    ring: 'ring-sky-400/30', dot: 'bg-sky-500', hex: '#0ea5e9'
-  },
-  'A CAMINHO DO CLIENTE': {
-    label: 'A Caminho do Cliente',
-    bg: 'bg-amber-500', light: 'bg-amber-50', text: 'text-amber-700',
-    border: 'border-amber-300',
-    badge: 'bg-amber-100 text-amber-800 border border-amber-300',
-    icon: <FaTruck />, gradient: 'from-amber-400 to-amber-600',
-    ring: 'ring-amber-400/30', dot: 'bg-amber-500', hex: '#f59e0b'
-  },
-  'AGUARDANDO DESOVA': {
-    label: 'Aguard. Desova',
-    bg: 'bg-orange-500', light: 'bg-orange-50', text: 'text-orange-700',
-    border: 'border-orange-300',
-    badge: 'bg-orange-100 text-orange-800 border border-orange-300',
-    icon: <FaExclamationTriangle />, gradient: 'from-orange-400 to-orange-600',
-    ring: 'ring-orange-400/30', dot: 'bg-orange-500', hex: '#f97316'
-  },
-  'EM DESOVA': {
-    label: 'Em Desova',
-    bg: 'bg-violet-600', light: 'bg-violet-50', text: 'text-violet-700',
-    border: 'border-violet-300',
-    badge: 'bg-violet-100 text-violet-800 border border-violet-300',
-    icon: <FaDolly />, gradient: 'from-violet-500 to-violet-700',
-    ring: 'ring-violet-400/30', dot: 'bg-violet-500', hex: '#8b5cf6'
-  },
-  'ANEXANDO DOCUMENTOS FINAIS': {
-    label: 'Anexando Docs',
-    bg: 'bg-pink-600', light: 'bg-pink-50', text: 'text-pink-700',
-    border: 'border-pink-300',
-    badge: 'bg-pink-100 text-pink-800 border border-pink-300',
-    icon: <FaFilePdf />, gradient: 'from-pink-500 to-pink-700',
-    ring: 'ring-pink-400/30', dot: 'bg-pink-500', hex: '#ec4899'
-  },
-  ENTREGUE: {
-    label: 'Entregue',
-    bg: 'bg-emerald-600', light: 'bg-emerald-50', text: 'text-emerald-700',
-    border: 'border-emerald-300',
-    badge: 'bg-emerald-100 text-emerald-800 border border-emerald-300',
-    icon: <FaCheckCircle />, gradient: 'from-emerald-500 to-emerald-700',
-    ring: 'ring-emerald-400/30', dot: 'bg-emerald-500', hex: '#10b981'
-  },
-  CANCELADO: {
-    label: 'Cancelado',
-    bg: 'bg-gray-500', light: 'bg-gray-50', text: 'text-gray-600',
-    border: 'border-gray-300',
-    badge: 'bg-gray-100 text-gray-600 border border-gray-300',
-    icon: <FaTimesCircle />, gradient: 'from-gray-400 to-gray-600',
-    ring: 'ring-gray-400/30', dot: 'bg-gray-500', hex: '#6b7280'
-  }
+const getStatusConfig = (city = 'manaus') => {
+  const desovaLabel = getDesovaStepLabel(city);
+  return {
+    AGENDADO: {
+      label: 'Não Iniciado',
+      bg: 'bg-indigo-600', light: 'bg-indigo-50', text: 'text-indigo-700',
+      border: 'border-indigo-300',
+      badge: 'bg-indigo-100 text-indigo-800 border border-indigo-300',
+      icon: <FaCalendarAlt />, gradient: 'from-indigo-500 to-indigo-700',
+      ring: 'ring-indigo-400/30', dot: 'bg-indigo-500', hex: '#6366f1'
+    },
+    'CONTAINER MONTADO': {
+      label: 'Container Montado',
+      bg: 'bg-sky-600', light: 'bg-sky-50', text: 'text-sky-700',
+      border: 'border-sky-300',
+      badge: 'bg-sky-100 text-sky-800 border border-sky-300',
+      icon: <FaBox />, gradient: 'from-sky-500 to-sky-700',
+      ring: 'ring-sky-400/30', dot: 'bg-sky-500', hex: '#0ea5e9'
+    },
+    'A CAMINHO DO CLIENTE': {
+      label: 'A Caminho do Cliente',
+      bg: 'bg-amber-500', light: 'bg-amber-50', text: 'text-amber-700',
+      border: 'border-amber-300',
+      badge: 'bg-amber-100 text-amber-800 border border-amber-300',
+      icon: <FaTruck />, gradient: 'from-amber-400 to-amber-600',
+      ring: 'ring-amber-400/30', dot: 'bg-amber-500', hex: '#f59e0b'
+    },
+    'AGUARDANDO DESOVA': {
+      label: `Aguard. ${desovaLabel}`,
+      bg: 'bg-orange-500', light: 'bg-orange-50', text: 'text-orange-700',
+      border: 'border-orange-300',
+      badge: 'bg-orange-100 text-orange-800 border border-orange-300',
+      icon: <FaExclamationTriangle />, gradient: 'from-orange-400 to-orange-600',
+      ring: 'ring-orange-400/30', dot: 'bg-orange-500', hex: '#f97316'
+    },
+    'EM DESOVA': {
+      label: `Em ${desovaLabel}`,
+      bg: 'bg-violet-600', light: 'bg-violet-50', text: 'text-violet-700',
+      border: 'border-violet-300',
+      badge: 'bg-violet-100 text-violet-800 border border-violet-300',
+      icon: <FaDolly />, gradient: 'from-violet-500 to-violet-700',
+      ring: 'ring-violet-400/30', dot: 'bg-violet-500', hex: '#8b5cf6'
+    },
+    'ANEXANDO DOCUMENTOS FINAIS': {
+      label: 'Anexando Docs',
+      bg: 'bg-pink-600', light: 'bg-pink-50', text: 'text-pink-700',
+      border: 'border-pink-300',
+      badge: 'bg-pink-100 text-pink-800 border border-pink-300',
+      icon: <FaFilePdf />, gradient: 'from-pink-500 to-pink-700',
+      ring: 'ring-pink-400/30', dot: 'bg-pink-500', hex: '#ec4899'
+    },
+    ENTREGUE: {
+      label: 'Entregue',
+      bg: 'bg-emerald-600', light: 'bg-emerald-50', text: 'text-emerald-700',
+      border: 'border-emerald-300',
+      badge: 'bg-emerald-100 text-emerald-800 border border-emerald-300',
+      icon: <FaCheckCircle />, gradient: 'from-emerald-500 to-emerald-700',
+      ring: 'ring-emerald-400/30', dot: 'bg-emerald-500', hex: '#10b981'
+    },
+    CANCELADO: {
+      label: 'Cancelado',
+      bg: 'bg-gray-500', light: 'bg-gray-50', text: 'text-gray-600',
+      border: 'border-gray-300',
+      badge: 'bg-gray-100 text-gray-600 border border-gray-300',
+      icon: <FaTimesCircle />, gradient: 'from-gray-400 to-gray-600',
+      ring: 'ring-gray-400/30', dot: 'bg-gray-500', hex: '#6b7280'
+    }
+  };
 };
 
-const resolveConfig = (rawStatus) => {
+const getResolveConfig = (rawStatus, city = 'manaus') => {
+  const statusConfig = getStatusConfig(city);
   const key = normalizeKey(rawStatus);
   if (key === 'ENTREGUE' || key === 'SUBMITTED' || key === 'ENTREGUE COM PENDENCIA CANHOTO') {
-    return STATUS_CONFIG['ENTREGUE'];
+    return statusConfig['ENTREGUE'];
   }
   if (key === 'PENDING' || key === 'A CAMINHO DO CLIENTE') {
-    return STATUS_CONFIG['A CAMINHO DO CLIENTE'];
+    return statusConfig['A CAMINHO DO CLIENTE'];
   }
-  return STATUS_CONFIG[key] || null;
+  return statusConfig[key] || null;
 };
 
 /* ─────────────────────────────────────────────────────────────
@@ -266,8 +271,8 @@ const GLOBAL_STYLES = `
 /* ─────────────────────────────────────────────────────────────
    SMALL COMPONENTS
 ───────────────────────────────────────────────────────────── */
-const Badge = ({ status }) => {
-  const cfg = resolveConfig(status);
+const Badge = ({ status, city = 'manaus' }) => {
+  const cfg = getResolveConfig(status, city);
   const label = cfg?.label || normalizeKey(status);
   const cls = cfg?.badge || 'bg-gray-100 text-gray-700 border border-gray-300';
   return (
@@ -731,9 +736,12 @@ const SettingsPanel = ({
                   <option value="FINALIZADO" className="bg-gray-900">Finalizado (sem docs)</option>
                   <option value="A CAMINHO DO CLIENTE" className="bg-gray-900">A Caminho do Cliente</option>
                   <option value="AGENDADO" className="bg-gray-900">Agendado</option>
-                  <option value="AGUARDANDO_DESOVA" className="bg-gray-900">Aguardando Desova</option>
-                  <option value="EM_DESOVA" className="bg-gray-900">Em Desova</option>
-                  <option value="DESOVA_FINALIZADA" className="bg-gray-900">Desova Finalizada</option>
+                  {/* eslint-disable-next-line no-undef */}
+                  <option value="AGUARDANDO_DESOVA" className="bg-gray-900">Aguardando {getDesovaStepLabel(city)}</option>
+                  {/* eslint-disable-next-line no-undef */}
+                  <option value="EM_DESOVA" className="bg-gray-900">Em {getDesovaStepLabel(city)}</option>
+                  {/* eslint-disable-next-line no-undef */}
+                  <option value="DESOVA_FINALIZADA" className="bg-gray-900">{getDesovaStepLabel(city)} Finalizada</option>
                   <option value="ANEXANDO_DOCUMENTOS_FINAIS" className="bg-gray-900">Anexando Docs Finais</option>
                   <option value="CANCELADO" className="bg-gray-900">Cancelado</option>
                 </select>
@@ -1164,7 +1172,7 @@ const MonitorEntregas = () => {
       ? 'DOCUMENTOS ENTREGUES'
       : delivery.status;
 
-    const cfg = resolveConfig(dispStatus) || resolveConfig(delivery.status);
+    const cfg = getResolveConfig(dispStatus, city) || getResolveConfig(delivery.status, city);
     const rgb = hexToRgb(cfg?.hex);
 
     doc.setFillColor(rgb.r, rgb.g, rgb.b);
@@ -1215,8 +1223,8 @@ const MonitorEntregas = () => {
       ['Agendamento', formatDT(getProgramacaoDate(delivery, city))],
       ['Montagem Container', formatDT(delivery.containerMontadoAt)],
       ['Chegada', formatDT(delivery.horarioChegada)],
-      ['Início Desova', formatDT(delivery.horarioInicioDesova)],
-      ['Fim Desova', formatDT(delivery.horarioFimDesova)],
+      [`Início ${getDesovaStepLabel(city)}`, formatDT(delivery.horarioInicioDesova)],
+      [`Fim ${getDesovaStepLabel(city)}`, formatDT(delivery.horarioFimDesova)],
       ['Devolução Container Vazio', formatDT(delivery.horarioDevolucaoVazio)],
     ].forEach(([k, v]) => {
       doc.text(`${k}: ${v}`, pdfMargin, y);
@@ -1247,8 +1255,8 @@ const MonitorEntregas = () => {
     const docKeys = Object.keys(delivery.documents || {}).filter(k => !['chegadaCliente', 'inicioDesova', 'fimDesova'].includes(k));
     const fotoFields = [
       { key: 'chegadaCliente', label: 'Chegada no Cliente' },
-      { key: 'inicioDesova', label: 'Início da Desova' },
-      { key: 'fimDesova', label: 'Finalização da Desova' }
+      { key: 'inicioDesova', label: `Início da ${getDesovaStepLabel(city)}` },
+      { key: 'fimDesova', label: `Finalização da ${getDesovaStepLabel(city)}` }
     ];
     const allDocKeys = [...docKeys, ...fotoFields.map(f => f.key)];
 
@@ -1828,7 +1836,7 @@ const MonitorEntregas = () => {
 
           <div className="overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-purple-400 scrollbar-track-gray-200 w-full">
             <div className="flex gap-2 w-full">
-              {STATUS_COLUMNS.map((column) => (
+              {getStatusColumns(city).map((column) => (
                 <DeliveryKanbanColumn
                   key={column.key}
                   column={column}
@@ -2053,8 +2061,8 @@ const MonitorEntregas = () => {
                   ['Agendamento', getProgramacaoDate(selectedDelivery, city) ? new Date(getProgramacaoDate(selectedDelivery, city)).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'],
                   ['Montagem Container', selectedDelivery.containerMontadoAt ? new Date(selectedDelivery.containerMontadoAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'],
                   ['Chegada', selectedDelivery.horarioChegada ? new Date(selectedDelivery.horarioChegada).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'],
-                  ['Início Desova', selectedDelivery.horarioInicioDesova ? new Date(selectedDelivery.horarioInicioDesova).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'],
-                  ['Fim Desova', selectedDelivery.horarioFimDesova ? new Date(selectedDelivery.horarioFimDesova).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'],
+                  [`Início ${getDesovaStepLabel(city)}`, selectedDelivery.horarioInicioDesova ? new Date(selectedDelivery.horarioInicioDesova).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'],
+                  [`Fim ${getDesovaStepLabel(city)}`, selectedDelivery.horarioFimDesova ? new Date(selectedDelivery.horarioFimDesova).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'],
                 ].map(([label, value]) => (
                   <div key={label} className="bg-white/5 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 border border-white/5">
                     <p className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold mb-0.5">{label}</p>
@@ -2164,8 +2172,8 @@ const MonitorEntregas = () => {
 
                     const fotoFields = [
                       { key: 'chegadaCliente', label: 'Chegada no Cliente' },
-                      { key: 'inicioDesova', label: 'Início da Desova' },
-                      { key: 'fimDesova', label: 'Finalização da Desova' }
+                      { key: 'inicioDesova', label: `Início da ${getDesovaStepLabel(city)}` },
+                      { key: 'fimDesova', label: `Finalização da ${getDesovaStepLabel(city)}` }
                     ];
 
                     const fotosRows = fotoFields.map((f) => {
@@ -2359,9 +2367,9 @@ const MonitorEntregas = () => {
                   <option value="" className="bg-gray-900">Selecione…</option>
                   <option value="ENTREGUE" className="bg-gray-900">Operação Finalizada</option>
                   <option value="pending" className="bg-gray-900">A Caminho do Cliente</option>
-                  <option value="AGUARDANDO_DESOVA" className="bg-gray-900">Aguardando Desova</option>
-                  <option value="EM_DESOVA" className="bg-gray-900">Em Desova</option>
-                  <option value="DESOVA_FINALIZADA" className="bg-gray-900">Desova Finalizada</option>
+                  <option value="AGUARDANDO_DESOVA" className="bg-gray-900">Aguardando {getDesovaStepLabel(city)}</option>
+                  <option value="EM_DESOVA" className="bg-gray-900">Em {getDesovaStepLabel(city)}</option>
+                  <option value="DESOVA_FINALIZADA" className="bg-gray-900">{getDesovaStepLabel(city)} Finalizada</option>
                   <option value="ANEXANDO_DOCUMENTOS_FINAIS" className="bg-gray-900">Anexando Docs Finais</option>
                   <option value="CANCELADO" className="bg-gray-900">Cancelado</option>
                 </select>
@@ -2371,8 +2379,8 @@ const MonitorEntregas = () => {
                 ['Data Agendamento', 'dataAgendamento'],
                 ['Data Devolução Container Vazio', 'horarioDevolucaoVazio'],
                 ['Horário Chegada', 'horarioChegada'],
-                ['Início Desova', 'horarioInicioDesova'],
-                ['Fim Desova', 'horarioFimDesova'],
+                [`Horário Início ${getDesovaStepLabel(city)}`, 'horarioInicioDesova'],
+                [`Horário Fim ${getDesovaStepLabel(city)}`, 'horarioFimDesova'],
               ].map(([label, field]) => (
                 <div key={field}>
                   <label className="block text-xs font-semibold text-gray-400 uppercase mb-1.5">{label}</label>
