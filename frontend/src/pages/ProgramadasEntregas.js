@@ -1718,8 +1718,8 @@ const ProgramadasEntregas = () => {
 
                   <div className="grid grid-cols-1 gap-3">
                     {[
-                      { key: 'canhotCTE', label: city === 'itajai' ? 'CONTRATO' : 'Canhoto CTE', emoji: '🚛' },
-                      { key: 'canhotNF', label: city === 'itajai' ? 'TACÓGRAFO / RIC ABASTECINENTO' : 'Canhoto NF', emoji: '📦' },
+                      { key: 'canhotCTE', label: city === 'itajai' ? 'CONTRATO' : 'Canhoto CTE', emoji: city === 'itajai' ? '📄' : '🚛' },
+                      { key: 'canhotNF', label: city === 'itajai' ? 'TACÓGRAFO / RIC ABASTECINENTO' : 'Canhoto NF', emoji: city === 'itajai' ? '⏱️' : '📦' },
                       { key: 'diarioBordo', label: 'Diário de Bordo', emoji: '📋' },
                     ].map(doc => (
                       <DocUploadCard
