@@ -759,8 +759,8 @@ router.post("/:id/submit", auth, async (req, res) => {
 
     // Determine required docs for city
     const requiredDocs = city === 'itajai'
-      ? ['ricAbastecimento', 'diarioBordo', 'ricBaixa', 'ricColeta', 'discoTacografo']
-       : ['canhotNF', 'canhotCTE', 'diarioBordo'];
+      ? [] // Itajai does not require mandatory docs for submit
+      : ['canhotNF', 'canhotCTE', 'diarioBordo'];
 
     const missingDocs = requiredDocs.filter(doc => !docHasFiles(delivery.documents && delivery.documents[doc]));
 
