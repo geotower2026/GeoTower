@@ -177,6 +177,12 @@ exports.updateDeliveryDocument = async (req, res) => {
 
     delivery.documents[documentType] = relativePath;
 
+    // Remover documentType de missingDocumentsAtSubmit se estava lá
+    if (delivery.missingDocumentsAtSubmit && Array.isArray(delivery.missingDocumentsAtSubmit)) {
+      delivery.missingDocumentsAtSubmit = delivery.missingDocumentsAtSubmit.filter(d => d !== documentType);
+      console.log(`[UPLOAD] Removendo "${documentType}" de missingDocumentsAtSubmit. Pendências restantes:`, delivery.missingDocumentsAtSubmit);
+    }
+
     delivery.updatedAt = new Date();
     await delivery.save();
 

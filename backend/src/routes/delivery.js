@@ -653,6 +653,14 @@ router.post("/:id/documents/:type", auth, upload.array("file"), async (req, res)
         console.error(`[UPLOAD] Falha ao atualizar documentos no banco:`, err);
         return res.status(500).json({ message: "Erro ao salvar documentos no banco", error: err.message });
       }
+
+      // Atualizar missingDocumentsAtSubmit: remover este tipo se foi carregado com sucesso
+      const updated = await db.findById("deliveries", id);
+      if (updated.missingDocumentsAtSubmit && Array.isArray(updated.missingDocumentsAtSubmit) && updated.missingDocumentsAtSubmit.includes(type)) {
+        const newMissing = updated.missingDocumentsAtSubmit.filter(d => d !== type);
+        console.log(`[UPLOAD] Removendo "${type}" de missingDocumentsAtSubmit. Pendências restantes:`, newMissing);
+        await db.updateOne("deliveries", { _id: id }, { missingDocumentsAtSubmit: newMissing });
+      }
     } else {
       console.warn('[UPLOAD] Nenhum arquivo recebido no upload.');
       return res.status(400).json({ message: "Nenhum arquivo enviado" });
@@ -710,8 +718,19 @@ router.delete('/:id/documents/:type/:index', auth, async (req, res) => {
 
       docs[type] = null;
       await db.updateOne('deliveries', { _id: id }, { documents: docs });
+
+      // Restaurar na lista de pendências se era faltante
       const updated = await db.findById('deliveries', id);
-      return res.json({ delivery: updated });
+      if (updated.missingDocumentsAtSubmit && Array.isArray(updated.missingDocumentsAtSubmit)) {
+        if (!updated.missingDocumentsAtSubmit.includes(type)) {
+          const newMissing = [...updated.missingDocumentsAtSubmit, type];
+          console.log(`[DELETE] Documento removido (string), restaurando "${type}" em missingDocumentsAtSubmit:`, newMissing);
+          await db.updateOne('deliveries', { _id: id }, { missingDocumentsAtSubmit: newMissing });
+        }
+      }
+
+      const finalUpdated = await db.findById('deliveries', id);
+      return res.json({ delivery: finalUpdated });
     }
 
     // Array: remove índice
@@ -736,8 +755,18 @@ router.delete('/:id/documents/:type/:index', auth, async (req, res) => {
     docs[type] = docEntry.length ? docEntry : null;
     await db.updateOne('deliveries', { _id: id }, { documents: docs });
 
+    // Se deletou e ficou vazio, restaurar na lista de pendências se a entrega foi forçada (Itajaí)
     const updated = await db.findById('deliveries', id);
-    res.json({ delivery: updated });
+    if (!docs[type] && updated.missingDocumentsAtSubmit && Array.isArray(updated.missingDocumentsAtSubmit)) {
+      if (!updated.missingDocumentsAtSubmit.includes(type)) {
+        const newMissing = [...updated.missingDocumentsAtSubmit, type];
+        console.log(`[DELETE] Documento removido, restaurando "${type}" em missingDocumentsAtSubmit:`, newMissing);
+        await db.updateOne('deliveries', { _id: id }, { missingDocumentsAtSubmit: newMissing });
+      }
+    }
+
+    const finalUpdated = await db.findById('deliveries', id);
+    res.json({ delivery: finalUpdated });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Erro ao deletar documento' });
