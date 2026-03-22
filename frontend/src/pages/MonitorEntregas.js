@@ -2072,13 +2072,41 @@ const MonitorEntregas = () => {
                 <div className="bg-white/5 rounded-xl p-4 border border-white/5">
                   <p className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold mb-3">📍 Histórico do Fluxo</p>
                   <div className="space-y-2">
-                    {flowHistory.map((ev, idx) => (
-                      <div key={idx} className="flex items-center gap-3">
-                        <span className="w-2 h-2 rounded-full bg-purple-400 flex-shrink-0" />
-                        <span className="text-sm text-gray-200 flex-1">{ev.label}</span>
-                        <span className="text-xs text-gray-500 font-mono">{new Date(ev.date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
-                      </div>
-                    ))}
+                    {flowHistory.map((ev, idx) => {
+                      let duration = null;
+                      if (idx < flowHistory.length - 1) {
+                        const nextDate = new Date(flowHistory[idx + 1].date);
+                        const currentDate = new Date(ev.date);
+                        const diffMs = nextDate - currentDate;
+                        if (diffMs > 0) {
+                          const totalMin = Math.floor(diffMs / 60000);
+                          const h = Math.floor(totalMin / 60);
+                          const m = totalMin % 60;
+                          duration = h > 0 ? `${h}h ${m}m` : `${m}m`;
+                        }
+                      } else {
+                        const isFinished = normalizeKey(selectedDelivery.status) === 'FINALIZADO' || selectedDelivery.status === 'ENTREGUE' || selectedDelivery.status === 'submitted' || selectedDelivery.status === 'DOCUMENTOS ENTREGUES';
+                        if (!isFinished) {
+                          const currentDate = new Date(ev.date);
+                          const now = currentTime;
+                          const diffMs = now - currentDate;
+                          if (diffMs > 0) {
+                            const totalMin = Math.floor(diffMs / 60000);
+                            const h = Math.floor(totalMin / 60);
+                            const m = totalMin % 60;
+                            duration = h > 0 ? `${h}h ${m}m` : `${m}m`;
+                          }
+                        }
+                      }
+                      return (
+                        <div key={idx} className="flex items-center gap-3">
+                          <span className="w-2 h-2 rounded-full bg-purple-400 flex-shrink-0" />
+                          <span className="text-sm text-gray-200 flex-1">{ev.label}</span>
+                          <span className="text-xs text-gray-500 font-mono">{new Date(ev.date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                          {duration && <span className="text-xs text-gray-500 font-mono">Tempo no status: {duration}</span>}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
