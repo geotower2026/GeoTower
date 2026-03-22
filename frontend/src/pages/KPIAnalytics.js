@@ -5,7 +5,7 @@ import { adminService } from '../services/authService';
 import { useCity } from '../contexts/CityContext';
 import {
   FiArrowLeft, FiTrendingUp, FiTrendingDown, FiPackage, FiTruck,
-  FiClock, FiAlertTriangle, FiBarChart2, FiDownload, FiFileText, FiRefreshCw
+  FiClock, FiAlertTriangle, FiBarChart2, FiDownload, FiFileText, FiRefreshCw, FiX
 } from 'react-icons/fi';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
@@ -19,6 +19,7 @@ const KPIAnalytics = ({ onToggle }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [toast, setToast] = useState(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [filters, setFilters] = useState({
     startDate: '',
     endDate: '',
@@ -49,6 +50,45 @@ const KPIAnalytics = ({ onToggle }) => {
   // ═══ Helper Functions ═══
   const isCompletedStatus = (status) => {
     return ['Entregue', 'FINALIZADO', 'DOCUMENTOS ENTREGUES'].includes(status);
+  };
+
+  // Busca remetente de múltiplos campos possíveis
+  const getPartyName = (delivery) => {
+    const partyLabel = city === 'itajai' ? 'remetente' : 'destinatario';
+    
+    // Tenta buscar do campo direto (lowercase)
+    if (delivery[partyLabel]) return delivery[partyLabel];
+    
+    // Tenta buscar do campo em UPPERCASE
+    const upperLabel = partyLabel.toUpperCase();
+    if (delivery[upperLabel]) return delivery[upperLabel];
+    
+    // Tenta variações possíveis (com prefixo, etc)
+    if (city === 'itajai') {
+      return delivery.REMETENTE || delivery['Remetente'] || delivery.recebedor || 'Sem remetente';
+    } else {
+      return delivery.DESTINATARIO || delivery['Destinatário'] || delivery.destinatario || delivery.recebedor || 'Sem destinatário';
+    }
+  };
+
+  // Função de export para CSV
+  const exportToCSV = (data, filename = 'performance-data.csv') => {
+    const headers = Object.keys(data[0] || {});
+    const csv = [
+      headers.join(','),
+      ...data.map(row => headers.map(h => {
+        const val = row[h];
+        // Escapa aspas e adiciona aspas se contém vírgula
+        return typeof val === 'string' && val.includes(',') ? `"${val.replace(/"/g, '""')}"` : val;
+      }).join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    setToast({ message: 'Dados exportados com sucesso!', type: 'success' });
   };
 
   const getScheduledDate = (delivery) => {
@@ -210,12 +250,11 @@ const KPIAnalytics = ({ onToggle }) => {
   // KPI 7: Performance por Remetente (Itajaí) / Destinatário (Manaus)
   // ═══════════════════════════════════════════════════════════════
   const performanceByParty = useMemo(() => {
-    const partyLabel = city === 'itajai' ? 'remetente' : 'destinatario';
     const parties = {};
     filteredDeliveries.forEach(d => {
       if (!isCompletedStatus(d.status)) return; // Apenas entregas concluídas
 
-      const party = d[partyLabel] || (city === 'itajai' ? 'Sem remetente' : 'Sem destinatário');
+      const party = getPartyName(d);
       if (!parties[party]) {
         parties[party] = { total: 0, onTime: 0, late: 0, delays: [] };
       }
@@ -557,10 +596,28 @@ const KPIAnalytics = ({ onToggle }) => {
 
           {/* Performance por Remetente/Destinatário */}
           <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
-            <h3 className="font-semibold text-slate-200 mb-4 flex items-center gap-2">
-              <FiAlertTriangle className="text-amber-400" />
-              Performance por {city === 'itajai' ? 'Remetente' : 'Destinatário'}
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-slate-200 flex items-center gap-2">
+                <FiAlertTriangle className="text-amber-400" />
+                Performance por {city === 'itajai' ? 'Remetente' : 'Destinatário'}
+              </h3>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowDetailModal(true)}
+                  className="px-3 py-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 text-xs rounded transition"
+                  title="Ver tabela completa com detalhes"
+                >
+                  <FiBarChart2 className="inline mr-1" /> Detalhes
+                </button>
+                <button
+                  onClick={() => exportToCSV(performanceByParty, `performance-${city}-${new Date().toISOString().slice(0,10)}.csv`)}
+                  className="px-3 py-1 bg-green-500/20 hover:bg-green-500/30 text-green-400 text-xs rounded transition"
+                  title="Exportar dados para CSV"
+                >
+                  <FiDownload className="inline mr-1" /> Exportar
+                </button>
+              </div>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="border-b border-white/10">
@@ -604,6 +661,104 @@ const KPIAnalytics = ({ onToggle }) => {
           )}
         </div>
       </div>
+
+      {/* ════════ MODAL DETALHES ════════ */}
+      {showDetailModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 border border-white/10 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-slate-800 to-slate-900 border-b border-white/10 px-6 py-4 flex items-center justify-between flex-shrink-0">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <FiBarChart2 className="text-blue-400" />
+                Performance Detalhada - {city === 'itajai' ? 'Remetentes' : 'Destinatários'}
+              </h2>
+              <button
+                onClick={() => setShowDetailModal(false)}
+                className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 transition"
+                title="Fechar"
+              >
+                <FiX className="text-white" size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body - Table */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="border-b border-white/10 bg-slate-800/50 sticky top-0">
+                    <tr className="text-slate-400 text-xs uppercase">
+                      <th className="text-left py-3 px-4">{city === 'itajai' ? 'Remetente' : 'Destinatário'}</th>
+                      <th className="text-center py-3 px-4">Total Entregas</th>
+                      <th className="text-center py-3 px-4">No Prazo</th>
+                      <th className="text-center py-3 px-4">% No Prazo</th>
+                      <th className="text-center py-3 px-4">Atrasadas</th>
+                      <th className="text-center py-3 px-4">% Atrasadas</th>
+                      <th className="text-center py-3 px-4">Atraso Médio (min)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {performanceByParty.length > 0 ? (
+                      performanceByParty.map((party, i) => (
+                        <tr 
+                          key={i} 
+                          className={`border-b border-white/5 transition ${
+                            party.latePercentage > 30 
+                              ? 'bg-red-500/10 hover:bg-red-500/20' 
+                              : party.latePercentage > 10 
+                              ? 'bg-yellow-500/10 hover:bg-yellow-500/20'
+                              : 'hover:bg-white/5'
+                          }`}
+                        >
+                          <td className="py-3 px-4 text-slate-300 font-medium">{party.name}</td>
+                          <td className="text-center py-3 px-4 text-slate-300">{party.total}</td>
+                          <td className="text-center py-3 px-4 text-emerald-400 font-medium">
+                            {party.total - party.latePercentage * party.total / 100 | 0}
+                          </td>
+                          <td className="text-center py-3 px-4 text-emerald-400 font-bold">{party.onTimePercentage}%</td>
+                          <td className="text-center py-3 px-4 text-red-400 font-medium">
+                            {party.latePercentage * party.total / 100 | 0}
+                          </td>
+                          <td className="text-center py-3 px-4 text-red-400 font-bold">{party.latePercentage}%</td>
+                          <td className="text-center py-3 px-4 text-amber-400 font-medium">{party.avgDelayMinutes}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="7" className="text-center py-8 text-slate-400">
+                          Nenhum dado disponível
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="border-t border-white/10 bg-slate-800/50 px-6 py-4 flex items-center justify-between flex-shrink-0">
+              <span className="text-xs text-slate-400">
+                Total: {performanceByParty.length} {city === 'itajai' ? 'remetentes' : 'destinatários'}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => exportToCSV(performanceByParty, `performance-detalhado-${city}-${new Date().toISOString().slice(0,10)}.csv`)}
+                  className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 text-sm rounded-lg transition border border-green-500/30"
+                  title="Exportar dados da tabela atual para CSV"
+                >
+                  <FiDownload className="inline mr-2" size={14} />
+                  Exportar Detalhes
+                </button>
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm rounded-lg transition"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
