@@ -46,6 +46,36 @@ const KPIAnalytics = ({ onToggle }) => {
     }
   }, [navigate]);
 
+  // ═══ Helper Functions ═══
+  const isCompletedStatus = (status) => {
+    return ['Entregue', 'FINALIZADO', 'DOCUMENTOS ENTREGUES'].includes(status);
+  };
+
+  const getScheduledDate = (delivery) => {
+    // Em Itajaí: dtColeta é a data agendada com cliente
+    // Em Manaus: dtAgendamentoDescarga
+    if (city === 'itajai') {
+      return delivery.dtColeta;
+    }
+    return delivery.dtAgendamentoDescarga || delivery.dtColeta;
+  };
+
+  const getArrivalDate = (delivery) => {
+    // Em Itajaí: dtChegada é a data de chegada no cliente
+    // Em Manaus: dtEntrega
+    if (city === 'itajai') {
+      return delivery.dtChegada;
+    }
+    return delivery.dtEntrega;
+  };
+
+  const isLate = (delivery) => {
+    const scheduled = getScheduledDate(delivery);
+    const arrival = getArrivalDate(delivery);
+    if (!scheduled || !arrival) return false;
+    return new Date(arrival) > new Date(scheduled);
+  };
+
   useEffect(() => {
     loadData();
   }, [loadData]);
@@ -91,62 +121,57 @@ const KPIAnalytics = ({ onToggle }) => {
   // ═══════════════════════════════════════════════════════════════
   const onTimeRate = useMemo(() => {
     if (filteredDeliveries.length === 0) return 0;
-    const onTime = filteredDeliveries.filter(d => {
-      const agendamento = d.dtAgendamentoDescarga || d.dtColeta;
-      const entrega = d.dtEntrega;
-      if (!agendamento || !entrega) return false;
-      return new Date(entrega) <= new Date(agendamento);
-    }).length;
-    return Math.round((onTime / filteredDeliveries.length) * 100);
-  }, [filteredDeliveries]);
+    const completed = filteredDeliveries.filter(d => isCompletedStatus(d.status));
+    if (completed.length === 0) return 0;
+    const onTime = completed.filter(d => !isLate(d)).length;
+    return Math.round((onTime / completed.length) * 100);
+  }, [filteredDeliveries, city]);
 
   // ═══════════════════════════════════════════════════════════════
   // KPI 2: Total de Entregas Realizadas
   // ═══════════════════════════════════════════════════════════════
   const totalDeliveries = filteredDeliveries.length;
-  const completedDeliveries = filteredDeliveries.filter(d => d.status === 'Entregue').length;
+  const completedDeliveries = filteredDeliveries.filter(d => isCompletedStatus(d.status)).length;
 
   // ═══════════════════════════════════════════════════════════════
   // KPI 3: Entregas Atrasadas
   // ═══════════════════════════════════════════════════════════════
   const lateDeliveries = useMemo(() => {
-    const late = filteredDeliveries.filter(d => {
-      const agendamento = d.dtAgendamentoDescarga || d.dtColeta;
-      const entrega = d.dtEntrega;
-      if (!agendamento || !entrega) return false;
-      return new Date(entrega) > new Date(agendamento);
-    });
-    const percentage = totalDeliveries > 0 ? Math.round((late.length / totalDeliveries) * 100) : 0;
+    const completed = filteredDeliveries.filter(d => isCompletedStatus(d.status));
+    const late = completed.filter(d => isLate(d));
+    const percentage = completed.length > 0 ? Math.round((late.length / completed.length) * 100) : 0;
     return { count: late.length, percentage };
-  }, [filteredDeliveries, totalDeliveries]);
+  }, [filteredDeliveries, city]);
 
   // ═══════════════════════════════════════════════════════════════
   // KPI 4: Tempo Médio de Entrega
   // ═══════════════════════════════════════════════════════════════
   const averageDeliveryTime = useMemo(() => {
-    const times = filteredDeliveries
-      .filter(d => d.dtSaida && d.dtEntrega)
+    const completed = filteredDeliveries.filter(d => isCompletedStatus(d.status));
+    const times = completed
+      .filter(d => d.dtSaida && (d.dtEntrega || d.dtChegada))
       .map(d => {
         const saida = new Date(d.dtSaida);
-        const entrega = new Date(d.dtEntrega);
-        return (entrega - saida) / (1000 * 60 * 60); // horas
+        const chegada = city === 'itajai' ? new Date(d.dtChegada) : new Date(d.dtEntrega);
+        return (chegada - saida) / (1000 * 60 * 60); // horas
       });
     if (times.length === 0) return 0;
     const avg = times.reduce((a, b) => a + b, 0) / times.length;
     return avg.toFixed(1);
-  }, [filteredDeliveries]);
+  }, [filteredDeliveries, city]);
 
   // ═══════════════════════════════════════════════════════════════
   // KPI 5: SLA de Entrega
   // ═══════════════════════════════════════════════════════════════
   const slaMetric = useMemo(() => {
-    const withSla = filteredDeliveries.filter(d => d.dtAgendamentoDescarga && d.dtEntrega);
-    if (withSla.length === 0) return { met: 0, total: 0, percentage: 0 };
-    const met = withSla.filter(d => new Date(d.dtEntrega) <= new Date(d.dtAgendamentoDescarga)).length;
+    const completed = filteredDeliveries.filter(d => isCompletedStatus(d.status));
+    const withDates = completed.filter(d => getScheduledDate(d) && getArrivalDate(d));
+    if (withDates.length === 0) return { met: 0, total: 0, percentage: 0 };
+    const met = withDates.filter(d => !isLate(d)).length;
     return {
       met,
-      total: withSla.length,
-      percentage: Math.round((met / withSla.length) * 100)
+      total: withDates.length,
+      percentage: Math.round((met / withDates.length) * 100)
     };
   }, [filteredDeliveries]);
 
@@ -156,20 +181,18 @@ const KPIAnalytics = ({ onToggle }) => {
   const driverPerformance = useMemo(() => {
     const drivers = {};
     filteredDeliveries.forEach(d => {
+      if (!isCompletedStatus(d.status)) return; // Apenas entregas concluídas
+      
       const name = d.driverName || 'Sem motorista';
       if (!drivers[name]) {
         drivers[name] = { total: 0, onTime: 0, late: 0 };
       }
       drivers[name].total++;
 
-      const agendamento = d.dtAgendamentoDescarga || d.dtColeta;
-      const entrega = d.dtEntrega;
-      if (agendamento && entrega) {
-        if (new Date(entrega) <= new Date(agendamento)) {
-          drivers[name].onTime++;
-        } else {
-          drivers[name].late++;
-        }
+      if (isLate(d)) {
+        drivers[name].late++;
+      } else {
+        drivers[name].onTime++;
       }
     });
 
@@ -181,7 +204,7 @@ const KPIAnalytics = ({ onToggle }) => {
         latePercentage: data.total > 0 ? Math.round((data.late / data.total) * 100) : 0
       }))
       .sort((a, b) => b.total - a.total);
-  }, [filteredDeliveries]);
+  }, [filteredDeliveries, city]);
 
   // ═══════════════════════════════════════════════════════════════
   // KPI 7: Performance por Região
@@ -189,16 +212,18 @@ const KPIAnalytics = ({ onToggle }) => {
   const regionPerformance = useMemo(() => {
     const regions = {};
     filteredDeliveries.forEach(d => {
+      if (!isCompletedStatus(d.status)) return; // Apenas entregas concluídas
+      
       const region = d.regiao || 'Sem região';
       if (!regions[region]) {
-        regions[region] = { total: 0, onTime: 0, late: 0, avgDelay: 0, delays: [] };
+        regions[region] = { total: 0, onTime: 0, late: 0, delays: [] };
       }
       regions[region].total++;
 
-      const agendamento = d.dtAgendamentoDescarga || d.dtColeta;
-      const entrega = d.dtEntrega;
-      if (agendamento && entrega) {
-        const delay = new Date(entrega) - new Date(agendamento);
+      const scheduled = getScheduledDate(d);
+      const arrival = getArrivalDate(d);
+      if (scheduled && arrival) {
+        const delay = new Date(arrival) - new Date(scheduled);
         if (delay <= 0) {
           regions[region].onTime++;
         } else {
@@ -217,7 +242,7 @@ const KPIAnalytics = ({ onToggle }) => {
         avgDelayMinutes: data.delays.length > 0 ? Math.round(data.delays.reduce((a, b) => a + b) / data.delays.length) : 0
       }))
       .sort((a, b) => b.latePercentage - a.latePercentage);
-  }, [filteredDeliveries]);
+  }, [filteredDeliveries, city]);
 
   // ═══════════════════════════════════════════════════════════════
   // KPI 8: Tendência de Entregas (últimos 7, 15 e 30 dias)
