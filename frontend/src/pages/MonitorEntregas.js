@@ -1496,19 +1496,20 @@ const MonitorEntregas = () => {
     if (Object.keys(updates).length > 0) {
       prevPositions.current = capturedPositions;
       setRecentlyUpdated((prev) => ({ ...prev, ...updates }));
-      setTimeout(() => {
-        setRecentlyUpdated((prev) => {
-          const next = { ...prev };
-          Object.keys(updates).forEach((id) => delete next[id]);
-          return next;
-        });
-      }, RISE_WINDOW + 500);
+      
+      // Remove apenas a animação visual após RISE_WINDOW, mas mantém no topo via recentlyUpdated
+      // setTimeout(() => {
+      //   setRecentlyUpdated((prev) => {
+      //     const next = { ...prev };
+      //     Object.keys(updates).forEach((id) => delete next[id]);
+      //     return next;
+      //   });
+      // }, RISE_WINDOW + 500);
     }
   }, [filteredDeliveries]);
 
   // Agrupa entregas por container
   const displayList = useMemo(() => {
-    const now = Date.now();
     // Agrupamento por container
     const grouped = {};
     filteredDeliveries.forEach((d) => {
@@ -1524,15 +1525,19 @@ const MonitorEntregas = () => {
       return main;
     });
 
-    // Ordena por atualização
+    // Ordena por atualização - sempre coloca entregas atualizadas no topo
     return result.sort((a, b) => {
       const aT = recentlyUpdated[a._id];
       const bT = recentlyUpdated[b._id];
-      const aActive = aT && (now - aT) < RISE_WINDOW;
-      const bActive = bT && (now - bT) < RISE_WINDOW;
-      if (aActive && !bActive) return -1;
-      if (!aActive && bActive) return 1;
-      if (aActive && bActive) return bT - aT;
+      
+      // Ambas foram atualizadas: ordena por timestamp (mais recente no topo)
+      if (aT && bT) return bT - aT;
+      
+      // Só uma foi atualizada: coloca no topo
+      if (aT && !bT) return -1;
+      if (!aT && bT) return 1;
+      
+      // Nenhuma foi atualizada: mantém ordem original
       return 0;
     });
   }, [filteredDeliveries, recentlyUpdated]);
