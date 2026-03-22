@@ -1222,7 +1222,7 @@ const MonitorEntregas = () => {
       ['Chegada', formatDT(delivery.horarioChegada)],
       [`Início ${getDesovaStepLabel(city)}`, formatDT(delivery.horarioInicioDesova)],
       [`Fim ${getDesovaStepLabel(city)}`, formatDT(delivery.horarioFimDesova)],
-      ['Devolução Container Vazio', formatDT(delivery.horarioDevolucaoVazio)],
+      ['Entrega CNTR Porto', formatDT(delivery.horarioDevolucaoVazio)],
     ].forEach(([k, v]) => {
       doc.text(`${k}: ${v}`, pdfMargin, y);
       y += 16;
@@ -2053,7 +2053,7 @@ const MonitorEntregas = () => {
                   ['Contratado', selectedDelivery.userName],
                   ['Motorista', selectedDelivery.driverName || '—'],
                   ['Placa', selectedDelivery.placaYcompany || selectedDelivery.vehiclePlate || '—'],
-                  ['Data Devolução Container Vazio', selectedDelivery.horarioDevolucaoVazio ? new Date(selectedDelivery.horarioDevolucaoVazio).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'],
+                  ['Entrega CNTR Porto', selectedDelivery.horarioDevolucaoVazio ? new Date(selectedDelivery.horarioDevolucaoVazio).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'],
                   ['Recebedor', selectedDelivery.recebedor || '—'],
                   ['Agendamento', getProgramacaoDate(selectedDelivery, city) ? new Date(getProgramacaoDate(selectedDelivery, city)).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'],
                   ['Montagem Container', selectedDelivery.containerMontadoAt ? new Date(selectedDelivery.containerMontadoAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'],
