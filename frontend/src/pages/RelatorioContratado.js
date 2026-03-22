@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useCity } from '../contexts/CityContext';
 import {
   FaArrowLeft, FaDownload, FaFilter, FaSync, FaChartBar,
   FaTruck, FaDollarSign, FaBoxes, FaCalendarAlt
@@ -14,6 +15,7 @@ const RelatorioContratado = () => {
   const navigate = useNavigate();
 
   // State
+  const { city } = useCity();
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
   const [contratados, setContratados] = useState([]);
@@ -23,6 +25,15 @@ const RelatorioContratado = () => {
     totalFrete: 0,
     mediaFrete: 0
   });
+
+  const getAgendaDate = (d) => {
+    if (city === 'itajai') {
+      return d.dtColeta || d.dtAgendamentoDescarga || d.dataAgendamento || d.createdAt;
+    }
+    return d.dtAgendamentoDescarga || d.dataAgendamento || d.createdAt;
+  };
+
+  const getAgendaLabel = () => (city === 'itajai' ? 'Dt Coleta' : 'Data Agendamento');
   const [resumoPorContratado, setResumoPorContratado] = useState({});
 
   // Filtros
@@ -76,7 +87,7 @@ const RelatorioContratado = () => {
       const dataInicio = new Date(filtros.dataInicio);
       dataInicio.setHours(0, 0, 0, 0);
       dadosFiltrados = dadosFiltrados.filter(d => {
-        const dataEntrega = new Date(d.dtAgendamentoDescarga || d.dataAgendamento || d.createdAt);
+        const dataEntrega = new Date(getAgendaDate(d));
         return dataEntrega >= dataInicio;
       });
     }
@@ -86,7 +97,7 @@ const RelatorioContratado = () => {
       const dataFim = new Date(filtros.dataFim);
       dataFim.setHours(23, 59, 59, 999);
       dadosFiltrados = dadosFiltrados.filter(d => {
-        const dataEntrega = new Date(d.dtAgendamentoDescarga || d.dataAgendamento || d.createdAt);
+        const dataEntrega = new Date(getAgendaDate(d));
         return dataEntrega <= dataFim;
       });
     }
@@ -174,12 +185,13 @@ const RelatorioContratado = () => {
       return;
     }
 
+    const labelAgenda = getAgendaLabel();
     const exportDados = dados.map(d => ({
       'Código': d.codigo,
       'Contratado': d.contratado,
       'Destinatário': d.destinatario,
       'Container': d.containerNumero || '—',
-      'Data Agendamento Descarga': d.dtAgendamentoDescarga ? new Date(d.dtAgendamentoDescarga).toLocaleDateString('pt-BR') : '—',
+      [labelAgenda]: getAgendaDate(d) ? new Date(getAgendaDate(d)).toLocaleDateString('pt-BR') : '—',
       'Motorista': d.motorista,
       'Vl. Frete Processo': d.vlFreteProcesso ? `R$ ${d.vlFreteProcesso.toFixed(2).replace('.', ',')}` : 'R$ 0,00',
       'Vl. Pedágio': d.vlPedagio ? `R$ ${d.vlPedagio.toFixed(2).replace('.', ',')}` : 'R$ 0,00',
@@ -246,19 +258,21 @@ const RelatorioContratado = () => {
     doc.text('Detalhamento de Entregas', margin, yPos);
     yPos += 6;
 
+    const labelAgendaPDF = getAgendaLabel();
     const tableData = dados.map(d => [
       d.codigo,
       d.contratado || '—',
       d.destinatario || '—',
       d.containerNumero || '—',
-      d.dtAgendamentoDescarga ? new Date(d.dtAgendamentoDescarga).toLocaleDateString('pt-BR') : '—',
+      getAgendaDate(d) ? new Date(getAgendaDate(d)).toLocaleDateString('pt-BR') : '—',
       d.motorista || '—',
       `R$ ${(d.vlFreteProcesso || 0).toFixed(2)}`,
     ]);
 
+
     autoTable(doc, {
       startY: yPos,
-      head: [['Código', 'Contratado', 'Destinatário', 'Container', 'Data Agendamento', 'Motorista', 'Vl. Frete']],
+      head: [['Código', 'Contratado', 'Destinatário', 'Container', getAgendaLabel(), 'Motorista', 'Vl. Frete']],
       body: tableData,
       margin: margin,
       styles: { fontSize: 8 },
@@ -521,7 +535,7 @@ const RelatorioContratado = () => {
                     <th className="px-4 py-3 text-left font-semibold text-slate-600">Contratado</th>
                     <th className="px-4 py-3 text-left font-semibold text-slate-600">Destinatário</th>
                     <th className="px-4 py-3 text-left font-semibold text-slate-600">Container</th>
-                    <th className="px-4 py-3 text-left font-semibold text-slate-600">Data Agendamento</th>
+                    <th className="px-4 py-3 text-left font-semibold text-slate-600">{getAgendaLabel()}</th>
                     <th className="px-4 py-3 text-left font-semibold text-slate-600">Motorista</th>
                     <th className="px-4 py-3 text-right font-semibold text-slate-600">Vl. Frete</th>
                   </tr>
@@ -533,7 +547,7 @@ const RelatorioContratado = () => {
                       <td className="px-4 py-3 text-slate-700">{d.contratado || '—'}</td>
                       <td className="px-4 py-3 text-slate-700">{d.destinatario || '—'}</td>
                       <td className="px-4 py-3 text-slate-700">{d.containerNumero || '—'}</td>
-                      <td className="px-4 py-3 text-slate-700">{formatDate(d.dtAgendamentoDescarga)}</td>
+                      <td className="px-4 py-3 text-slate-700">{formatDate(getAgendaDate(d))}</td>
                       <td className="px-4 py-3 text-slate-700">{d.motorista || '—'}</td>
                       <td className="px-4 py-3 text-right font-semibold text-green-600">{formatCurrency(d.vlFreteProcesso)}</td>
                     </tr>
