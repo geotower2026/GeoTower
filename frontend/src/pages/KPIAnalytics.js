@@ -76,7 +76,7 @@ const KPIAnalytics = ({ onToggle }) => {
 
   // Busca número do processo (CAB...)
   const getProcessNumber = (delivery) => {
-    return delivery.processo || delivery.numeroProcesso || delivery.CAB || delivery.cab || delivery.processNumber || 'N/A';
+    return delivery.processo || delivery.numeroProcesso || delivery.processoCAB || delivery.CAB || delivery.cab || delivery.processNumber || 'N/A';
   };
 
   // Função de export para CSV
