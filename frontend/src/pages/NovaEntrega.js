@@ -31,7 +31,7 @@ const NovaEntrega = () => {
       canhotNF: '📄 Canhoto NF',
       canhotCTE: '📦 Canhoto CTE',
       diarioBordo: '📓 Diário de Bordo',
-      devolucaoVazio: '🚛 Dt Entrega CNTR Porto',
+      devolucaoVazio: '🚛 Entrega CNTR Porto',
       retiradaCheio: '🚚 Retirada Cheio'
     };
 
