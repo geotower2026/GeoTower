@@ -1491,7 +1491,9 @@ router.get("/programacoes", auth, async (req, res) => {
       ];
     }
     
-    const programacoes = await ProgramacaoEntrega.find(cityFilter).sort({ dataAgendamento: -1 });
+    const programacoes = await ProgramacaoEntrega.find(cityFilter)
+      .sort({ dataAgendamento: -1 })
+      .limit(1000); // Limita a 1000 registros mais recentes para evitar timeout
 
     // Aplicar filtro de período se fornecido
     let effectiveDate = '';
@@ -1544,33 +1546,40 @@ router.get("/programacoes", auth, async (req, res) => {
     }
 
     // também trazemos entregas para permitir associação com motoristas (apenas da mesma cidade)
+    // Otimizado: busca apenas entregas ativas/recentes para evitar timeout
     const db = await getDb(req);
-    const allDeliveries = await db.find("deliveries", { cityCode: city });
+    const allDeliveries = await db.find("deliveries", {
+      cityCode: city,
+      // Limita a entregas dos últimos 90 dias para performance
+      createdAt: { $gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) }
+    });
 
-    // vincular id de entrega correspondente (se existir)
+    // Cria mapa de entregas por número para lookup O(1)
+    const deliveryMap = new Map();
+    allDeliveries.forEach(d => {
+      const num = String(d.deliveryNumber || '').trim().toUpperCase();
+      if (num) deliveryMap.set(num, d);
+    });
+
+    // vincular id de entrega correspondente (se existir) usando mapa otimizado
     const enriched = (filtered || []).map(p => {
       const obj = p.toObject ? p.toObject() : { ...p };
-      // se já temos um vínculo gravado, mantenha
+
       if (obj.linkedDeliveryId) {
-        // também copie eventual lista de documentos pendentes se disponível
-        if (obj.linkedDeliveryId && obj.missingDocumentsAtSubmit === undefined) {
-          const existing = allDeliveries.find(d => String(d._id) === String(obj.linkedDeliveryId));
-          if (existing) {
-            obj.missingDocumentsAtSubmit = existing.missingDocumentsAtSubmit || [];
-            if (existing.horarioDevolucaoVazio) {
-              obj.horarioDevolucaoVazio = existing.horarioDevolucaoVazio;
-            }
+        const existing = deliveryMap.get(String(obj.linkedDeliveryId));
+        if (existing && obj.missingDocumentsAtSubmit === undefined) {
+          obj.missingDocumentsAtSubmit = existing.missingDocumentsAtSubmit || [];
+          if (existing.horarioDevolucaoVazio) {
+            obj.horarioDevolucaoVazio = existing.horarioDevolucaoVazio;
           }
         }
         return obj;
       }
-      // senão tente descobrir pela comparação de números
-      const match = allDeliveries.find(d => {
-        const num = String(d.deliveryNumber || '').trim().toUpperCase();
-        const proc = String(p.processo || '').trim().toUpperCase();
-        const cont = String(p.container || '').trim().toUpperCase();
-        return (num && (num === proc || num === cont));
-      });
+
+      // Busca otimizada por número usando Map
+      const num = String(p.processo || p.container || '').trim().toUpperCase();
+      const match = num ? deliveryMap.get(num) : null;
+
       obj.linkedDeliveryId = match ? match._id : null;
       if (match) {
         obj.missingDocumentsAtSubmit = match.missingDocumentsAtSubmit || [];
@@ -1578,6 +1587,7 @@ router.get("/programacoes", auth, async (req, res) => {
           obj.horarioDevolucaoVazio = match.horarioDevolucaoVazio;
         }
       }
+
       return obj;
     });
 

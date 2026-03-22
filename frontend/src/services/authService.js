@@ -57,7 +57,7 @@ export const adminService = {
     const params = new URLSearchParams();
     if (statsPeriod && statsPeriod !== 'general') params.append('period', statsPeriod);
     if (periodDate) params.append('periodDate', periodDate);
-    return api.get('/admin/programacoes' + (params.toString() ? '?' + params.toString() : ''));
+    return api.get('/admin/programacoes' + (params.toString() ? '?' + params.toString() : ''), { timeout: 30000 });
   },
   updateProgramacao: (id, data) => api.put(`/admin/programacoes/${id}`, data),
   deleteProgramacao: (id) => api.delete(`/admin/programacoes/${id}`),
