@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import Toast from '../components/Toast';
 import { adminService } from '../services/authService';
 import { useCity } from '../contexts/CityContext';
+import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import {
   FiArrowLeft, FiTrendingUp, FiTrendingDown, FiPackage, FiTruck,
   FiClock, FiAlertTriangle, FiBarChart2, FiDownload, FiFileText, FiRefreshCw, FiX
@@ -89,6 +92,129 @@ const KPIAnalytics = ({ onToggle }) => {
     link.download = filename;
     link.click();
     setToast({ message: 'Dados exportados com sucesso!', type: 'success' });
+  };
+
+  // Função de export para EXCEL
+  const exportToExcel = () => {
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const workbook = XLSX.utils.book_new();
+
+    // Aba 1: KPI Principais
+    const kpiData = [
+      ['KPI Indicadores', 'Valor', 'Meta/Observação'],
+      ['Taxa de Entregas no Prazo', `${onTimeRate}%`, '95%'],
+      ['Total de Entregas', totalDeliveries, 'Total'],
+      ['Entregas Concluídas', completedDeliveries, 'Entregas'],
+      ['Entregas Atrasadas', lateDeliveries.count, `${lateDeliveries.percentage}%`],
+      ['Tempo Médio de Entrega', `${averageDeliveryTime}h`, 'Saída até Entrega'],
+      ['SLA Cumprido', `${slaMetric.met}/${slaMetric.total}`, `${slaMetric.percentage}%`],
+      ['', '', ''],
+      ['Tendência Últimos 7 dias', deliveryTrend.last7, 'Entregas'],
+      ['Tendência Últimos 15 dias', deliveryTrend.last15, 'Entregas'],
+      ['Tendência Últimos 30 dias', deliveryTrend.last30, 'Entregas']
+    ];
+    const kpiSheet = XLSX.utils.aoa_to_sheet(kpiData);
+    XLSX.utils.book_append_sheet(workbook, kpiSheet, 'KPI Principais');
+
+    // Aba 2: Performance por Motorista
+    if (driverPerformance.length > 0) {
+      const driverData = [
+        ['Motorista', 'Total', '% No Prazo', '% Atrasado'],
+        ...driverPerformance.map(d => [d.name, d.total, `${d.onTimePercentage}%`, `${d.latePercentage}%`])
+      ];
+      const driverSheet = XLSX.utils.aoa_to_sheet(driverData);
+      XLSX.utils.book_append_sheet(workbook, driverSheet, 'Performance Motoristas');
+    }
+
+    // Aba 3: Performance por Remetente/Destinatário
+    if (performanceByParty.length > 0) {
+      const partyData = [
+        [city === 'itajai' ? 'Remetente' : 'Destinatário', 'Total', '% No Prazo', '% Atrasado', 'Atraso Médio (min)'],
+        ...performanceByParty.map(p => [p.name, p.total, `${p.onTimePercentage}%`, `${p.latePercentage}%`, p.avgDelayMinutes])
+      ];
+      const partySheet = XLSX.utils.aoa_to_sheet(partyData);
+      XLSX.utils.book_append_sheet(workbook, partySheet, 'Performance Remetente/Destinatário');
+    }
+
+    // Aba 4: Distribuição por Status
+    if (statusChartData.length > 0) {
+      const statusData = [
+        ['Status', 'Quantidade'],
+        ...statusChartData.map(s => [s.name, s.value])
+      ];
+      const statusSheet = XLSX.utils.aoa_to_sheet(statusData);
+      XLSX.utils.book_append_sheet(workbook, statusSheet, 'Distribuição Status');
+    }
+
+    XLSX.writeFile(workbook, `kpi-analytics-${city}-${dateStr}.xlsx`);
+    setToast({ message: 'Extrato Excel exportado com sucesso!', type: 'success' });
+  };
+
+  // Função de export para PDF
+  const exportToPDF = () => {
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const doc = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    let yPosition = 15;
+
+    // Header
+    doc.setFontSize(14);
+    doc.text(`Relatório de KPIs - ${city.toUpperCase()}`, pageWidth / 2, yPosition, { align: 'center' });
+    doc.setFontSize(10);
+    doc.text(`Data: ${new Date().toLocaleDateString('pt-BR')}`, pageWidth / 2, yPosition + 6, { align: 'center' });
+    yPosition += 15;
+
+    // Métricas Principais
+    doc.setFontSize(12);
+    doc.text('Métricas Principais', 10, yPosition);
+    yPosition += 8;
+    doc.setFontSize(10);
+    const metricsText = [
+      `Taxa no Prazo: ${onTimeRate}%`,
+      `Total de Entregas: ${totalDeliveries}`,
+      `Entregas Concluídas: ${completedDeliveries}`,
+      `Entregas Atrasadas: ${lateDeliveries.count} (${lateDeliveries.percentage}%)`,
+      `Tempo Médio: ${averageDeliveryTime}h`,
+      `SLA: ${slaMetric.met}/${slaMetric.total} (${slaMetric.percentage}%)`
+    ];
+    metricsText.forEach(text => {
+      doc.text(text, 15, yPosition);
+      yPosition += 6;
+    });
+    yPosition += 4;
+
+    // Tabela: Performance por Motorista
+    if (driverPerformance.length > 0) {
+      autoTable(doc, {
+        head: [['Motorista', 'Total', '% No Prazo', '% Atrasado']],
+        body: driverPerformance.map(d => [d.name, d.total, `${d.onTimePercentage}%`, `${d.latePercentage}%`]),
+        startY: yPosition,
+        margin: { left: 10, right: 10 }
+      });
+      yPosition = doc.lastAutoTable.finalY + 5;
+    }
+
+    // Verificar se precisa nova página
+    if (yPosition > pageHeight - 30) {
+      doc.addPage();
+      yPosition = 15;
+    }
+
+    // Tabela: Performance por Remetente/Destinatário
+    if (performanceByParty.length > 0) {
+      doc.setFontSize(12);
+      doc.text(`Performance por ${city === 'itajai' ? 'Remetente' : 'Destinatário'}`, 10, yPosition);
+      autoTable(doc, {
+        head: [[city === 'itajai' ? 'Remetente' : 'Destinatário', 'Total', '% No Prazo', '% Atrasado', 'Atraso Médio']],
+        body: performanceByParty.map(p => [p.name, p.total, `${p.onTimePercentage}%`, `${p.latePercentage}%`, p.avgDelayMinutes]),
+        startY: yPosition + 5,
+        margin: { left: 10, right: 10 }
+      });
+    }
+
+    doc.save(`kpi-analytics-${city}-${dateStr}.pdf`);
+    setToast({ message: 'Relatório PDF exportado com sucesso!', type: 'success' });
   };
 
   const getScheduledDate = (delivery) => {
@@ -370,12 +496,28 @@ const KPIAnalytics = ({ onToggle }) => {
                 <p className="text-xs text-slate-400">Dashboard com indicadores detalhados</p>
               </div>
             </div>
-            <button
-              onClick={onToggle}
-              className="px-4 py-2 rounded-lg bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/30 transition text-sm font-medium"
-            >
-              ← Voltar ao Dashboard
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={exportToExcel}
+                className="px-3 py-2 rounded-lg bg-green-500/20 border border-green-500/30 text-green-300 hover:bg-green-500/30 transition text-sm font-medium flex items-center gap-2"
+                title="Exportar dados em Excel"
+              >
+                <FiDownload size={16} /> Excel
+              </button>
+              <button
+                onClick={exportToPDF}
+                className="px-3 py-2 rounded-lg bg-red-500/20 border border-red-500/30 text-red-300 hover:bg-red-500/30 transition text-sm font-medium flex items-center gap-2"
+                title="Exportar relatório em PDF"
+              >
+                <FiFileText size={16} /> PDF
+              </button>
+              <button
+                onClick={onToggle}
+                className="px-4 py-2 rounded-lg bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/30 transition text-sm font-medium"
+              >
+                ← Voltar ao Dashboard
+              </button>
+            </div>
           </div>
 
           {/* FILTROS */}
