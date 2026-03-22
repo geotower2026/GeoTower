@@ -146,8 +146,43 @@ const KPIAnalytics = ({ onToggle }) => {
       XLSX.utils.book_append_sheet(workbook, statusSheet, 'Distribuição Status');
     }
 
-    XLSX.writeFile(workbook, `kpi-analytics-${city}-${dateStr}.xlsx`);
-    setToast({ message: 'Extrato Excel exportado com sucesso!', type: 'success' });
+    // Aba 5: Entregas Atrasadas (detalhes)
+    const lateDeliveriesData = filteredDeliveries
+      .filter(d => isCompletedStatus(d.status) && isLate(d))
+      .sort((a, b) => {
+        const aDelay = getScheduledDate(a) && getArrivalDate(a) ?
+          new Date(getArrivalDate(a)) - new Date(getScheduledDate(a)) : 0;
+        const bDelay = getScheduledDate(b) && getArrivalDate(b) ?
+          new Date(getArrivalDate(b)) - new Date(getScheduledDate(b)) : 0;
+        return bDelay - aDelay;
+      })
+      .map(d => ({
+        'Motorista': d.driverName || 'Não informado',
+        [city === 'itajai' ? 'Remetente' : 'Destinatário']: getPartyName(d),
+        'Data Agendada': getScheduledDate(d) ? new Date(getScheduledDate(d)).toLocaleDateString('pt-BR') : 'N/A',
+        'Data Entrega': getArrivalDate(d) ? new Date(getArrivalDate(d)).toLocaleDateString('pt-BR') : 'N/A',
+        'Atraso (dias)': getScheduledDate(d) && getArrivalDate(d) ?
+          Math.ceil((new Date(getArrivalDate(d)) - new Date(getScheduledDate(d))) / (1000 * 60 * 60 * 24)) : 'N/A',
+        'Status': d.status,
+        'Região': d.regiao || 'N/A'
+      }));
+
+    if (lateDeliveriesData.length > 0) {
+      const lateData = [
+        ['Motorista', city === 'itajai' ? 'Remetente' : 'Destinatário', 'Data Agendada', 'Data Entrega', 'Atraso (dias)', 'Status', 'Região'],
+        ...lateDeliveriesData.map(d => [
+          d['Motorista'],
+          d[city === 'itajai' ? 'Remetente' : 'Destinatário'],
+          d['Data Agendada'],
+          d['Data Entrega'],
+          d['Atraso (dias)'],
+          d['Status'],
+          d['Região']
+        ])
+      ];
+      const lateSheet = XLSX.utils.aoa_to_sheet(lateData);
+      XLSX.utils.book_append_sheet(workbook, lateSheet, 'Entregas Atrasadas');
+    }
   };
 
   // Função de export para PDF
@@ -786,21 +821,100 @@ const KPIAnalytics = ({ onToggle }) => {
             </div>
           </div>
 
-          {/* Insights Automáticos */}
-          {(onTimeRate < 80 || lateDeliveries.percentage > 20) && (
-            <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-5">
-              <h3 className="font-semibold text-red-400 mb-3 flex items-center gap-2">
-                <FiAlertTriangle /> Alertas
+          {/* ════════ TABELA DE ENTREGAS ATRASADAS ════════ */}
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-slate-200 flex items-center gap-2">
+                <FiAlertTriangle className="text-red-400" />
+                Entregas Atrasadas ({lateDeliveries.count})
               </h3>
-              <ul className="space-y-2 text-sm text-slate-300">
-                {onTimeRate < 80 && <li>⚠️ Taxa de uma no prazo ({onTimeRate}%) está abaixo do ideal (95%). Investigar causas de atraso.</li>}
-                {lateDeliveries.percentage > 20 && <li>⚠️ {lateDeliveries.percentage}% das entregas estão atrasadas ({lateDeliveries.count}). Revisar processos.</li>}
-                {performanceByParty.some(p => p.latePercentage > 30) && (
-                  <li>⚠️ {city === 'itajai' ? 'Remetentes críticos' : 'Destinatários críticos'} detectados: {performanceByParty.filter(p => p.latePercentage > 30).map(p => p.name).join(', ')} com atrasos acima de 30%.</li>
-                )}
-              </ul>
+              <button
+                onClick={() => {
+                  const lateDeliveriesData = filteredDeliveries
+                    .filter(d => isCompletedStatus(d.status) && isLate(d))
+                    .map(d => ({
+                      'Motorista': d.driverName || 'Não informado',
+                      [city === 'itajai' ? 'Remetente' : 'Destinatário']: getPartyName(d),
+                      'Data Agendada': getScheduledDate(d) ? new Date(getScheduledDate(d)).toLocaleDateString('pt-BR') : 'N/A',
+                      'Data Entrega': getArrivalDate(d) ? new Date(getArrivalDate(d)).toLocaleDateString('pt-BR') : 'N/A',
+                      'Atraso (dias)': getScheduledDate(d) && getArrivalDate(d) ?
+                        Math.ceil((new Date(getArrivalDate(d)) - new Date(getScheduledDate(d))) / (1000 * 60 * 60 * 24)) : 'N/A',
+                      'Status': d.status,
+                      'Região': d.regiao || 'N/A'
+                    }));
+                  exportToCSV(lateDeliveriesData, `entregas-atrasadas-${city}-${new Date().toISOString().slice(0,10)}.csv`);
+                }}
+                className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded transition"
+                title="Exportar lista de entregas atrasadas"
+              >
+                <FiDownload className="inline mr-1" /> Exportar Atrasadas
+              </button>
             </div>
-          )}
+            <div className="overflow-x-auto max-h-96 overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead className="border-b border-white/10 sticky top-0 bg-slate-800/50">
+                  <tr className="text-slate-400 text-xs uppercase">
+                    <th className="text-left py-3 px-4">Motorista</th>
+                    <th className="text-left py-3 px-4">{city === 'itajai' ? 'Remetente' : 'Destinatário'}</th>
+                    <th className="text-center py-3 px-4">Data Agendada</th>
+                    <th className="text-center py-3 px-4">Data Entrega</th>
+                    <th className="text-center py-3 px-4">Atraso (dias)</th>
+                    <th className="text-center py-3 px-4">Status</th>
+                    <th className="text-center py-3 px-4">Região</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredDeliveries
+                    .filter(d => isCompletedStatus(d.status) && isLate(d))
+                    .sort((a, b) => {
+                      // Ordenar por atraso decrescente (mais atrasadas primeiro)
+                      const aDelay = getScheduledDate(a) && getArrivalDate(a) ?
+                        new Date(getArrivalDate(a)) - new Date(getScheduledDate(a)) : 0;
+                      const bDelay = getScheduledDate(b) && getArrivalDate(b) ?
+                        new Date(getArrivalDate(b)) - new Date(getScheduledDate(b)) : 0;
+                      return bDelay - aDelay;
+                    })
+                    .map((delivery, i) => {
+                      const scheduled = getScheduledDate(delivery);
+                      const arrival = getArrivalDate(delivery);
+                      const delayDays = scheduled && arrival ?
+                        Math.ceil((new Date(arrival) - new Date(scheduled)) / (1000 * 60 * 60 * 24)) : 0;
+
+                      return (
+                        <tr key={i} className="border-b border-white/5 hover:bg-red-500/5 transition">
+                          <td className="py-3 px-4 text-slate-300">{delivery.driverName || 'Não informado'}</td>
+                          <td className="py-3 px-4 text-slate-300">{getPartyName(delivery)}</td>
+                          <td className="text-center py-3 px-4 text-slate-300">
+                            {scheduled ? new Date(scheduled).toLocaleDateString('pt-BR') : 'N/A'}
+                          </td>
+                          <td className="text-center py-3 px-4 text-slate-300">
+                            {arrival ? new Date(arrival).toLocaleDateString('pt-BR') : 'N/A'}
+                          </td>
+                          <td className="text-center py-3 px-4 text-red-400 font-bold">
+                            {delayDays > 0 ? `${delayDays} dias` : 'N/A'}
+                          </td>
+                          <td className="text-center py-3 px-4">
+                            <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full">
+                              {delivery.status}
+                            </span>
+                          </td>
+                          <td className="text-center py-3 px-4 text-slate-300">{delivery.regiao || 'N/A'}</td>
+                        </tr>
+                      );
+                    })}
+                  {filteredDeliveries.filter(d => isCompletedStatus(d.status) && isLate(d)).length === 0 && (
+                    <tr>
+                      <td colSpan="7" className="text-center py-8 text-slate-400">
+                        Nenhuma entrega atrasada encontrada
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Insights Automáticos */}
         </div>
       </div>
 
