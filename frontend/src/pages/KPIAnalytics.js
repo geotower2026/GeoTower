@@ -195,6 +195,45 @@ const KPIAnalytics = ({ onToggle }) => {
     setToast({ message: 'Extrato Excel exportado com sucesso!', type: 'success' });
   };
 
+  // Função de export de Entregas Atrasadas para EXCEL
+  const exportLateDeliveriesToExcel = () => {
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const workbook = XLSX.utils.book_new();
+
+    // Aba 1: Entregas Atrasadas (detalhes completos)
+    const lateDeliveriesData = filteredDeliveries
+      .filter(d => isCompletedStatus(d.status) && isLate(d))
+      .sort((a, b) => {
+        const aDelay = getScheduledDate(a) && getArrivalDate(a) ?
+          new Date(getArrivalDate(a)) - new Date(getScheduledDate(a)) : 0;
+        const bDelay = getScheduledDate(b) && getArrivalDate(b) ?
+          new Date(getArrivalDate(b)) - new Date(getScheduledDate(b)) : 0;
+        return bDelay - aDelay;
+      });
+
+    if (lateDeliveriesData.length > 0) {
+      const lateData = [
+        ['Motorista', city === 'itajai' ? 'Remetente' : 'Destinatário', 'Processo', 'Data Agendada', 'Data Entrega', 'Atraso (dias)', 'Status', 'Região'],
+        ...lateDeliveriesData.map(d => [
+          d.driverName || 'Não informado',
+          getPartyName(d),
+          getProcessNumber(d),
+          getScheduledDate(d) ? new Date(getScheduledDate(d)).toLocaleDateString('pt-BR') : 'N/A',
+          getArrivalDate(d) ? new Date(getArrivalDate(d)).toLocaleDateString('pt-BR') : 'N/A',
+          getScheduledDate(d) && getArrivalDate(d) ?
+            Math.ceil((new Date(getArrivalDate(d)) - new Date(getScheduledDate(d))) / (1000 * 60 * 60 * 24)) : 'N/A',
+          d.status,
+          d.regiao || 'N/A'
+        ])
+      ];
+      const lateSheet = XLSX.utils.aoa_to_sheet(lateData);
+      XLSX.utils.book_append_sheet(workbook, lateSheet, 'Entregas Atrasadas');
+    }
+
+    XLSX.writeFile(workbook, `entregas-atrasadas-${city}-${dateStr}.xlsx`);
+    setToast({ message: 'Entregas atrasadas exportadas em Excel com sucesso!', type: 'success' });
+  };
+
   // Função de export para PDF
   const exportToPDF = () => {
     const dateStr = new Date().toISOString().slice(0, 10);
@@ -839,24 +878,9 @@ const KPIAnalytics = ({ onToggle }) => {
                 Entregas Atrasadas ({lateDeliveries.count})
               </h3>
               <button
-                onClick={() => {
-                  const lateDeliveriesData = filteredDeliveries
-                    .filter(d => isCompletedStatus(d.status) && isLate(d))
-                    .map(d => ({
-                      'Motorista': d.driverName || 'Não informado',
-                      [city === 'itajai' ? 'Remetente' : 'Destinatário']: getPartyName(d),
-                      'Processo': getProcessNumber(d),
-                      'Data Agendada': getScheduledDate(d) ? new Date(getScheduledDate(d)).toLocaleDateString('pt-BR') : 'N/A',
-                      'Data Entrega': getArrivalDate(d) ? new Date(getArrivalDate(d)).toLocaleDateString('pt-BR') : 'N/A',
-                      'Atraso (dias)': getScheduledDate(d) && getArrivalDate(d) ?
-                        Math.ceil((new Date(getArrivalDate(d)) - new Date(getScheduledDate(d))) / (1000 * 60 * 60 * 24)) : 'N/A',
-                      'Status': d.status,
-                      'Região': d.regiao || 'N/A'
-                    }));
-                  exportToCSV(lateDeliveriesData, `entregas-atrasadas-${city}-${new Date().toISOString().slice(0,10)}.csv`);
-                }}
+                onClick={exportLateDeliveriesToExcel}
                 className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded transition"
-                title="Exportar lista de entregas atrasadas"
+                title="Exportar lista de entregas atrasadas em Excel"
               >
                 <FiDownload className="inline mr-1" /> Exportar Atrasadas
               </button>
