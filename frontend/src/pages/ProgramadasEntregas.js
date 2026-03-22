@@ -111,7 +111,7 @@ const StatusBadge = ({ status, containerReturned, overrideLabel: externalOverrid
   let overrideLabel = externalOverride;
   // show special message when finalizado but still waiting for empty return
   if (key === 'FINALIZADO' && !containerReturned && !overrideLabel) {
-    overrideLabel = 'PEND. DEVOLUÇÃO';
+    overrideLabel = 'PEND. Dt Entrega CNTR Porto';
     // reuse color/style from ENTREGUE since it's intermediate
     key = 'ENTREGUE';
   }
@@ -463,11 +463,11 @@ const ProgramadasEntregas = () => {
         }
       }
       try { if (!isPendingCanhoto) await adminService.updateProgramacao(currentProgramacao._id, { status: 'FINALIZADO' }); } catch (_) {}
-      setToast({ message: 'Devolução vazia registrada!', type: 'success' });
+      setToast({ message: 'Dt Entrega CNTR Porto registrada!', type: 'success' });
       await loadProgramacoes();
       closeReturnModal();
     } catch (err) {
-      setToast({ message: 'Erro ao fazer devolução', type: 'error' });
+      setToast({ message: 'Erro ao fazer Dt Entrega CNTR Porto', type: 'error' });
     } finally {
       setReturnSubmitting(false);
     }
@@ -649,7 +649,7 @@ const ProgramadasEntregas = () => {
       // ensure observation stored as well
       await deliveryService.updateDelivery(currentDelivery._id, { observations: newObs });
 
-      setToast({ message: 'Documentos enviados! Agora faça a devolução do container vazio.', type: 'success' });
+      setToast({ message: 'Documentos enviados! Agora faça a Dt Entrega CNTR Porto.', type: 'success' });
       await loadProgramacoes();
       closeModal();
     } catch (err) {
@@ -664,7 +664,7 @@ const ProgramadasEntregas = () => {
     setContainerVazioSubmitting(true);
     try {
       if (!containerVazioProof) {
-        setToast({ message: 'Anexe o comprovante de devolução do container vazio', type: 'error' });
+        setToast({ message: 'Anexe o comprovante de Dt Entrega CNTR Porto', type: 'error' });
         setContainerVazioSubmitting(false);
         return;
       }
@@ -697,7 +697,7 @@ const ProgramadasEntregas = () => {
       const finalStatus = 'FINALIZADO';
       const existingObs = fresh.data.delivery.observations || '';
       const timestamp = new Date().toLocaleString('pt-BR');
-      const containerObs = `[${timestamp}] (CONTAINER_VAZIO_DEVOLVIDO) Container vazio devolvido com comprovante.`;
+      const containerObs = `[${timestamp}] (CONTAINER_VAZIO_DEVOLVIDO) Dt Entrega CNTR Porto devolvida com comprovante.`;
       const newObs = `${existingObs ? existingObs + '\n' : ''}${containerObs}`;
       const horarioDevolucaoVazio = new Date().toISOString();
       
@@ -721,7 +721,7 @@ const ProgramadasEntregas = () => {
       setCurrentProgramacaoForReturn(null);
       setContainerVazioProof(null);
     } catch (err) {
-      setToast({ message: 'Erro ao registrar devolução do container vazio', type: 'error' });
+      setToast({ message: 'Erro ao registrar Dt Entrega CNTR Porto', type: 'error' });
     } finally {
       setContainerVazioSubmitting(false);
     }
@@ -824,7 +824,7 @@ const ProgramadasEntregas = () => {
         <button onClick={() => openContainerReturnModal(p)}
           className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-yellow-500 to-amber-600 text-white rounded-xl shadow-md hover:shadow-lg active:scale-95 transition font-bold text-sm"
         >
-          <FaTruck size={14} /> Devolver Container Vazio
+          <FaTruck size={14} /> Devolver Dt Entrega CNTR Porto
         </button>
       );
     }
@@ -1076,7 +1076,7 @@ const ProgramadasEntregas = () => {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       {/* ════════════════════════════════════════════
-           MODAL: DEVOLUÇÃO VAZIA
+           MODAL: DT ENTREGA CNTR PORTO
           ════════════════════════════════════════════ */}
       {showReturnModal && currentProgramacao && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm">
@@ -1089,7 +1089,7 @@ const ProgramadasEntregas = () => {
                     <FaRoute className="text-white" size={18} />
                   </div>
                   <div>
-                    <h2 className="text-white text-xl font-extrabold">Devolução de Vazio</h2>
+                    <h2 className="text-white text-xl font-extrabold">Dt Entrega CNTR Porto</h2>
                     <p className="text-white/70 text-sm">{currentProgramacao.processo}</p>
                   </div>
                 </div>
@@ -1100,12 +1100,12 @@ const ProgramadasEntregas = () => {
             </div>
 
             <div className="p-5 space-y-4">
-              <p className="text-gray-600 text-sm">Anexe o comprovante de devolução para concluir o processo.</p>
+              <p className="text-gray-600 text-sm">Anexe o comprovante de Dt Entrega CNTR Porto para concluir o processo.</p>
 
               <div className={`rounded-2xl border-2 p-4 transition-all ${returnProof ? 'border-pink-400 bg-pink-50' : 'border-dashed border-gray-300 bg-gray-50'}`}>
                 <div className="flex items-center gap-2 mb-3">
                   <FaImage className="text-pink-500" size={18} />
-                  <p className="font-bold text-gray-800 text-sm">Comprovante de Devolução</p>
+                  <p className="font-bold text-gray-800 text-sm">Comprovante Dt Entrega CNTR Porto</p>
                 </div>
                 {returnProof ? (
                   <div className="flex items-center justify-between bg-pink-100 rounded-xl px-3 py-2 mb-3">
@@ -1145,7 +1145,7 @@ const ProgramadasEntregas = () => {
                   disabled={returnSubmitting || !returnProof}
                   className="flex-1 py-4 bg-gradient-to-r from-pink-500 to-rose-600 text-white rounded-xl font-bold text-base shadow-lg active:scale-95 transition disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  ✅ Enviar Devolução
+                  ✅ Enviar Dt Entrega CNTR Porto
                 </button>
                 <button onClick={closeReturnModal} className="flex-1 py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold text-base active:scale-95 transition">
                   Cancelar
@@ -1251,7 +1251,7 @@ const ProgramadasEntregas = () => {
       )}
 
       {/* ════════════════════════════════════════════
-           MODAL: DEVOLUÇÃO CONTAINER VAZIO
+           MODAL: DT ENTREGA CNTR PORTO (CONTAINER VAZIO)
           ════════════════════════════════════════════ */}
       {showContainerReturnModal && currentProgramacaoForReturn && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm">
@@ -1264,7 +1264,7 @@ const ProgramadasEntregas = () => {
                     <FaTruck className="text-white" size={18} />
                   </div>
                   <div>
-                    <h2 className="text-white text-xl font-extrabold">Devolução Container Vazio</h2>
+                    <h2 className="text-white text-xl font-extrabold">Dt Entrega CNTR Porto</h2>
                     <p className="text-white/70 text-sm">{currentProgramacaoForReturn.processo}</p>
                   </div>
                 </div>
@@ -1275,12 +1275,12 @@ const ProgramadasEntregas = () => {
             </div>
 
             <div className="p-5 space-y-4">
-              <p className="text-gray-600 text-sm">Anexe o comprovante de devolução do container vazio para finalizar o processo.</p>
+              <p className="text-gray-600 text-sm">Anexe o comprovante de Dt Entrega CNTR Porto para finalizar o processo.</p>
 
               <div className={`rounded-2xl border-2 p-4 transition-all ${containerVazioProof ? 'border-yellow-400 bg-yellow-50' : 'border-dashed border-gray-300 bg-gray-50'}`}>
                 <div className="flex items-center gap-2 mb-3">
                   <FaImage className="text-yellow-500" size={18} />
-                  <p className="font-bold text-gray-800 text-sm">Comprovante de Devolução</p>
+                  <p className="font-bold text-gray-800 text-sm">Comprovante Dt Entrega CNTR Porto</p>
                 </div>
                 {containerVazioProof ? (
                   <div className="flex items-center justify-between bg-yellow-100 rounded-xl px-3 py-2 mb-3">
@@ -1320,7 +1320,7 @@ const ProgramadasEntregas = () => {
                   disabled={containerVazioSubmitting || !containerVazioProof}
                   className="flex-1 py-4 bg-gradient-to-r from-yellow-500 to-amber-600 text-white rounded-xl font-bold text-base shadow-lg active:scale-95 transition disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  ✅ Confirmar Devolução
+                  ✅ Confirmar Dt Entrega CNTR Porto
                 </button>
                 <button onClick={closeContainerReturnModal} className="flex-1 py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold text-base active:scale-95 transition">
                   Cancelar
@@ -1663,7 +1663,7 @@ const ProgramadasEntregas = () => {
                     <div className="w-8 h-8 rounded-xl bg-purple-100 flex items-center justify-center">
                       <FaCalendarAlt className="text-purple-600" size={14} />
                     </div>
-                    <h3 className="text-lg font-bold text-gray-900">Devolução do Container</h3>
+                    <h3 className="text-lg font-bold text-gray-900">Dt Entrega CNTR Porto</h3>
                   </div>
                   <StepTimer start={currentDelivery?.arrivedAt || currentDelivery?.createdAt} label="Tempo total" />
                   <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4">
