@@ -1,375 +1,414 @@
-import React, { useEffect, useState } from 'react';
-import { adminService, deliveryService } from '../services/authService';
-import { FaArrowLeft, FaFilter, FaSync, FaEdit, FaTrash, FaTimes } from 'react-icons/fa';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { adminService } from '../services/authService';
+import {
+  FaArrowLeft, FaFilter, FaSync, FaTimes,
+  FaChevronLeft, FaChevronRight, FaEdit, FaTrash,
+  FaDatabase, FaSearch, FaCheckCircle, FaExclamationCircle,
+  FaCalendarAlt, FaTruck, FaBoxOpen, FaFileAlt, FaSave
+} from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useCity } from '../contexts/CityContext';
 import { getProgramacaoDate } from '../utils/programacaoDate';
-import { getRecebedorLabel, getRecebedorPlaceholder, getRecebedorErrorMsg, getDesovaStepLabel } from '../utils/cityLabels';
+import {
+  getRecebedorLabel,
+  getDesovaStepLabel
+} from '../utils/cityLabels';
 import Toast from '../components/Toast';
 
+/* ─────────────────────────────────────────
+   Helpers
+───────────────────────────────────────── */
+const fmtDate = (val) =>
+  val ? new Date(val).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+
+const toISO = (val) => {
+  if (!val) return undefined;
+  if (typeof val === 'string' && val.endsWith('Z')) return val;
+  const d = new Date(val);
+  return isNaN(d) ? val : d.toISOString();
+};
+
+/* ─────────────────────────────────────────
+   Status helpers
+───────────────────────────────────────── */
+const STATUS_OPTIONS = [
+  'ENTREGUE', 'submitted', 'FINALIZADO', 'pending', 'PENDING',
+  'AGUARDANDO_DESOVA', 'EM_DESOVA', 'DESOVA_FINALIZADA',
+  'ANEXANDO_DOCUMENTOS_FINAIS', 'CANCELADO',
+  'CONTAINER_MONTADO', 'A_CAMINHO_DO_CLIENTE',
+];
+
+const formatStatus = (status) => {
+  if (!status) return '—';
+  if (status === 'ENTREGUE_COM_PENDENCIA_CANHOTO') status = 'FINALIZADO';
+  if (status === 'FINALIZADO') return 'FINALIZADO';
+  if (status === 'ENTREGUE' || status === 'submitted') return 'OPERAÇÃO FINALIZADA';
+  if (status === 'pending' || status === 'PENDING') return 'A CAMINHO DO CLIENTE';
+  return status.replace(/_/g, ' ');
+};
+
+const STATUS_COLOR = {
+  'FINALIZADO': 'bg-emerald-100 text-emerald-800 ring-emerald-300',
+  'OPERAÇÃO FINALIZADA': 'bg-blue-100 text-blue-800 ring-blue-300',
+  'A CAMINHO DO CLIENTE': 'bg-amber-100 text-amber-800 ring-amber-300',
+  'AGUARDANDO DESOVA': 'bg-orange-100 text-orange-800 ring-orange-300',
+  'EM DESOVA': 'bg-violet-100 text-violet-800 ring-violet-300',
+  'DESOVA FINALIZADA': 'bg-teal-100 text-teal-800 ring-teal-300',
+  'CANCELADO': 'bg-red-100 text-red-800 ring-red-300',
+  'CONTAINER MONTADO': 'bg-cyan-100 text-cyan-800 ring-cyan-300',
+  'ANEXANDO DOCUMENTOS FINAIS': 'bg-indigo-100 text-indigo-800 ring-indigo-300',
+};
+const statusBadge = (raw) => {
+  const label = formatStatus(raw);
+  return STATUS_COLOR[label] ?? 'bg-gray-100 text-gray-700 ring-gray-300';
+};
+
+const getDocumentsStatus = (delivery) => {
+  if (!delivery) return { label: 'PENDENTE', complete: false };
+  const required = ['canhotCTE', 'diarioBordo', 'canhotNF', 'devolucaoVazio'];
+  const docs = delivery.documents || {};
+  const allOk = required.every((d) => docs[d]);
+  if (allOk) return { label: 'COMPLETO', complete: true };
+  const names = required
+    .filter((d) => !docs[d])
+    .map((d) => ({ canhotCTE: 'CTE', canhotNF: 'NF', diarioBordo: 'DIÁRIO', devolucaoVazio: 'RIC' }[d] ?? d))
+    .join(' + ');
+  return { label: `FALTANDO ${names}`, complete: false };
+};
+
+/* ─────────────────────────────────────────
+   Sub-components
+───────────────────────────────────────── */
+const StatCard = ({ icon: Icon, label, value, color }) => (
+  <div className={`flex items-center gap-3 bg-white rounded-xl px-5 py-4 shadow-sm border border-gray-100 min-w-[160px]`}>
+    <div className={`p-2 rounded-lg ${color}`}>
+      <Icon size={18} className="text-white" />
+    </div>
+    <div>
+      <p className="text-xs text-gray-500 leading-none mb-0.5">{label}</p>
+      <p className="text-xl font-bold text-gray-800 leading-none">{value}</p>
+    </div>
+  </div>
+);
+
+/* Input / Textarea padronizados */
+const Field = ({ label, children }) => (
+  <div>
+    <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">{label}</label>
+    {children}
+  </div>
+);
+
+const inputCls =
+  'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent transition placeholder-gray-400';
+
+/* ═══════════════════════════════════════════
+   COMPONENTE PRINCIPAL
+═══════════════════════════════════════════ */
 const BaseDadosGeral = () => {
   const navigate = useNavigate();
   const { city } = useCity();
+  const tableRef = useRef(null);
+
   const [dados, setDados] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
-  
-  // Estados para o modal
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
   const [editForm, setEditForm] = useState({
-    processo: '',
-    recebedor: '',
-    container: '',
-    dataAgendamento: '',
-    contratado: '',
-    motorista: '',
+    processo: '', recebedor: '', container: '',
+    dataAgendamento: '', contratado: '', motorista: '',
     status: 'A CAMINHO DO CLIENTE',
-    // Campos da entrega
-    containerMontadoAt: '',
-    horarioChegada: '',
-    horarioInicioDesova: '',
-    horarioFimDesova: '',
-    horarioDevolucaoVazio: '',
-    observations: '',
-    submissionObservation: '',
-    documentsJustification: ''
+    containerMontadoAt: '', horarioChegada: '',
+    horarioInicioDesova: '', horarioFimDesova: '',
+    horarioDevolucaoVazio: '', observations: '',
+    submissionObservation: '', documentsJustification: '',
   });
-  
-  // Filtros
+
   const [filters, setFilters] = useState({
-    status: 'all',
-    motorista: '',
-    contratado: '',
-    searchTerm: ''
+    status: 'all', motorista: '', contratado: '', searchTerm: '',
   });
 
-  // Status disponíveis (mesmo da Torre de Controle)
-  const statusOptions = [
-    'ENTREGUE',
-    'submitted',
-    'FINALIZADO',
-    // ENTREGUE_COM_PENDENCIA_CANHOTO is deprecated and should be treated as FINALIZADO
-    'pending',
-    'PENDING',
-    'AGUARDANDO_DESOVA',
-    'EM_DESOVA',
-    'DESOVA_FINALIZADA',
-    'ANEXANDO_DOCUMENTOS_FINAIS',
-    'CANCELADO',
-    'CONTAINER_MONTADO',
-    'A_CAMINHO_DO_CLIENTE'
-  ];
+  /* ── Scroll arrows logic ── */
+  const updateScrollButtons = useCallback(() => {
+    const el = tableRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 10);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 10);
+  }, []);
 
-  // Função para formatar status (sincronizado com Torre de Controle)
-  const formatStatus = (status) => {
-    if (!status) return '-';
-    if (status === 'ENTREGUE_COM_PENDENCIA_CANHOTO') {
-      // treat legacy pendência as finalizado
-      status = 'FINALIZADO';
-    }
-    if (status === 'FINALIZADO') return 'FINALIZADO';
-    if (status === 'ENTREGUE' || status === 'submitted') return 'OPERAÇÃO FINALIZADA';
-    if (status === 'pending' || status === 'PENDING') return 'A CAMINHO DO CLIENTE';
-    return status.replace(/_/g, ' ');
+  useEffect(() => {
+    const el = tableRef.current;
+    if (!el) return;
+    updateScrollButtons();
+    el.addEventListener('scroll', updateScrollButtons);
+    window.addEventListener('resize', updateScrollButtons);
+    return () => {
+      el.removeEventListener('scroll', updateScrollButtons);
+      window.removeEventListener('resize', updateScrollButtons);
+    };
+  }, [filteredData, updateScrollButtons]);
+
+  const scroll = (dir) => {
+    tableRef.current?.scrollBy({ left: dir * 320, behavior: 'smooth' });
   };
 
-  // Função para retornar o status dos documentos
-  const getDocumentsStatus = (delivery) => {
-    if (!delivery) return 'PENDENTE';
-    const requiredDocs = ['canhotCTE', 'diarioBordo', 'canhotNF', 'devolucaoVazio'];
-    const docs = delivery.documents || {};
-    const allAttached = requiredDocs.every(doc => docs[doc]);
-    if (allAttached) return 'COMPLETO';
-    const pending = requiredDocs.filter(doc => !docs[doc]);
-    const pendingNames = pending.map(doc => {
-      if (doc === 'canhotCTE') return 'CTE';
-      if (doc === 'canhotNF') return 'NF';
-      if (doc === 'diarioBordo') return 'DIÁRIO';
-      if (doc === 'devolucaoVazio') return 'RIC';
-      return doc;
-    }).join(' + ');
-    return `PENDENTE ${pendingNames}`;
-  };
+  /* ── Data ── */
+  const aplicarFiltros = useCallback(
+    (src = dados) => {
+      let f = src;
+      if (filters.status !== 'all')
+        f = f.filter((i) => i._entrega?.status === filters.status || i.status === filters.status);
+      if (filters.motorista)
+        f = f.filter((i) =>
+          (i.motorista || '').toLowerCase().includes(filters.motorista.toLowerCase()) ||
+          (i._entrega?.driverName || '').toLowerCase().includes(filters.motorista.toLowerCase())
+        );
+      if (filters.contratado)
+        f = f.filter((i) => (i.contratado || '').toLowerCase().includes(filters.contratado.toLowerCase()));
+      if (filters.searchTerm)
+        f = f.filter((i) =>
+          (i.processo || '').toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+          (i.recebedor || '').toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
+          (i.container || '').toLowerCase().includes(filters.searchTerm.toLowerCase())
+        );
+      setFilteredData(f);
+    },
+    [dados, filters]
+  );
 
   const carregarDados = async () => {
     setLoading(true);
     try {
-      const progRes = await adminService.getProgramacoes();
+      const [progRes, entrRes] = await Promise.all([
+        adminService.getProgramacoes(),
+        adminService.getDeliveries({}),
+      ]);
       const programacoes = progRes.data.programacoes || [];
-      const entrRes = await adminService.getDeliveries({});
       const entregas = entrRes.data.deliveries || [];
-      
-      const mapEntregas = {};
-      entregas.forEach(e => {
-        const key = (e.deliveryNumber || '').toUpperCase().trim();
-        if (key) mapEntregas[key] = e;
+      const map = {};
+      entregas.forEach((e) => {
+        const k = (e.deliveryNumber || '').toUpperCase().trim();
+        if (k) map[k] = e;
       });
-      
-      const dadosEnriquecidos = programacoes.map(prog => {
-        const chaveContainer = (prog.container || '').toUpperCase().trim();
-        const chaveProcesso = (prog.processo || '').toUpperCase().trim();
-        const entrega = mapEntregas[chaveContainer] || mapEntregas[chaveProcesso];
-        return { ...prog, _entrega: entrega || null };
-      });
-      
-      setDados(dadosEnriquecidos);
-      aplicarFiltros(dadosEnriquecidos);
-    } catch (err) {
-      console.error('Erro:', err);
+      const enriched = programacoes.map((p) => ({
+        ...p,
+        _entrega:
+          map[(p.container || '').toUpperCase().trim()] ||
+          map[(p.processo || '').toUpperCase().trim()] ||
+          null,
+      }));
+      setDados(enriched);
+      aplicarFiltros(enriched);
+    } catch {
       setToast({ message: 'Erro ao carregar dados', type: 'error' });
     } finally {
       setLoading(false);
     }
   };
 
-  const aplicarFiltros = (dataToFilter = dados) => {
-    let filtered = dataToFilter;
-    
-    if (filters.status !== 'all') {
-      filtered = filtered.filter(item => item._entrega?.status === filters.status || item.status === filters.status);
-    }
-    if (filters.motorista) {
-      filtered = filtered.filter(item => 
-        (item.motorista || '').toLowerCase().includes(filters.motorista.toLowerCase()) ||
-        (item._entrega?.driverName || '').toLowerCase().includes(filters.motorista.toLowerCase())
-      );
-    }
-    if (filters.contratado) {
-      filtered = filtered.filter(item => 
-        (item.contratado || '').toLowerCase().includes(filters.contratado.toLowerCase())
-      );
-    }
-    if (filters.searchTerm) {
-      filtered = filtered.filter(item =>
-        (item.processo || '').toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-        (item.recebedor || '').toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-        (item.container || '').toLowerCase().includes(filters.searchTerm.toLowerCase())
-      );
-    }
-    
-    setFilteredData(filtered);
-  };
+  useEffect(() => { carregarDados(); }, []);
+  useEffect(() => { aplicarFiltros(); }, [filters]);
 
-  useEffect(() => {
-    carregarDados();
-  }, []);
-
-  useEffect(() => {
-    aplicarFiltros();
-  }, [filters]);
-
+  /* ── Edit / Save / Delete ── */
   const handleEdit = (item) => {
     setEditingId(item._id);
     setEditForm({
       processo: item.processo,
       recebedor: item.recebedor,
       container: item.container,
-      dataAgendamento: city === 'itajai' ? (item.dtColeta || item.dataAgendamento || '') : (item.dataAgendamento || ''),
+      dataAgendamento:
+        city === 'itajai'
+          ? item.dtColeta || item.dataAgendamento || ''
+          : item.dataAgendamento || '',
       contratado: item.contratado,
       motorista: item.motorista || '',
-      status: item._entrega?.status || item.status,
+      status: item._entrega?.status || item.status || '',
       containerMontadoAt: item._entrega?.containerMontadoAt || '',
       horarioChegada: item._entrega?.horarioChegada || '',
       horarioInicioDesova: item._entrega?.horarioInicioDesova || '',
       horarioFimDesova: item._entrega?.horarioFimDesova || '',
-      horarioDevolucaoVazio: item._entrega?.horarioDevolucaoVazio || item._entrega?.dtDevolucaoCNTR || '',
+      horarioDevolucaoVazio:
+        item._entrega?.horarioDevolucaoVazio || item._entrega?.dtDevolucaoCNTR || '',
       observations: item._entrega?.observations || '',
       submissionObservation: item._entrega?.submissionObservation || '',
-      documentsJustification: item._entrega?.documentsJustification || ''
+      documentsJustification: item._entrega?.documentsJustification || '',
     });
-  };
-
-  const toISOIfDate = (val) => {
-    if (!val) return undefined;
-    // If already ISO-like, return as-is
-    if (typeof val === 'string' && val.endsWith('Z')) return val;
-    const d = new Date(val);
-    if (!isNaN(d)) return d.toISOString();
-    return val;
   };
 
   const handleSave = async () => {
     if (!editForm.processo || !editForm.recebedor || !editForm.dataAgendamento || !editForm.contratado) {
-      setToast({ message: `Preencha os campos obrigatórios (Processo, ${getRecebedorLabel(city)}, Data, Contratado)`, type: 'error' });
+      setToast({ message: `Preencha: Processo, ${getRecebedorLabel(city)}, Data e Contratado`, type: 'error' });
       return;
     }
-
     try {
-      const item = dados.find(d => d._id === editingId);
-
-      // Atualizar programação (sem status — status é da entrega)
-      const programacaoPayload = {
+      const item = dados.find((d) => d._id === editingId);
+      const progPayload = {
         processo: editForm.processo,
         recebedor: editForm.recebedor,
         container: editForm.container,
         contratado: editForm.contratado,
-        motorista: editForm.motorista
+        motorista: editForm.motorista,
+        dataAgendamento: toISO(editForm.dataAgendamento),
+        ...(city === 'itajai' && { dtColeta: toISO(editForm.dataAgendamento) }),
       };
-      if (city === 'itajai') {
-        programacaoPayload.dtColeta = toISOIfDate(editForm.dataAgendamento);
-        // manter dataAgendamento se estiver presente para compatibilidade
-        programacaoPayload.dataAgendamento = toISOIfDate(editForm.dataAgendamento);
-      } else {
-        programacaoPayload.dataAgendamento = toISOIfDate(editForm.dataAgendamento);
-      }
-      await adminService.updateProgramacao(editingId, programacaoPayload);
+      await adminService.updateProgramacao(editingId, progPayload);
 
-      // Payload de entrega (normaliza datas)
-      const deliveryPayload = {
+      const delPayload = {
         status: editForm.status || undefined,
-        containerMontadoAt: toISOIfDate(editForm.containerMontadoAt),
-        horarioChegada: toISOIfDate(editForm.horarioChegada),
-        horarioInicioDesova: toISOIfDate(editForm.horarioInicioDesova),
-        horarioFimDesova: toISOIfDate(editForm.horarioFimDesova),
-        horarioDevolucaoVazio: toISOIfDate(editForm.horarioDevolucaoVazio),
+        containerMontadoAt: toISO(editForm.containerMontadoAt),
+        horarioChegada: toISO(editForm.horarioChegada),
+        horarioInicioDesova: toISO(editForm.horarioInicioDesova),
+        horarioFimDesova: toISO(editForm.horarioFimDesova),
+        horarioDevolucaoVazio: toISO(editForm.horarioDevolucaoVazio),
         observations: editForm.observations,
         submissionObservation: editForm.submissionObservation,
-        documentsJustification: editForm.documentsJustification
+        documentsJustification: editForm.documentsJustification,
       };
-
       const deliveryId = item?._entrega?._id || item?._entrega?.deliveryNumber;
       if (deliveryId) {
-        try {
-          await adminService.updateDelivery(deliveryId, deliveryPayload);
-        } catch (deliveryErr) {
-          if (deliveryErr?.response?.status === 404) {
-            console.warn('Entrega não encontrada ao atualizar (ignorado):', deliveryId);
-            // Não interrompe o fluxo; programacao já foi atualizada
-          } else {
-            throw deliveryErr;
-          }
-        }
-      } else {
-        // Para programações sem entrega (synthetic entries), não criar entrega nova ao editar
-        // Apenas atualizar a programação (já feito acima)
-        console.log('Atualizando apenas programação (sem entrega vinculada)');
+        try { await adminService.updateDelivery(deliveryId, delPayload); }
+        catch (e) { if (e?.response?.status !== 404) throw e; }
       }
-
-      setToast({ message: 'Atualizado com sucesso', type: 'success' });
+      setToast({ message: 'Registro atualizado com sucesso!', type: 'success' });
       setEditingId(null);
       carregarDados();
-    } catch (err) {
-      console.error('Erro:', err);
-      setToast({ message: 'Erro ao atualizar', type: 'error' });
+    } catch {
+      setToast({ message: 'Erro ao salvar alterações', type: 'error' });
     }
   };
 
   const handleDelete = async (id, item) => {
-    if (window.confirm('Deletar esta entrada (entrega também será removida da Torre de Controle)?')) {
-      try {
-        await adminService.deleteProgramacao(id);
-        if (item._entrega && item._entrega._id) {
-          await adminService.deleteDelivery(item._entrega._id);
-        }
-        setToast({ message: 'Deletado com sucesso', type: 'success' });
-        carregarDados();
-      } catch (err) {
-        setToast({ message: 'Erro ao deletar', type: 'error' });
-      }
+    if (!window.confirm('Deseja excluir esta entrada? A entrega também será removida.')) return;
+    try {
+      await adminService.deleteProgramacao(id);
+      if (item._entrega?._id) await adminService.deleteDelivery(item._entrega._id);
+      setToast({ message: 'Excluído com sucesso', type: 'success' });
+      carregarDados();
+    } catch {
+      setToast({ message: 'Erro ao excluir', type: 'error' });
     }
   };
 
-  const handleCancel = () => {
-    setEditingId(null);
-  };
+  /* ── Stats ── */
+  const totalFinalizado = dados.filter(
+    (d) => ['FINALIZADO', 'ENTREGUE', 'submitted'].includes(d._entrega?.status || d.status)
+  ).length;
+  const totalPendente = dados.filter(
+    (d) => ['pending', 'PENDING', 'A_CAMINHO_DO_CLIENTE'].includes(d._entrega?.status || d.status)
+  ).length;
 
+  /* ═══════════════════════════════════════════
+     RENDER
+  ═══════════════════════════════════════════ */
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 p-4">
-      {/* Header */}
-      <div className="w-full mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => navigate(-1)}
-              className="p-2 hover:bg-gray-200 rounded-full transition"
-              title="Voltar"
-            >
-              <FaArrowLeft size={20} className="text-gray-700" />
-            </button>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-slate-900 flex flex-col">
+
+      {/* ── TOP BAR ── */}
+      <header className="flex items-center justify-between px-6 py-4 bg-white/5 backdrop-blur border-b border-white/10">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate(-1)}
+            className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition"
+          >
+            <FaArrowLeft size={18} />
+          </button>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-violet-500 rounded-xl shadow-lg shadow-violet-500/40">
+              <FaDatabase size={20} className="text-white" />
+            </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-800">Base de Dados Geral</h1>
-              <p className="text-sm text-gray-600">Gerenciamento completo de programações e entregas</p>
+              <h1 className="text-xl font-bold text-white leading-none">Base de Dados Geral</h1>
+              <p className="text-xs text-violet-300 mt-0.5">Gerenciamento de programações e entregas</p>
             </div>
           </div>
-          <button
-            onClick={() => { carregarDados(); setToast({ message: 'Dados recarregados', type: 'success' }); }}
-            className="p-2 bg-purple-500 text-white rounded-full hover:bg-purple-600 transition"
-            title="Recarregar"
-          >
-            <FaSync size={20} />
-          </button>
         </div>
 
-        {/* Filtros */}
-        <div className="bg-white rounded-lg shadow-md p-4 mt-6 w-full">
-          <div className="flex items-center gap-4 mb-4">
-            <button 
+        <button
+          onClick={() => { carregarDados(); setToast({ message: 'Dados recarregados!', type: 'success' }); }}
+          className="flex items-center gap-2 px-4 py-2 bg-violet-500 hover:bg-violet-400 text-white rounded-xl text-sm font-semibold transition shadow-lg shadow-violet-500/30"
+        >
+          <FaSync size={14} />
+          Atualizar
+        </button>
+      </header>
+
+      {/* ── STATS ── */}
+      <div className="px-6 py-4 flex gap-3 flex-wrap">
+        <StatCard icon={FaDatabase} label="Total" value={dados.length} color="bg-violet-500" />
+        <StatCard icon={FaFilter} label="Filtrados" value={filteredData.length} color="bg-blue-500" />
+        <StatCard icon={FaCheckCircle} label="Finalizados" value={totalFinalizado} color="bg-emerald-500" />
+        <StatCard icon={FaTruck} label="Em rota" value={totalPendente} color="bg-amber-500" />
+      </div>
+
+      {/* ── FILTER BAR ── */}
+      <div className="px-6 pb-4">
+        <div className="bg-white/10 backdrop-blur rounded-2xl border border-white/10 overflow-hidden">
+          <div className="flex items-center gap-4 px-5 py-3">
+            <button
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition"
+              className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition ${
+                showFilters ? 'bg-violet-500 text-white' : 'bg-white/10 text-white hover:bg-white/20'
+              }`}
             >
-              <FaFilter size={16} />
+              <FaFilter size={13} />
               Filtros
             </button>
-            <span className="text-sm text-gray-600">
-              Mostrando {filteredData.length} de {dados.length} registros
-            </span>
+            <div className="flex-1 relative">
+              <FaSearch size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-violet-300" />
+              <input
+                type="text"
+                placeholder={`Buscar processo, ${getRecebedorLabel(city).toLowerCase()}, container…`}
+                value={filters.searchTerm}
+                onChange={(e) => setFilters({ ...filters, searchTerm: e.target.value })}
+                className="w-full pl-9 pr-4 py-2 bg-white/10 border border-white/10 rounded-lg text-sm text-white placeholder-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-400 focus:bg-white/15 transition"
+              />
+            </div>
           </div>
 
           {showFilters && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="px-5 pb-4 grid grid-cols-1 sm:grid-cols-3 gap-3 border-t border-white/10 pt-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-2">Buscar</label>
-                <input
-                  type="text"
-                  placeholder={`Processo, ${getRecebedorLabel(city).toLowerCase()}, Container...`}
-                  value={filters.searchTerm}
-                  onChange={(e) => setFilters({...filters, searchTerm: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-2">Status</label>
+                <label className="block text-xs font-semibold text-violet-300 uppercase tracking-wide mb-1">Status</label>
                 <select
                   value={filters.status}
-                  onChange={(e) => setFilters({...filters, status: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                  className="w-full px-3 py-2 bg-white/10 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-violet-400"
                 >
-                  <option value="all">Todos</option>
-                  {statusOptions.map(status => (
-                    <option key={status} value={status}>{formatStatus(status)}</option>
+                  <option value="all" className="text-gray-800">Todos</option>
+                  {STATUS_OPTIONS.map((s) => (
+                    <option key={s} value={s} className="text-gray-800">{formatStatus(s)}</option>
                   ))}
                 </select>
               </div>
-
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-2">Motorista</label>
+                <label className="block text-xs font-semibold text-violet-300 uppercase tracking-wide mb-1">Motorista</label>
                 <input
                   type="text"
-                  placeholder="Nome do motorista..."
+                  placeholder="Nome do motorista…"
                   value={filters.motorista}
-                  onChange={(e) => setFilters({...filters, motorista: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  onChange={(e) => setFilters({ ...filters, motorista: e.target.value })}
+                  className="w-full px-3 py-2 bg-white/10 border border-white/10 rounded-lg text-sm text-white placeholder-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-400"
                 />
               </div>
-
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-2">Contratado</label>
+                <label className="block text-xs font-semibold text-violet-300 uppercase tracking-wide mb-1">Contratado</label>
                 <input
                   type="text"
-                  placeholder="Nome do contratado..."
+                  placeholder="Nome do contratado…"
                   value={filters.contratado}
-                  onChange={(e) => setFilters({...filters, contratado: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  onChange={(e) => setFilters({ ...filters, contratado: e.target.value })}
+                  className="w-full px-3 py-2 bg-white/10 border border-white/10 rounded-lg text-sm text-white placeholder-violet-300 focus:outline-none focus:ring-2 focus:ring-violet-400"
                 />
               </div>
-
-              <div className="md:col-span-4">
+              <div className="sm:col-span-3 flex justify-end">
                 <button
                   onClick={() => setFilters({ status: 'all', motorista: '', contratado: '', searchTerm: '' })}
-                  className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition text-sm"
+                  className="px-4 py-1.5 text-sm bg-white/10 hover:bg-white/20 text-white rounded-lg transition font-semibold"
                 >
                   Limpar Filtros
                 </button>
@@ -379,80 +418,172 @@ const BaseDadosGeral = () => {
         </div>
       </div>
 
-      {/* Tabela com Scroll Horizontal */}
-      <div className="w-full">
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden flex flex-col w-full h-[88vh]">
+      {/* ── TABLE AREA ── */}
+      <div className="flex-1 px-6 pb-6 flex flex-col min-h-0">
+        <div className="relative flex-1 flex flex-col bg-white rounded-2xl shadow-2xl overflow-hidden">
+
+          {/* Scroll arrows */}
+          {canScrollLeft && (
+            <button
+              onClick={() => scroll(-1)}
+              className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-9 h-9 flex items-center justify-center bg-violet-600 hover:bg-violet-500 text-white rounded-full shadow-xl transition"
+            >
+              <FaChevronLeft size={16} />
+            </button>
+          )}
+          {canScrollRight && (
+            <button
+              onClick={() => scroll(1)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-9 h-9 flex items-center justify-center bg-violet-600 hover:bg-violet-500 text-white rounded-full shadow-xl transition"
+            >
+              <FaChevronRight size={16} />
+            </button>
+          )}
+
           {loading ? (
-            <div className="p-8 text-center text-gray-500">Carregando...</div>
+            <div className="flex flex-col items-center justify-center h-64 gap-4">
+              <div className="w-12 h-12 rounded-full border-4 border-violet-200 border-t-violet-600 animate-spin" />
+              <p className="text-gray-500 font-medium">Carregando registros…</p>
+            </div>
           ) : filteredData.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">Nenhum registro encontrado</div>
+            <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-400">
+              <FaDatabase size={40} className="opacity-30" />
+              <p className="font-medium">Nenhum registro encontrado</p>
+            </div>
           ) : (
-            <div className="overflow-x-auto overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-purple-400 scrollbar-track-gray-200">
+            <div
+              ref={tableRef}
+              className="overflow-x-auto overflow-y-auto flex-1 scroll-smooth"
+              style={{ scrollbarWidth: 'thin' }}
+            >
               <table className="min-w-full text-sm border-collapse">
-                <thead className="bg-gradient-to-r from-purple-600 to-purple-700 text-white sticky top-0 z-10">
-                  <tr>
-                    <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Processo</th>
-                    <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">{getRecebedorLabel(city)}</th>
-                    <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Container</th>
-                    <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Data Agendamento</th>
-                    <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Contratado</th>
-                    <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Motorista</th>
-                    <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Status</th>
-                    <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Data Retirada</th>
-                    <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Chegada</th>
-                    <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Início {getDesovaStepLabel(city)}</th>
-                    <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Fim {getDesovaStepLabel(city)}</th>
-                    <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Dt Entrega CNTR Porto</th>
-                    <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Docs</th>
-                    <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Obs</th>
-                    <th className="px-4 py-3 text-center font-semibold border border-purple-700 whitespace-nowrap">Ações</th>
+                <thead>
+                  <tr className="bg-gradient-to-r from-violet-700 to-violet-800 text-white">
+                    {[
+                      'Processo',
+                      getRecebedorLabel(city),
+                      'Container',
+                      'Agendamento',
+                      'Contratado',
+                      'Motorista',
+                      'Status',
+                      'Retirada Cheio',
+                      'Chegada',
+                      `Início ${getDesovaStepLabel(city)}`,
+                      `Fim ${getDesovaStepLabel(city)}`,
+                      'Entrega CNTR Porto',
+                      'Documentos',
+                      'Observações',
+                      'Ações',
+                    ].map((col) => (
+                      <th
+                        key={col}
+                        className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider whitespace-nowrap border-b border-violet-600 first:pl-6 last:text-center"
+                      >
+                        {col}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
-                <tbody>
-                  {filteredData.map((item, idx) => (
-                    <tr key={item._id} className={`border-b transition ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50`}>
-                      <td className="px-4 py-3 border border-gray-200 text-xs whitespace-nowrap">{item.processo}</td>
-                      <td className="px-4 py-3 border border-gray-200 text-xs whitespace-nowrap">{item.recebedor}</td>
-                      <td className="px-4 py-3 border border-gray-200 text-xs whitespace-nowrap">{item.container || '-'}</td>
-                      <td className="px-4 py-3 border border-gray-200 text-xs whitespace-nowrap">{getProgramacaoDate(item, city) ? new Date(getProgramacaoDate(item, city)).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-'}</td>
-                      <td className="px-4 py-3 border border-gray-200 text-xs whitespace-nowrap">{item.contratado}</td>
-                      <td className="px-4 py-3 border border-gray-200 text-xs whitespace-nowrap">{item.motorista || item._entrega?.driverName || '-'}</td>
-                      <td className="px-4 py-3 border border-gray-200 text-xs whitespace-nowrap">
-                        <span className="px-2 py-1 rounded text-xs font-semibold bg-purple-100 text-purple-800">
-                          {formatStatus(item._entrega?.status || item.status)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 border border-gray-200 text-xs whitespace-nowrap">{item._entrega?.containerMontadoAt ? new Date(item._entrega.containerMontadoAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-'}</td>
-                      <td className="px-4 py-3 border border-gray-200 text-xs whitespace-nowrap">{item._entrega?.horarioChegada ? new Date(item._entrega.horarioChegada).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : (item._entrega?.arrivedAt ? new Date(item._entrega.arrivedAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-')}</td>
-                      <td className="px-4 py-3 border border-gray-200 text-xs whitespace-nowrap">{item._entrega?.horarioInicioDesova ? new Date(item._entrega.horarioInicioDesova).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : (item._entrega?.desovaStartAt ? new Date(item._entrega.desovaStartAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-')}</td>
-                      <td className="px-4 py-3 border border-gray-200 text-xs whitespace-nowrap">{item._entrega?.horarioFimDesova ? new Date(item._entrega.horarioFimDesova).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : (item._entrega?.desovaEndAt ? new Date(item._entrega.desovaEndAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-')}</td>
-                      <td className="px-4 py-3 border border-gray-200 text-xs whitespace-nowrap">{item._entrega?.horarioDevolucaoVazio ? new Date(item._entrega.horarioDevolucaoVazio).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : (item._entrega?.dtDevolucaoCNTR ? new Date(item._entrega.dtDevolucaoCNTR).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-')}</td>
-                      <td className="px-4 py-3 border border-gray-200 text-center whitespace-nowrap">
-                        <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                          getDocumentsStatus(item._entrega).includes('COMPLETO') ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {getDocumentsStatus(item._entrega)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 border border-gray-200 text-xs max-w-xs truncate" title={item._entrega?.observations}>{item._entrega?.observations || '-'}</td>
-                      <td className="px-4 py-3 border border-gray-200 text-center whitespace-nowrap">
-                        <div className="flex gap-2 justify-center">
-                          <button 
-                            onClick={() => handleEdit(item)}
-                            className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition text-xs font-semibold"
-                          >
-                            Editar
-                          </button>
-                          <button 
-                            onClick={() => handleDelete(item._id, item)}
-                            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition text-xs font-semibold"
-                          >
-                            Deletar
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+
+                <tbody className="divide-y divide-gray-100">
+                  {filteredData.map((item, idx) => {
+                    const docStatus = getDocumentsStatus(item._entrega);
+                    const rawStatus = item._entrega?.status || item.status;
+                    return (
+                      <tr
+                        key={item._id}
+                        className={`group transition-colors duration-150 hover:bg-violet-50 ${
+                          idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/60'
+                        }`}
+                      >
+                        {/* Processo */}
+                        <td className="px-4 py-3 first:pl-6 whitespace-nowrap">
+                          <span className="font-semibold text-violet-700 text-xs">{item.processo}</span>
+                        </td>
+                        {/* Recebedor */}
+                        <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-700">{item.recebedor}</td>
+                        {/* Container */}
+                        <td className="px-4 py-3 whitespace-nowrap text-xs font-mono text-gray-600">{item.container || '—'}</td>
+                        {/* Data Agendamento */}
+                        <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600">
+                          <span className="flex items-center gap-1">
+                            <FaCalendarAlt size={10} className="text-violet-400" />
+                            {getProgramacaoDate(item, city) ? fmtDate(getProgramacaoDate(item, city)) : '—'}
+                          </span>
+                        </td>
+                        {/* Contratado */}
+                        <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-700">{item.contratado}</td>
+                        {/* Motorista */}
+                        <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-700">
+                          <span className="flex items-center gap-1">
+                            <FaTruck size={10} className="text-gray-400" />
+                            {item.motorista || item._entrega?.driverName || '—'}
+                          </span>
+                        </td>
+                        {/* Status */}
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ring-1 ${statusBadge(rawStatus)}`}>
+                            {formatStatus(rawStatus)}
+                          </span>
+                        </td>
+                        {/* Retirada */}
+                        <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600">{fmtDate(item._entrega?.containerMontadoAt)}</td>
+                        {/* Chegada */}
+                        <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600">
+                          {fmtDate(item._entrega?.horarioChegada || item._entrega?.arrivedAt)}
+                        </td>
+                        {/* Início Desova */}
+                        <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600">
+                          {fmtDate(item._entrega?.horarioInicioDesova || item._entrega?.desovaStartAt)}
+                        </td>
+                        {/* Fim Desova */}
+                        <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600">
+                          {fmtDate(item._entrega?.horarioFimDesova || item._entrega?.desovaEndAt)}
+                        </td>
+                        {/* Devolução */}
+                        <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600">
+                          {fmtDate(item._entrega?.horarioDevolucaoVazio || item._entrega?.dtDevolucaoCNTR)}
+                        </td>
+                        {/* Docs */}
+                        <td className="px-4 py-3 whitespace-nowrap text-center">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ring-1 ${
+                            docStatus.complete
+                              ? 'bg-emerald-100 text-emerald-700 ring-emerald-300'
+                              : 'bg-rose-100 text-rose-700 ring-rose-300'
+                          }`}>
+                            {docStatus.complete
+                              ? <FaCheckCircle size={9} />
+                              : <FaExclamationCircle size={9} />}
+                            {docStatus.label}
+                          </span>
+                        </td>
+                        {/* Obs */}
+                        <td className="px-4 py-3 text-xs text-gray-500 max-w-[180px] truncate" title={item._entrega?.observations}>
+                          {item._entrega?.observations || '—'}
+                        </td>
+                        {/* Ações */}
+                        <td className="px-4 py-3 whitespace-nowrap text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleEdit(item)}
+                              title="Editar"
+                              className="p-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition shadow-sm"
+                            >
+                              <FaEdit size={13} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(item._id, item)}
+                              title="Excluir"
+                              className="p-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white transition shadow-sm"
+                            >
+                              <FaTrash size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -460,118 +591,144 @@ const BaseDadosGeral = () => {
         </div>
       </div>
 
-      {/* Modal de Edição */}
+      {/* ═══════════════════════════════════════
+          MODAL DE EDIÇÃO
+      ═══════════════════════════════════════ */}
       {editingId && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-gradient-to-r from-purple-600 to-purple-700 text-white p-6 flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Editar Programação e Entrega</h2>
-              <button onClick={handleCancel} className="text-white hover:text-gray-200 transition">
-                <FaTimes size={24} />
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden">
+
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-violet-700 to-violet-800">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/20 rounded-lg">
+                  <FaEdit size={18} className="text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-white leading-none">Editar Registro</h2>
+                  <p className="text-xs text-violet-200 mt-0.5">Programação e dados de entrega</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditingId(null)}
+                className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition"
+              >
+                <FaTimes size={18} />
               </button>
             </div>
 
-            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Programação */}
-              <div className="border-r border-gray-200 pr-6">
-                <h3 className="text-lg font-bold text-gray-800 mb-4">Programação</h3>
-                
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Processo *</label>
-                    <input type="text" value={editForm.processo} onChange={(e) => setEditForm({...editForm, processo: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />
-                  </div>
+            {/* Modal Body */}
+            <div className="overflow-y-auto flex-1 px-6 py-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">{getRecebedorLabel(city)} *</label>
-                    <input type="text" value={editForm.recebedor} onChange={(e) => setEditForm({...editForm, recebedor: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />
+                {/* ─ Seção Programação ─ */}
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="p-1.5 bg-violet-100 rounded-lg">
+                      <FaFileAlt size={14} className="text-violet-600" />
+                    </div>
+                    <h3 className="font-bold text-gray-800">Programação</h3>
+                    <div className="flex-1 h-px bg-gray-200" />
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Container</label>
-                    <input type="text" value={editForm.container} onChange={(e) => setEditForm({...editForm, container: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Data Agendamento *</label>
-                    <input type="datetime-local" value={editForm.dataAgendamento} onChange={(e) => setEditForm({...editForm, dataAgendamento: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Contratado *</label>
-                    <input type="text" value={editForm.contratado} onChange={(e) => setEditForm({...editForm, contratado: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Motorista</label>
-                    <input type="text" value={editForm.motorista} onChange={(e) => setEditForm({...editForm, motorista: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Status</label>
-                    <select value={editForm.status} onChange={(e) => setEditForm({...editForm, status: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
-                      <option value="">Selecione um status</option>
-                      {statusOptions.map(status => (
-                        <option key={status} value={status}>{formatStatus(status)}</option>
-                      ))}
-                    </select>
+                  <div className="space-y-3">
+                    <Field label="Processo *">
+                      <input className={inputCls} value={editForm.processo}
+                        onChange={(e) => setEditForm({ ...editForm, processo: e.target.value })} />
+                    </Field>
+                    <Field label={`${getRecebedorLabel(city)} *`}>
+                      <input className={inputCls} value={editForm.recebedor}
+                        onChange={(e) => setEditForm({ ...editForm, recebedor: e.target.value })} />
+                    </Field>
+                    <Field label="Container">
+                      <input className={inputCls} value={editForm.container}
+                        onChange={(e) => setEditForm({ ...editForm, container: e.target.value })} />
+                    </Field>
+                    <Field label="Data Agendamento *">
+                      <input type="datetime-local" className={inputCls} value={editForm.dataAgendamento}
+                        onChange={(e) => setEditForm({ ...editForm, dataAgendamento: e.target.value })} />
+                    </Field>
+                    <Field label="Contratado *">
+                      <input className={inputCls} value={editForm.contratado}
+                        onChange={(e) => setEditForm({ ...editForm, contratado: e.target.value })} />
+                    </Field>
+                    <Field label="Motorista">
+                      <input className={inputCls} value={editForm.motorista}
+                        onChange={(e) => setEditForm({ ...editForm, motorista: e.target.value })} />
+                    </Field>
+                    <Field label="Status">
+                      <select className={inputCls} value={editForm.status}
+                        onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}>
+                        <option value="">Selecione…</option>
+                        {STATUS_OPTIONS.map((s) => (
+                          <option key={s} value={s}>{formatStatus(s)}</option>
+                        ))}
+                      </select>
+                    </Field>
                   </div>
                 </div>
-              </div>
 
-              {/* Entrega */}
-              <div className="pl-6">
-                <h3 className="text-lg font-bold text-gray-800 mb-4">Entrega</h3>
-                
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Data Retirada Cheio</label>
-                    <input type="datetime-local" value={editForm.containerMontadoAt} onChange={(e) => setEditForm({...editForm, containerMontadoAt: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />
+                {/* ─ Seção Entrega ─ */}
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="p-1.5 bg-blue-100 rounded-lg">
+                      <FaBoxOpen size={14} className="text-blue-600" />
+                    </div>
+                    <h3 className="font-bold text-gray-800">Entrega</h3>
+                    <div className="flex-1 h-px bg-gray-200" />
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Horário Chegada</label>
-                    <input type="datetime-local" value={editForm.horarioChegada} onChange={(e) => setEditForm({...editForm, horarioChegada: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Horário Início {getDesovaStepLabel(city)}</label>
-                    <input type="datetime-local" value={editForm.horarioInicioDesova} onChange={(e) => setEditForm({...editForm, horarioInicioDesova: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Horário Fim {getDesovaStepLabel(city)}</label>
-                    <input type="datetime-local" value={editForm.horarioFimDesova} onChange={(e) => setEditForm({...editForm, horarioFimDesova: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Dt Entrega CNTR Porto</label>
-                    <input type="datetime-local" value={editForm.horarioDevolucaoVazio} onChange={(e) => setEditForm({...editForm, horarioDevolucaoVazio: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Observações</label>
-                    <textarea value={editForm.observations} onChange={(e) => setEditForm({...editForm, observations: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 h-16" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Obs. Submissão</label>
-                    <textarea value={editForm.submissionObservation} onChange={(e) => setEditForm({...editForm, submissionObservation: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 h-16" />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Justificativa Docs</label>
-                    <textarea value={editForm.documentsJustification} onChange={(e) => setEditForm({...editForm, documentsJustification: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 h-16" />
+                  <div className="space-y-3">
+                    <Field label="Data Retirada Cheio">
+                      <input type="datetime-local" className={inputCls} value={editForm.containerMontadoAt}
+                        onChange={(e) => setEditForm({ ...editForm, containerMontadoAt: e.target.value })} />
+                    </Field>
+                    <Field label="Horário Chegada">
+                      <input type="datetime-local" className={inputCls} value={editForm.horarioChegada}
+                        onChange={(e) => setEditForm({ ...editForm, horarioChegada: e.target.value })} />
+                    </Field>
+                    <Field label={`Início ${getDesovaStepLabel(city)}`}>
+                      <input type="datetime-local" className={inputCls} value={editForm.horarioInicioDesova}
+                        onChange={(e) => setEditForm({ ...editForm, horarioInicioDesova: e.target.value })} />
+                    </Field>
+                    <Field label={`Fim ${getDesovaStepLabel(city)}`}>
+                      <input type="datetime-local" className={inputCls} value={editForm.horarioFimDesova}
+                        onChange={(e) => setEditForm({ ...editForm, horarioFimDesova: e.target.value })} />
+                    </Field>
+                    <Field label="Entrega CNTR Porto">
+                      <input type="datetime-local" className={inputCls} value={editForm.horarioDevolucaoVazio}
+                        onChange={(e) => setEditForm({ ...editForm, horarioDevolucaoVazio: e.target.value })} />
+                    </Field>
+                    <Field label="Observações">
+                      <textarea rows={2} className={inputCls} value={editForm.observations}
+                        onChange={(e) => setEditForm({ ...editForm, observations: e.target.value })} />
+                    </Field>
+                    <Field label="Obs. Submissão">
+                      <textarea rows={2} className={inputCls} value={editForm.submissionObservation}
+                        onChange={(e) => setEditForm({ ...editForm, submissionObservation: e.target.value })} />
+                    </Field>
+                    <Field label="Justificativa Docs">
+                      <textarea rows={2} className={inputCls} value={editForm.documentsJustification}
+                        onChange={(e) => setEditForm({ ...editForm, documentsJustification: e.target.value })} />
+                    </Field>
                   </div>
                 </div>
+
               </div>
             </div>
 
-            <div className="sticky bottom-0 bg-gray-100 px-6 py-4 flex gap-4 border-t border-gray-200">
-              <button onClick={handleSave} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold">
+            {/* Modal Footer */}
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex gap-3">
+              <button
+                onClick={handleSave}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold transition shadow-lg shadow-violet-500/30"
+              >
+                <FaSave size={15} />
                 Salvar Alterações
               </button>
-              <button onClick={handleCancel} className="flex-1 px-4 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500 transition font-semibold">
+              <button
+                onClick={() => setEditingId(null)}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl font-bold transition"
+              >
+                <FaTimes size={15} />
                 Cancelar
               </button>
             </div>
@@ -579,9 +736,7 @@ const BaseDadosGeral = () => {
         </div>
       )}
 
-      {toast && (
-        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
-      )}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 };
