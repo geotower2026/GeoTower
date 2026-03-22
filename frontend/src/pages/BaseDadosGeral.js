@@ -31,6 +31,7 @@ const BaseDadosGeral = () => {
     horarioChegada: '',
     horarioInicioDesova: '',
     horarioFimDesova: '',
+    horarioDevolucaoVazio: '',
     observations: '',
     submissionObservation: '',
     documentsJustification: ''
@@ -173,6 +174,7 @@ const BaseDadosGeral = () => {
       horarioChegada: item._entrega?.horarioChegada || '',
       horarioInicioDesova: item._entrega?.horarioInicioDesova || '',
       horarioFimDesova: item._entrega?.horarioFimDesova || '',
+      horarioDevolucaoVazio: item._entrega?.horarioDevolucaoVazio || item._entrega?.dtDevolucaoCNTR || '',
       observations: item._entrega?.observations || '',
       submissionObservation: item._entrega?.submissionObservation || '',
       documentsJustification: item._entrega?.documentsJustification || ''
@@ -221,6 +223,7 @@ const BaseDadosGeral = () => {
         horarioChegada: toISOIfDate(editForm.horarioChegada),
         horarioInicioDesova: toISOIfDate(editForm.horarioInicioDesova),
         horarioFimDesova: toISOIfDate(editForm.horarioFimDesova),
+        horarioDevolucaoVazio: toISOIfDate(editForm.horarioDevolucaoVazio),
         observations: editForm.observations,
         submissionObservation: editForm.submissionObservation,
         documentsJustification: editForm.documentsJustification
@@ -399,6 +402,7 @@ const BaseDadosGeral = () => {
                     <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Chegada</th>
                     <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Início {getDesovaStepLabel(city)}</th>
                     <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Fim {getDesovaStepLabel(city)}</th>
+                    <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Dt Entrega CNTR Porto</th>
                     <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Docs</th>
                     <th className="px-4 py-3 text-left font-semibold border border-purple-700 whitespace-nowrap">Obs</th>
                     <th className="px-4 py-3 text-center font-semibold border border-purple-700 whitespace-nowrap">Ações</th>
@@ -422,6 +426,7 @@ const BaseDadosGeral = () => {
                       <td className="px-4 py-3 border border-gray-200 text-xs whitespace-nowrap">{item._entrega?.horarioChegada ? new Date(item._entrega.horarioChegada).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : (item._entrega?.arrivedAt ? new Date(item._entrega.arrivedAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-')}</td>
                       <td className="px-4 py-3 border border-gray-200 text-xs whitespace-nowrap">{item._entrega?.horarioInicioDesova ? new Date(item._entrega.horarioInicioDesova).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : (item._entrega?.desovaStartAt ? new Date(item._entrega.desovaStartAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-')}</td>
                       <td className="px-4 py-3 border border-gray-200 text-xs whitespace-nowrap">{item._entrega?.horarioFimDesova ? new Date(item._entrega.horarioFimDesova).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : (item._entrega?.desovaEndAt ? new Date(item._entrega.desovaEndAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-')}</td>
+                      <td className="px-4 py-3 border border-gray-200 text-xs whitespace-nowrap">{item._entrega?.horarioDevolucaoVazio ? new Date(item._entrega.horarioDevolucaoVazio).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : (item._entrega?.dtDevolucaoCNTR ? new Date(item._entrega.dtDevolucaoCNTR).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-')}</td>
                       <td className="px-4 py-3 border border-gray-200 text-center whitespace-nowrap">
                         <span className={`px-2 py-1 rounded text-xs font-semibold ${
                           getDocumentsStatus(item._entrega).includes('COMPLETO') ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
@@ -537,6 +542,11 @@ const BaseDadosGeral = () => {
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">Horário Fim {getDesovaStepLabel(city)}</label>
                     <input type="datetime-local" value={editForm.horarioFimDesova} onChange={(e) => setEditForm({...editForm, horarioFimDesova: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Dt Entrega CNTR Porto</label>
+                    <input type="datetime-local" value={editForm.horarioDevolucaoVazio} onChange={(e) => setEditForm({...editForm, horarioDevolucaoVazio: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />
                   </div>
 
                   <div>
