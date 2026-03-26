@@ -62,12 +62,18 @@ router.get("/statistics", auth, onlyAdmin, async (req, res) => {
       deliveriesByContratado[contratado]++;
     });
 
+    // Filtra apenas entregas finalizadas (status ENTREGUE ou FINALIZADO)
+    const finalizedDeliveries = deliveries.filter(d => 
+      d.status === 'ENTREGUE' || d.status === 'FINALIZADO' || d.status === 'ENTREGUE_COM_PENDENCIA_CANHOTO'
+    );
+
     const dailyDeliveries = [];
     const daysMap = {};
     
-    deliveries.forEach(d => {
-      // Agrupa pela data local (fuso de São Paulo) para evitar deslocamentos por UTC
-      const dt = new Date(d.createdAt);
+    finalizedDeliveries.forEach(d => {
+      // Usa data de chegada no cliente (arrivedAt) ou a data atualizada
+      const completionDate = d.arrivedAt || d.updatedAt || d.createdAt;
+      const dt = new Date(completionDate);
       const date = dt.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); // YYYY-MM-DD
       if (!daysMap[date]) {
         daysMap[date] = 0;
