@@ -520,26 +520,38 @@ const ProgramadasEntregas = () => {
     } catch (_) {}
   };
 
-  const addPhoto = (photo) => flushSync(() => setPhotos(prev => [...prev, { id: Date.now() + Math.random(), data: photo }]));
   const removePhoto = (id) => setPhotos(prev => prev.filter(photo => photo.id !== id));
 
-  const handleCameraCapture = (e) => {
+  const handleCameraCapture = async (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
-    let filesProcessed = 0;
-    files.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = ev => {
-        const data = ev.target?.result;
-        if (data) addPhoto(data);
-        filesProcessed++;
-        if (filesProcessed === files.length) {
-          // reset input only after all files processed
-          try { e.target.value = null; } catch(_) {}
+    
+    const photoPromises = files.map(file =>
+      new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => {
+          console.error(`Failed to read ${file.name}`);
+          resolve(null);
+        };
+        reader.readAsDataURL(file);
+      })
+    );
+    
+    const photoDataUrls = await Promise.all(photoPromises);
+    
+    flushSync(() => {
+      photoDataUrls.forEach(data => {
+        if (data) {
+          setPhotos(prev => [...prev, { 
+            id: Date.now() + Math.random(), 
+            data 
+          }]);
         }
-      };
-      reader.readAsDataURL(file);
+      });
     });
+    
+    e.target.value = null;
   };
 
   function dataURLtoFile(dataurl, filename) {
