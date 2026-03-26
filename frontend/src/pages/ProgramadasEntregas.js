@@ -1,5 +1,6 @@
 import { deliveryService, adminService } from '../services/authService';
-import React, { useState, useEffect, useRef, flushSync } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import imageCompression from 'browser-image-compression';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Toast from '../components/Toast';
