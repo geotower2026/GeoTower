@@ -525,7 +525,7 @@ const ProgramadasEntregas = () => {
   const handleCameraCapture = async (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
-    
+
     const photoPromises = files.map(file =>
       new Promise((resolve) => {
         const reader = new FileReader();
@@ -537,20 +537,21 @@ const ProgramadasEntregas = () => {
         reader.readAsDataURL(file);
       })
     );
-    
+
     const photoDataUrls = await Promise.all(photoPromises);
-    
-    flushSync(() => {
-      photoDataUrls.forEach(data => {
-        if (data) {
-          setPhotos(prev => [...prev, { 
-            id: Date.now() + Math.random(), 
-            data 
-          }]);
-        }
+
+    const validPhotos = photoDataUrls.filter(data => data !== null);
+
+    if (validPhotos.length > 0) {
+      flushSync(() => {
+        setPhotos(prev => [...prev, ...validPhotos.map(data => ({
+          id: Date.now() + Math.random(),
+          data
+        }))]);
       });
-    });
-    
+      console.log(`[PhotoCapture] Added ${validPhotos.length} photos. Total photos:`, validPhotos.length);
+    }
+
     e.target.value = null;
   };
 
@@ -858,6 +859,8 @@ const ProgramadasEntregas = () => {
   // ─────────────────────────────────────────────
   const PhotoSection = ({ onConfirm, onBack, buttonLabel = 'Enviar registro', buttonColor = 'bg-emerald-600 hover:bg-emerald-700' }) => (
     <div className="space-y-4">
+      {/* Debug: Photo count */}
+      {console.log(`[PhotoSection] Render - photos.length: ${photos.length}`) || null}
       {uploadProgress > 0 && (
         <div className="space-y-1">
           <div className="flex justify-between text-xs font-semibold text-gray-600">
