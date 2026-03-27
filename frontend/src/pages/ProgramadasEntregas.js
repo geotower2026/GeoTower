@@ -1105,7 +1105,7 @@ const ProgramadasEntregas = () => {
                     <FaRoute className="text-white" size={18} />
                   </div>
                   <div>
-                    <h2 className="text-white text-xl font-extrabold">Dt Entrega CNTR Porto</h2>
+                    <h2 className="text-white text-xl font-extrabold">Entrega Container no Porto</h2>
                     <p className="text-white/70 text-sm">{currentProgramacao.processo}</p>
                   </div>
                 </div>
@@ -1679,7 +1679,7 @@ const ProgramadasEntregas = () => {
                     <div className="w-8 h-8 rounded-xl bg-purple-100 flex items-center justify-center">
                       <FaCalendarAlt className="text-purple-600" size={14} />
                     </div>
-                    <h3 className="text-lg font-bold text-gray-900">Dt Entrega CNTR Porto</h3>
+                    <h3 className="text-lg font-bold text-gray-900">Entrega Container no Porto</h3>
                   </div>
                   <StepTimer start={currentDelivery?.arrivedAt || currentDelivery?.createdAt} label="Tempo total" />
                   <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4">
