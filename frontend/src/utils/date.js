@@ -98,3 +98,14 @@ export function formatarHoraLocal(date, options = {}) {
   if (!date) return "-";
   return new Date(date).toLocaleTimeString("pt-BR", options);
 }
+
+/**
+ * Formata data/hora de agendamento sem conversão de timezone (mantém horário local)
+ * @param {string|Date} date - Data a ser formatada
+ * @param {object} options - Opções para toLocaleString
+ * @returns {string} Data formatada em pt-BR sem conversão de timezone
+ */
+export function formatarAgendamento(date, options = {}) {
+  if (!date) return "-";
+  return new Date(date).toLocaleString("pt-BR", options);
+}
