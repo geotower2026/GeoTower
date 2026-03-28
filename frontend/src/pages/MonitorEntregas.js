@@ -240,95 +240,6 @@ const getResolveConfig = (rawStatus, city = 'manaus') => {
   return statusConfig[key] || null;
 };
 
-
-const PROFESSIONAL_THEME_PALETTES = {
-  light: {
-    bg: '#0f172a',
-    bgSoft: '#162235',
-    surface: 'rgba(24, 38, 61, 0.92)',
-    surfaceAlt: 'rgba(34, 53, 84, 0.96)',
-    border: 'rgba(148, 163, 184, 0.22)',
-    text: '#f8fafc',
-    muted: '#dbe5f1',
-    subtle: '#94a3b8',
-    accent: '#60a5fa',
-    accentStrong: '#2563eb',
-    glow: 'rgba(96, 165, 250, 0.16)',
-    header: 'rgba(15, 23, 42, 0.86)',
-    hover: 'rgba(148, 163, 184, 0.10)',
-    panel: 'rgba(19, 32, 51, 0.92)',
-    card: 'rgba(19, 30, 48, 0.94)'
-  },
-  company: {
-    bg: '#0b1220',
-    bgSoft: '#13203a',
-    surface: 'rgba(23, 37, 84, 0.90)',
-    surfaceAlt: 'rgba(30, 58, 138, 0.94)',
-    border: 'rgba(96, 165, 250, 0.24)',
-    text: '#eff6ff',
-    muted: '#dbeafe',
-    subtle: '#93c5fd',
-    accent: '#60a5fa',
-    accentStrong: '#3b82f6',
-    glow: 'rgba(59, 130, 246, 0.16)',
-    header: 'rgba(11, 18, 32, 0.88)',
-    hover: 'rgba(96, 165, 250, 0.12)',
-    panel: 'rgba(15, 23, 42, 0.92)',
-    card: 'rgba(22, 35, 76, 0.94)'
-  },
-  sunset: {
-    bg: '#1c1024',
-    bgSoft: '#2a1634',
-    surface: 'rgba(53, 32, 68, 0.92)',
-    surfaceAlt: 'rgba(68, 39, 90, 0.95)',
-    border: 'rgba(244, 114, 182, 0.22)',
-    text: '#fdf2f8',
-    muted: '#fbcfe8',
-    subtle: '#f9a8d4',
-    accent: '#fb7185',
-    accentStrong: '#e11d48',
-    glow: 'rgba(251, 113, 133, 0.16)',
-    header: 'rgba(28, 16, 36, 0.88)',
-    hover: 'rgba(251, 113, 133, 0.12)',
-    panel: 'rgba(43, 23, 53, 0.92)',
-    card: 'rgba(38, 20, 48, 0.94)'
-  },
-  ocean: {
-    bg: '#071c24',
-    bgSoft: '#0c2b37',
-    surface: 'rgba(16, 56, 71, 0.92)',
-    surfaceAlt: 'rgba(20, 87, 106, 0.95)',
-    border: 'rgba(45, 212, 191, 0.22)',
-    text: '#ecfeff',
-    muted: '#ccfbf1',
-    subtle: '#99f6e4',
-    accent: '#2dd4bf',
-    accentStrong: '#14b8a6',
-    glow: 'rgba(45, 212, 191, 0.16)',
-    header: 'rgba(7, 28, 36, 0.88)',
-    hover: 'rgba(45, 212, 191, 0.12)',
-    panel: 'rgba(11, 45, 58, 0.92)',
-    card: 'rgba(10, 40, 51, 0.94)'
-  },
-  dark: {
-    bg: '#0a0f1e',
-    bgSoft: '#11182c',
-    surface: 'rgba(21, 29, 52, 0.92)',
-    surfaceAlt: 'rgba(28, 39, 68, 0.96)',
-    border: 'rgba(148, 163, 184, 0.18)',
-    text: '#f8fafc',
-    muted: '#cbd5e1',
-    subtle: '#94a3b8',
-    accent: '#818cf8',
-    accentStrong: '#6366f1',
-    glow: 'rgba(99, 102, 241, 0.18)',
-    header: 'rgba(10, 15, 30, 0.88)',
-    hover: 'rgba(129, 140, 248, 0.10)',
-    panel: 'rgba(17, 24, 39, 0.92)',
-    card: 'rgba(15, 23, 42, 0.94)'
-  }
-};
-
 /* ─────────────────────────────────────────────────────────────
    GLOBAL ANIMATION STYLES
 ───────────────────────────────────────────────────────────── */
@@ -477,8 +388,8 @@ const DeliveryKanbanCard = ({ delivery, column, onOpen, currentTime, city = 'man
             {delivery.processoCAB || '—'}
           </span>
           <span className={`shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${column.badge} border ${column.border}`}>
-            {/* Exibe placa, buscando da base ycompany se disponível */}
-            {delivery.placaYcompany || delivery.vehiclePlate || 'Placa'}
+            {/* Exibe placa, buscando da base icompany se disponível */}
+            {delivery.placaIcompany || delivery.vehiclePlate || 'Placa'}
           </span>
         </div>
 
@@ -734,11 +645,7 @@ const SettingsPanel = ({
                 >
                   <span
                     className={`w-6 h-6 rounded-full border-2 flex-shrink-0 ${theme === key ? 'border-purple-400' : 'border-gray-600'}`}
-                    style={{
-                      background: PROFESSIONAL_THEME_PALETTES[key]
-                        ? `linear-gradient(135deg, ${PROFESSIONAL_THEME_PALETTES[key].bg} 0%, ${PROFESSIONAL_THEME_PALETTES[key].surfaceAlt} 100%)`
-                        : t.bg
-                    }}
+                    style={{ background: t.bg }}
                   />
                   {t.name}
                   {theme === key && <FaCheckCircle className="ml-auto text-purple-400 text-xs" />}
@@ -1031,8 +938,6 @@ const MonitorEntregas = () => {
 
   const { theme, setTheme } = useTheme();
   const themeConfig = THEMES[theme] || THEMES.dark;
-  const resolvedTheme = Object.prototype.hasOwnProperty.call(PROFESSIONAL_THEME_PALETTES, theme) ? theme : 'dark';
-  const pageThemeClass = theme === 'black' ? 'theme-black' : `theme-${resolvedTheme}`;
   const userName = user?.name || 'Usuário Desconhecido';
 
   const statusMapToBackend = {
@@ -1059,53 +964,101 @@ const MonitorEntregas = () => {
     return () => document.head.removeChild(el);
   }, []);
 
-
-  useEffect(() => {
-    const themeCss = Object.entries(PROFESSIONAL_THEME_PALETTES).map(([key, palette]) => {
-      return [
-        `.theme-${key} {`,
-        `  --monitor-bg: ${palette.bg};`,
-        `  --monitor-bg-soft: ${palette.bgSoft};`,
-        `  --monitor-surface: ${palette.surface};`,
-        `  --monitor-surface-alt: ${palette.surfaceAlt};`,
-        `  --monitor-border: ${palette.border};`,
-        `  --monitor-text: ${palette.text};`,
-        `  --monitor-muted: ${palette.muted};`,
-        `  --monitor-subtle: ${palette.subtle};`,
-        `  --monitor-accent: ${palette.accent};`,
-        `  --monitor-accent-strong: ${palette.accentStrong};`,
-        `  --monitor-glow: ${palette.glow};`,
-        `  --monitor-header: ${palette.header};`,
-        `  --monitor-hover: ${palette.hover};`,
-        `  --monitor-panel: ${palette.panel};`,
-        `  --monitor-card: ${palette.card};`,
-        `  background: radial-gradient(circle at top right, ${palette.glow} 0, transparent 32%), linear-gradient(135deg, ${palette.bg} 0%, ${palette.bgSoft} 100%) !important;`,
-        `  color: ${palette.text} !important;`,
-        `}`,
-        ``,
-        `.theme-${key}, .theme-${key} .text-white, .theme-${key} .text-gray-100, .theme-${key} .text-gray-200 { color: ${palette.text} !important; }`,
-        `.theme-${key} .text-gray-300, .theme-${key} .text-gray-400 { color: ${palette.muted} !important; }`,
-        `.theme-${key} .text-gray-500, .theme-${key} .text-gray-600 { color: ${palette.subtle} !important; }`,
-        `.theme-${key} .text-purple-300, .theme-${key} .text-purple-400 { color: ${palette.accent} !important; }`,
-        `.theme-${key} header { background: ${palette.header} !important; border-color: ${palette.border} !important; box-shadow: 0 18px 45px rgba(0, 0, 0, 0.18); }`,
-        `.theme-${key} .bg-white\\/5, .theme-${key} .bg-white\\/10, .theme-${key} .bg-white\\/\\[0\\.03\\], .theme-${key} .bg-white\\/\\[0\\.02\\], .theme-${key} .bg-white\\/\\[0\\.015\\], .theme-${key} .bg-white\\/\\[0\\.04\\] { background-color: ${palette.surface} !important; }`,
-        `.theme-${key} .bg-black\\/20 { background-color: ${palette.card} !important; }`,
-        `.theme-${key} .border-white\\/10, .theme-${key} .border-white\\/8, .theme-${key} .border-white\\/5, .theme-${key} .border-white\\/\\[0\\.06\\], .theme-${key} .hover\\:border-white\\/20:hover { border-color: ${palette.border} !important; }`,
-        `.theme-${key} .hover\\:bg-white\\/10:hover, .theme-${key} .hover\\:bg-white\\/8:hover, .theme-${key} .hover\\:bg-white\\/20:hover, .theme-${key} .hover\\:bg-white\\/\\[0\\.04\\]:hover { background-color: ${palette.surfaceAlt} !important; }`,
-        `.theme-${key} select, .theme-${key} input, .theme-${key} textarea { background-color: ${palette.surfaceAlt} !important; color: ${palette.text} !important; border-color: ${palette.border} !important; }`,
-        `.theme-${key} input::placeholder, .theme-${key} textarea::placeholder { color: ${palette.subtle} !important; }`,
-        `.theme-${key} .monitor-surface-card { background-color: ${palette.card} !important; border-color: ${palette.border} !important; }`,
-        `.theme-${key} .monitor-surface-soft { background-color: ${palette.surface} !important; border-color: ${palette.border} !important; }`
-      ].join('\n');
-    }).join('\n\n');
-
+    useEffect(() => {
     const el = document.createElement('style');
-    el.id = 'theme-professional-overrides';
-    el.textContent = `${themeCss}\n.theme-black, .theme-black * {\n  color: inherit !important;\n  background: inherit !important;\n}`;
+    el.id = 'theme-overrides';
+    el.textContent = `
+      .theme-light { background-color:#f5f7fa!important; color:#1a1a1a!important; }
+      .theme-light * { color:#1a1a1a!important; }
+      .theme-light .bg-white\/5{background-color:rgba(245,247,250,0.95)!important}
+      .theme-light .border-white\/10{border-color:rgba(75,85,99,0.2)!important}
+      .theme-light select,.theme-light input,.theme-light textarea{background-color:#ffffff!important;color:#1a1a1a!important;border-color:#d1d5db!important}
+
+      .theme-company { background-color:#f3e5f5!important; color:#1a0033!important; }
+      .theme-company * { color:#1a0033!important; }
+      .theme-company .bg-white\/5{background-color:rgba(243,229,245,0.95)!important}
+      .theme-company .border-white\/10{border-color:rgba(107,33,168,0.3)!important}
+      .theme-company select,.theme-company input,.theme-company textarea{background-color:#fff6ff!important;color:#1a0033!important;border-color:#b78ada!important}
+
+      .theme-sunset { background-color:#fff5f7!important; color:#4b1e3b!important; }
+      .theme-sunset * { color:#4b1e3b!important; }
+      .theme-sunset .bg-white\/5{background-color:rgba(255,245,247,0.95)!important}
+      .theme-sunset .border-white\/10{border-color:rgba(159,42,102,0.3)!important}
+      .theme-sunset select,.theme-sunset input,.theme-sunset textarea{background-color:#fff7f9!important;color:#4b1e3b!important;border-color:#f9acc6!important}
+
+      .theme-ocean { background-color:#e0f7fa!important; color:#00363a!important; }
+      .theme-ocean * { color:#00363a!important; }
+      .theme-ocean .bg-white\/5{background-color:rgba(224,247,250,0.95)!important}
+      .theme-ocean .border-white\/10{border-color:rgba(0,118,132,0.3)!important}
+      .theme-ocean select,.theme-ocean input,.theme-ocean textarea{background-color:#ecfdff!important;color:#00363a!important;border-color:#70d8e4!important}
+
+      .theme-dark { background-color:#0f0f1a!important;color:#ffffff!important; }
+      .theme-dark * { color:#ffffff!important; }
+      .theme-dark .text-gray-300{color:#d1d5db!important}
+      .theme-dark .text-gray-400{color:#cbd5e1!important}
+
+      .theme-black, .theme-black * { color: inherit !important; background: inherit !important; }
+    `;
     document.head.appendChild(el);
     return () => document.head.removeChild(el);
   }, []);
 
+  // light theme row tweaks
+  useEffect(() => {
+    const el2 = document.createElement('style');
+    el2.id = 'theme-row-overrides';
+    el2.textContent = `
+      .theme-light .bg-white\/[0\.015]{background-color:rgba(0,0,0,0.02)!important}
+      .theme-light .hover\:bg-white\/[0\.04]:hover{background-color:rgba(0,0,0,0.025)!important}
+    `;
+    document.head.appendChild(el2);
+    return () => document.head.removeChild(el2);
+  }, []);
+
+  // dynamic overrides for gray text utilities based on theme
+  useEffect(() => {
+    const el3 = document.createElement('style');
+    el3.id = 'theme-text-overrides';
+    const primary = themeConfig.text || '#000';
+    const secondary = themeConfig.textSecondary || primary;
+    el3.textContent = `
+      .theme-light .text-gray-300, .theme-dark .text-gray-300, .theme-company .text-gray-300, .theme-sunset .text-gray-300, .theme-ocean .text-gray-300,
+      .theme-light .text-gray-400, .theme-dark .text-gray-400, .theme-company .text-gray-400, .theme-sunset .text-gray-400, .theme-ocean .text-gray-400,
+      .theme-light .text-gray-500, .theme-dark .text-gray-500, .theme-company .text-gray-500, .theme-sunset .text-gray-500, .theme-ocean .text-gray-500,
+      .theme-light .text-gray-600, .theme-dark .text-gray-600, .theme-company .text-gray-600, .theme-sunset .text-gray-600, .theme-ocean .text-gray-600 {
+        color: ${secondary}!important;
+      }
+    `;
+    document.head.appendChild(el3);
+    return () => document.head.removeChild(el3);
+  }, [themeConfig]);
+
+  useEffect(() => {
+    const el4 = document.createElement('style');
+    el4.id = 'theme-color-overrides';
+    el4.textContent = `
+      .theme-light, .theme-light * { color: #1a1a1a !important; }
+      .theme-company, .theme-company * { color: #1a0033 !important; }
+      .theme-sunset, .theme-sunset * { color: #4b1e3b !important; }
+      .theme-ocean, .theme-ocean * { color: #00363a !important; }
+      .theme-dark, .theme-dark * { color: #ffffff !important; }
+
+      .theme-light { background-color: #eaf2ff !important; }
+      .theme-company { background-color: #e3ebff !important; }
+      .theme-sunset { background-color: #f8f3ff !important; }
+      .theme-ocean { background-color: #def4ff !important; }
+      .theme-dark { background-color: #0a0d1d !important; }
+
+      /* preserve pure black theme behavior */
+      .theme-black, .theme-black * { color: inherit !important; background: inherit !important; }
+
+      .theme-light body, .theme-company body, .theme-sunset body, .theme-ocean body, .theme-dark body { font-family: 'Inter', sans-serif !important; }
+
+      .theme-light .monitor-modal, .theme-company .monitor-modal, .theme-sunset .monitor-modal, .theme-ocean .monitor-modal { color: inherit !important; }
+    `;
+    document.head.appendChild(el4);
+    return () => document.head.removeChild(el4);
+  }, [theme]);
 
   // Load icompanyVerified status from localStorage on mount
   useEffect(() => {
@@ -1351,7 +1304,7 @@ const MonitorEntregas = () => {
     [
       ['Contratado', safe(delivery.userName)],
       ['Motorista', safe(delivery.driverName)],
-      ['Placa', safe(delivery.placaYcompany || delivery.vehiclePlate)],
+      ['Placa', safe(delivery.placaIcompany || delivery.vehiclePlate)],
       ['Recebedor', safe(delivery.recebedor)],
       ['Status', safe(formatStatus(delivery.status, delivery))],
       ['Agendamento', formatDT(getProgramacaoDate(delivery, city))],
@@ -1917,7 +1870,7 @@ const MonitorEntregas = () => {
   return (
     <div
       style={{ backgroundColor: themeConfig.bg, color: themeConfig.text }}
-      className={`min-h-screen font-sans transition-colors duration-300 ${pageThemeClass}`}
+      className={`min-h-screen font-sans transition-colors duration-300 ${theme === 'light' ? 'theme-light' : ''}`}
     >
       <SettingsPanel
         open={settingsOpen}
@@ -2081,7 +2034,7 @@ const MonitorEntregas = () => {
               ))}
             </div>
 
-            <div className="hidden md:block rounded-2xl border border-white/10 overflow-hidden shadow-2xl bg-black/20 monitor-surface-card">
+            <div className="hidden md:block rounded-2xl border border-white/10 overflow-hidden shadow-2xl bg-black/20">
               <div className="overflow-x-auto">
                 <div style={{ width: '100%' }} className="monitor-table min-w-full">
                   <div
@@ -2257,7 +2210,7 @@ const MonitorEntregas = () => {
                 {[
                   ['Contratado', selectedDelivery.userName],
                   ['Motorista', selectedDelivery.driverName || '—'],
-                  ['Placa', selectedDelivery.placaYcompany || selectedDelivery.vehiclePlate || '—'],
+                  ['Placa', selectedDelivery.placaIcompany || selectedDelivery.vehiclePlate || '—'],
                   ['Entrega CNTR Porto', selectedDelivery.horarioDevolucaoVazio ? new Date(selectedDelivery.horarioDevolucaoVazio).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'],
                   ['Recebedor', selectedDelivery.recebedor || '—'],
                   ['Agendamento', getProgramacaoDate(selectedDelivery, city) ? new Date(getProgramacaoDate(selectedDelivery, city)).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'],
@@ -2526,7 +2479,7 @@ const MonitorEntregas = () => {
             </div>
 
             {canEdit() && (
-              <div className="flex-shrink-0 px-5 sm:px-6 py-4 border-t border-white/10 bg-white/[0.02] flex justify-end gap-3 monitor-surface-soft">
+              <div className="flex-shrink-0 px-5 sm:px-6 py-4 border-t border-white/10 bg-white/[0.02] flex justify-end gap-3">
                 <button
                   onClick={() => handleEditStart(selectedDelivery)}
                   className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 hover:text-blue-200 text-sm font-semibold transition border border-blue-500/20"
@@ -2705,7 +2658,7 @@ const MonitorEntregas = () => {
               </div>
             </div>
 
-            <div className="flex-shrink-0 px-6 py-4 border-t border-white/10 bg-white/[0.02] flex gap-3 monitor-surface-soft">
+            <div className="flex-shrink-0 px-6 py-4 border-t border-white/10 bg-white/[0.02] flex gap-3">
               <button
                 onClick={handleEditSave}
                 disabled={isGeoMar()}
@@ -2756,7 +2709,7 @@ const MonitorEntregas = () => {
               </p>
             </div>
 
-            <div className="px-6 py-4 bg-white/[0.02] border-t border-white/10 flex gap-3 justify-end monitor-surface-soft">
+            <div className="px-6 py-4 bg-white/[0.02] border-t border-white/10 flex gap-3 justify-end">
               <button
                 onClick={() => {
                   setConfirmRemoveVerification(false);

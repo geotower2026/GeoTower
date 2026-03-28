@@ -1,14 +1,14 @@
-# Guia de Sincronização: Ycompany → Programação de Entregas
+# Guia de Sincronização: Icompany → Programação de Entregas
 
 ## 📋 O que foi implementado
 
-Sistema de sincronização automática de dados entre a tela **Ycompany** e **Programação de Entregas**.
+Sistema de sincronização automática de dados entre a tela **Icompany** e **Programação de Entregas**.
 
 ## 🔄 Mapeamento de Colunas
 
 A sincronização mapeia os seguintes campos:
 
-| Coluna em Programação | ← | Campo no Ycompany |
+| Column em Programação | ← | Campo no Icompany |
 |---|---|---|
 | **Processo** | ← | `geomaritima` (N° GeoMarítima) |
 | **Recebedor** | ← | `destinatario` (Destinatário) |
@@ -22,7 +22,7 @@ A sincronização mapeia os seguintes campos:
 
 ✅ Sistema verifica automaticamente os processos já existentes e **não importa duplicados**
 
-- Busca todos os registros do Ycompany
+- Busca todos os registros do Icompany
 - Compara com os processos já cadastrados em Programação de Entregas
 - Importa apenas registros novos
 
@@ -31,7 +31,7 @@ A sincronização mapeia os seguintes campos:
 ### No Frontend:
 
 1. Acesse a tela **Programação de Entregas**
-2. Clique no botão **"Sincronizar Ycompany"** (botão verde com ícone de sincronização)
+2. Clique no botão **"Sincronizar Icompany"** (botão verde com ícone de sincronização)
 3. Aguarde a conclusão
 4. Mensagem de sucesso mostrará:
    - Quantos registros foram sincronizados
@@ -39,13 +39,13 @@ A sincronização mapeia os seguintes campos:
 
 ### No Backend:
 
-Endpoint: `GET /api/admin/programacoes/sync/ycompany`
+Endpoint: `GET /api/admin/programacoes/sync/icompany`
 
 Resposta de sucesso:
 ```json
 {
   "success": true,
-  "message": "X registro(s) sincronizado(s) com sucesso do Ycompany",
+  "message": "X registro(s) sincronizado(s) com sucesso do Icompany",
   "sincronizados": 5,
   "duplicados": 3,
   "total": 8,
@@ -56,8 +56,8 @@ Resposta de sucesso:
 ## 📝 Observações
 
 - Todos os registros sincronizados têm status **AGENDADO** automaticamente
-- A Data de Agendamento é preenchida com `dtAgendamentoDescarga` do Ycompany, ou com a data atual se não disponível
-- Campo "Observações" incluirá a situação original do Ycompany para referência
+- A Data de Agendamento é preenchida com `dtAgendamentoDescarga` do Icompany, ou com a data atual se não disponível
+- Campo "Observações" incluirá a situação original do Icompany para referência
 
 ## 🔐 Permissões
 

@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const ycompanySchema = new mongoose.Schema({
+const icompanySchema = new mongoose.Schema({
   // Identificação
   codigo: {
     type: String,

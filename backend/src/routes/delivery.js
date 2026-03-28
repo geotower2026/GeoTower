@@ -141,8 +141,8 @@ router.post("/", auth, async (req, res) => {
         const ycompanyUpdates = {};
 
         // Mapear campos do delivery para Ycompany
-        if (containerMontadoAt && !ycompanyRecord.dtRetiraPD) {
-          ycompanyUpdates.dtRetiraPD = new Date(containerMontadoAt);
+        if (containerMontadoAt && !icompanyRecord.dtRetiraPD) {
+          icompanyUpdates.dtRetiraPD = new Date(containerMontadoAt);
         }
 
         if (Object.keys(ycompanyUpdates).length > 0) {

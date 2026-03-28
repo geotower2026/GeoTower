@@ -165,12 +165,12 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
       }
     });
 
-    // antes de cruzar, carregar dados do Ycompany para termos placas (tracao)
-    const Ycompany = require('../models/Ycompany');
-    const ycompanyRecords = await Ycompany.find({}).lean();
+    // antes de cruzar, carregar dados do Icompany para termos placas (tracao)
+    const Icompany = require('../models/Icompany');
+    const icompanyRecords = await Icompany.find({}).lean();
     const ycByProcess = new Map();  // processo -> [array de registros yc]
     const ycByContainer = new Map(); // container -> [array de registros yc]
-    ycompanyRecords.forEach(y => {
+    icompanyRecords.forEach(y => {
       const proc = String(y.processo || '').trim().toUpperCase();
       if (proc) {
         if (!ycByProcess.has(proc)) ycByProcess.set(proc, []);
@@ -189,14 +189,14 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
       const prog = programacoes.find(p => 
         (p.container || '').toUpperCase() === (delivery.deliveryNumber || '').toUpperCase()
       );
-      // buscar registro(s) Ycompany correspondente (processo primeiro, depois container)
+      // buscar registro(s) Icompany correspondente (processo primeiro, depois container)
       const keyProc = (delivery.processoCAB || '').toUpperCase();
       const keyCont = (delivery.deliveryNumber || '').toUpperCase();
       const yrecArray = ycByProcess.get(keyProc) || ycByContainer.get(keyCont) || [];
       const yrec = Array.isArray(yrecArray) ? yrecArray[0] : yrecArray;  // pega o primeiro para placa
       const placaY = yrec ? (yrec.tracao || '') : '';
       
-      // Extrair todos os containers únicos do array Ycompany
+      // Extrair todos os containers únicos do array Icompany
       const containerNumeros = Array.isArray(yrecArray) 
         ? [...new Set(yrecArray.map(y => y.numero || y.containerNumero).filter(Boolean))]
         : [];
@@ -205,7 +205,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
         ...delivery,
         // incluir número de processo CAB quando houver programação
         processoCAB: prog ? prog.processo || '' : delivery.processoCAB || '',
-        placaYcompany: placaY,
+        placaIcompany: placaY,
         containerNumero: containerNumeros.length > 0 ? containerNumeros : undefined,  // Array de containers
         recebedor: prog ? prog.recebedor : '',
         dataAgendamento: prog ? prog.dataAgendamento : '',
@@ -223,7 +223,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
       const key = (prog.container || '').toUpperCase();
       const exists = normalizedDeliveries.find(d => (d.deliveryNumber || '').toUpperCase() === key);
       if (!exists) {
-        // também incluir placaYcompany se existir
+        // também incluir placaIcompany se existir
         const keyProc = (prog.processo || '').toUpperCase();
         const keyCont = (prog.container || '').toUpperCase();
         const yrecArray2 = ycByProcess.get(keyProc) || ycByContainer.get(keyCont) || [];
@@ -239,7 +239,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
           _id: prog._id,
           deliveryNumber: prog.container || prog.processo,
           processoCAB: prog.processo || '',
-          placaYcompany: placaY2,
+          placaIcompany: placaY2,
           containerNumero: containerNumeros2.length > 0 ? containerNumeros2 : undefined,  // Array de containers
           userName: prog.contratado || '',
           driverName: prog.motorista || '-',
@@ -1872,8 +1872,8 @@ router.post("/programacoes/import", auth, managerOnly, async (req, res) => {
 });
 
 /**
- * GET /api/admin/programacoes/sync/ycompany
- * Sincronizar dados do Ycompany para Programação de Entregas
+ * GET /api/admin/programacoes/sync/icompany
+ * Sincronizar dados do Icompany para Programação de Entregas
  * Mapeia: Processo←processo, RECEBEDOR←destinatario, CONTAINER←containerNumero, STATUS=AGENDADO
  * Filtra dados baseado na cidade do usuário (Manaus vs Itajaí)
  */
@@ -1884,7 +1884,7 @@ router.get("/programacoes/sync/ycompany", auth, managerOnly, async (req, res) =>
     const { connectIfNeeded } = require("../db/mongo");
     await connectIfNeeded();
 
-    const Ycompany = require("../models/Ycompany");
+    const Icompany = require("../models/Icompany");
     const ProgramacaoEntrega = require("../models/ProgramacaoEntrega");
 
     // Construir filtro de cidade
@@ -1899,17 +1899,17 @@ router.get("/programacoes/sync/ycompany", auth, managerOnly, async (req, res) =>
       cityFilter.origem = { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] };
     }
     
-    console.log(`[SYNC YCOMPANY] Filtrando por cidade: ${city}`, cityFilter);
+    console.log(`[SYNC ICOMPANY] Filtrando por cidade: ${city}`, cityFilter);
 
-    // Buscar registros do Ycompany filtrados por cidade
-    const ycompanyRecords = await Ycompany.find(cityFilter).lean();
-    console.log(`[SYNC YCOMPANY] Encontrados ${ycompanyRecords.length} registros no Ycompany`);
+    // Buscar registros do Icompany filtrados por cidade
+    const icompanyRecords = await Icompany.find(cityFilter).lean();
+    console.log(`[SYNC ICOMPANY] Encontrados ${icompanyRecords.length} registros no Icompany`);
 
     // Buscar todos os processos já existentes para evitar duplicação e permitir atualização
     const existingProgramacoes = await ProgramacaoEntrega.find({}).lean();
     const existingMap = new Map(existingProgramacoes.map(p => [String(p.processo || '').trim().toUpperCase(), p]));
 
-    console.log(`[SYNC YCOMPANY] ${existingMap.size} processos já existentes`);
+    console.log(`[SYNC ICOMPANY] ${existingMap.size} processos já existentes`);
 
     // Converter função de data uma única vez
     const formatSyncDate = (raw) => {
@@ -1934,7 +1934,7 @@ router.get("/programacoes/sync/ycompany", auth, managerOnly, async (req, res) =>
     let insertedCount = 0;
     const novosRegistros = [];
 
-    for (const y of ycompanyRecords) {
+    for (const y of icompanyRecords) {
       const processoRaw = String(y.processo || '').trim();
       if (!processoRaw) continue;
 
@@ -1956,7 +1956,7 @@ router.get("/programacoes/sync/ycompany", auth, managerOnly, async (req, res) =>
         contratado: String(y.contratado || '').trim() || 'OUTRO',
         motorista: String(y.motorista || '').trim() || '',
         origem: String(y.origem || '').trim() || '',
-        observacoes: `Sincronizado do Ycompany - ${y.situacao || 'N/A'}`
+        observacoes: `Sincronizado do Icompany - ${y.situacao || 'N/A'}`
       };
 
       if (existing) {
@@ -1972,42 +1972,42 @@ router.get("/programacoes/sync/ycompany", auth, managerOnly, async (req, res) =>
       }
     }
 
-    console.log(`[SYNC YCOMPANY] ${updatedCount} registros existentes atualizados`);
+    console.log(`[SYNC ICOMPANY] ${updatedCount} registros existentes atualizados`);
 
-    console.log(`[SYNC YCOMPANY] ${novosRegistros.length} novos registros para importar (sem duplicação)`);
+    console.log(`[SYNC ICOMPANY] ${novosRegistros.length} novos registros para importar (sem duplicação)`);
 
     if (novosRegistros.length === 0) {
       return res.json({
         success: true,
-        message: `${updatedCount} registro(s) atualizado(s) do Ycompany`,
+        message: `${updatedCount} registro(s) atualizado(s) do Icompany`,
         atualizados: updatedCount,
         sincronizados: updatedCount,
-        duplicados: ycompanyRecords.length - updatedCount,
-        total: ycompanyRecords.length
+        duplicados: icompanyRecords.length - updatedCount,
+        total: icompanyRecords.length
       });
     }
 
     // Inserir novos registros
     const inserted = await ProgramacaoEntrega.insertMany(novosRegistros, { ordered: false });
     insertedCount = inserted.length;
-    console.log(`[SYNC YCOMPANY] ✅ ${insertedCount} registros inseridos com sucesso`);
+    console.log(`[SYNC ICOMPANY] ✅ ${insertedCount} registros inseridos com sucesso`);
 
     const totalSynced = updatedCount + insertedCount;
     return res.json({
       success: true,
-      message: `${insertedCount} novo(s) registro(s) sincronizado(s) do Ycompany e ${updatedCount} existente(s) atualizado(s)`,
+      message: `${insertedCount} novo(s) registro(s) sincronizado(s) do Icompany e ${updatedCount} existente(s) atualizado(s)`,
       sincronizados: totalSynced,
       atualizados: updatedCount,
       inseridos: insertedCount,
-      duplicados: ycompanyRecords.length - (updatedCount + insertedCount),
-      total: ycompanyRecords.length,
+      duplicados: icompanyRecords.length - (updatedCount + insertedCount),
+      total: icompanyRecords.length,
       registros: inserted
     });
   } catch (err) {
-    console.error('[SYNC YCOMPANY] ❌ Erro ao sincronizar:', err);
+    console.error('[SYNC ICOMPANY] ❌ Erro ao sincronizar:', err);
     return res.status(500).json({ 
       success: false,
-      message: "Erro ao sincronizar dados do Ycompany", 
+      message: "Erro ao sincronizar dados do Icompany", 
       error: err.message 
     });
   }

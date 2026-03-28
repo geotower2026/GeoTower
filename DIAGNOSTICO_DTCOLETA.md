@@ -87,13 +87,13 @@ db.programacaoentregas.updateMany(
 );
 ```
 
-## Próximas Entregas do Ycompany
+## Próximas Entregas do Icompany
 
-⚠️ **IMPORTANTE**: Quando novas programações forem importadas do Ycompany via "Sincronizar Ycompany", precisamos garantir que o campo `dtColeta` seja preenchido CORRETAMENTE.
+⚠️ **IMPORTANTE**: Quando novas programações forem importadas do Icompany via "Sincronizar Icompany", precisamos garantir que o campo `dtColeta` seja preenchido CORRETAMENTE.
 
-Atualmente, no endpoint de sync (`/api/admin/programacoes/sync/ycompany`), o `dtColeta` é mapeado de `y.dtColeta` do Ycompany. Verifique se:
+Atualmente, no endpoint de sync (`/api/admin/programacoes/sync/icompany`), o `dtColeta` é mapeado de `y.dtColeta` do Icompany. Verifique se:
 
-1. Os dados do Ycompany estão trazendo `dtColeta` com valor ✅
+1. Os dados do Icompany estão trazendo `dtColeta` com valor ✅
 2. Se não, usar `dataAgendamento` como fallback ✅
 
 O código já está implementado para isso:
@@ -103,7 +103,7 @@ O código já está implementado para isso:
 const dtColeta = formatSyncDate(y.dtColeta);
 ```
 
-Se in `y.dtColeta` estiver vazio no Ycompany, ele virá vazio. Nesse caso, considere usar `dataAgendamento` como fallback:
+Se in `y.dtColeta` estiver vazio no Icompany, ele virá vazio. Nesse caso, considere usar `dataAgendamento` como fallback:
 
 ```javascript
 const dtColeta = formatSyncDate(y.dtColeta) || formatSyncDate(y.dtAgendamentoDescarga);

@@ -1,6 +1,6 @@
-const Ycompany = require('../models/Ycompany');
+const Icompany = require('../models/Icompany');
 
-// GET all Ycompany records
+// GET all Icompany records
 exports.getAll = async (req, res) => {
   try {
     // Filtrar por cidade do usuário
@@ -24,7 +24,7 @@ exports.getAll = async (req, res) => {
       city: city
     });
   } catch (error) {
-    console.error('Erro ao buscar registros Ycompany:', error);
+    console.error('Erro ao buscar registros Icompany:', error);
     res.status(500).json({
       success: false,
       message: 'Erro ao buscar registros',

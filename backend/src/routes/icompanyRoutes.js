@@ -1,12 +1,12 @@
 const express = require("express");
 const router = express.Router();
-const ycompanyController = require("../controllers/ycompanyController");
+const icompanyController = require("../controllers/icompanyController");
 const { MongoClient } = require("mongodb");
 
 const MONGODB_URI = process.env.MONGODB_URI; // ⚠️ no Render tem que ser esse nome
 const DB_NAME = process.env.MONGO_DB || "delivery-docs";
-// default collection should match the mongoose model (ycompany) unless overridden by env
-const COLLECTION = process.env.MONGO_COLLECTION || "ycompany";
+// default collection should match the mongoose model (icompany) unless overridden by env
+const COLLECTION = process.env.MONGO_COLLECTION || "icompany";
 
 let _client, _col;
 async function col() {
@@ -24,7 +24,7 @@ function isEmpty(v) {
   return false;
 }
 
-// --- new endpoints for the React Ycompany page ------------------------------------------------
+// --- new endpoints for the React Icompany page ------------------------------------------------
 router.get('/', async (req, res) => {
   try {
     const c = await col();
@@ -59,12 +59,12 @@ router.get('/', async (req, res) => {
     });
     res.json({ ok: true, count: serialized.length, data: serialized, city: city });
   } catch (e) {
-    console.error('Ycompany GET / error:', e);
+    console.error('Icompany GET / error:', e);
     res.status(500).json({ ok: false, error: 'Erro ao buscar dados' });
   }
 });
 
-// Compare Ycompany (GEO TOWER) vs programacaoentregas (ICOMPANY - Excel)
+// Compare Icompany (GEO TOWER) vs programacaoentregas (ICOMPANY - Excel)
 // 4 colunas específicas: dtRetiraPD, dtInicioDescarga, dtFimDescarga, dtDevolucaoCNTR
 router.get('/compare', async (req, res) => {
   try {
@@ -96,10 +96,10 @@ router.get('/compare', async (req, res) => {
       ['dtDevolucaoCNTR', 'dtDevolucaoCNTR', 'Dt. Devolução CNTR']
     ];
     
-    const ycompanyRecords = await ycompanyCol.find(filter).toArray();
+    const icompanyRecords = await icompanyCol.find(filter).toArray();
     const comparison = [];
     
-    for (const yRecord of ycompanyRecords) {
+    for (const yRecord of icompanyRecords) {
       // Procurar por processo usando múltiplos campos possíveis
       let excelRecord = null;
       const processoProcurar = yRecord.geomaritima || yRecord.processo || yRecord.codigo;
@@ -162,7 +162,7 @@ router.get('/compare', async (req, res) => {
       city: city
     });
   } catch (e) {
-    console.error('Ycompany compare error:', e);
+    console.error('Icompany compare error:', e);
     res.status(500).json({ ok: false, error: 'Erro ao comparar dados' });
   }
 });
@@ -199,7 +199,7 @@ router.get('/debug-comparison', async (req, res) => {
       ['dtDevolucaoCNTR', 'dtDevolucaoCNTR', 'Dt. Devolução CNTR']
     ];
     
-    const detailedComparison = ycompanyRecords.map(yRecord => {
+    const detailedComparison = icompanyRecords.map(yRecord => {
       const processoProcurar = yRecord.geomaritima || yRecord.processo || yRecord.codigo;
       
       // Find matching excel record
@@ -246,7 +246,7 @@ router.get('/debug-comparison', async (req, res) => {
     
     res.json({
       ok: true,
-      totalGeoTower: ycompanyRecords.length,
+      totalGeoTower: icompanyRecords.length,
       totalExcel: excelRecords.length,
       detailedComparison,
       city: city
@@ -300,7 +300,7 @@ router.get('/search', async (req, res) => {
     });
     res.json({ ok: true, count: serialized.length, data: serialized, city: city });
   } catch (e) {
-    console.error('Ycompany search error:', e);
+    console.error('Icompany search error:', e);
     res.status(500).json({ ok: false, error: 'Erro ao buscar dados' });
   }
 });
@@ -331,10 +331,10 @@ router.get('/export', async (req, res) => {
     ].join('\n');
     
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename=ycompany.csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=icompany.csv');
     res.send(csv);
   } catch (e) {
-    console.error('Ycompany export error:', e);
+    console.error('Icompany export error:', e);
     res.status(500).json({ ok: false, error: 'Erro ao exportar dados' });
   }
 });
@@ -342,8 +342,8 @@ router.get('/export', async (req, res) => {
 
 
 /**
- * GET /api/ycompany/entregas?status=&q=&limit=
- * Lista geral para a tela YCompany
+ * GET /api/icompany/entregas?status=&q=&limit=
+ * Lista geral para a tela ICompany
  */
 router.get("/entregas", async (req, res) => {
   try {
@@ -380,7 +380,7 @@ router.get("/entregas", async (req, res) => {
 
     res.json({ ok: true, total: data.length, data, city: city });
   } catch (e) {
-    console.error("YCompany list error:", e);
+    console.error("ICompany list error:", e);
     res.status(500).json({ ok: false, error: "Erro ao buscar entregas" });
   }
 });
@@ -402,7 +402,7 @@ router.patch("/entregas/:processo", async (req, res) => {
 
     res.json({ ok: true, data: doc });
   } catch (e) {
-    console.error("YCompany edit error:", e);
+    console.error("ICompany edit error:", e);
     res.status(500).json({ ok: false, error: "Erro ao editar entrega" });
   }
 });
@@ -436,14 +436,14 @@ router.patch("/entregas/:processo/atribuir-motorista", async (req, res) => {
     const doc = await c.findOne({ processo });
     res.json({ ok: true, data: doc });
   } catch (e) {
-    console.error("YCompany assign error:", e);
+    console.error("ICompany assign error:", e);
     res.status(500).json({ ok: false, error: "Erro ao atribuir motorista" });
   }
 });
 
 /**
- * GET /api/ycompany/relatorio-contratado
- * Retorna TODOS os dados de ycompany (sem filtro de data no backend)
+ * GET /api/icompany/relatorio-contratado
+ * Retorna TODOS os dados de icompany (sem filtro de data no backend)
  * O filtro será feito no FRONTEND
  */
 router.get("/relatorio-contratado", async (req, res) => {
@@ -495,13 +495,13 @@ router.get("/relatorio-contratado", async (req, res) => {
       city: city
     });
   } catch (e) {
-    console.error("YCompany relatório error:", e);
+    console.error("ICompany relatório error:", e);
     res.status(500).json({ ok: false, error: "Erro ao gerar relatório", details: e.message });
   }
 });
 
 /**
- * GET /api/ycompany/contratados-unicos
+ * GET /api/icompany/contratados-unicos
  * Retorna lista de contratados únicos para o filtro
  */
 router.get("/contratados-unicos", async (req, res) => {
@@ -520,7 +520,7 @@ router.get("/contratados-unicos", async (req, res) => {
     const contratados = await c.distinct("contratado", { ...filter, contratado: { $ne: null, $ne: "" } });
     res.json({ ok: true, contratados: contratados.sort(), city: city });
   } catch (e) {
-    console.error("YCompany contratados error:", e);
+    console.error("ICompany contratados error:", e);
     res.status(500).json({ ok: false, error: "Erro ao buscar contratados" });
   }
 });

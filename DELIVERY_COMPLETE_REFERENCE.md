@@ -76,7 +76,7 @@ const DeliverySchema = new mongoose.Schema({
 - **Responsabilidades:**
   - Cria delivery (linha 72)
   - Sincroniza com ProgramacaoEntrega (linha 91-104)
-  - Sincroniza com Ycompany (linha 110-147)
+  - Sincroniza com Icompany (linha 110-147)
 - **Response:** `{ delivery }`
 - **Errors:** 400 se sem deliveryNumber
 
@@ -109,7 +109,7 @@ const DeliverySchema = new mongoose.Schema({
   1. Busca delivery (linha 220)
   2. Atualiza campos (linha 223-340)
   3. Sincroniza com ProgramacaoEntrega (linha 233-260)
-  4. Sincroniza com Ycompany (linha 270-320)
+  4. Sincroniza com Icompany (linha 270-320)
 - **Response:** `{ delivery: {...} }`
 - **Errors:** 404 se não encontrada
 
@@ -325,7 +325,7 @@ Delivery.find({ $or: [{ userName: { $in: ['', null] } }, { userName: 'Unknown' }
 Delivery.updateOne({ _id }, { $set: { userName: newUserName } })
 ```
 
-**sync-delivery-dates-to-ycompany.js:**
+**sync-delivery-dates-to-icompany.js:**
 ```javascript
 Delivery.findOneAndUpdate(...)
 ```
@@ -408,10 +408,10 @@ function normalizeDeliveryForResponse(delivery) {
 - Linhas 165-220: Combina entregas com programações
 - Linhas 1436-1462: Sincronização de linkedDeliveryId
 
-### 2. Delivery ↔ Ycompany
+### 2. Delivery ↔ Icompany
 
 **Campos de Conexão:**
-- `linkedYcompanyId` em Delivery
+- `linkedIcompanyId` em Delivery
 - Múltiplos campos de match: processo, numero, containerNumero, geomaritima, codigo
 
 **Sincronização Automática:**
@@ -421,8 +421,8 @@ function normalizeDeliveryForResponse(delivery) {
 **Na Criação (POST /deliveries):**
 - Linhas 110-147:
   ```javascript
-  // Busca Ycompany por múltiplos campos
-  const ycompanyRecord = await Ycompany.findOne({
+  // Busca Icompany por múltiplos campos
+  const icompanyRecord = await Icompany.findOne({
     $or: [
       { processo: new RegExp(`^${deliveryNum}$`, 'i') },
       { numero: new RegExp(`^${deliveryNum}$`, 'i') },
@@ -433,10 +433,10 @@ function normalizeDeliveryForResponse(delivery) {
     ]
   });
   
-  if (ycompanyRecord) {
-    // Mapear campos de delivery para Ycompany
-    const ycompanyUpdates = {...};
-    await Ycompany.updateOne({ _id: ycompanyRecord._id }, ycompanyUpdates);
+  if (icompanyRecord) {
+    // Mapear campos de delivery para Icompany
+    const icompanyUpdates = {...};
+    await Icompany.updateOne({ _id: icompanyRecord._id }, icompanyUpdates);
   }
   ```
 
@@ -486,11 +486,11 @@ MONGODB_URI='...' node scripts/fix_delivery_userName.js
 ### 3. migrate_container_returned.js
 **Descrição:** Migra campo de devolução de container
 
-### 4. sync-delivery-dates-to-ycompany.js
-**Descrição:** Sincroniza datas de delivery com Ycompany
+### 4. sync-delivery-dates-to-icompany.js
+**Descrição:** Sincroniza datas de delivery com Icompany
 **Operações:**
-- L26: `Ycompany.findById(delivery.linkedYcompanyId)`
-- L61: `Delivery.findByIdAndUpdate(..., { linkedYcompanyId })`
+- L26: `Icompany.findById(delivery.linkedIcompanyId)`
+- L61: `Delivery.findByIdAndUpdate(..., { linkedIcompanyId })`
 
 ### 5. fix_driverId.js
 **Descrição:** Corrige relacionamento userId com Driver
@@ -498,7 +498,7 @@ MONGODB_URI='...' node scripts/fix_delivery_userName.js
 ### Outros Scripts Relacionados:
 - **cleanOrphans.js** - Limpa orphaned deliveries
 - **analyzeUploads.js** - Analisa estrutura de uploads
-- **checkYcompany.js** - Verifica sincronização Ycompany
+- **checkIcompany.js** - Verifica sincronização Icompany
 - **validate-documents.js** - Valida documentos
 
 ---
@@ -623,7 +623,7 @@ const deliveryService = {
          │                  │                  │
          │ linkedDeliveryId │ linkedYcompanyId │ userId
          ↓                  ↓                  ↓
-    ProgramacaoEntrega  Ycompany         User/Driver
+    ProgrmaacaoEntrega  Icompany         User/Driver
     (status, container) (processo)      (fullName)
 ```
 
@@ -665,7 +665,7 @@ const deliveryService = {
 |--------|-----------|-----|
 | migrate_to_mongo.js | backend/scripts/ | JSON → MongoDB |
 | fix_delivery_userName.js | backend/scripts/ | Corrige userName |
-| sync-delivery-dates-to-ycompany.js | backend/scripts/ | Sincroniza datas |
+| sync-delivery-dates-to-icompany.js | backend/scripts/ | Sincroniza datas |
 | fix_driverId.js | backend/scripts/ | Corrige userId |
 
 ---
