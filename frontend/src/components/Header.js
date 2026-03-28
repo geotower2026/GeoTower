@@ -3,7 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../services/authContext';
 import {
   FaSignOutAlt, FaUser, FaBars, FaHome,
-  FaTimes, FaTruck, FaChevronRight, FaCircle
+  FaTimes, FaTruck, FaChevronRight, FaCircle,
+  FaUserTie, FaUserShield, FaGlobe
 } from 'react-icons/fa';
 import { MdDashboard, MdSettings } from 'react-icons/md';
 
@@ -16,6 +17,24 @@ const routeLabel = {
   '/home': 'Início',
   '/profile': 'Perfil',
   '/dashboard': 'Dashboard',
+};
+
+/* ─── helpers ─── */
+
+const getRoleIcon = (role) => {
+  switch (role) {
+    case 'manager':
+      return <FaUserTie className="text-white/70 text-[10px]" />;
+    case 'admin':
+      return <FaUserShield className="text-white/70 text-[10px]" />;
+    case 'geomar':
+      return <FaGlobe className="text-white/70 text-[10px]" />;
+    case 'gestor_contratado':
+      return <FaUserShield className="text-white/70 text-[10px]" />;
+    case 'driver':
+    default:
+      return <FaTruck className="text-white/70 text-[10px]" />;
+  }
 };
 
 /* ─── sub-components ─── */
@@ -176,7 +195,7 @@ const Drawer = ({ open, onClose, user, onLogout, navigate }) => {
           {user?.role && (
             <div className="relative z-10 mt-4 inline-flex items-center gap-1.5
               bg-white/15 border border-white/20 rounded-full px-3 py-1">
-              <FaTruck className="text-white/70 text-[10px]" />
+              {getRoleIcon(user.role)}
               <span className="text-white/90 text-xs font-semibold capitalize">
                 {user.role}
               </span>
