@@ -1,11 +1,11 @@
 const http = require('http');
 
-console.log('Testando endpoint /api/ycompany/compare...\n');
+console.log('Testando endpoint /api/icompany/compare...\n');
 
 const req = http.request({
   hostname: 'localhost',
   port: 5000,
-  path: '/api/ycompany/compare',
+  path: '/api/icompany/compare',
   method: 'GET',
   timeout: 5000
 }, (res) => {

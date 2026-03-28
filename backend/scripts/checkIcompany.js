@@ -4,7 +4,7 @@ const path = require('path');
 
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
-const Ycompany = require('../src/models/Ycompany');
+const Icompany = require('../src/models/Icompany');
 
 const uri = process.env.MONGODB_URI || 'MONGODB_URI_REMOVED';
 

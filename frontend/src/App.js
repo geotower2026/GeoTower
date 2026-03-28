@@ -11,7 +11,7 @@ import PoliticaPrivacidade from './pages/PoliticaPrivacidade';
 import TermosUso from './pages/TermosUso';
 import Suporte from './pages/Suporte';
 import BaseDadosGeral from './pages/BaseDadosGeral';
-import Ycompany from './pages/Ycompany';
+import Icompany from './pages/Icompany';
 import RelatorioContratado from './pages/RelatorioContratado';
 
 // Pages

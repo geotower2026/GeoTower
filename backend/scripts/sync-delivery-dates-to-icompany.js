@@ -1,7 +1,7 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const Delivery = require('../src/models/Delivery');
-const Ycompany = require('../src/models/Ycompany');
+const Icompany = require('../src/models/Icompany');
 const { connectIfNeeded } = require('../src/db/mongo');
 
 async function syncDeliveryDatesToYcompany() {

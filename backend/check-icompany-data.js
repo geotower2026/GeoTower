@@ -8,7 +8,7 @@ mongoose.connect(mongoUri)
   .then(async () => {
     console.log('✅ Conectado ao MongoDB!');
     
-    const Ycompany = require('./src/models/Ycompany');
+    const Icompany = require('./src/models/Icompany');
     
     try {
       const totalCount = await Ycompany.countDocuments({});

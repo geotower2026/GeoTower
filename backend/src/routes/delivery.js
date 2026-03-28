@@ -298,15 +298,15 @@ router.put("/:id", auth, async (req, res) => {
       }
     }
 
-    // Sincronizar com Ycompany se aplicável
+    // Sincronizar com Icompany se aplicável
     try {
-      const Ycompany = require('../models/Ycompany');
+      const Icompany = require('../models/Icompany');
       const deliveryNum = String(delivery.deliveryNumber || '').trim().toUpperCase();
-      let ycompanyRecord = null;
+      let icompanyRecord = null;
 
       if (deliveryNum) {
         // Buscar por processo ou container
-        ycompanyRecord = await Ycompany.findOne({
+        icompanyRecord = await Icompany.findOne({
           $or: [
             { processo: new RegExp(`^${deliveryNum}$`, 'i') },
             { numero: new RegExp(`^${deliveryNum}$`, 'i') },
@@ -315,43 +315,43 @@ router.put("/:id", auth, async (req, res) => {
         });
       }
 
-      if (ycompanyRecord) {
-        const ycompanyUpdates = {};
+      if (icompanyRecord) {
+        const icompanyUpdates = {};
 
-        // Mapear campos do delivery para Ycompany
-        if (req.body.status === 'A_CAMINHO_DO_CLIENTE' && !ycompanyRecord.dtInicioRota) {
-          ycompanyUpdates.dtInicioRota = new Date();
+        // Mapear campos do delivery para Icompany
+        if (req.body.status === 'A_CAMINHO_DO_CLIENTE' && !icompanyRecord.dtInicioRota) {
+          icompanyUpdates.dtInicioRota = new Date();
         }
-        if (req.body.arrivedAt !== undefined && req.body.arrivedAt && !ycompanyRecord.arrivedAt) {
-          ycompanyUpdates.arrivedAt = new Date(req.body.arrivedAt);
+        if (req.body.arrivedAt !== undefined && req.body.arrivedAt && !icompanyRecord.arrivedAt) {
+          icompanyUpdates.arrivedAt = new Date(req.body.arrivedAt);
         }
-        if (req.body.desovaStartAt !== undefined && req.body.desovaStartAt && !ycompanyRecord.dtInicioDescarga) {
+        if (req.body.desovaStartAt !== undefined && req.body.desovaStartAt && !icompanyRecord.dtInicioDescarga) {
           const desovaDate = new Date(req.body.desovaStartAt);
-          ycompanyUpdates.dtInicioDescarga = desovaDate;
+          icompanyUpdates.dtInicioDescarga = desovaDate;
           // Extrair hora no formato HH:MM:SS
-          ycompanyUpdates.hrInicioDescarga = desovaDate.toLocaleTimeString('pt-BR', { hour12: false });
+          icompanyUpdates.hrInicioDescarga = desovaDate.toLocaleTimeString('pt-BR', { hour12: false });
         }
-        if (req.body.desovaEndAt !== undefined && req.body.desovaEndAt && !ycompanyRecord.dtFimDescarga) {
-          ycompanyUpdates.dtFimDescarga = new Date(req.body.desovaEndAt);
+        if (req.body.desovaEndAt !== undefined && req.body.desovaEndAt && !icompanyRecord.dtFimDescarga) {
+          icompanyUpdates.dtFimDescarga = new Date(req.body.desovaEndAt);
         }
-        if (req.body.containerMontadoAt !== undefined && req.body.containerMontadoAt && !ycompanyRecord.dtRetiraPD) {
-          ycompanyUpdates.dtRetiraPD = new Date(req.body.containerMontadoAt);
+        if (req.body.containerMontadoAt !== undefined && req.body.containerMontadoAt && !icompanyRecord.dtRetiraPD) {
+          icompanyUpdates.dtRetiraPD = new Date(req.body.containerMontadoAt);
         }
-        if (req.body.horarioDevolucaoVazio !== undefined && req.body.horarioDevolucaoVazio && !ycompanyRecord.dtDevolucaoCNTR) {
-          ycompanyUpdates.dtDevolucaoCNTR = new Date(req.body.horarioDevolucaoVazio);
+        if (req.body.horarioDevolucaoVazio !== undefined && req.body.horarioDevolucaoVazio && !icompanyRecord.dtDevolucaoCNTR) {
+          icompanyUpdates.dtDevolucaoCNTR = new Date(req.body.horarioDevolucaoVazio);
         }
         // Verificar se observations contém CONTAINER_VAZIO_DEVOLVIDO
-        if (req.body.observations !== undefined && req.body.observations && req.body.observations.includes('(CONTAINER_VAZIO_DEVOLVIDO)') && !ycompanyRecord.dtDevolucaoCNTR) {
-          ycompanyUpdates.dtDevolucaoCNTR = new Date();
+        if (req.body.observations !== undefined && req.body.observations && req.body.observations.includes('(CONTAINER_VAZIO_DEVOLVIDO)') && !icompanyRecord.dtDevolucaoCNTR) {
+          icompanyUpdates.dtDevolucaoCNTR = new Date();
         }
 
-        if (Object.keys(ycompanyUpdates).length > 0) {
-          await Ycompany.findByIdAndUpdate(ycompanyRecord._id, ycompanyUpdates);
-          console.log('[DELIVERY] sincronizado campos do Ycompany', ycompanyRecord._id, Object.keys(ycompanyUpdates));
+        if (Object.keys(icompanyUpdates).length > 0) {
+          await Icompany.findByIdAndUpdate(icompanyRecord._id, icompanyUpdates);
+          console.log('[DELIVERY] sincronizado campos do Icompany', icompanyRecord._id, Object.keys(icompanyUpdates));
         }
       }
     } catch (syncErr) {
-      console.warn('[DELIVERY] erro sync Ycompany:', syncErr.message || syncErr);
+      console.warn('[DELIVERY] erro sync Icompany:', syncErr.message || syncErr);
     }
 
     if (req.body.arrivedAt !== undefined) updates.arrivedAt = req.body.arrivedAt;

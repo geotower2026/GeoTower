@@ -408,7 +408,7 @@ router.patch("/entregas/:processo", async (req, res) => {
 });
 
 /**
- * PATCH /api/ycompany/entregas/:processo/atribuir-motorista
+ * PATCH /api/icompany/entregas/:processo/atribuir-motorista
  * Admin define motorista para a entrega
  * body: { motoristaId, motoristaNome }
  */

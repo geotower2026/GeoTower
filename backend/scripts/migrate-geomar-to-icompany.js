@@ -3,7 +3,7 @@ Migration script: migrates maritime data from 'programacaoentregas' collection t
 Usage: node scripts/migrate-geomar-to-ycompany.js --dry-run
 */
 const { MongoClient } = require('mongodb');
-const Ycompany = require('../src/models/Ycompany');
+const Icompany = require('../src/models/Icompany');
 const { connectIfNeeded } = require('../src/db/mongo');
 
 async function main() {
