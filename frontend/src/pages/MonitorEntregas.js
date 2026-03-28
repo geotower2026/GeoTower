@@ -1010,6 +1010,27 @@ const MonitorEntregas = () => {
     return () => document.head.removeChild(el3);
   }, [themeConfig]);
 
+  useEffect(() => {
+    const el4 = document.createElement('style');
+    el4.id = 'theme-color-overrides';
+    el4.textContent = `
+      .theme-light, .theme-light * { color: #1a1a1a !important; }
+      .theme-company, .theme-company * { color: #1a0033 !important; }
+      .theme-sunset, .theme-sunset * { color: #4b1e3b !important; }
+      .theme-ocean, .theme-ocean * { color: #00363a !important; }
+      .theme-dark, .theme-dark * { color: #ffffff !important; }
+
+      /* preserve pure black theme behavior */
+      .theme-black, .theme-black * { color: inherit !important; background: inherit !important; }
+
+      .theme-light body, .theme-company body, .theme-sunset body, .theme-ocean body, .theme-dark body { font-family: 'Inter', sans-serif !important; }
+
+      .theme-light .monitor-modal, .theme-company .monitor-modal, .theme-sunset .monitor-modal, .theme-ocean .monitor-modal { color: inherit !important; }
+    `;
+    document.head.appendChild(el4);
+    return () => document.head.removeChild(el4);
+  }, [theme]);
+
   // Load icompanyVerified status from localStorage on mount
   useEffect(() => {
     try {
