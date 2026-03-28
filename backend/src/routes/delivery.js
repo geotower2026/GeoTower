@@ -896,6 +896,20 @@ router.delete("/:id", auth, async (req, res) => {
       console.warn('⚠️ Error while removing delivery files:', err.message || err);
     }
 
+    // CASCADE DELETE: Clear link from programação if exists
+    try {
+      const ProgramacaoEntrega = require("../models/ProgramacaoEntrega");
+      if (delivery.linkedProgramacaoId) {
+        await ProgramacaoEntrega.findByIdAndUpdate(
+          delivery.linkedProgramacaoId,
+          { linkedDeliveryId: null }
+        );
+        console.log('🗑️ Cleared programação link for driver delivery', req.params.id);
+      }
+    } catch (cascadeErr) {
+      console.warn('⚠️ Cascade cleanup error (driver delete):', cascadeErr.message);
+    }
+
     await db.deleteOne("deliveries", { _id: req.params.id });
     return res.json({ message: "Entrega deletada" });
   } catch (err) {

@@ -900,6 +900,18 @@ router.delete("/deliveries/:id", auth, onlyAdmin, async (req, res) => {
       console.warn('⚠️ Error while removing files for delivery (admin):', err.message || err);
     }
 
+    // CASCADE DELETE: Clear link from programação if exists
+    try {
+      const ProgramacaoEntrega = require("../models/ProgramacaoEntrega");
+      await ProgramacaoEntrega.findByIdAndUpdate(
+        { linkedDeliveryId: id },
+        { linkedDeliveryId: null }
+      );
+      console.log('[DELIVERY] 🗑️ Cleared programação link for delivery', id);
+    } catch (cascadeErr) {
+      console.warn('[DELIVERY] ⚠️ Cascade cleanup error:', cascadeErr.message);
+    }
+
     // Deleta entrega do banco
     const deleted = await db.deleteOne("deliveries", { _id: id });
     if (!deleted) {
@@ -1767,6 +1779,17 @@ router.delete("/programacoes/:id", auth, managerOnly, async (req, res) => {
     } else if (city === 'itajai') {
       if (programacao.origem && ['MANAUS', 'MANAUS - COELTA BALY'].includes(programacao.origem)) {
         return res.status(403).json({ message: 'Acesso negado - programação de outra cidade' });
+      }
+    }
+
+    // CASCADE DELETE: Remove linked delivery if exists
+    if (programacao.linkedDeliveryId) {
+      try {
+        const Delivery = require("../models/Delivery");
+        await Delivery.findByIdAndDelete(programacao.linkedDeliveryId);
+        console.log('[PROGRAMACAO] 🗑️ Cascaded deletion: Delivery removed', { _id: programacao.linkedDeliveryId });
+      } catch (cascadeErr) {
+        console.warn('[PROGRAMACAO] ⚠️ Cascade delete error for delivery:', cascadeErr.message);
       }
     }
 

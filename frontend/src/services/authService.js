@@ -62,9 +62,6 @@ export const adminService = {
   updateProgramacao: (id, data) => api.put(`/admin/programacoes/${id}`, data),
   deleteProgramacao: (id) => api.delete(`/admin/programacoes/${id}`),
   createProgramacao: (data) => api.post('/admin/programacoes', data),
-  createProgramacao: (data) => api.post('/admin/programacoes', data),
-  updateProgramacao: (id, data) => api.put(`/admin/programacoes/${id}`, data),
-  deleteProgramacao: (id) => api.delete(`/admin/programacoes/${id}`),
   importProgramacoes: (data) => api.post('/admin/programacoes/import', data),
   syncProgramacoesIcompany: () => api.get('/admin/programacoes/sync/icompany'),
   // Reconciliação
