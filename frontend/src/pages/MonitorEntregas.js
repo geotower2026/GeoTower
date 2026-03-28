@@ -607,10 +607,10 @@ const SettingsPanel = ({
       />
 
       <div
-        className={`fixed right-0 top-0 h-full w-full max-w-sm z-50 flex flex-col shadow-2xl ${open ? 'panel-enter' : 'panel-exit'}`}
+        className={`monitor-settings-panel fixed right-0 top-0 h-full w-full max-w-sm z-50 flex flex-col shadow-2xl ${open ? 'panel-enter' : 'panel-exit'}`}
         style={{ backgroundColor: '#13131f', borderLeft: '1px solid rgba(255,255,255,0.08)' }}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 bg-gradient-to-r from-purple-900/40 to-indigo-900/40 flex-shrink-0">
+        <div className="monitor-settings-header flex items-center justify-between px-5 py-4 border-b border-white/10 bg-gradient-to-r from-purple-900/40 to-indigo-900/40 flex-shrink-0">
           <div className="flex items-center gap-2">
             <span className="w-7 h-7 rounded-lg bg-purple-600/30 flex items-center justify-center">
               <FaSlidersH className="text-purple-400 text-sm" />
@@ -938,6 +938,7 @@ const MonitorEntregas = () => {
 
   const { theme, setTheme } = useTheme();
   const themeConfig = THEMES[theme] || THEMES.dark;
+  const themeClassName = theme === 'black' ? 'theme-black' : `theme-${theme}`;
   const userName = user?.name || 'Usuário Desconhecido';
 
   const statusMapToBackend = {
@@ -968,97 +969,397 @@ const MonitorEntregas = () => {
     const el = document.createElement('style');
     el.id = 'theme-overrides';
     el.textContent = `
-      .theme-light { background-color:#f5f7fa!important; color:#1a1a1a!important; }
-      .theme-light * { color:#1a1a1a!important; }
-      .theme-light .bg-white\/5{background-color:rgba(245,247,250,0.95)!important}
-      .theme-light .border-white\/10{border-color:rgba(75,85,99,0.2)!important}
-      .theme-light select,.theme-light input,.theme-light textarea{background-color:#ffffff!important;color:#1a1a1a!important;border-color:#d1d5db!important}
+      .theme-light {
+        --monitor-bg: #f3f7ff;
+        --monitor-surface: rgba(255,255,255,0.96);
+        --monitor-surface-soft: rgba(255,255,255,0.88);
+        --monitor-surface-strong: #ffffff;
+        --monitor-text: #1f2937;
+        --monitor-text-soft: #475569;
+        --monitor-text-muted: #64748b;
+        --monitor-border: rgba(148,163,184,0.26);
+        --monitor-border-strong: rgba(100,116,139,0.34);
+        --monitor-hover: rgba(59,130,246,0.10);
+        --monitor-modal-bg: #ffffff;
+        --monitor-header-bg: rgba(255,255,255,0.92);
+        --monitor-panel-bg: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+        --monitor-shadow: 0 18px 45px rgba(15,23,42,0.08);
+      }
 
-      .theme-company { background-color:#f3e5f5!important; color:#1a0033!important; }
-      .theme-company * { color:#1a0033!important; }
-      .theme-company .bg-white\/5{background-color:rgba(243,229,245,0.95)!important}
-      .theme-company .border-white\/10{border-color:rgba(107,33,168,0.3)!important}
-      .theme-company select,.theme-company input,.theme-company textarea{background-color:#fff6ff!important;color:#1a0033!important;border-color:#b78ada!important}
+      .theme-company {
+        --monitor-bg: #f4f3ff;
+        --monitor-surface: rgba(255,255,255,0.95);
+        --monitor-surface-soft: rgba(250,248,255,0.90);
+        --monitor-surface-strong: #ffffff;
+        --monitor-text: #261f4a;
+        --monitor-text-soft: #5b5678;
+        --monitor-text-muted: #7a7397;
+        --monitor-border: rgba(139,124,255,0.24);
+        --monitor-border-strong: rgba(124,109,235,0.38);
+        --monitor-hover: rgba(109,94,252,0.10);
+        --monitor-modal-bg: #ffffff;
+        --monitor-header-bg: rgba(247,244,255,0.94);
+        --monitor-panel-bg: linear-gradient(180deg, #ffffff 0%, #f7f4ff 100%);
+        --monitor-shadow: 0 18px 50px rgba(76,29,149,0.10);
+      }
 
-      .theme-sunset { background-color:#fff5f7!important; color:#4b1e3b!important; }
-      .theme-sunset * { color:#4b1e3b!important; }
-      .theme-sunset .bg-white\/5{background-color:rgba(255,245,247,0.95)!important}
-      .theme-sunset .border-white\/10{border-color:rgba(159,42,102,0.3)!important}
-      .theme-sunset select,.theme-sunset input,.theme-sunset textarea{background-color:#fff7f9!important;color:#4b1e3b!important;border-color:#f9acc6!important}
+      .theme-sunset {
+        --monitor-bg: #fff7f2;
+        --monitor-surface: rgba(255,255,255,0.96);
+        --monitor-surface-soft: rgba(255,250,247,0.90);
+        --monitor-surface-strong: #fffdfb;
+        --monitor-text: #4a2b1f;
+        --monitor-text-soft: #7c5a4a;
+        --monitor-text-muted: #9a7564;
+        --monitor-border: rgba(251,146,60,0.24);
+        --monitor-border-strong: rgba(249,115,22,0.34);
+        --monitor-hover: rgba(249,115,22,0.10);
+        --monitor-modal-bg: #fffdfb;
+        --monitor-header-bg: rgba(255,249,245,0.94);
+        --monitor-panel-bg: linear-gradient(180deg, #fffdfb 0%, #fff4eb 100%);
+        --monitor-shadow: 0 18px 50px rgba(124,45,18,0.10);
+      }
 
-      .theme-ocean { background-color:#e0f7fa!important; color:#00363a!important; }
-      .theme-ocean * { color:#00363a!important; }
-      .theme-ocean .bg-white\/5{background-color:rgba(224,247,250,0.95)!important}
-      .theme-ocean .border-white\/10{border-color:rgba(0,118,132,0.3)!important}
-      .theme-ocean select,.theme-ocean input,.theme-ocean textarea{background-color:#ecfdff!important;color:#00363a!important;border-color:#70d8e4!important}
+      .theme-ocean {
+        --monitor-bg: #eefbff;
+        --monitor-surface: rgba(255,255,255,0.96);
+        --monitor-surface-soft: rgba(245,253,255,0.90);
+        --monitor-surface-strong: #ffffff;
+        --monitor-text: #12384a;
+        --monitor-text-soft: #416273;
+        --monitor-text-muted: #5f8090;
+        --monitor-border: rgba(6,182,212,0.22);
+        --monitor-border-strong: rgba(14,165,233,0.34);
+        --monitor-hover: rgba(8,145,178,0.10);
+        --monitor-modal-bg: #ffffff;
+        --monitor-header-bg: rgba(244,252,255,0.94);
+        --monitor-panel-bg: linear-gradient(180deg, #ffffff 0%, #eefbff 100%);
+        --monitor-shadow: 0 18px 50px rgba(14,116,144,0.10);
+      }
 
-      .theme-dark { background-color:#0f0f1a!important;color:#ffffff!important; }
-      .theme-dark * { color:#ffffff!important; }
-      .theme-dark .text-gray-300{color:#d1d5db!important}
-      .theme-dark .text-gray-400{color:#cbd5e1!important}
+      .theme-dark {
+        --monitor-bg: #0f172a;
+        --monitor-surface: rgba(15,23,42,0.88);
+        --monitor-surface-soft: rgba(15,23,42,0.72);
+        --monitor-surface-strong: #111827;
+        --monitor-text: #f8fafc;
+        --monitor-text-soft: #cbd5e1;
+        --monitor-text-muted: #94a3b8;
+        --monitor-border: rgba(148,163,184,0.22);
+        --monitor-border-strong: rgba(148,163,184,0.30);
+        --monitor-hover: rgba(99,102,241,0.16);
+        --monitor-modal-bg: #111827;
+        --monitor-header-bg: rgba(15,23,42,0.92);
+        --monitor-panel-bg: linear-gradient(180deg, #111827 0%, #0f172a 100%);
+        --monitor-shadow: 0 24px 60px rgba(2,6,23,0.45);
+      }
+
+      .theme-light,
+      .theme-company,
+      .theme-sunset,
+      .theme-ocean,
+      .theme-dark {
+        background-color: var(--monitor-bg) !important;
+        color: var(--monitor-text) !important;
+      }
+
+      .theme-light body,
+      .theme-company body,
+      .theme-sunset body,
+      .theme-ocean body,
+      .theme-dark body {
+        background: var(--monitor-bg) !important;
+        color: var(--monitor-text) !important;
+        font-family: 'Inter', sans-serif !important;
+      }
+
+      .theme-light .monitor-page-header,
+      .theme-company .monitor-page-header,
+      .theme-sunset .monitor-page-header,
+      .theme-ocean .monitor-page-header,
+      .theme-dark .monitor-page-header {
+        background: var(--monitor-header-bg) !important;
+        border-color: var(--monitor-border) !important;
+        box-shadow: 0 8px 30px rgba(15,23,42,0.06);
+      }
+
+      .theme-light .monitor-page-title,
+      .theme-company .monitor-page-title,
+      .theme-sunset .monitor-page-title,
+      .theme-ocean .monitor-page-title,
+      .theme-dark .monitor-page-title,
+      .theme-light .text-white,
+      .theme-company .text-white,
+      .theme-sunset .text-white,
+      .theme-ocean .text-white,
+      .theme-dark .text-white,
+      .theme-light .text-gray-100,
+      .theme-company .text-gray-100,
+      .theme-sunset .text-gray-100,
+      .theme-ocean .text-gray-100,
+      .theme-dark .text-gray-100,
+      .theme-light .text-gray-200,
+      .theme-company .text-gray-200,
+      .theme-sunset .text-gray-200,
+      .theme-ocean .text-gray-200,
+      .theme-dark .text-gray-200 {
+        color: var(--monitor-text) !important;
+      }
+
+      .theme-light .text-gray-300,
+      .theme-company .text-gray-300,
+      .theme-sunset .text-gray-300,
+      .theme-ocean .text-gray-300,
+      .theme-dark .text-gray-300,
+      .theme-light .text-gray-400,
+      .theme-company .text-gray-400,
+      .theme-sunset .text-gray-400,
+      .theme-ocean .text-gray-400,
+      .theme-dark .text-gray-400,
+      .theme-light .text-gray-500,
+      .theme-company .text-gray-500,
+      .theme-sunset .text-gray-500,
+      .theme-ocean .text-gray-500,
+      .theme-dark .text-gray-500 {
+        color: var(--monitor-text-soft) !important;
+      }
+
+      .theme-light .text-gray-600,
+      .theme-company .text-gray-600,
+      .theme-sunset .text-gray-600,
+      .theme-ocean .text-gray-600,
+      .theme-dark .text-gray-600,
+      .theme-light .monitor-subtle-caption,
+      .theme-company .monitor-subtle-caption,
+      .theme-sunset .monitor-subtle-caption,
+      .theme-ocean .monitor-subtle-caption,
+      .theme-dark .monitor-subtle-caption {
+        color: var(--monitor-text-muted) !important;
+      }
+
+      .theme-light .placeholder-gray-600::placeholder,
+      .theme-company .placeholder-gray-600::placeholder,
+      .theme-sunset .placeholder-gray-600::placeholder,
+      .theme-ocean .placeholder-gray-600::placeholder,
+      .theme-dark .placeholder-gray-600::placeholder {
+        color: var(--monitor-text-muted) !important;
+        opacity: 0.9;
+      }
+
+      .theme-light .bg-white\/5,
+      .theme-company .bg-white\/5,
+      .theme-sunset .bg-white\/5,
+      .theme-ocean .bg-white\/5,
+      .theme-dark .bg-white\/5,
+      .theme-light .bg-white\/\[0\.02\],
+      .theme-company .bg-white\/\[0\.02\],
+      .theme-sunset .bg-white\/\[0\.02\],
+      .theme-ocean .bg-white\/\[0\.02\],
+      .theme-dark .bg-white\/\[0\.02\],
+      .theme-light .bg-white\/\[0\.03\],
+      .theme-company .bg-white\/\[0\.03\],
+      .theme-sunset .bg-white\/\[0\.03\],
+      .theme-ocean .bg-white\/\[0\.03\],
+      .theme-dark .bg-white\/\[0\.03\],
+      .theme-light .bg-white\/\[0\.04\],
+      .theme-company .bg-white\/\[0\.04\],
+      .theme-sunset .bg-white\/\[0\.04\],
+      .theme-ocean .bg-white\/\[0\.04\],
+      .theme-dark .bg-white\/\[0\.04\],
+      .theme-light .bg-white\/\[0\.015\],
+      .theme-company .bg-white\/\[0\.015\],
+      .theme-sunset .bg-white\/\[0\.015\],
+      .theme-ocean .bg-white\/\[0\.015\],
+      .theme-dark .bg-white\/\[0\.015\],
+      .theme-light .bg-black\/20,
+      .theme-company .bg-black\/20,
+      .theme-sunset .bg-black\/20,
+      .theme-ocean .bg-black\/20,
+      .theme-dark .bg-black\/20,
+      .theme-light .bg-gray-950\/50,
+      .theme-company .bg-gray-950\/50,
+      .theme-sunset .bg-gray-950\/50,
+      .theme-ocean .bg-gray-950\/50,
+      .theme-dark .bg-gray-950\/50,
+      .theme-light .bg-\[\#1a1a2e\],
+      .theme-company .bg-\[\#1a1a2e\],
+      .theme-sunset .bg-\[\#1a1a2e\],
+      .theme-ocean .bg-\[\#1a1a2e\],
+      .theme-dark .bg-\[\#1a1a2e\] {
+        background: var(--monitor-panel-bg) !important;
+      }
+
+      .theme-light .border-white\/10,
+      .theme-company .border-white\/10,
+      .theme-sunset .border-white\/10,
+      .theme-ocean .border-white\/10,
+      .theme-dark .border-white\/10,
+      .theme-light .border-white\/8,
+      .theme-company .border-white\/8,
+      .theme-sunset .border-white\/8,
+      .theme-ocean .border-white\/8,
+      .theme-dark .border-white\/8,
+      .theme-light .border-white\/5,
+      .theme-company .border-white\/5,
+      .theme-sunset .border-white\/5,
+      .theme-ocean .border-white\/5,
+      .theme-dark .border-white\/5,
+      .theme-light .border-white\/\[0\.06\],
+      .theme-company .border-white\/\[0\.06\],
+      .theme-sunset .border-white\/\[0\.06\],
+      .theme-ocean .border-white\/\[0\.06\],
+      .theme-dark .border-white\/\[0\.06\] {
+        border-color: var(--monitor-border) !important;
+      }
+
+      .theme-light .hover\:bg-white\/10:hover,
+      .theme-company .hover\:bg-white\/10:hover,
+      .theme-sunset .hover\:bg-white\/10:hover,
+      .theme-ocean .hover\:bg-white\/10:hover,
+      .theme-dark .hover\:bg-white\/10:hover,
+      .theme-light .hover\:bg-white\/20:hover,
+      .theme-company .hover\:bg-white\/20:hover,
+      .theme-sunset .hover\:bg-white\/20:hover,
+      .theme-ocean .hover\:bg-white\/20:hover,
+      .theme-dark .hover\:bg-white\/20:hover,
+      .theme-light .hover\:bg-white\/8:hover,
+      .theme-company .hover\:bg-white\/8:hover,
+      .theme-sunset .hover\:bg-white\/8:hover,
+      .theme-ocean .hover\:bg-white\/8:hover,
+      .theme-dark .hover\:bg-white\/8:hover,
+      .theme-light .hover\:bg-white\/\[0\.04\]:hover,
+      .theme-company .hover\:bg-white\/\[0\.04\]:hover,
+      .theme-sunset .hover\:bg-white\/\[0\.04\]:hover,
+      .theme-ocean .hover\:bg-white\/\[0\.04\]:hover,
+      .theme-dark .hover\:bg-white\/\[0\.04\]:hover {
+        background-color: var(--monitor-hover) !important;
+      }
+
+      .theme-light .hover\:text-white:hover,
+      .theme-company .hover\:text-white:hover,
+      .theme-sunset .hover\:text-white:hover,
+      .theme-ocean .hover\:text-white:hover,
+      .theme-dark .hover\:text-white:hover {
+        color: var(--monitor-text) !important;
+      }
+
+      .theme-light select,
+      .theme-company select,
+      .theme-sunset select,
+      .theme-ocean select,
+      .theme-dark select,
+      .theme-light input,
+      .theme-company input,
+      .theme-sunset input,
+      .theme-ocean input,
+      .theme-dark input,
+      .theme-light textarea,
+      .theme-company textarea,
+      .theme-sunset textarea,
+      .theme-ocean textarea,
+      .theme-dark textarea {
+        background-color: var(--monitor-surface-strong) !important;
+        color: var(--monitor-text) !important;
+        border-color: var(--monitor-border-strong) !important;
+      }
+
+      .theme-light option,
+      .theme-company option,
+      .theme-sunset option,
+      .theme-ocean option,
+      .theme-dark option {
+        background-color: var(--monitor-surface-strong) !important;
+        color: var(--monitor-text) !important;
+      }
+
+      .theme-light .monitor-settings-panel,
+      .theme-company .monitor-settings-panel,
+      .theme-sunset .monitor-settings-panel,
+      .theme-ocean .monitor-settings-panel,
+      .theme-dark .monitor-settings-panel,
+      .theme-light .monitor-modal,
+      .theme-company .monitor-modal,
+      .theme-sunset .monitor-modal,
+      .theme-ocean .monitor-modal,
+      .theme-dark .monitor-modal,
+      .theme-light .monitor-table-shell,
+      .theme-company .monitor-table-shell,
+      .theme-sunset .monitor-table-shell,
+      .theme-ocean .monitor-table-shell,
+      .theme-dark .monitor-table-shell,
+      .theme-light .monitor-empty-state,
+      .theme-company .monitor-empty-state,
+      .theme-sunset .monitor-empty-state,
+      .theme-ocean .monitor-empty-state,
+      .theme-dark .monitor-empty-state {
+        background: var(--monitor-panel-bg) !important;
+        color: var(--monitor-text) !important;
+        border-color: var(--monitor-border) !important;
+        box-shadow: var(--monitor-shadow) !important;
+      }
+
+      .theme-light .monitor-settings-header,
+      .theme-company .monitor-settings-header,
+      .theme-sunset .monitor-settings-header,
+      .theme-ocean .monitor-settings-header,
+      .theme-dark .monitor-settings-header,
+      .theme-light .monitor-modal-header,
+      .theme-company .monitor-modal-header,
+      .theme-sunset .monitor-modal-header,
+      .theme-ocean .monitor-modal-header,
+      .theme-dark .monitor-modal-header {
+        background: linear-gradient(90deg, rgba(99,102,241,0.14), rgba(168,85,247,0.12)) !important;
+        border-color: var(--monitor-border) !important;
+      }
+
+      .theme-light .monitor-row,
+      .theme-company .monitor-row,
+      .theme-sunset .monitor-row,
+      .theme-ocean .monitor-row,
+      .theme-dark .monitor-row {
+        background-color: var(--monitor-surface-soft) !important;
+        border-color: var(--monitor-border) !important;
+        color: var(--monitor-text) !important;
+      }
+
+      .theme-light .monitor-row:nth-child(odd),
+      .theme-company .monitor-row:nth-child(odd),
+      .theme-sunset .monitor-row:nth-child(odd),
+      .theme-ocean .monitor-row:nth-child(odd),
+      .theme-dark .monitor-row:nth-child(odd) {
+        background-color: var(--monitor-surface) !important;
+      }
+
+      .theme-light .monitor-row:hover,
+      .theme-company .monitor-row:hover,
+      .theme-sunset .monitor-row:hover,
+      .theme-ocean .monitor-row:hover,
+      .theme-dark .monitor-row:hover {
+        background-color: var(--monitor-hover) !important;
+      }
+
+      .theme-light .monitor-table-head,
+      .theme-company .monitor-table-head,
+      .theme-sunset .monitor-table-head,
+      .theme-ocean .monitor-table-head,
+      .theme-dark .monitor-table-head {
+        color: var(--monitor-text-soft) !important;
+        border-color: var(--monitor-border) !important;
+      }
+
+      .theme-light .scrollbar-track-gray-200,
+      .theme-company .scrollbar-track-gray-200,
+      .theme-sunset .scrollbar-track-gray-200,
+      .theme-ocean .scrollbar-track-gray-200,
+      .theme-dark .scrollbar-track-gray-200 {
+        background-color: rgba(148,163,184,0.12) !important;
+      }
 
       .theme-black, .theme-black * { color: inherit !important; background: inherit !important; }
     `;
     document.head.appendChild(el);
     return () => document.head.removeChild(el);
   }, []);
-
-  // light theme row tweaks
-  useEffect(() => {
-    const el2 = document.createElement('style');
-    el2.id = 'theme-row-overrides';
-    el2.textContent = `
-      .theme-light .bg-white\/[0\.015]{background-color:rgba(0,0,0,0.02)!important}
-      .theme-light .hover\:bg-white\/[0\.04]:hover{background-color:rgba(0,0,0,0.025)!important}
-    `;
-    document.head.appendChild(el2);
-    return () => document.head.removeChild(el2);
-  }, []);
-
-  // dynamic overrides for gray text utilities based on theme
-  useEffect(() => {
-    const el3 = document.createElement('style');
-    el3.id = 'theme-text-overrides';
-    const primary = themeConfig.text || '#000';
-    const secondary = themeConfig.textSecondary || primary;
-    el3.textContent = `
-      .theme-light .text-gray-300, .theme-dark .text-gray-300, .theme-company .text-gray-300, .theme-sunset .text-gray-300, .theme-ocean .text-gray-300,
-      .theme-light .text-gray-400, .theme-dark .text-gray-400, .theme-company .text-gray-400, .theme-sunset .text-gray-400, .theme-ocean .text-gray-400,
-      .theme-light .text-gray-500, .theme-dark .text-gray-500, .theme-company .text-gray-500, .theme-sunset .text-gray-500, .theme-ocean .text-gray-500,
-      .theme-light .text-gray-600, .theme-dark .text-gray-600, .theme-company .text-gray-600, .theme-sunset .text-gray-600, .theme-ocean .text-gray-600 {
-        color: ${secondary}!important;
-      }
-    `;
-    document.head.appendChild(el3);
-    return () => document.head.removeChild(el3);
-  }, [themeConfig]);
-
-  useEffect(() => {
-    const el4 = document.createElement('style');
-    el4.id = 'theme-color-overrides';
-    el4.textContent = `
-      .theme-light, .theme-light * { color: #1a1a1a !important; }
-      .theme-company, .theme-company * { color: #1a0033 !important; }
-      .theme-sunset, .theme-sunset * { color: #4b1e3b !important; }
-      .theme-ocean, .theme-ocean * { color: #00363a !important; }
-      .theme-dark, .theme-dark * { color: #ffffff !important; }
-
-      .theme-light { background-color: #eaf2ff !important; }
-      .theme-company { background-color: #e3ebff !important; }
-      .theme-sunset { background-color: #f8f3ff !important; }
-      .theme-ocean { background-color: #def4ff !important; }
-      .theme-dark { background-color: #0a0d1d !important; }
-
-      /* preserve pure black theme behavior */
-      .theme-black, .theme-black * { color: inherit !important; background: inherit !important; }
-
-      .theme-light body, .theme-company body, .theme-sunset body, .theme-ocean body, .theme-dark body { font-family: 'Inter', sans-serif !important; }
-
-      .theme-light .monitor-modal, .theme-company .monitor-modal, .theme-sunset .monitor-modal, .theme-ocean .monitor-modal { color: inherit !important; }
-    `;
-    document.head.appendChild(el4);
-    return () => document.head.removeChild(el4);
-  }, [theme]);
 
   // Load icompanyVerified status from localStorage on mount
   useEffect(() => {
@@ -1252,7 +1553,7 @@ const MonitorEntregas = () => {
 
     const cleanLabel = (label) => {
       // Keep only printable ASCII (no emojis, no weird chars)
-      return String(label || '').replace(/[^ -]/g, '').trim();
+      return String(label || '').replace(/[^-]/g, '').trim();
     };
 
     const dispStatus = delivery.status === 'FINALIZADO' && allModalDocsComplete(delivery)
@@ -1870,7 +2171,7 @@ const MonitorEntregas = () => {
   return (
     <div
       style={{ backgroundColor: themeConfig.bg, color: themeConfig.text }}
-      className={`min-h-screen font-sans transition-colors duration-300 ${theme === 'light' ? 'theme-light' : ''}`}
+      className={`min-h-screen font-sans transition-colors duration-300 ${themeClassName}`}
     >
       <SettingsPanel
         open={settingsOpen}
@@ -1885,7 +2186,7 @@ const MonitorEntregas = () => {
         setFilters={setFilters}
       />
 
-      <header className={`sticky top-0 z-40 ${themeConfig.header} backdrop-blur-md border-b ${themeConfig.border}`}>
+      <header className={`monitor-page-header sticky top-0 z-40 ${themeConfig.header} backdrop-blur-md border-b ${themeConfig.border}`}>
         <div className="w-full px-4 lg:px-8 h-16 flex flex-wrap items-center gap-2 sm:gap-3">
           <button
             onClick={() => navigate('/home')}
@@ -1899,7 +2200,7 @@ const MonitorEntregas = () => {
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-900/40">
               <MdDashboard className="text-white text-base" />
             </div>
-            <h1 className="text-xs sm:text-base md:text-lg font-black tracking-[0.1em] sm:tracking-[0.15em] uppercase truncate" style={{ color: themeConfig.text }}>
+            <h1 className="monitor-page-title text-xs sm:text-base md:text-lg font-black tracking-[0.1em] sm:tracking-[0.15em] uppercase truncate" style={{ color: themeConfig.text }}>
               Torre de Controle
             </h1>
           </div>
@@ -2006,10 +2307,10 @@ const MonitorEntregas = () => {
         </div>
 
         {displayList.length === 0 ? (
-          <div className="bg-white/5 rounded-2xl border border-white/10 p-12 sm:p-16 text-center">
+          <div className="monitor-empty-state bg-white/5 rounded-2xl border border-white/10 p-12 sm:p-16 text-center">
             <MdLocalShipping className="mx-auto text-5xl text-gray-600 mb-4" />
             <p className="text-gray-400 text-lg font-semibold">Nenhuma entrega encontrada</p>
-            <p className="text-gray-600 text-sm mt-1">Ajuste os filtros ou período nas configurações</p>
+            <p className="monitor-subtle-caption text-gray-600 text-sm mt-1">Ajuste os filtros ou período nas configurações</p>
           </div>
         ) : (
           <div>
@@ -2034,11 +2335,11 @@ const MonitorEntregas = () => {
               ))}
             </div>
 
-            <div className="hidden md:block rounded-2xl border border-white/10 overflow-hidden shadow-2xl bg-black/20">
+            <div className="monitor-table-shell hidden md:block rounded-2xl border border-white/10 overflow-hidden shadow-2xl bg-black/20">
               <div className="overflow-x-auto">
                 <div style={{ width: '100%' }} className="monitor-table min-w-full">
                   <div
-                    className="grid text-[11px] font-bold uppercase tracking-wider bg-white/[0.04] border-b border-white/10"
+                    className="monitor-table-head grid text-[11px] font-bold uppercase tracking-wider bg-white/[0.04] border-b border-white/10"
                     style={{ gridTemplateColumns: colTemplate, color: themeConfig.textSecondary }}
                   >
                     {HEADERS.map((col, ci) => (
@@ -2066,7 +2367,7 @@ const MonitorEntregas = () => {
                         <div
                           key={d._id}
                           ref={(el) => { rowRefs.current[d._id] = el; }}
-                          className={`grid text-xs border-b border-white/[0.06] transition-colors ${i % 2 === 0 ? themeConfig.tableRow : themeConfig.tableRowAlt} ${themeConfig.tableRowHover} ${isRising ? 'row-rise' : ''} ${isGlowing ? 'row-glow' : ''}`}
+                          className={`monitor-row grid text-xs border-b border-white/[0.06] transition-colors ${i % 2 === 0 ? themeConfig.tableRow : themeConfig.tableRowAlt} ${themeConfig.tableRowHover} ${isRising ? 'row-rise' : ''} ${isGlowing ? 'row-glow' : ''}`}
                           style={{ gridTemplateColumns: colTemplate, '--rise-from': '120px' }}
                         >
 
@@ -2187,8 +2488,8 @@ const MonitorEntregas = () => {
 
       {selectedDelivery && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
-          <div className="bg-[#1a1a2e] rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden shadow-2xl border border-white/10 flex flex-col max-h-[92vh]">
-            <div className="flex items-center justify-between px-5 sm:px-6 py-4 sm:py-5 bg-gradient-to-r from-purple-700/60 to-indigo-700/60 border-b border-white/10 flex-shrink-0">
+          <div className="monitor-modal bg-[#1a1a2e] rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden shadow-2xl border border-white/10 flex flex-col max-h-[92vh]">
+            <div className="monitor-modal-header flex items-center justify-between px-5 sm:px-6 py-4 sm:py-5 bg-gradient-to-r from-purple-700/60 to-indigo-700/60 border-b border-white/10 flex-shrink-0">
               <div>
                 <p className="text-xs text-purple-300 uppercase tracking-widest font-semibold mb-0.5">Entrega</p>
                 <h2 className="text-xl font-black text-white tracking-wide">#{selectedDelivery.deliveryNumber}</h2>
@@ -2501,7 +2802,7 @@ const MonitorEntregas = () => {
 
       {modalFotos && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-3 sm:p-4">
-          <div className="bg-[#1a1a2e] rounded-2xl w-full max-w-lg border border-white/10 shadow-2xl overflow-hidden">
+          <div className="monitor-modal bg-[#1a1a2e] rounded-2xl w-full max-w-lg border border-white/10 shadow-2xl overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
               <h2 className="text-base font-bold text-white">{modalFotos.label}</h2>
               <button
@@ -2525,7 +2826,7 @@ const MonitorEntregas = () => {
 
       {viewingDocument && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-3 sm:p-4">
-          <div className="bg-[#1a1a2e] rounded-2xl w-full max-w-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+          <div className="monitor-modal bg-[#1a1a2e] rounded-2xl w-full max-w-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 flex-shrink-0">
               <h2 className="text-base font-bold text-white">{viewingDocument.label}</h2>
               <button
@@ -2570,7 +2871,7 @@ const MonitorEntregas = () => {
 
       {editingDelivery && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
-          <div className="bg-[#1a1a2e] rounded-3xl w-full max-w-lg border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+          <div className="monitor-modal bg-[#1a1a2e] rounded-3xl w-full max-w-lg border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
             <div className="flex items-center justify-between px-6 py-5 border-b border-white/10 flex-shrink-0">
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-widest mb-0.5">Edição</p>
@@ -2681,7 +2982,7 @@ const MonitorEntregas = () => {
       {/* Modal de Confirmação para Remover Verificação Icompany */}
       {confirmRemoveVerification && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[70] p-3">
-          <div className="bg-[#1a1a2e] rounded-2xl border border-amber-500/30 shadow-2xl max-w-sm w-full overflow-hidden">
+          <div className="monitor-modal bg-[#1a1a2e] rounded-2xl border border-amber-500/30 shadow-2xl max-w-sm w-full overflow-hidden">
             <div className="px-6 py-5 bg-gradient-to-r from-amber-900/40 to-orange-900/40 border-b border-amber-500/30">
               <h3 className="text-lg font-bold text-amber-200 flex items-center gap-2">
                 <FaExclamationTriangle className="text-amber-400" /> Remover Verificação?
