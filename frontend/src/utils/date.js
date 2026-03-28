@@ -89,11 +89,12 @@ export function formatarDataApenasLocal(date, options = {}) {
 }
 
 /**
- * Formata agendamento preservando horário local da operação
- * @param {string|Date} date - Data do agendamento (já em horário local)
- * @returns {string} Data formatada em pt-BR com fuso local
+ * Formata apenas hora usando fuso horário local
+ * @param {string|Date} date - Data a ser formatada
+ * @param {object} options - Opções para toLocaleTimeString
+ * @returns {string} Hora formatada em pt-BR com fuso local
  */
-export function formatarAgendamento(date) {
+export function formatarHoraLocal(date, options = {}) {
   if (!date) return "-";
-  return formatarDataLocal(date);
+  return new Date(date).toLocaleTimeString("pt-BR", options);
 }
