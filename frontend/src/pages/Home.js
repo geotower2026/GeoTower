@@ -50,6 +50,7 @@ const ROLES = {
   manager: { label: 'Gerente',    color: B.v,       bg: B.vBg,    icon: <FaUserTie />, gradient: `linear-gradient(135deg,${B.v},${B.vD})` },
   admin:   { label: 'Admin',      color: '#6C4FF8', bg: '#EEE9FF', icon: <FaBolt />,   gradient: 'linear-gradient(135deg,#6C4FF8,#4A30D4)' },
   geomar:  { label: 'GeoMar',     color: '#0891B2', bg: '#E0F7FA', icon: <FaWater />,  gradient: 'linear-gradient(135deg,#0891B2,#0E7490)' },
+  gestor_contratado: { label: 'Gestor Contratado', color: '#F59E0B', bg: '#FDE68A', icon: <FaUserTie />, gradient: 'linear-gradient(135deg,#F59E0B,#D97706)' },
 };
 
 /* ═══════════════════════════════════════════════════════════
