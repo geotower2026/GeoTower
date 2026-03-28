@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
-import { formatarDataLocal } from '../utils/date';
+import { formatarDataLocal, formatarDataApenasLocal } from '../utils/date';
 
 /* ─────────────────────────────────────────
    UTILITÁRIOS COMPARTILHADOS
