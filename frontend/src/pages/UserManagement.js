@@ -470,6 +470,7 @@ const UserManagement = () => {
                     >
                       <option value="manaus">Manaus</option>
                       <option value="itajai">Itajaí</option>
+                      <option value="both">Ambas as cidades</option>
                     </select>
                   </Field>
                 )}
