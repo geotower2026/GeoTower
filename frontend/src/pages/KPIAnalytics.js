@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Toast from '../components/Toast';
 import { adminService } from '../services/authService';
 import { useCity } from '../contexts/CityContext';
+import { formatarDataApenas, formatarDataApenasLocal } from '../utils/date';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -165,8 +166,8 @@ const KPIAnalytics = ({ onToggle }) => {
         'Motorista': d.driverName || 'Não informado',
         [city === 'itajai' ? 'Remetente' : 'Destinatário']: getPartyName(d),
         'Processo': getProcessNumber(d),
-        'Data Agendada': getScheduledDate(d) ? new Date(getScheduledDate(d)).toLocaleDateString('pt-BR') : 'N/A',
-        'Data Entrega': getArrivalDate(d) ? new Date(getArrivalDate(d)).toLocaleDateString('pt-BR') : 'N/A',
+        'Data Agendada': getScheduledDate(d) ? formatarDataApenas(getScheduledDate(d), city) : 'N/A',
+        'Data Entrega': getArrivalDate(d) ? formatarDataApenas(getArrivalDate(d), city) : 'N/A',
         'Atraso (dias)': getScheduledDate(d) && getArrivalDate(d) ?
           Math.ceil((new Date(getArrivalDate(d)) - new Date(getScheduledDate(d))) / (1000 * 60 * 60 * 24)) : 'N/A',
         'Status': d.status,
@@ -217,8 +218,8 @@ const KPIAnalytics = ({ onToggle }) => {
           d.driverName || 'Não informado',
           getPartyName(d),
           getProcessNumber(d),
-          getScheduledDate(d) ? new Date(getScheduledDate(d)).toLocaleDateString('pt-BR') : 'N/A',
-          getArrivalDate(d) ? new Date(getArrivalDate(d)).toLocaleDateString('pt-BR') : 'N/A',
+          getScheduledDate(d) ? formatarDataApenas(getScheduledDate(d), city) : 'N/A',
+          getArrivalDate(d) ? formatarDataApenas(getArrivalDate(d), city) : 'N/A',
           getScheduledDate(d) && getArrivalDate(d) ?
             Math.ceil((new Date(getArrivalDate(d)) - new Date(getScheduledDate(d))) / (1000 * 60 * 60 * 24)) : 'N/A',
           d.status
@@ -244,7 +245,7 @@ const KPIAnalytics = ({ onToggle }) => {
     doc.setFontSize(14);
     doc.text(`Relatório de KPIs - ${city.toUpperCase()}`, pageWidth / 2, yPosition, { align: 'center' });
     doc.setFontSize(10);
-    doc.text(`Data: ${new Date().toLocaleDateString('pt-BR')}`, pageWidth / 2, yPosition + 6, { align: 'center' });
+    doc.text(`Data: ${formatarDataApenasLocal(new Date())}`, pageWidth / 2, yPosition + 6, { align: 'center' });
     yPosition += 15;
 
     // Métricas Principais
@@ -525,7 +526,7 @@ const KPIAnalytics = ({ onToggle }) => {
     for (let i = 29; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
-      const dateStr = date.toLocaleDateString('pt-BR', { month: '2-digit', day: '2-digit' });
+      const dateStr = formatarDataApenasLocal(date, { month: '2-digit', day: '2-digit' });
 
       const count = filteredDeliveries.filter(d => {
         const dt = d.dtEntrega || d.dtSaida || d.createdAt;
@@ -921,10 +922,10 @@ const KPIAnalytics = ({ onToggle }) => {
                           <td className="py-3 px-4 text-slate-300">{getPartyName(delivery)}</td>
                           <td className="py-3 px-4 text-slate-300">{getProcessNumber(delivery)}</td>
                           <td className="text-center py-3 px-4 text-slate-300">
-                            {scheduled ? new Date(scheduled).toLocaleDateString('pt-BR') : 'N/A'}
+                            {scheduled ? formatarDataApenas(scheduled, city) : 'N/A'}
                           </td>
                           <td className="text-center py-3 px-4 text-slate-300">
-                            {arrival ? new Date(arrival).toLocaleDateString('pt-BR') : 'N/A'}
+                            {arrival ? formatarDataApenas(arrival, city) : 'N/A'}
                           </td>
                           <td className="text-center py-3 px-4 text-red-400 font-bold">
                             {delayDays > 0 ? `${delayDays} dias` : 'N/A'}

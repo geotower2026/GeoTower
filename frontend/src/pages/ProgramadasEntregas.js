@@ -14,6 +14,7 @@ import { MdLocalShipping, MdAssignment } from 'react-icons/md';
 import { useAuth } from '../services/authContext';
 import { useCity } from '../contexts/CityContext';
 import { getProgramacaoDate } from '../utils/programacaoDate';
+import { formatarData, formatarDataApenas, formatarHora } from '../utils/date';
 import { getRecebedoresLabel, getDesovaStatusLabel } from '../utils/cityLabels';
 import { useTheme, THEMES } from '../contexts/ThemeContext';
 
@@ -484,7 +485,7 @@ const ProgramadasEntregas = () => {
       if (!deliveryNumber) { setToast({ message: 'Sem número de container/processo', type: 'error' }); setShowMontagemModal(false); setMontagemProgramacao(null); return; }
       const payload = {
         deliveryNumber: deliveryNumber.toUpperCase(),
-        observations: `Montagem finalizada em ${new Date().toLocaleString('pt-BR')}`,
+        observations: `Montagem finalizada em ${formatarData(new Date(), city)}`,
         driverName: montagemProgramacao.motorista || user?.fullName || user?.name || '',
         containerMontadoAt: new Date().toISOString(),
         status: 'CONTAINER_MONTADO'
@@ -590,7 +591,7 @@ const ProgramadasEntregas = () => {
     try {
       const fresh = await deliveryService.getDelivery(currentDelivery._id);
       const existingObs = fresh.data.delivery.observations || '';
-      const timestamp = new Date().toLocaleString('pt-BR');
+      const timestamp = formatarData(new Date(), city);
       await deliveryService.updateDelivery(currentDelivery._id, { observations: `${existingObs ? existingObs + '\n' : ''}[${timestamp}] ${observations}` });
       setToast({ message: 'Observação registrada', type: 'success' });
       goToStep('welcome');
@@ -611,7 +612,7 @@ const ProgramadasEntregas = () => {
       try {
         const fresh = await deliveryService.getDelivery(currentDelivery._id);
         const existingObs = fresh.data.delivery.observations || '';
-        const timestamp = new Date().toLocaleString('pt-BR');
+        const timestamp = formatarData(new Date(), city);
         const obs = `(SOLICITACAO_AGENDAMENTO) Motorista solicitou agendamento de devolução do container.`;
         await deliveryService.updateDelivery(currentDelivery._id, { observations: `${existingObs ? existingObs + '\n' : ''}[${timestamp}] ${obs}` });
         setToast({ message: 'Solicitação enviada ao admin', type: 'success' });
@@ -657,7 +658,7 @@ const ProgramadasEntregas = () => {
 
       const fresh = await deliveryService.getDelivery(currentDelivery._id);
       const existingObs = fresh.data.delivery.observations || '';
-      const timestamp = new Date().toLocaleString('pt-BR');
+      const timestamp = formatarData(new Date(), city);
       const docsObs = documentsJustification ? `(JUSTIFICATIVA_DOCS) ${documentsJustification}` : '';
       const newObs = `${existingObs ? existingObs + '\n' : ''}${docsObs ? `[${timestamp}] ${docsObs}` : ''}`;
       // ensure observation stored as well
@@ -710,7 +711,7 @@ const ProgramadasEntregas = () => {
       // pendência status obsolete – always finalize normally
       const finalStatus = 'FINALIZADO';
       const existingObs = fresh.data.delivery.observations || '';
-      const timestamp = new Date().toLocaleString('pt-BR');
+      const timestamp = formatarData(new Date(), city);
       const containerObs = `[${timestamp}] (CONTAINER_VAZIO_DEVOLVIDO) Entrega CNTR Porto devolvida com comprovante.`;
       const newObs = `${existingObs ? existingObs + '\n' : ''}${containerObs}`;
       const horarioDevolucaoVazio = new Date().toISOString();
@@ -1060,7 +1061,7 @@ const ProgramadasEntregas = () => {
                       </div>
                       <ul className="font-bold text-gray-800 text-sm leading-tight">
                         {p.fracionadas && p.fracionadas.map(f => (
-                          <li key={f._id}>{getProgramacaoDate(f, city) ? new Date(getProgramacaoDate(f, city)).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-'}</li>
+                          <li key={f._id}>{getProgramacaoDate(f, city) ? formatarData(getProgramacaoDate(f, city), city) : '-'}</li>
                         ))}
                       </ul>
                     </div>
@@ -1405,7 +1406,7 @@ const ProgramadasEntregas = () => {
                       <div>
                         <p className="text-sm text-gray-500">Data agendada</p>
                         <p className="font-bold text-blue-700 text-base">
-                          {new Date(getProgramacaoDate(currentProgramacao, city) || '').toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' })}
+                          {formatarData(getProgramacaoDate(currentProgramacao, city), city)}
                         </p>
                       </div>
                     </div>

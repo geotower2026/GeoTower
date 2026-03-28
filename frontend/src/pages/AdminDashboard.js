@@ -5,6 +5,7 @@ import KPIAnalytics from './KPIAnalytics';
 import { adminService } from '../services/authService';
 import { useCity } from '../contexts/CityContext';
 import { getProgramacaoDate } from '../utils/programacaoDate';
+import { formatarData, formatarDataApenas, formatarHora } from '../utils/date';
 import { getRecebedorLabel } from '../utils/cityLabels';
 import { exportToPDF, exportToExcel, formatMinutes as fmtMin } from '../services/exportService';
 import {
@@ -230,7 +231,7 @@ const AdminDashboard = () => {
     const p = String(date).split('-');
     if (p.length === 3) {
       const d = new Date(+p[0], +p[1] - 1, +p[2]);
-      return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+      return formatarDataApenas(d, 'manaus', { day: '2-digit', month: '2-digit' });
     }
     return date;
   };

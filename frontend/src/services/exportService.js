@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
+import { formatarDataLocal } from '../utils/date';
 
 /* ─────────────────────────────────────────
    UTILITÁRIOS COMPARTILHADOS
@@ -191,7 +192,7 @@ export const exportToPDF = async (payload) => {
   } = payload;
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const generatedAt = new Date().toLocaleString('pt-BR');
+  const generatedAt = formatarDataLocal(new Date());
   const period_label = periodLabel(period);
   const pageRef = { current: 1 };
 
@@ -316,7 +317,7 @@ export const exportToPDF = async (payload) => {
         const parts = String(d._id).split('-');
         const dateLabel =
           parts.length === 3
-            ? new Date(+parts[0], +parts[1] - 1, +parts[2]).toLocaleDateString('pt-BR')
+            ? formatarDataApenasLocal(new Date(+parts[0], +parts[1] - 1, +parts[2]))
             : d._id;
         return [dateLabel, d.count];
       }),
@@ -596,7 +597,7 @@ const buildResumoSheet = (statistics, topRecebedores, avgCliByRecebedor, period)
 
   // Título
   ws['A1'] = { t: 's', v: 'Dashboard de Indicadores — Resumo', s: STYLE.titleCell };
-  ws['A2'] = { t: 's', v: `Período: ${periodLabel(period)}   •   Gerado em: ${new Date().toLocaleString('pt-BR')}`, s: STYLE.subtitleCell };
+  ws['A2'] = { t: 's', v: `Período: ${periodLabel(period)}   •   Gerado em: ${formatarDataLocal(new Date())}`, s: STYLE.subtitleCell };
 
   // KPI labels (linha 4)
   ['TOTAL DE ENTREGAS', 'MOTORISTAS ATIVOS', 'TOP RECEBEDOR (QTD)', 'TEMPO MÉDIO CLI'].forEach((label, i) => {
@@ -653,8 +654,8 @@ const buildDiariaSheet = (dailyDeliveries) => {
     let weekDay = '';
     if (parts.length === 3) {
       const dt = new Date(+parts[0], +parts[1] - 1, +parts[2]);
-      dateLabel = dt.toLocaleDateString('pt-BR');
-      weekDay = dt.toLocaleDateString('pt-BR', { weekday: 'long' });
+      dateLabel = formatarDataApenasLocal(dt);
+      weekDay = formatarDataApenasLocal(dt, { weekday: 'long' });
     }
     rows.push([dateLabel, weekDay, d.count]);
   });

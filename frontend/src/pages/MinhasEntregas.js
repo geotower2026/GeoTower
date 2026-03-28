@@ -17,6 +17,7 @@ import {
 import { MdLocalShipping, MdInventory2, MdTrendingUp } from 'react-icons/md';
 import { useCity } from '../contexts/CityContext';
 import { getRecebedorLabel } from '../utils/cityLabels';
+import { formatarDataApenasLocal } from '../utils/date';
 
 /* ═══════════════════════════════════════════════════════
    CONSTANTS & HELPERS
@@ -51,7 +52,7 @@ const dotClass = {
 };
 
 const fmtDate = (d) => new Date(d).toLocaleString('pt-BR');
-const fmtMonth = (d) => new Date(d).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+const fmtMonth = (d) => formatarDataApenasLocal(d, { month: 'short', year: '2-digit' });
 
 /* ── build chart data from programacoes ── */
 function buildChartData(list) {

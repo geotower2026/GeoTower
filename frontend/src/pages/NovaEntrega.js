@@ -7,6 +7,7 @@ import DocumentUpload from '../components/DocumentUpload';
 import Toast from '../components/Toast';
 import { FaArrowLeft, FaPaperPlane, FaCheckCircle } from 'react-icons/fa';
 import { useCity } from '../contexts/CityContext';
+import { formatarDataApenasLocal } from '../utils/date';
 
 const NovaEntrega = () => {
   const navigate = useNavigate();
@@ -244,7 +245,7 @@ const NovaEntrega = () => {
                 </label>
                 <input
                   type="text"
-                  value={new Date().toLocaleDateString('pt-BR')}
+                  value={formatarDataApenasLocal(new Date())}
                   disabled
                   className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-gray-50 text-gray-600"
                 />

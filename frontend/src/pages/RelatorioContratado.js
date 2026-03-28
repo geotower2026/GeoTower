@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCity } from '../contexts/CityContext';
+import { formatarDataApenas } from '../utils/date';
 import {
   FaArrowLeft, FaDownload, FaFilter, FaSync, FaChartBar,
   FaTruck, FaDollarSign, FaBoxes, FaCalendarAlt
@@ -191,7 +192,7 @@ const RelatorioContratado = () => {
       'Contratado': d.contratado,
       'Destinatário': d.destinatario,
       'Container': d.containerNumero || '—',
-      [labelAgenda]: getAgendaDate(d) ? new Date(getAgendaDate(d)).toLocaleDateString('pt-BR') : '—',
+      [labelAgenda]: getAgendaDate(d) ? formatarDataApenas(getAgendaDate(d), city) : '—',
       'Motorista': d.motorista,
       'Vl. Frete Processo': d.vlFreteProcesso ? `R$ ${d.vlFreteProcesso.toFixed(2).replace('.', ',')}` : 'R$ 0,00',
       'Vl. Pedágio': d.vlPedagio ? `R$ ${d.vlPedagio.toFixed(2).replace('.', ',')}` : 'R$ 0,00',

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Toast from '../components/Toast';
 import { adminService } from '../services/authService';
+import { formatarDataApenasLocal } from '../utils/date';
 import {
   FiArrowLeft, FiEdit2, FiTrash2, FiPlus, FiTruck,
   FiUploadCloud, FiDownload, FiSearch, FiFilter,
@@ -665,19 +666,19 @@ const MotoristaManagement = () => {
                       <td className="px-3 py-3"><VinculoBadge vinculo={m.vinculo} /></td>
                       <td className="px-3 py-3 text-slate-500 text-xs">{m.rastreador || '—'}</td>
                       <td className="px-3 py-3 text-slate-500 text-xs whitespace-nowrap">
-                        {m.expCadastroMotorista ? new Date(m.expCadastroMotorista).toLocaleDateString('pt-BR') : '—'}
+                        {m.expCadastroMotorista ? formatarDataApenasLocal(m.expCadastroMotorista) : '—'}
                       </td>
                       <td className="px-3 py-3 text-center"><StatusBadge status={m.statusMotorista} /></td>
                       <td className="px-3 py-3 text-slate-500 text-xs">{m.cavalo || '—'}</td>
                       <td className="px-3 py-3 text-slate-500 text-xs">{m.rastreadorCavalo || '—'}</td>
                       <td className="px-3 py-3 text-slate-500 text-xs whitespace-nowrap">
-                        {m.expCadastroCavalo ? new Date(m.expCadastroCavalo).toLocaleDateString('pt-BR') : '—'}
+                        {m.expCadastroCavalo ? formatarDataApenasLocal(m.expCadastroCavalo) : '—'}
                       </td>
                       <td className="px-3 py-3 text-center"><StatusBadge status={m.statusCavalo} /></td>
                       <td className="px-3 py-3 text-slate-500 text-xs">{m.carreta || '—'}</td>
                       <td className="px-3 py-3 text-slate-500 text-xs">{m.rastreadorCarreta || '—'}</td>
                       <td className="px-3 py-3 text-slate-500 text-xs whitespace-nowrap">
-                        {m.expCadastroCarreta ? new Date(m.expCadastroCarreta).toLocaleDateString('pt-BR') : '—'}
+                        {m.expCadastroCarreta ? formatarDataApenasLocal(m.expCadastroCarreta) : '—'}
                       </td>
                       <td className="px-3 py-3 text-center"><StatusBadge status={m.statusCarreta} /></td>
                       <td className="px-3 py-3 text-slate-600 text-xs whitespace-nowrap">{m.telefone}</td>

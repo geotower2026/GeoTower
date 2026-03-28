@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import Toast from '../components/Toast';
 import { adminService } from '../services/authService';
 import { getProgramacaoDate } from '../utils/programacaoDate';
+import { formatarData, formatarDataApenas, formatarHora } from '../utils/date';
 import {
   FaArrowLeft, FaEye, FaDownload, FaSync, FaFilter, FaTimes,
   FaTrash, FaEdit, FaExclamationTriangle, FaShareAlt, FaCalendarAlt,
@@ -309,10 +310,10 @@ const Pill = ({ active, onClick, children, color = 'purple' }) => {
 /* ─────────────────────────────────────────────────────────────
    KANBAN UI
 ───────────────────────────────────────────────────────────── */
-const formatBoardDate = (value) => {
+const formatBoardDate = (value, city) => {
   if (!value) return '—';
   try {
-    return new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    return formatarData(value, city);
   } catch {
     return value;
   }
@@ -418,7 +419,7 @@ const DeliveryKanbanCard = ({ delivery, column, onOpen, currentTime, city = 'man
 
           <div className="flex items-center gap-1 text-[9px] text-gray-400">
             <FaCalendarAlt className="shrink-0 text-[8px]" />
-            <span className="truncate">{formatBoardDate(getProgramacaoDate(delivery, city))}</span>
+            <span className="truncate">{formatBoardDate(getProgramacaoDate(delivery, city), city)}</span>
           </div>
         </div>
       </div>
@@ -838,13 +839,13 @@ const MobileDeliveryCard = ({
         <div>
           <p className="text-gray-600 text-[10px] uppercase font-bold">Agendamento</p>
           <p className="text-gray-300 font-mono text-[11px]">
-            {getProgramacaoDate(d, city) ? new Date(getProgramacaoDate(d, city)).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+            {getProgramacaoDate(d, city) ? formatarData(getProgramacaoDate(d, city), city) : '—'}
           </p>
         </div>
         <div>
           <p className="text-gray-600 text-[10px] uppercase font-bold">Chegada</p>
           <p className="text-gray-300 font-mono text-[11px]">
-            {d.horarioChegada ? new Date(d.horarioChegada).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+            {d.horarioChegada ? formatarData(d.horarioChegada, city) : '—'}
           </p>
         </div>
       </div>
@@ -1224,7 +1225,7 @@ const MonitorEntregas = () => {
     return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
   };
 
-  const formatDT = (v) => v ? new Date(v).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+  const formatDT = (v) => v ? formatarData(v, city) : '—';
 
   const generateDeliveryReceiptPdf = async (delivery) => {
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
@@ -1282,7 +1283,7 @@ const MonitorEntregas = () => {
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
-    doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, pageW - pdfMargin, 60, { align: 'right' }); // Ajustado de 54 para 60
+    doc.text(`Gerado em: ${formatarData(new Date(), city)}`, pageW - pdfMargin, 60, { align: 'right' }); // Ajustado de 54 para 60
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
@@ -1331,7 +1332,7 @@ const MonitorEntregas = () => {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
       flowHistory.forEach((ev) => {
-        doc.text(`• ${ev.label}: ${new Date(ev.date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}`, pdfMargin, y);
+        doc.text(`• ${ev.label}: ${formatarData(ev.date, city)}`, pdfMargin, y);
         y += 16;
       });
       y += 10;
@@ -1908,7 +1909,7 @@ const MonitorEntregas = () => {
 
           <span className="hidden lg:flex items-center gap-1.5 text-sm font-mono font-semibold text-gray-400 tabular-nums">
             <FaClock className="text-purple-400" size={12} />
-            {currentTime.toLocaleTimeString('pt-BR')}
+            {formatarHora(currentTime, city)}
           </span>
 
           {autoRefresh && (
@@ -2108,7 +2109,7 @@ const MonitorEntregas = () => {
                             <span className="text-gray-400 text-[11px] tabular-nums" style={{ whiteSpace: 'normal', wordBreak: 'break-all' }}>
                               {(() => {
                                 const entryTime = getStatusEntryTime(d, city);
-                                return entryTime ? new Date(entryTime).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+                                return entryTime ? formatarData(entryTime, city) : '—';
                               })()}
                             </span>
                           </div>
@@ -2140,7 +2141,7 @@ const MonitorEntregas = () => {
 
                           <div className="px-2 py-3 flex items-center justify-center min-w-0">
                             <span className="text-gray-400 text-[11px] tabular-nums" style={{ whiteSpace: 'normal', wordBreak: 'break-all' }}>
-                              {getProgramacaoDate(d, city) ? new Date(getProgramacaoDate(d, city)).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                              {getProgramacaoDate(d, city) ? formatarData(getProgramacaoDate(d, city), city) : '—'}
                             </span>
                           </div>
 
@@ -2211,13 +2212,13 @@ const MonitorEntregas = () => {
                   ['Contratado', selectedDelivery.userName],
                   ['Motorista', selectedDelivery.driverName || '—'],
                   ['Placa', selectedDelivery.placaIcompany || selectedDelivery.vehiclePlate || '—'],
-                  ['Entrega CNTR Porto', selectedDelivery.horarioDevolucaoVazio ? new Date(selectedDelivery.horarioDevolucaoVazio).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'],
+                  ['Entrega CNTR Porto', selectedDelivery.horarioDevolucaoVazio ? formatarData(selectedDelivery.horarioDevolucaoVazio, city) : '—'],
                   ['Recebedor', selectedDelivery.recebedor || '—'],
-                  ['Agendamento', getProgramacaoDate(selectedDelivery, city) ? new Date(getProgramacaoDate(selectedDelivery, city)).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'],
-                  ['Montagem Container', selectedDelivery.containerMontadoAt ? new Date(selectedDelivery.containerMontadoAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'],
-                  ['Chegada', selectedDelivery.horarioChegada ? new Date(selectedDelivery.horarioChegada).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'],
-                  [`Início ${getDesovaStepLabel(city)}`, selectedDelivery.horarioInicioDesova ? new Date(selectedDelivery.horarioInicioDesova).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'],
-                  [`Fim ${getDesovaStepLabel(city)}`, selectedDelivery.horarioFimDesova ? new Date(selectedDelivery.horarioFimDesova).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'],
+                  ['Agendamento', getProgramacaoDate(selectedDelivery, city) ? formatarData(getProgramacaoDate(selectedDelivery, city), city) : '—'],
+                  ['Montagem Container', selectedDelivery.containerMontadoAt ? formatarData(selectedDelivery.containerMontadoAt, city) : '—'],
+                  ['Chegada', selectedDelivery.horarioChegada ? formatarData(selectedDelivery.horarioChegada, city) : '—'],
+                  [`Início ${getDesovaStepLabel(city)}`, selectedDelivery.horarioInicioDesova ? formatarData(selectedDelivery.horarioInicioDesova, city) : '—'],
+                  [`Fim ${getDesovaStepLabel(city)}`, selectedDelivery.horarioFimDesova ? formatarData(selectedDelivery.horarioFimDesova, city) : '—'],
                 ].map(([label, value]) => (
                   <div key={label} className="bg-white/5 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 border border-white/5">
                     <p className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold mb-0.5">{label}</p>

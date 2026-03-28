@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/authContext';
 import { deliveryService } from '../services/authService';
+import { formatarDataApenasLocal, formatarHoraLocal } from '../utils/date';
 import Footer from '../components/Footer';
 import {
   FaChartBar, FaFileAlt, FaUsers, FaCalendarAlt,
@@ -740,8 +741,8 @@ const Home = () => {
   const rm     = ROLES[role] || ROLES.driver;
   const greet  = getGreeting();
   const GreetIcon = greet.Icon;
-  const dateStr = now.toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long' });
-  const timeStr = now.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+  const dateStr = formatarDataApenasLocal(now, { weekday:'long', day:'numeric', month:'long' });
+  const timeStr = formatarHoraLocal(now, { hour:'2-digit', minute:'2-digit' });
 
   /* tabs com ícones */
   const TABS = [
