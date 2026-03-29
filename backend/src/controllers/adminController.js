@@ -117,8 +117,20 @@ exports.getStatistics = async (req, res) => {
         }
       },
       {
+        $addFields: {
+          // Converter string "YYYY-MM-DD" para Date para comparação
+          scheduleDateAsDate: {
+            $dateFromString: {
+              dateString: '$scheduleDate',
+              format: '%Y-%m-%d',
+              onError: null
+            }
+          }
+        }
+      },
+      {
         $match: {
-          scheduleDate: { $ne: null, ...scheduleFilter }
+          scheduleDateAsDate: { $ne: null, ...scheduleFilter }
         }
       },
       {
@@ -161,14 +173,26 @@ exports.getStatistics = async (req, res) => {
         }
       },
       {
+        $addFields: {
+          // Converter string "YYYY-MM-DD" para Date para comparação
+          scheduleDateAsDate: {
+            $dateFromString: {
+              dateString: '$scheduleDate',
+              format: '%Y-%m-%d',
+              onError: null
+            }
+          }
+        }
+      },
+      {
         $match: {
-          scheduleDate: { $ne: null, $gte: thirtyDaysAgo }
+          scheduleDateAsDate: { $ne: null, $gte: thirtyDaysAgo }
         }
       },
       {
         $group: {
           _id: {
-            $dateToString: { format: '%Y-%m-%d', date: '$scheduleDate' }
+            $dateToString: { format: '%Y-%m-%d', date: '$scheduleDateAsDate' }
           },
           count: { $sum: 1 }
         }
