@@ -278,7 +278,8 @@ const AdminDashboard = () => {
   const topContratados = React.useMemo(() => {
     const counts = {};
     deliveries.forEach(d => {
-      const key = d.contratado || d.linkedProgramacaoId?.contratado || d.driverName || 'Sem Contratado';
+      // OBRIGATORIAMENTE de linkedProgramacaoId.contratado
+      const key = d.linkedProgramacaoId?.contratado || 'Sem Contratado';
       counts[key] = (counts[key] || 0) + 1;
     });
     return Object.entries(counts)
