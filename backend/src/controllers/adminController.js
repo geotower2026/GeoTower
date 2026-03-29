@@ -123,7 +123,7 @@ exports.getStatistics = async (req, res) => {
       },
       {
         $group: {
-          _id: '$motorista', // ou o campo que identifica o motorista/contratado
+          _id: '$contratado', // Agora usa contratado que é obrigatório
           count: { $sum: 1 }
         }
       },
