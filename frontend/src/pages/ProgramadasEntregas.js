@@ -284,6 +284,8 @@ const ProgramadasEntregas = () => {
   const [containerVazioSubmitting, setContainerVazioSubmitting] = useState(false);
   const containerVazioProofRef = useRef(null);
 
+  const [scheduleSubmitting, setScheduleSubmitting] = useState(false);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [driverFilter, setDriverFilter] = useState('all');
@@ -608,20 +610,25 @@ const ProgramadasEntregas = () => {
   };
 
   const handleScheduleDecision = async (shouldSchedule) => {
-    if (shouldSchedule) {
-      try {
-        const fresh = await deliveryService.getDelivery(currentDelivery._id);
-        const existingObs = fresh.data.delivery.observations || '';
-        const timestamp = formatarData(new Date(), city);
-        const obs = `(SOLICITACAO_AGENDAMENTO) Motorista solicitou agendamento de devolução do container.`;
-        await deliveryService.updateDelivery(currentDelivery._id, { observations: `${existingObs ? existingObs + '\n' : ''}[${timestamp}] ${obs}` });
-        setToast({ message: 'Solicitação enviada ao admin', type: 'success' });
-      } catch (_) { setToast({ message: 'Erro ao enviar solicitação', type: 'error' }); }
+    setScheduleSubmitting(true);
+    try {
+      if (shouldSchedule) {
+        try {
+          const fresh = await deliveryService.getDelivery(currentDelivery._id);
+          const existingObs = fresh.data.delivery.observations || '';
+          const timestamp = formatarData(new Date(), city);
+          const obs = `(SOLICITACAO_AGENDAMENTO) Motorista solicitou agendamento de devolução do container.`;
+          await deliveryService.updateDelivery(currentDelivery._id, { observations: `${existingObs ? existingObs + '\n' : ''}[${timestamp}] ${obs}` });
+          setToast({ message: 'Solicitação enviada ao admin', type: 'success' });
+        } catch (_) { setToast({ message: 'Erro ao enviar solicitação', type: 'error' }); }
+      }
+      await deliveryService.updateDelivery(currentDelivery._id, { status: 'ANEXANDO_DOCUMENTOS_FINAIS', currentStep: 'finalDocs' });
+      if (currentProgramacao) currentProgramacao.status = 'ANEXANDO_DOCUMENTOS_FINAIS';
+      await loadProgramacoes();
+      goToStep('finalDocs');
+    } finally {
+      setScheduleSubmitting(false);
     }
-    await deliveryService.updateDelivery(currentDelivery._id, { status: 'ANEXANDO_DOCUMENTOS_FINAIS', currentStep: 'finalDocs' });
-    if (currentProgramacao) currentProgramacao.status = 'ANEXANDO_DOCUMENTOS_FINAIS';
-    await loadProgramacoes();
-    goToStep('finalDocs');
   };
 
   const handleFinalUploadAndSubmit = async () => {
@@ -1689,12 +1696,34 @@ const ProgramadasEntregas = () => {
                   </div>
                   <div className="flex gap-3">
                     <button onClick={() => handleScheduleDecision(true)}
-                      className="flex-1 py-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-2xl font-bold text-base shadow-md active:scale-95 transition">
-                      📅 Sim, agendar
+                      disabled={scheduleSubmitting}
+                      className="flex-1 py-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-2xl font-bold text-base shadow-md active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                      {scheduleSubmitting ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                          </svg>
+                          Solicitando...
+                        </span>
+                      ) : (
+                        '📅 Sim, agendar'
+                      )}
                     </button>
                     <button onClick={() => handleScheduleDecision(false)}
-                      className="flex-1 py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl font-bold text-base active:scale-95 transition">
-                      Não
+                      disabled={scheduleSubmitting}
+                      className="flex-1 py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl font-bold text-base active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                      {scheduleSubmitting ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                          </svg>
+                          Processando...
+                        </span>
+                      ) : (
+                        'Não'
+                      )}
                     </button>
                   </div>
                 </div>
