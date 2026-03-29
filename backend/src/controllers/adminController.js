@@ -52,8 +52,6 @@ exports.getStatistics = async (req, res) => {
     const city = req.city || 'manaus';
     const { period = 'month', startDate, endDate } = req.query;
 
-    console.log('🔍 getStatistics called with:', { city, period, startDate, endDate });
-
     let dateFilter = {};
     const now = new Date();
 
@@ -105,9 +103,6 @@ exports.getStatistics = async (req, res) => {
     if (Object.keys(dateFilter).length > 0) {
       Object.assign(scheduleFilter, dateFilter);
     }
-
-    console.log('📅 dateFilter:', dateFilter);
-    console.log('📅 scheduleFilter:', scheduleFilter);
 
     const deliveriesByDriver = await ProgramacaoEntrega.aggregate([
       {

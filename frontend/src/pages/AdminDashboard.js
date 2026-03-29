@@ -276,8 +276,8 @@ const AdminDashboard = () => {
   }, [deliveries]);
 
   const topContratados = React.useMemo(() => {
-    // Usar dados do backend que já agrupa por contratado
-    return statistics?.deliveriesByDriver || [];
+    // Usar a agregação do backend que já filtra corretamente por contratado
+    return (statistics?.deliveriesByDriver || []).slice(0, 10);
   }, [statistics]);
 
   const avgCliByRecebedor = React.useMemo(() => {
