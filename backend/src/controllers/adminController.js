@@ -183,23 +183,38 @@ exports.getStatistics = async (req, res) => {
       { $sort: { _id: 1 } }
     ]);
 
-    // Transportadoras - usar Delivery com filtro de data
+    // Transportadoras - usar contratado do linkedProgramacaoId com filtro de data
     const deliveriesByTransportadora = await Delivery.aggregate([
       {
         $match: {
           status: { $in: ['submitted', 'completed'] },
           cityCode: city,
-          submittedAt: dateFilter
+          submittedAt: dateFilter,
+          linkedProgramacaoId: { $exists: true, $ne: null }  // Deve ter programação linkada
         }
       },
       {
+        $lookup: {
+          from: 'programacaoentregas',
+          localField: 'linkedProgramacaoId',
+          foreignField: '_id',
+          as: 'programacao'
+        }
+      },
+      {
+        $unwind: { path: '$programacao', preserveNullAndEmptyArrays: false }
+      },
+      {
         $group: {
-          _id: '$vehiclePlate',
+          _id: '$programacao.contratado',
           count: { $sum: 1 }
         }
       },
+      { $match: { _id: { $exists: true, $ne: null, $ne: '' } } },
       { $sort: { count: -1 } }
     ]);
+
+    console.log('🚚 deliveriesByTransportadora:', deliveriesByTransportadora);
 
     res.json({
       success: true,
