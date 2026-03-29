@@ -13,6 +13,8 @@ module.exports = function validateUserCity(req, res, next) {
 
   // Gerentes têm acesso a ambas as cidades
   if (req.user.role === 'manager') {
+    return next();
+  }
 
   const userCity = req.user.city || 'manaus';
   const requestCity = req.city || 'manaus';
