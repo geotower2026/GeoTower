@@ -110,3 +110,11 @@ export const deliveryService = {
   deleteDelivery: (id) => api.delete(`/deliveries/${id}`),
   updateDelivery: (id, data) => api.put(`/deliveries/${id}`, data)
 };
+
+// Serviço de notificações
+export const notificationService = {
+  getNotifications: () => api.get('/notifications'),
+  markAsRead: (id) => api.put(`/notifications/${id}/read`),
+  markAllAsRead: () => api.put('/notifications/mark-all-read'),
+  createNotification: (data) => api.post('/notifications', data)
+};

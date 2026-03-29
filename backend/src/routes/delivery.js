@@ -4,6 +4,7 @@ const auth = require("../middleware/auth");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const NotificationService = require("../services/notificationService");
 
 // =======================
 // Upload config (disk by default, memory for S3)
@@ -889,6 +890,19 @@ router.post("/:id/submit", auth, async (req, res) => {
         submissionObservation: observation ? String(observation).trim() : ''
       };
       await db.updateOne('deliveries', { _id: req.params.id }, updates);
+
+      // Criar notificação para gestores/administradores sobre canhotos retidos
+      try {
+        await NotificationService.notifyCanhotoRetido(
+          req.params.id,
+          delivery.deliveryNumber || 'N/A',
+          observation || 'Documentos obrigatórios não anexados',
+          city
+        );
+      } catch (notifError) {
+        console.warn('Erro ao criar notificação de canhoto retido:', notifError);
+        // Não falha a operação principal por causa da notificação
+      }
 
       const deliveryAfterUpdate = await db.findById('deliveries', req.params.id);
       return res.json({ message: 'Entrega enviada com sucesso (com pendências)', delivery: deliveryAfterUpdate });

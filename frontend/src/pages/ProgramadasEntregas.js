@@ -1,4 +1,4 @@
-import { deliveryService, adminService } from '../services/authService';
+import { deliveryService, adminService, notificationService } from '../services/authService';
 import React, { useState, useEffect, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import imageCompression from 'browser-image-compression';
@@ -619,6 +619,20 @@ const ProgramadasEntregas = () => {
           const timestamp = formatarData(new Date(), city);
           const obs = `(SOLICITACAO_AGENDAMENTO) Motorista solicitou agendamento de devolução do container.`;
           await deliveryService.updateDelivery(currentDelivery._id, { observations: `${existingObs ? existingObs + '\n' : ''}[${timestamp}] ${obs}` });
+          
+          // Criar notificação para gestores/administradores
+          try {
+            await notificationService.createNotification({
+              title: 'Solicitação de Agendamento',
+              message: `Motorista ${user?.name || 'Desconhecido'} solicitou agendamento de devolução para o container ${currentDelivery?.deliveryNumber || 'N/A'}.`,
+              type: 'scheduling_request',
+              deliveryId: currentDelivery._id
+            });
+          } catch (notifError) {
+            console.warn('Erro ao criar notificação:', notifError);
+            // Não falha a operação principal por causa da notificação
+          }
+          
           setToast({ message: 'Solicitação enviada ao admin', type: 'success' });
         } catch (_) { setToast({ message: 'Erro ao enviar solicitação', type: 'error' }); }
       }

@@ -132,6 +132,7 @@ app.use("/api/deliveries", require("./routes/delivery"));
 app.use("/api/admin", require("./routes/admin"));
 app.use("/api/admin/reconciliation", require("./routes/reconciliation"));
 app.use("/api/gdrive", require("./routes/gdrive-auth-web"));
+app.use("/api/notifications", require("./routes/notifications"));
 // Meta routes (version/debug)
 app.use("/api/meta", require("./routes/meta"));
 // Uploads to Cloudflare R2 via S3-compatible API
