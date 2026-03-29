@@ -276,9 +276,17 @@ const AdminDashboard = () => {
   }, [deliveries]);
 
   const topContratados = React.useMemo(() => {
-    // Backend já agrupa por transportadora com filtros corretos
-    return (statistics?.deliveriesByTransportadora || []).slice(0, 10);
-  }, [statistics]);
+    const counts = {};
+    deliveries.forEach(d => {
+      const key = d.linkedProgramacaoId?.contratado || d.vehiclePlate || 'Sem Contratado';
+      if (!key) return;
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([contratado, count]) => ({ _id: contratado, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+  }, [deliveries]);
 
   const avgCliByRecebedor = React.useMemo(() => {
     const sums = {}, cnts = {};
