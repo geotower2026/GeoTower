@@ -116,6 +116,16 @@ if (process.env.BACKEND_UPLOADS_DIR) {
   }
 }
 
+// ⚡ QUERY MONITORING - Identificar queries lentas
+// ATIVADO: Log queries > 100ms com avisos em tempo real
+try {
+  const queryMonitor = require('./middleware/queryMonitor');
+  app.use(queryMonitor({ threshold: 100, logSlowQueries: true, verbose: false }));
+  console.log('✓ Query Monitor ativado (threshold: 100ms)');
+} catch (e) {
+  console.warn('⚠️ Falha ao inicializar Query Monitor:', e?.message);
+}
+
 // Routes - ANTES do frontend catch-all
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/deliveries", require("./routes/delivery"));
