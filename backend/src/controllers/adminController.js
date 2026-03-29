@@ -113,7 +113,13 @@ exports.getStatistics = async (req, res) => {
       },
       {
         $addFields: {
-          scheduleDate: city === 'manaus' ? '$dataAgendamento' : '$dtColeta'
+          // Converter strings YYYY-MM-DD para Date para filtros funcionarem
+          scheduleDate: {
+            $dateFromString: {
+              dateString: city === 'manaus' ? '$dataAgendamento' : '$dtColeta',
+              onError: null
+            }
+          }
         }
       },
       {
@@ -156,8 +162,13 @@ exports.getStatistics = async (req, res) => {
       },
       {
         $addFields: {
-          // Para Manaus: usa dataAgendamento, para Itajaí: usa dtColeta
-          scheduleDate: city === 'manaus' ? '$dataAgendamento' : '$dtColeta'
+          // Converter strings YYYY-MM-DD para Date para filtros funcionarem
+          scheduleDate: {
+            $dateFromString: {
+              dateString: city === 'manaus' ? '$dataAgendamento' : '$dtColeta',
+              onError: null
+            }
+          }
         }
       },
       {
