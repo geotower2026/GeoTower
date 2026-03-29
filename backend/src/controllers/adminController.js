@@ -162,13 +162,8 @@ exports.getStatistics = async (req, res) => {
       },
       {
         $addFields: {
-          // Converter strings YYYY-MM-DD para Date para filtros funcionarem
-          scheduleDate: {
-            $dateFromString: {
-              dateString: city === 'manaus' ? '$dataAgendamento' : '$dtColeta',
-              onError: null
-            }
-          }
+          // Para Manaus: usa dataAgendamento, para Itajaí: usa dtColeta
+          scheduleDate: city === 'manaus' ? '$dataAgendamento' : '$dtColeta'
         }
       },
       {
