@@ -1,5 +1,6 @@
 const Delivery = require('../models/Delivery');
 const Driver = require('../models/Driver');
+const Icompany = require('../models/Icompany');
 
 // Get all deliveries (admin only)
 exports.getAllDeliveries = async (req, res) => {
@@ -183,36 +184,46 @@ exports.getStatistics = async (req, res) => {
       { $sort: { _id: 1 } }
     ]);
 
-    // Transportadoras - usar contratado do linkedProgramacaoId com filtro de data
-    const deliveriesByTransportadora = await Delivery.aggregate([
-      {
-        $match: {
-          status: { $in: ['submitted', 'completed'] },
-          cityCode: city,
-          submittedAt: dateFilter,
-          linkedProgramacaoId: { $exists: true, $ne: null }  // Deve ter programação linkada
-        }
-      },
-      {
-        $lookup: {
-          from: 'programacaoentregas',
-          localField: 'linkedProgramacaoId',
-          foreignField: '_id',
-          as: 'programacao'
-        }
-      },
-      {
-        $unwind: { path: '$programacao', preserveNullAndEmptyArrays: false }
-      },
-      {
-        $group: {
-          _id: '$programacao.contratado',
-          count: { $sum: 1 }
-        }
-      },
-      { $match: { _id: { $exists: true, $ne: null, $ne: '' } } },
-      { $sort: { count: -1 } }
-    ]);
+    // Transportadoras (contratado via Driver -> Icompany) com filtro de data
+    const deliveriesForContracted = await Delivery.find({
+      status: { $in: ['submitted', 'completed'] },
+      cityCode: city,
+      submittedAt: dateFilter
+    })
+      .populate('linkedProgramacaoId', 'contratado')
+      .select('driverName linkedProgramacaoId')
+      .lean();
+
+    const driverNames = [...new Set(deliveriesForContracted
+      .map(d => d.driverName?.trim())
+      .filter(Boolean))];
+
+    const icompanyRecords = driverNames.length > 0
+      ? await Icompany.find({ motorista: { $in: driverNames } }).select('motorista contratado').lean()
+      : [];
+
+    const mapDriverToContratado = {};
+    icompanyRecords.forEach(r => {
+      if (r.motorista && r.contratado) {
+        mapDriverToContratado[r.motorista.trim().toLowerCase()] = r.contratado.trim();
+      }
+    });
+
+    const compensated = {};
+    deliveriesForContracted.forEach(d => {
+      const driverKey = d.driverName?.trim().toLowerCase();
+      const contractedFromIcompany = driverKey ? mapDriverToContratado[driverKey] : null;
+      const contracted = d.linkedProgramacaoId?.contratado?.trim()
+        || contractedFromIcompany
+        || 'Sem Contratado';
+
+      compensated[contracted] = (compensated[contracted] || 0) + 1;
+    });
+
+    const deliveriesByTransportadora = Object.entries(compensated)
+      .map(([contratado, count]) => ({ _id: contratado, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
 
     console.log('🚚 deliveriesByTransportadora:', deliveriesByTransportadora);
 
