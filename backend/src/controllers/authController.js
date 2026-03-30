@@ -3,9 +3,9 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 
-const generateToken = (userId, role, contratado = null, city = null) => {
+const generateToken = (userId, name, role, contratado = null, city = null) => {
   // Expira em 8 horas
-  const payload = { id: userId, role };
+  const payload = { id: userId, name, role };
   if (contratado) {
     payload.contratado = contratado;
   }
@@ -76,7 +76,7 @@ exports.register = async (req, res) => {
       console.warn('[REGISTER] could not get drivers total', e && e.message);
     }
 
-    const token = generateToken(driver._id, driver.role, driver.contratado || null, driver.city || null);
+    const token = generateToken(driver._id, driver.name || driver.fullName || 'Usuário', driver.role, driver.contratado || null, driver.city || null);
 
     res.status(201).json({
       success: true,
@@ -199,7 +199,7 @@ exports.login = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Motorista desativado' });
     }
 
-    const token = generateToken(driver._id, driver.role, driver.contratado, driver.city || null);
+    const token = generateToken(driver._id, driver.name || driver.fullName || 'Usuário', driver.role, driver.contratado, driver.city || null);
     console.log('✅ Login success:', driver.username);
 
     res.json({
