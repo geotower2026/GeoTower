@@ -11,6 +11,15 @@ module.exports = {
       spacing: {
         '128': '32rem',
       },
+      keyframes: {
+        slideInRight: {
+          '0%': { transform: 'translateX(100%)' },
+          '100%': { transform: 'translateX(0)' },
+        },
+      },
+      animation: {
+        'slide-in-right': 'slideInRight 0.3s ease-out',
+      },
     },
   },
   plugins: [],

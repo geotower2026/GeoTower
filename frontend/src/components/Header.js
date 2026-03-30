@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../services/authContext';
 import { notificationService } from '../services/authService';
 import NotificationBell from './NotificationBell';
+import NotificationPanel from './NotificationPanel';
 import {
   FaSignOutAlt, FaUser, FaBars, FaHome,
   FaTimes, FaTruck, FaChevronRight, FaCircle,
@@ -295,6 +296,7 @@ const Header = () => {
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
+  const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -323,8 +325,7 @@ const Header = () => {
   }, [user]);
 
   const handleNotificationClick = () => {
-    // TODO: Abrir modal/página de notificações
-    console.log('Notificações clicadas');
+    setNotificationPanelOpen(true);
   };
 
   useEffect(() => { setMenuOpen(false); }, [location.pathname]);
@@ -432,6 +433,12 @@ const Header = () => {
         user={user}
         onLogout={handleLogout}
         navigate={navigate}
+      />
+
+      {/* Painel de Notificações */}
+      <NotificationPanel
+        isOpen={notificationPanelOpen}
+        onClose={() => setNotificationPanelOpen(false)}
       />
     </>
   );

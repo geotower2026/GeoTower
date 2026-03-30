@@ -115,6 +115,7 @@ export const deliveryService = {
 export const notificationService = {
   getNotifications: () => api.get('/notifications'),
   markAsRead: (id) => api.put(`/notifications/${id}/read`),
+  deleteNotification: (id) => api.delete(`/notifications/${id}`),
   markAllAsRead: () => api.put('/notifications/mark-all-read'),
   createNotification: (data) => api.post('/notifications', data)
 };

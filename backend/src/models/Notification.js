@@ -36,7 +36,31 @@ const NotificationSchema = new mongoose.Schema(
     city: { type: String, default: 'manaus' },
 
     // Expiração (opcional)
-    expiresAt: { type: Date }
+    expiresAt: { type: Date },
+
+    // Rastreamento por usuário - quem marcou como lido
+    readBy: {
+      type: [
+        {
+          userId: { type: String, required: true },
+          userName: { type: String },
+          readAt: { type: Date, default: Date.now }
+        }
+      ],
+      default: []
+    },
+
+    // Rastreamento por usuário - quem deletou
+    deletedBy: {
+      type: [
+        {
+          userId: { type: String, required: true },
+          userName: { type: String },
+          deletedAt: { type: Date, default: Date.now }
+        }
+      ],
+      default: []
+    }
   },
   {
     timestamps: true

@@ -88,12 +88,14 @@ class NotificationService {
   }
 
   // Buscar notificações de um usuário baseado em sua role e cidade
-  static async getUserNotifications(userRole, userCity, options = {}) {
+  static async getUserNotifications(userRole, userCity, userId, options = {}) {
     const { limit = 50, offset = 0 } = options;
 
     // Buscar notificações que contêm a role do usuário e coincidem com sua cidade
     const query = {
       recipientRoles: { $in: [userRole, 'all'] },
+      'deletedBy.userId': { $ne: userId }, // Excluir notificações deletadas pelo usuário
+      'readBy.userId': { $ne: userId }, // Excluir notificações lidas pelo usuário
       $or: [
         { city: userCity },
         { city: 'both' }
@@ -107,21 +109,83 @@ class NotificationService {
       .lean();
   }
 
-  // Contar notificações para um role
-  static async countUnreadNotifications(userRole) {
+  // Contar notificações não lidas para um usuário específico
+  static async countUnreadNotifications(userRole, userCity, userId) {
     return Notification.countDocuments({
-      recipientRoles: { $in: [userRole, 'all'] }
+      recipientRoles: { $in: [userRole, 'all'] },
+      'deletedBy.userId': { $ne: userId },
+      'readBy.userId': { $ne: userId },
+      $or: [
+        { city: userCity },
+        { city: 'both' }
+      ]
     });
   }
 
-  // Marcar notificação como lida (placeholder - não implementado no modelo atual)
-  static async markAsRead(notificationId) {
-    return Notification.findById(notificationId).lean();
+  // Marcar notificação como lida para um usuário específico
+  static async markAsRead(notificationId, userId, userName) {
+    const notification = await Notification.findById(notificationId);
+    if (!notification) {
+      return null;
+    }
+
+    // Verificar se o usuário já marcou como lido
+    const alreadyRead = notification.readBy.some(r => r.userId === userId);
+    if (!alreadyRead) {
+      notification.readBy.push({
+        userId,
+        userName,
+        readAt: new Date()
+      });
+      await notification.save();
+    }
+
+    return notification;
   }
 
-  // Marcar todas como lidas para um usuário (placeholder)
-  static async markAllAsRead(userRole) {
-    return { acknowledged: true };
+  // Deletar notificação para um usuário específico
+  static async deleteNotificationForUser(notificationId, userId, userName) {
+    const notification = await Notification.findById(notificationId);
+    if (!notification) {
+      return null;
+    }
+
+    // Verificar se o usuário já deletou
+    const alreadyDeleted = notification.deletedBy.some(d => d.userId === userId);
+    if (!alreadyDeleted) {
+      notification.deletedBy.push({
+        userId,
+        userName,
+        deletedAt: new Date()
+      });
+      await notification.save();
+    }
+
+    return notification;
+  }
+
+  // Marcar todas como lidas para um usuário
+  static async markAllAsRead(userRole, userId, userName) {
+    // Buscar todas as notificações não lidas do usuário
+    const notifications = await Notification.find({
+      recipientRoles: { $in: [userRole, 'all'] },
+      'readBy.userId': { $ne: userId }
+    });
+
+    // Marcar cada uma como lida
+    for (const notification of notifications) {
+      const alreadyRead = notification.readBy.some(r => r.userId === userId);
+      if (!alreadyRead) {
+        notification.readBy.push({
+          userId,
+          userName,
+          readAt: new Date()
+        });
+        await notification.save();
+      }
+    }
+
+    return { acknowledged: true, updated: notifications.length };
   }
 
   // Limpar notificações antigas (mais de 30 dias)

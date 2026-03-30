@@ -9,13 +9,19 @@ router.get('/', auth, async (req, res) => {
     const { limit = 50, offset = 0 } = req.query;
     const userRole = req.user.role || 'driver';
     const userCity = req.city || 'manaus';
+    const userId = req.user.id;
 
-    const notifications = await NotificationService.getUserNotifications(userRole, userCity, {
-      limit: parseInt(limit),
-      offset: parseInt(offset)
-    });
+    const notifications = await NotificationService.getUserNotifications(
+      userRole,
+      userCity,
+      userId,
+      {
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      }
+    );
 
-    const unreadCount = await NotificationService.countUnreadNotifications(userRole);
+    const unreadCount = await NotificationService.countUnreadNotifications(userRole, userCity, userId);
 
     res.json({
       success: true,
@@ -37,7 +43,9 @@ router.get('/', auth, async (req, res) => {
 router.get('/unread-count', auth, async (req, res) => {
   try {
     const userRole = req.user.role || 'driver';
-    const count = await NotificationService.countUnreadNotifications(userRole);
+    const userCity = req.city || 'manaus';
+    const userId = req.user.id;
+    const count = await NotificationService.countUnreadNotifications(userRole, userCity, userId);
     res.json({ success: true, count });
   } catch (error) {
     console.error('Erro ao contar notificações:', error);
@@ -45,10 +53,14 @@ router.get('/unread-count', auth, async (req, res) => {
   }
 });
 
-// Marcar notificação como lida
+// Marcar notificação como lida para o usuário logado
 router.put('/:id/read', auth, async (req, res) => {
   try {
-    const notification = await NotificationService.markAsRead(req.params.id);
+    const notification = await NotificationService.markAsRead(
+      req.params.id,
+      req.user.id,
+      req.user.name || req.user.username
+    );
     if (!notification) {
       return res.status(404).json({ success: false, message: 'Notificação não encontrada' });
     }
@@ -59,12 +71,34 @@ router.put('/:id/read', auth, async (req, res) => {
   }
 });
 
-// Marcar todas como lidas
+// Deletar notificação para o usuário logado
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    const notification = await NotificationService.deleteNotificationForUser(
+      req.params.id,
+      req.user.id,
+      req.user.name || req.user.username
+    );
+    if (!notification) {
+      return res.status(404).json({ success: false, message: 'Notificação não encontrada' });
+    }
+    res.json({ success: true, notification });
+  } catch (error) {
+    console.error('Erro ao deletar notificação:', error);
+    res.status(500).json({ success: false, message: 'Erro ao deletar notificação', error: error.message });
+  }
+});
+
+// Marcar todas como lidas para o usuário logado
 router.put('/mark-all-read', auth, async (req, res) => {
   try {
     const userRole = req.user.role || 'driver';
-    const result = await NotificationService.markAllAsRead(userRole);
-    res.json({ success: true, acknowledged: result.acknowledged });
+    const result = await NotificationService.markAllAsRead(
+      userRole,
+      req.user.id,
+      req.user.name || req.user.username
+    );
+    res.json({ success: true, acknowledged: result.acknowledged, updated: result.updated });
   } catch (error) {
     console.error('Erro ao marcar todas como lidas:', error);
     res.status(500).json({ success: false, message: 'Erro ao marcar todas como lidas', error: error.message });
