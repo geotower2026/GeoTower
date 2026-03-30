@@ -1111,15 +1111,20 @@ const MonitorEntregas = () => {
   const updateVerificationWithServer = async (deliveryId, verified, notes = '') => {
     try {
       const response = await adminService.updateDeliveryVerification(deliveryId, { verified, notes });
-      if (response.success) {
+      const data = response?.data;
+      if (data?.success) {
         console.log(`✅ Verificação do servidor atualizada para entrega ${deliveryId}`);
-        return response.verification;
+        return data.verification;
       }
+
+      const message = data?.message || 'Resposta inesperada do servidor';
+      console.error('❌ updateVerificationWithServer inesperado:', data);
+      throw new Error(message);
     } catch (e) {
       console.error('Erro ao atualizar verificação no servidor:', e);
       setToast({
         type: 'error',
-        message: 'Erro ao sincronizar com servidor. Tentando novamente...',
+        message: 'Erro ao sincronizar com servidor. Tente novamente.',
         duration: 3000
       });
       throw e;
