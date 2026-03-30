@@ -458,7 +458,7 @@ const ProgramadasEntregas = () => {
       } else {
         const searchVal = (currentProgramacao.container || currentProgramacao.processo || '').trim();
         if (searchVal) {
-          const resp = await deliveryService.getMyDeliveries({ searchTerm: searchVal });
+          const resp = await deliveryService.getMyDeliveries({ q: searchVal });
           const found = resp.data.deliveries && resp.data.deliveries[0];
           if (found) {
             if (!isPendingCanhoto) await deliveryService.updateDelivery(found._id, { status: 'FINALIZADO' });
@@ -713,7 +713,7 @@ const ProgramadasEntregas = () => {
       const deliveryNumber = (currentProgramacaoForReturn.container && currentProgramacaoForReturn.container.trim()) || (currentProgramacaoForReturn.processo && currentProgramacaoForReturn.processo.trim());
       let deliveryId = currentProgramacaoForReturn.linkedDeliveryId;
       if (!deliveryId && deliveryNumber) {
-        const resp = await deliveryService.getMyDeliveries({ searchTerm: deliveryNumber });
+        const resp = await deliveryService.getMyDeliveries({ q: deliveryNumber });
         const found = resp.data.deliveries && resp.data.deliveries[0];
         if (found) deliveryId = found._id;
       }
