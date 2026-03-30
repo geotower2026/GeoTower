@@ -977,4 +977,131 @@ router.delete("/:id", auth, async (req, res) => {
   }
 });
 
+// =======================
+// VERIFICAÇÃO DE ARQUIVOS (Arquivos Verificados / Icompany)
+// =======================
+
+// GET - Buscar status de verificação de uma entrega
+// GET /api/deliveries/:id/verification
+router.get("/:id/verification", auth, async (req, res) => {
+  try {
+    const city = req.city || 'manaus';
+    const { id } = req.params;
+
+    // Importar modelo de verificação
+    const DeliveryVerification = require('../models/DeliveryVerification');
+
+    // Buscar status de verificação
+    const verification = await DeliveryVerification.findOne({
+      deliveryId: id,
+      cityCode: city
+    });
+
+    // Retornar null se não existir, ou o status se existir
+    const result = verification ? {
+      verified: verification.verified,
+      verifiedBy: verification.verifiedBy,
+      verifiedAt: verification.verifiedAt,
+      notes: verification.notes
+    } : null;
+
+    res.json({ success: true, verification: result });
+  } catch (err) {
+    console.error('❌ Erro ao buscar verificação:', err);
+    res.status(500).json({ success: false, message: 'Erro ao buscar verificação' });
+  }
+});
+
+// POST - Marcar entrega como verificada
+// POST /api/deliveries/:id/verification
+router.post("/:id/verification", auth, async (req, res) => {
+  try {
+    const city = req.city || 'manaus';
+    const { id } = req.params;
+    const { verified, notes } = req.body;
+    const userName = req.user?.name || 'Usuário Desconhecido';
+
+    const DeliveryVerification = require('../models/DeliveryVerification');
+    const Delivery = require('../models/Delivery');
+
+    // Validar que a entrega existe
+    const delivery = await Delivery.findById(id);
+    if (!delivery) {
+      return res.status(404).json({ success: false, message: 'Entrega não encontrada' });
+    }
+
+    // Validar que é da mesma cidade
+    if (delivery.cityCode !== city) {
+      return res.status(403).json({ success: false, message: 'Aceso negado - dados de outra cidade' });
+    }
+
+    // Atualizar ou criar verificação
+    const verification = await DeliveryVerification.findOneAndUpdate(
+      { deliveryId: id, cityCode: city },
+      {
+        deliveryId: id,
+        deliveryNumber: delivery.deliveryNumber,
+        verified: verified === true,
+        verifiedBy: userName,
+        verifiedAt: verified === true ? new Date() : null,
+        notes: notes || '',
+        cityCode: city
+      },
+      { upsert: true, new: true }
+    );
+
+    console.log(`✅ Entrega ${delivery.deliveryNumber} marcada como ${verified ? 'verificada' : 'não verificada'} por ${userName}`);
+
+    res.json({
+      success: true,
+      message: `Entrega ${verified ? 'marcada' : 'desmarcada'} com sucesso`,
+      verification: {
+        verified: verification.verified,
+        verifiedBy: verification.verifiedBy,
+        verifiedAt: verification.verifiedAt,
+        notes: verification.notes
+      }
+    });
+  } catch (err) {
+    console.error('❌ Erro ao atualizar verificação:', err);
+    res.status(500).json({ success: false, message: 'Erro ao atualizar verificação' });
+  }
+});
+
+// GET - Listar todas as verificações por cidade (para sincronização em massa)
+// GET /api/deliveries/verifications/list
+router.get("/verifications/list", auth, async (req, res) => {
+  try {
+    const city = req.city || 'manaus';
+    const { verified } = req.query; // filter por verified status se necessário
+
+    const DeliveryVerification = require('../models/DeliveryVerification');
+
+    const filter = { cityCode: city };
+    if (verified !== undefined) {
+      filter.verified = verified === 'true';
+    }
+
+    const verifications = await DeliveryVerification.find(filter)
+      .select('deliveryId deliveryNumber verified verifiedBy verifiedAt')
+      .limit(10000)
+      .lean();
+
+    // Converter para Map para facilitar lookup no frontend
+    const verificationMap = {};
+    verifications.forEach(v => {
+      verificationMap[v.deliveryId] = {
+        verified: v.verified,
+        verifiedBy: v.verifiedBy,
+        verifiedAt: v.verifiedAt
+      };
+    });
+
+    res.json({ success: true, data: verificationMap, count: verifications.length });
+  } catch (err) {
+    console.error('❌ Erro ao listar verificações:', err);
+    res.status(500).json({ success: false, message: 'Erro ao listar verificações' });
+  }
+});
+
 module.exports = router;

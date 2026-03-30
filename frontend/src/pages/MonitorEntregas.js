@@ -1075,26 +1075,56 @@ const MonitorEntregas = () => {
     return () => document.head.removeChild(el4);
   }, [theme]);
 
-  // Load icompanyVerified status from localStorage on mount
+  // Sincronizar verificações com o servidor ao carregar
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('icompanyVerified');
-      if (saved) {
-        setIcompanyVerified(JSON.parse(saved));
+    const syncVerificationsFromServer = async () => {
+      try {
+        const response = await adminService.getVerificationsList();
+        if (response.success && response.data) {
+          setIcompanyVerified(response.data);
+          // Também salvamos no localStorage como backup
+          localStorage.setItem('icompanyVerified', JSON.stringify(response.data));
+        }
+      } catch (e) {
+        console.warn('Aviso ao sincronizar verificações do servidor:', e);
+        // Se falhar, carregar do localStorage como fallback
+        try {
+          const saved = localStorage.getItem('icompanyVerified');
+          if (saved) {
+            setIcompanyVerified(JSON.parse(saved));
+          }
+        } catch (e2) {
+          console.error('Erro ao carregar verificações do localStorage:', e2);
+        }
       }
-    } catch (e) {
-      console.error('Erro ao carregar status de verificação Icompany:', e);
-    }
+    };
+
+    syncVerificationsFromServer();
+
+    // Polling a cada 10 segundos para sincronizar mudanças de outros usuários
+    const syncInterval = setInterval(syncVerificationsFromServer, 10000);
+
+    return () => clearInterval(syncInterval);
   }, []);
 
-  // Save icompanyVerified status to localStorage whenever it changes
-  useEffect(() => {
+  // Função para atualizar verificação no servidor
+  const updateVerificationWithServer = async (deliveryId, verified, notes = '') => {
     try {
-      localStorage.setItem('icompanyVerified', JSON.stringify(icompanyVerified));
+      const response = await adminService.updateDeliveryVerification(deliveryId, { verified, notes });
+      if (response.success) {
+        console.log(`✅ Verificação do servidor atualizada para entrega ${deliveryId}`);
+        return response.verification;
+      }
     } catch (e) {
-      console.error('Erro ao salvar status de verificação Icompany:', e);
+      console.error('Erro ao atualizar verificação no servidor:', e);
+      setToast({
+        type: 'error',
+        message: 'Erro ao sincronizar com servidor. Tentando novamente...',
+        duration: 3000
+      });
+      throw e;
     }
-  }, [icompanyVerified]);
+  };
 
   const toggleFullscreen = async () => {
     if (!document.fullscreenElement) {
@@ -2440,17 +2470,28 @@ const MonitorEntregas = () => {
                     <input
                       type="checkbox"
                       checked={icompanyVerified?.[selectedDelivery._id]?.verified || false}
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         if (e.target.checked) {
                           // Marcando como verificado
-                          setIcompanyVerified({
-                            ...icompanyVerified,
-                            [selectedDelivery._id]: {
-                              verified: true,
-                              timestamp: new Date(),
-                              user: userName
-                            }
-                          });
+                          try {
+                            const verification = await updateVerificationWithServer(selectedDelivery._id, true, '');
+                            setIcompanyVerified({
+                              ...icompanyVerified,
+                              [selectedDelivery._id]: {
+                                verified: true,
+                                verifiedAt: verification.verifiedAt,
+                                verifiedBy: verification.verifiedBy
+                              }
+                            });
+                            setToast({
+                              type: 'success',
+                              message: `✓ Arquivos marcados como verificados`,
+                              duration: 3000
+                            });
+                          } catch (err) {
+                            // Erro já foi tratado em updateVerificationWithServer
+                            e.target.checked = false; // Reverti o checkbox
+                          }
                         } else {
                           // Tentando desmarcar - abrir modal de confirmação
                           setDeliveryToUnverify(selectedDelivery._id);
@@ -2475,10 +2516,11 @@ const MonitorEntregas = () => {
                         {icompanyVerified?.[selectedDelivery._id]?.verified
                           ? (() => {
                               const data = icompanyVerified[selectedDelivery._id];
-                              const ts = new Date(data.timestamp);
+                              const ts = new Date(data.verifiedAt || data.timestamp);
                               const horaBrasil = ts.toLocaleString('pt-BR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
                               const [dataParte, horaParte] = horaBrasil.split(', ');
-                              return `Marcado como verificado e importado para o Icompany em ${dataParte}, às ${horaParte} por ${data.user}`;
+                              const user = data.verifiedBy || data.user;
+                              return `Marcado como verificado e importado para o Icompany em ${dataParte}, às ${horaParte} por ${user}`;
                             })()
                           : 'Marcar documentos como verificados e importados para Icompany'
                         }
@@ -2711,10 +2753,10 @@ const MonitorEntregas = () => {
               {icompanyVerified?.[deliveryToUnverify] && (
                 <div className="bg-white/5 border border-white/10 rounded-lg p-3 text-xs text-gray-400 space-y-1">
                   <p>
-                    <strong>Verificado por:</strong> {icompanyVerified[deliveryToUnverify].user}
+                    <strong>Verificado por:</strong> {icompanyVerified[deliveryToUnverify].verifiedBy || icompanyVerified[deliveryToUnverify].user}
                   </p>
                   <p>
-                    <strong>Em:</strong> {new Date(icompanyVerified[deliveryToUnverify].timestamp).toLocaleString('pt-BR')}
+                    <strong>Em:</strong> {new Date(icompanyVerified[deliveryToUnverify].verifiedAt || icompanyVerified[deliveryToUnverify].timestamp).toLocaleString('pt-BR')}
                   </p>
                 </div>
               )}
@@ -2736,13 +2778,28 @@ const MonitorEntregas = () => {
               </button>
 
               <button
-                onClick={() => {
-                  // Confirmar remoção
-                  const newState = { ...icompanyVerified };
-                  delete newState[deliveryToUnverify];
-                  setIcompanyVerified(newState);
-                  setConfirmRemoveVerification(false);
-                  setDeliveryToUnverify(null);
+                onClick={async () => {
+                  try {
+                    // Remover do servidor primeiro
+                    await updateVerificationWithServer(deliveryToUnverify, false, '');
+                    
+                    // Atualizar estado local
+                    const newState = { ...icompanyVerified };
+                    delete newState[deliveryToUnverify];
+                    setIcompanyVerified(newState);
+                    
+                    // Fechar modal
+                    setConfirmRemoveVerification(false);
+                    setDeliveryToUnverify(null);
+                    
+                    setToast({
+                      type: 'success',
+                      message: '✓ Verificação removida',
+                      duration: 3000
+                    });
+                  } catch (err) {
+                    // Erro já foi tratado em updateVerificationWithServer
+                  }
                 }}
                 className="px-4 py-2.5 rounded-xl bg-red-600/30 hover:bg-red-600/50 text-red-300 hover:text-red-200 font-semibold text-sm transition border border-red-500/30"
               >

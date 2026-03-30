@@ -84,7 +84,11 @@ export const adminService = {
     form.append('file', file);
     return api.post('/admin/programs/import', form, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
-  importProgramsText: (text) => api.post('/admin/programs/import', { text })
+  importProgramsText: (text) => api.post('/admin/programs/import', { text }),
+  // Verificação de Arquivos (Arquivos Verificados / Icompany)
+  getVerification: (deliveryId) => api.get(`/deliveries/${deliveryId}/verification`),
+  updateDeliveryVerification: (deliveryId, data) => api.post(`/deliveries/${deliveryId}/verification`, data),
+  getVerificationsList: () => api.get('/deliveries/verifications/list')
 };
 
 // Adiciona métodos do deliveryService para iniciar entrega
