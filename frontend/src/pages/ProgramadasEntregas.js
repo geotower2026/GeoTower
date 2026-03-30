@@ -626,7 +626,8 @@ const ProgramadasEntregas = () => {
               title: 'Solicitação de Agendamento',
               message: `Motorista ${user?.name || 'Desconhecido'} solicitou agendamento de devolução para o container ${currentDelivery?.deliveryNumber || 'N/A'}.`,
               type: 'scheduling_request',
-              deliveryId: currentDelivery._id
+              deliveryId: currentDelivery._id,
+              containerNumber: currentDelivery?.deliveryNumber || 'N/A'
             });
           } catch (notifError) {
             console.warn('Erro ao criar notificação:', notifError);
