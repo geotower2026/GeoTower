@@ -324,24 +324,27 @@ const getPunctualityStatus = (d, now = new Date(), city = 'manaus') => {
   const schedStr = getProgramacaoDate(d, city);
   if (!schedStr) return { label: 'Sem agendamento', type: 'unknown', eta: null, lateBy: null };
   
-  // Offset de timezone em horas baseado na cidade da entrega (Manaus = UTC-4, então +4 para converter local para UTC)
+  // Offset de timezone em horas
   const getTimezoneOffsetHours = (cityCode) => {
-    if (cityCode === 'manaus') return 4;   // Manaus é UTC-4, então adiciona 4 para converter local→UTC
+    if (cityCode === 'manaus') return 4;   // Manaus é UTC-4, então +4 para converter local→UTC
     if (cityCode === 'itajai') return 3;  // Itajaí é UTC-3, então adiciona 3 para converter local→UTC
     return 3;
   };
   
   const scheduled = new Date(schedStr);
-  const arrival = d.horarioChegada ? new Date(d.horarioChegada) : null;
+  const arrival = d.horarioChegada ? new Date(d.horarioChegada) : null; // Assumindo que já está em UTC do servidor
   const start = d.createdAt ? new Date(d.createdAt) : null;
   const travel = Number(d.estimatedTravelMinutes || d.minimumTravelMinutes || 40);
   
-  // Usar a cidade da entrega para o offset correto
+  // Offsets separados: usuário (para now) e entrega (para scheduled)
   const deliveryCity = d.city || 'manaus';
-  const offset = getTimezoneOffsetHours(deliveryCity);
-  const offsetMs = offset * 60 * 60 * 1000;
-  const scheduledUTC = new Date(scheduled.getTime() + offsetMs);
-  const nowUTC = new Date(now.getTime() + offsetMs);
+  const offsetUser = getTimezoneOffsetHours(city); // city passado é do usuário/visualizador
+  const offsetDelivery = getTimezoneOffsetHours(deliveryCity);
+  const offsetUserMs = offsetUser * 60 * 60 * 1000;
+  const offsetDeliveryMs = offsetDelivery * 60 * 60 * 1000;
+  
+  const scheduledUTC = new Date(scheduled.getTime() + offsetDeliveryMs);
+  const nowUTC = new Date(now.getTime() + offsetUserMs);
   
   const computeEta = () => {
     if (!start) return null;
@@ -351,12 +354,11 @@ const getPunctualityStatus = (d, now = new Date(), city = 'manaus') => {
   };
 
   if (arrival) {
-    // Converter arrival para UTC também
-    const arrivalUTC = new Date(arrival.getTime() + offsetMs);
-    const lateBy = Math.round((arrivalUTC - scheduledUTC) / 60000);
+    // arrival já está em UTC (do servidor)
+    const lateBy = Math.round((arrival - scheduledUTC) / 60000);
     return {
-      label: arrivalUTC.getTime() <= scheduledUTC.getTime() ? 'Pontual' : 'Atrasado',
-      type: arrivalUTC.getTime() <= scheduledUTC.getTime() ? 'ok' : 'late',
+      label: arrival.getTime() <= scheduledUTC.getTime() ? 'Pontual' : 'Atrasado',
+      type: arrival.getTime() <= scheduledUTC.getTime() ? 'ok' : 'late',
       eta: 0, lateBy
     };
   }
