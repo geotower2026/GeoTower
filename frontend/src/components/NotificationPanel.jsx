@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FaTimes, FaCheckCircle, FaTrash } from 'react-icons/fa';
+import { FaTimes, FaCheckCircle, FaTrash, FaBell } from 'react-icons/fa';
 import { notificationService } from '../services/authService';
 
 const NotificationPanel = ({ isOpen, onClose }) => {
