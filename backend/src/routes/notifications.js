@@ -108,7 +108,7 @@ router.put('/mark-all-read', auth, async (req, res) => {
 // Criar notificação (para solicitações de agendamento, etc.)
 router.post('/', auth, async (req, res) => {
   try {
-    const { title, message, type = 'info', deliveryId } = req.body;
+    const { title, message, type = 'info', deliveryId, containerNumber, driverName } = req.body;
     
     if (!title || !message) {
       return res.status(400).json({ success: false, message: 'Título e mensagem são obrigatórios' });
@@ -117,10 +117,11 @@ router.post('/', auth, async (req, res) => {
     // Usar o método notifyScheduleRequest se for uma solicitação de agendamento
     let notifications;
     if (type === 'scheduling_request' && deliveryId) {
+      const driver = driverName || req.user.name || req.user.username || 'Motorista';
       notifications = await NotificationService.notifyScheduleRequest(
         deliveryId,
-        req.user.name || req.user.username || 'Motorista',
-        req.body.containerNumber || 'N/A',
+        driver,
+        containerNumber || 'N/A',
         req.city || 'manaus'
       );
     } else {
