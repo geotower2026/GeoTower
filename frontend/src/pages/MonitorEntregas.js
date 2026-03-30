@@ -1109,14 +1109,20 @@ const MonitorEntregas = () => {
 
   // Função para atualizar verificação no servidor
   const updateVerificationWithServer = async (deliveryId, verified, notes = '') => {
+    console.log('🚀 updateVerificationWithServer called:', { deliveryId, verified, notes });
     try {
+      console.log('📡 Calling adminService.updateDeliveryVerification...');
       const response = await adminService.updateDeliveryVerification(deliveryId, { verified, notes });
+      console.log('📥 Server response received:', response);
       if (response.success) {
         console.log(`✅ Verificação do servidor atualizada para entrega ${deliveryId}`);
         return response.verification;
+      } else {
+        console.error('❌ Server returned success=false:', response);
       }
     } catch (e) {
-      console.error('Erro ao atualizar verificação no servidor:', e);
+      console.error('❌ Error in updateVerificationWithServer:', e);
+      console.error('Error details:', e.response?.data || e.message);
       setToast({
         type: 'error',
         message: 'Erro ao sincronizar com servidor. Tentando novamente...',
@@ -2471,10 +2477,13 @@ const MonitorEntregas = () => {
                       type="checkbox"
                       checked={icompanyVerified?.[selectedDelivery._id]?.verified || false}
                       onChange={async (e) => {
+                        console.log('🔄 Checkbox changed:', e.target.checked, 'for delivery:', selectedDelivery._id);
                         if (e.target.checked) {
                           // Marcando como verificado
                           try {
+                            console.log('📤 Calling updateVerificationWithServer...');
                             const verification = await updateVerificationWithServer(selectedDelivery._id, true, '');
+                            console.log('✅ Server response:', verification);
                             setIcompanyVerified({
                               ...icompanyVerified,
                               [selectedDelivery._id]: {
