@@ -2464,15 +2464,17 @@ const MonitorEntregas = () => {
                     : 'bg-gradient-to-r from-emerald-900/15 to-teal-900/15 hover:from-emerald-900/20 hover:to-teal-900/20'
                 }`}>
                   <label className="flex items-center gap-3 cursor-pointer group">
-                    <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all ${
-                      icompanyVerified?.[selectedDelivery._id]?.verified
-                        ? 'bg-emerald-500 border-emerald-500 shadow-lg shadow-emerald-500/50'
-                        : 'border-emerald-400/50 group-hover:border-emerald-400'
-                    }`}>
-                      {icompanyVerified?.[selectedDelivery._id]?.verified && (
-                        <FaCheckCircle className="text-white text-xs" />
-                      )}
-                    </div>
+                  <label 
+                    className="flex items-center gap-3 cursor-pointer group"
+                    onClick={(e) => {
+                      // Evitar duplicação se clicar no div ou input
+                      if (e.target.tagName === 'INPUT' || e.target.tagName === 'DIV') return;
+                      const checkbox = document.getElementById(`verification-checkbox-${selectedDelivery._id}`);
+                      if (checkbox) {
+                        checkbox.click();
+                      }
+                    }}
+                  >
                     <input
                       type="checkbox"
                       checked={icompanyVerified?.[selectedDelivery._id]?.verified || false}
@@ -2507,8 +2509,26 @@ const MonitorEntregas = () => {
                           setConfirmRemoveVerification(true);
                         }
                       }}
-                      className="hidden"
+                      className="sr-only" // Use sr-only instead of hidden for accessibility
+                      id={`verification-checkbox-${selectedDelivery._id}`}
                     />
+                    <div 
+                      className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all cursor-pointer ${
+                        icompanyVerified?.[selectedDelivery._id]?.verified
+                          ? 'bg-emerald-500 border-emerald-500 shadow-lg shadow-emerald-500/50'
+                          : 'border-emerald-400/50 group-hover:border-emerald-400'
+                      }`}
+                      onClick={() => {
+                        const checkbox = document.getElementById(`verification-checkbox-${selectedDelivery._id}`);
+                        if (checkbox) {
+                          checkbox.click();
+                        }
+                      }}
+                    >
+                      {icompanyVerified?.[selectedDelivery._id]?.verified && (
+                        <FaCheckCircle className="text-white text-xs" />
+                      )}
+                    </div>
                     <div className="flex flex-col">
                       <span className={`text-sm font-semibold transition-colors ${
                         icompanyVerified?.[selectedDelivery._id]?.verified
