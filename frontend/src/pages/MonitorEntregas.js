@@ -1186,8 +1186,8 @@ const MonitorEntregas = () => {
     const ev = [];
     if (d.containerMontadoAt) ev.push({ label: 'Montagem do container', date: d.containerMontadoAt });
     if (d.horarioChegada) ev.push({ label: 'Chegada', date: d.horarioChegada });
-    if (d.horarioInicioDesova) ev.push({ label: 'Início da desova', date: d.horarioInicioDesova });
-    if (d.horarioFimDesova) ev.push({ label: 'Fim da desova', date: d.horarioFimDesova });
+    if (d.horarioInicioDesova) ev.push({ label: city === 'itajai' ? 'Inicio da ovação' : 'Início da desova', date: d.horarioInicioDesova });
+    if (d.horarioFimDesova) ev.push({ label: city === 'itajai' ? 'Fim da ovação' : 'Fim da desova', date: d.horarioFimDesova });
     return ev.sort((a, b) => new Date(a.date) - new Date(b.date));
   };
 
