@@ -1611,7 +1611,17 @@ const MonitorEntregas = () => {
     }
 
     // Mapeamento dos campos conforme o modelo Icompany (var nomes reais do banco)
-    const fieldMapping = {
+    // Ajuste baseado na cidade: Itajaí tem mapeamentos diferentes
+    const isItajai = city.toLowerCase() === 'itajai';
+    const fieldMapping = isItajai ? {
+      'Contratado': { deliveryField: 'userName', icompanyField: 'contratado' },
+      'Entrega CNTR Porto': { deliveryField: 'horarioDevolucaoVazio', icompanyField: 'entradaDistrito' },
+      'Agendamento': { deliveryField: 'dataAgendamento', icompanyField: 'dtColeta' },
+      'Recebedor': { deliveryField: 'recebedor', icompanyField: 'remetente' },
+      'Montagem Container': { deliveryField: 'containerMontadoAt', icompanyField: 'dtRetiraPD' },
+      'Chegada': { deliveryField: 'horarioChegada', icompanyField: 'dtChegadaPlanta' },
+      'Fim Desova': { deliveryField: 'horarioFimDesova', icompanyField: 'dtFimDescarga' }
+    } : {
       'Contratado': { deliveryField: 'userName', icompanyField: 'contratado' },
       'Entrega CNTR Porto': { deliveryField: 'horarioDevolucaoVazio', icompanyField: 'dtDevolucaoCNTR' },
       'Agendamento': { deliveryField: 'dataAgendamento', icompanyField: 'dtAgendamentoDescarga' },
