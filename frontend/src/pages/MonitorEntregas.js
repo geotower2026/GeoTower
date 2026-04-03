@@ -1591,7 +1591,7 @@ const MonitorEntregas = () => {
     const target = getClean(delivery.deliveryNumber || delivery.processo || delivery.codigo || '');
     if (!target) return null;
 
-    const keys = ['geomaritima', 'processo', 'codigo', 'numero', 'NUMERO', 'NÚMERO', 'container'];
+    const keys = ['geomaritima', 'processo', 'codigo', 'numero', 'NUMERO', 'NÚMERO', 'container', 'containerNumero'];
 
     return icompanyData.find((record) => {
       return keys.some((k) => {
@@ -1632,7 +1632,7 @@ const MonitorEntregas = () => {
       return str.replace(/^#/, '').trim().toUpperCase();
     };
 
-    const lookupKeys = ['geomaritima', 'processo', 'codigo', 'numero', 'NUMERO', 'NÚMERO', 'container'];
+    const lookupKeys = ['geomaritima', 'processo', 'codigo', 'numero', 'NUMERO', 'NÚMERO', 'container', 'containerNumero'];
 
     const icompanyRecord = icompanyData.find((record) => {
       return lookupKeys.some((key) => {
