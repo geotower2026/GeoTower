@@ -1582,49 +1582,67 @@ const MonitorEntregas = () => {
   const compareWithIcompany = useCallback((delivery) => {
     if (!delivery || !icompanyData.length) return {};
 
-    // Mapeamento dos campos conforme especificado pelo usuário
+    // Mapeamento dos campos conforme o modelo Icompany (var nomes reais do banco)
     const fieldMapping = {
-      'Contratado': { deliveryField: 'userName', icompanyField: 'CONTRATADO' },
-      'Entrega CNTR Porto': { deliveryField: 'horarioDevolucaoVazio', icompanyField: 'DT. DEVOLUÇÃO CNTR' },
-      'Agendamento': { deliveryField: 'dataAgendamento', icompanyField: 'DT. AGENDAMENTO DESCARGA' },
-      'Recebedor': { deliveryField: 'recebedor', icompanyField: 'DESTINATARIO' },
-      'Montagem Container': { deliveryField: 'containerMontadoAt', icompanyField: 'DT. RETIRADA P.D.' },
-      'Chegada': { deliveryField: 'horarioChegada', icompanyField: 'DT. ENTRADA PLANTA' },
-      'Início Desova': { deliveryField: 'horarioInicioDesova', icompanyField: 'DT. INICIO DESCARGA' },
-      'Fim Desova': { deliveryField: 'horarioFimDesova', icompanyField: 'DT. FIM DESCARGA' }
+      'Contratado': { deliveryField: 'userName', icompanyField: 'contratado' },
+      'Entrega CNTR Porto': { deliveryField: 'horarioDevolucaoVazio', icompanyField: 'dtDevolucaoCNTR' },
+      'Agendamento': { deliveryField: 'dataAgendamento', icompanyField: 'dtAgendamentoDescarga' },
+      'Recebedor': { deliveryField: 'recebedor', icompanyField: 'destinatario' },
+      'Montagem Container': { deliveryField: 'containerMontadoAt', icompanyField: 'dtRetiraPD' },
+      'Chegada': { deliveryField: 'horarioChegada', icompanyField: 'dtEntradaPlanta' },
+      'Início Desova': { deliveryField: 'horarioInicioDesova', icompanyField: 'dtInicioDescarga' },
+      'Fim Desova': { deliveryField: 'horarioFimDesova', icompanyField: 'dtFimDescarga' }
     };
 
     // Procurar registro correspondente na Icompany
-    const processo = delivery.deliveryNumber || delivery.processo || '';
-    const icompanyRecord = icompanyData.find(record => {
-      const recordProcesso = (record.geomaritima || record.processo || record.codigo || '').toString().toUpperCase().trim();
-      return recordProcesso === processo.toUpperCase().trim();
+    const processoRaw = delivery.deliveryNumber || delivery.processo || delivery.codigo || '';
+    const procesoClean = processoRaw.toString().replace(/^#/, '').toUpperCase().trim();
+
+    const icompanyRecord = icompanyData.find((record) => {
+      const recordProcesso = (record.geomaritima || record.processo || record.codigo || '').toString().replace(/^#/, '').toUpperCase().trim();
+      const recordContainer = (record.numero || record.container || '').toString().toUpperCase().trim();
+
+      return (recordProcesso && recordProcesso === procesoClean) || (procesoClean && recordContainer === procesoClean);
     });
 
     if (!icompanyRecord) return {};
 
     const comparisons = {};
 
+    const parseDateValue = (val) => {
+      if (!val) return null;
+      if (val instanceof Date) return val;
+      const date = new Date(val);
+      return isNaN(date.getTime()) ? null : date;
+    };
+
+    const normalizeValue = (val) => {
+      if (val === null || val === undefined || val === '') return '';
+      const date = parseDateValue(val);
+      if (date) return date.toISOString().slice(0, 16); // YYYY-MM-DDTHH:mm
+      return val.toString().trim().toUpperCase();
+    };
+
+    const formatDisplay = (val) => {
+      if (val === null || val === undefined || val === '') return '—';
+      const date = parseDateValue(val);
+      if (date) return formatarData(date, city);
+      return val.toString();
+    };
+
     Object.entries(fieldMapping).forEach(([displayName, mapping]) => {
       const deliveryValue = delivery[mapping.deliveryField];
       const icompanyValue = icompanyRecord[mapping.icompanyField];
-
-      // Normalizar valores para comparação
-      const normalizeValue = (val) => {
-        if (!val) return '';
-        if (val instanceof Date) return val.toISOString().slice(0, 16); // YYYY-MM-DDTHH:mm
-        return val.toString().trim();
-      };
 
       const normalizedDelivery = normalizeValue(deliveryValue);
       const normalizedIcompany = normalizeValue(icompanyValue);
 
       comparisons[displayName] = {
-        deliveryValue: deliveryValue,
-        icompanyValue: icompanyValue,
+        deliveryValue,
+        icompanyValue,
         isInconsistent: normalizedDelivery !== normalizedIcompany && (normalizedDelivery || normalizedIcompany),
-        displayDelivery: deliveryValue ? (typeof deliveryValue === 'string' ? deliveryValue : formatarData(deliveryValue, city)) : '—',
-        displayIcompany: icompanyValue ? (typeof icompanyValue === 'string' ? icompanyValue : formatarData(icompanyValue, city)) : '—'
+        displayDelivery: formatDisplay(deliveryValue),
+        displayIcompany: formatDisplay(icompanyValue)
       };
     });
 
@@ -2355,6 +2373,16 @@ const MonitorEntregas = () => {
             </div>
 
             <div className="overflow-y-auto flex-1 p-4 sm:p-6 space-y-5">
+              {(() => {
+                const comparisons = compareWithIcompany(selectedDelivery);
+                const icompanyMatched = Object.keys(comparisons).length > 0;
+                return !icompanyMatched ? (
+                  <div className="rounded-xl p-3 bg-yellow-900/20 border border-yellow-700/50 text-yellow-200 text-xs font-semibold">
+                    ⚠️ Registro Icompany não encontrado para o processo/ID desta entrega. A comparação só funciona quando há correspondência exata em Icompany (campo código/processo).
+                  </div>
+                ) : null;
+              })()}
+
               <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 {(() => {
                   // Fazer comparação com Icompany

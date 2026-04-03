@@ -103,24 +103,9 @@ function isEmpty(v) {
   return v === null || v === undefined || (typeof v === "string" && v.trim() === "");
 }
 
-// NOVA REGRA:
-// Excel com valor -> atualiza
-// Excel vazio -> não apaga Mongo
-function buildPatchFromExcel(incoming) {
-  const patch = {};
-
-  for (const [key, value] of Object.entries(incoming)) {
-    if (value === null || value === undefined || value === "") continue;
-    patch[key] = value;
-  }
-
-  return patch;
-}
-
 // ---------- MAP ----------
 
 function mapToEntrega(row) {
-
   const dtRetiraPDVal = toLocalDateTimeString(row["Dt. retirada P.D."] ?? row["Dt. Retirada porto"]);
   const dtColetaVal = toLocalDateTimeString(row["Dt. coleta"] ?? row["Data agendamento"] ?? row["Data Agendamento"]);
   const dtChegadaVal = toLocalDateTimeString(row["Dt. chegada planta"] ?? row["Dt. chegada cliente"]);
@@ -184,85 +169,84 @@ function mapToEntrega(row) {
 
 // ---------- MAIN ----------
 
-async function importarExcel() {
+let importando = false;
 
-  const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
-  const mongo = new MongoClient(MONGO_URI);
-  await mongo.connect();
+async function importarExcel(origem = "manual/startup") {
+  if (importando) {
+    console.log("⏳ Importação já em andamento, ignorando novo disparo...");
+    return;
+  }
 
-  const col = mongo.db("delivery-docs").collection("icompany");
+  importando = true;
+  let mongo;
 
-  console.log("📊 Lendo Excel...");
+  try {
+    const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
 
-  const wb = XLSX.readFile(EXCEL_PATH, { cellDates: true });
-  const sheet = wb.Sheets[wb.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json(sheet, { defval: null }).map(cleanRow);
-
-  const docs = rows.map(mapToEntrega).filter((d) => d.processo);
-
-  const processos = [...new Set(docs.map((d) => d.processo))];
-  const existentes = await col.find({ processo: { $in: processos } }).toArray();
-
-  const mapExist = new Map(existentes.map((x) => [x.processo, x]));
-
-  const ops = [];
-
-  for (const d of docs) {
-    const existing = mapExist.get(d.processo);
-
-    if (!existing) {
-      const toInsert = buildPatchFromExcel(d);
-
-      ops.push({
-        updateOne: {
-          filter: { codigo: d.codigo },
-          update: {
-            $set: {
-              ...toInsert,
-              processo: d.processo,
-              updatedAt: new Date(),
-              _lastImportAt: new Date()
-            },
-            $setOnInsert: {
-              createdAt: new Date(),
-              ativo: true,
-              status: "AGENDADO",
-              _source: "erp_excel"
-            }
-          },
-          upsert: true
-        }
-      });
-
-      continue;
+    if (!MONGO_URI) {
+      throw new Error("MONGO_URI ou MONGODB_URI não definido no .env");
     }
 
-    const patch = buildPatchFromExcel(d);
+    console.log("==================================================");
+    console.log(`🚀 Iniciando importação [origem=${origem}]`);
+    console.log("📄 Excel:", EXCEL_PATH);
+    console.log("🗄️ Banco: delivery-docs | Collection: icompany");
 
-    if (Object.keys(patch).length === 0) continue;
+    mongo = new MongoClient(MONGO_URI);
+    await mongo.connect();
 
-    ops.push({
-      updateOne: {
-        filter: { processo: d.processo },
-        update: {
-          $set: {
-            ...patch,
-            updatedAt: new Date(),
-            _lastImportAt: new Date()
-          }
-        }
-      }
-    });
+    const db = mongo.db("delivery-docs");
+    const col = db.collection("icompany");
+
+    console.log("📊 Lendo Excel...");
+
+    const wb = XLSX.readFile(EXCEL_PATH, { cellDates: true });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, { defval: null }).map(cleanRow);
+
+    const docs = rows.map(mapToEntrega).filter((d) => d.processo);
+
+    console.log("📦 Linhas válidas do Excel:", docs.length);
+
+    const antes = await col.countDocuments({});
+    console.log("📌 Documentos antes da limpeza:", antes);
+
+    const deleteResult = await col.deleteMany({});
+    console.log("🧹 Removidos da icompany:", deleteResult.deletedCount);
+
+    const depoisDaLimpeza = await col.countDocuments({});
+    console.log("📌 Documentos após limpeza:", depoisDaLimpeza);
+
+    if (docs.length > 0) {
+      const agora = new Date();
+
+      const docsToInsert = docs.map((d) => ({
+        ...d,
+        createdAt: agora,
+        updatedAt: agora,
+        _lastImportAt: agora,
+        ativo: true,
+        status: "AGENDADO",
+        _source: "erp_excel",
+      }));
+
+      const insertResult = await col.insertMany(docsToInsert, { ordered: false });
+      console.log("📥 Inseridos:", Object.keys(insertResult.insertedIds).length);
+    } else {
+      console.log("⚠️ Nenhum documento válido encontrado no Excel para inserir.");
+    }
+
+    const totalFinal = await col.countDocuments({});
+    console.log("✅ Total final na icompany:", totalFinal);
+    console.log("==================================================");
+  } catch (error) {
+    console.error("❌ Erro na importação:", error);
+  } finally {
+    if (mongo) {
+      await mongo.close();
+    }
+    importando = false;
   }
-
-  if (ops.length) {
-    await col.bulkWrite(ops, { ordered: false });
-    console.log("✅ Mongo atualizado:", ops.length);
-  } else {
-    console.log("➖ Nenhuma atualização necessária");
-  }
-
-  await mongo.close();
 }
 
 // ---------- MONITOR ----------
@@ -271,18 +255,32 @@ console.log("👀 Monitorando Excel...");
 
 let ultimaModificacao = 0;
 
-setInterval(() => {
-
-  if (!fs.existsSync(EXCEL_PATH)) return;
-
-  const stats = fs.statSync(EXCEL_PATH);
-
-  if (stats.mtimeMs !== ultimaModificacao) {
-    ultimaModificacao = stats.mtimeMs;
-
-    console.log("📥 Excel atualizado pelo ERP");
-
-    importarExcel().catch(console.error);
+if (fs.existsSync(EXCEL_PATH)) {
+  try {
+    ultimaModificacao = fs.statSync(EXCEL_PATH).mtimeMs;
+  } catch (e) {
+    console.error("❌ Erro ao ler data de modificação inicial do Excel:", e);
   }
+}
 
+// roda uma vez ao iniciar
+importarExcel("startup").catch(console.error);
+
+setInterval(() => {
+  try {
+    if (!fs.existsSync(EXCEL_PATH)) {
+      console.log("⚠️ Excel não encontrado:", EXCEL_PATH);
+      return;
+    }
+
+    const stats = fs.statSync(EXCEL_PATH);
+
+    if (stats.mtimeMs !== ultimaModificacao) {
+      ultimaModificacao = stats.mtimeMs;
+      console.log("📥 Excel atualizado pelo ERP");
+      importarExcel("watcher").catch(console.error);
+    }
+  } catch (error) {
+    console.error("❌ Erro no monitor:", error);
+  }
 }, 5000);
