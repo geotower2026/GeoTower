@@ -1595,14 +1595,17 @@ const MonitorEntregas = () => {
     };
 
     // Procurar registro correspondente na Icompany
-    const processoRaw = delivery.deliveryNumber || delivery.processo || delivery.codigo || '';
-    const procesoClean = processoRaw.toString().replace(/^#/, '').toUpperCase().trim();
+    const processoRaw = (delivery.deliveryNumber || delivery.processo || delivery.codigo || '').toString();
+    const processoClean = processoRaw.replace(/^#/, '').toUpperCase().trim();
 
     const icompanyRecord = icompanyData.find((record) => {
       const recordProcesso = (record.geomaritima || record.processo || record.codigo || '').toString().replace(/^#/, '').toUpperCase().trim();
-      const recordContainer = (record.numero || record.container || '').toString().toUpperCase().trim();
+      const recordNumero = (record.numero || record.container || '').toString().replace(/^#/, '').toUpperCase().trim();
 
-      return (recordProcesso && recordProcesso === procesoClean) || (procesoClean && recordContainer === procesoClean);
+      return (
+        (recordProcesso && recordProcesso === processoClean) ||
+        (recordNumero && recordNumero === processoClean)
+      );
     });
 
     if (!icompanyRecord) return {};
