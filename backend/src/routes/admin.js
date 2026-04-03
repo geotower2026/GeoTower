@@ -153,7 +153,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
         ycByProcess.get(proc).push(y);
       }
       // container pode estar em `numero` ou `containerNumero`
-      const cont = String(y.numero || y.containerNumero || '').trim().toUpperCase();
+      const cont = String(y.numero || y.NUMERO || y['NÚMERO'] || y.containerNumero || '').trim().toUpperCase();
       if (cont) {
         if (!ycByContainer.has(cont)) ycByContainer.set(cont, []);
         ycByContainer.get(cont).push(y);
