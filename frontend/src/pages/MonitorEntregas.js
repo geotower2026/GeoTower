@@ -947,6 +947,8 @@ const MonitorEntregas = () => {
   const [deliveryToUnverify, setDeliveryToUnverify] = useState(null);
   const [icompanyData, setIcompanyData] = useState([]);
   const [icompanyComparisons, setIcompanyComparisons] = useState({});
+  const [icompanyRemoteRecord, setIcompanyRemoteRecord] = useState(null);
+  const [icompanyLookupStatus, setIcompanyLookupStatus] = useState('idle');
   // Novo template para expandir a tabela e mostrar colunas completas
   const EXPANDED_COL_TEMPLATE = [
     'minmax(200px, 2.5fr)',   // Processo
@@ -1578,9 +1580,35 @@ const MonitorEntregas = () => {
     }
   }, []);
 
+  const findIcompanyInCache = useCallback((delivery) => {
+    if (!delivery || !icompanyData.length) return null;
+
+    const getClean = (value) => {
+      if (value === null || value === undefined) return '';
+      return value.toString().replace(/^#/, '').trim().toUpperCase();
+    };
+
+    const target = getClean(delivery.deliveryNumber || delivery.processo || delivery.codigo || '');
+    if (!target) return null;
+
+    const keys = ['geomaritima', 'processo', 'codigo', 'numero', 'NUMERO', 'NÚMERO', 'container'];
+
+    return icompanyData.find((record) => {
+      return keys.some((k) => {
+        const val = getClean(record[k]);
+        return val && val === target;
+      });
+    }) || null;
+  }, [icompanyData]);
+
   // Função para comparar dados do delivery com Icompany
-  const compareWithIcompany = useCallback((delivery) => {
-    if (!delivery || !icompanyData.length) return {};
+  const compareWithIcompany = useCallback((delivery, icompanyMatch) => {
+    if (!delivery) return {};
+
+    let recordToUse = icompanyMatch || findIcompanyInCache(delivery);
+    if (!recordToUse) {
+      return { __notFound: true, mensagem: `Nenhum registro iCompany encontrado para ${delivery.deliveryNumber || delivery.processo || delivery.codigo || 'N/D'}` };
+    }
 
     // Mapeamento dos campos conforme o modelo Icompany (var nomes reais do banco)
     const fieldMapping = {
@@ -1598,17 +1626,27 @@ const MonitorEntregas = () => {
     const processoRaw = (delivery.deliveryNumber || delivery.processo || delivery.codigo || '').toString();
     const processoClean = processoRaw.replace(/^#/, '').toUpperCase().trim();
 
-    const icompanyRecord = icompanyData.find((record) => {
-      const recordProcesso = (record.geomaritima || record.processo || record.codigo || '').toString().replace(/^#/, '').toUpperCase().trim();
-      const recordNumero = (record.numero || record.container || record.NUMERO || record['NÚMERO'] || '').toString().replace(/^#/, '').toUpperCase().trim();
+    const normalizeRecordKey = (value) => {
+      if (!value && value !== 0) return '';
+      const str = value.toString();
+      return str.replace(/^#/, '').trim().toUpperCase();
+    };
 
-      return (
-        (recordProcesso && recordProcesso === processoClean) ||
-        (recordNumero && recordNumero === processoClean)
-      );
+    const lookupKeys = ['geomaritima', 'processo', 'codigo', 'numero', 'NUMERO', 'NÚMERO', 'container'];
+
+    const icompanyRecord = icompanyData.find((record) => {
+      return lookupKeys.some((key) => {
+        const v = normalizeRecordKey(record[key]);
+        return v && v === processoClean;
+      });
     });
 
-    if (!icompanyRecord) return {};
+
+    if (!icompanyRecord) {
+      // DEBUG: não encontrado; pode ser que esteja em outro formato no iCompany
+      console.debug('[Icompany compare] no match for', { deliveryNumber: processoClean, rowCount: icompanyData.length });
+      return { __notFound: true, mensagem: `Nenhum registro iCompany encontrado para ${processoClean}` };
+    }
 
     const comparisons = {};
 
@@ -1664,6 +1702,45 @@ const MonitorEntregas = () => {
       return () => clearInterval(t);
     }
   }, [loadDeliveries, loadIcompanyData, autoRefresh, refreshInterval]);
+
+  useEffect(() => {
+    if (!selectedDelivery) {
+      setIcompanyRemoteRecord(null);
+      setIcompanyLookupStatus('idle');
+      return;
+    }
+
+    const local = findIcompanyInCache(selectedDelivery);
+    if (local) {
+      setIcompanyRemoteRecord(local);
+      setIcompanyLookupStatus('found');
+      return;
+    }
+
+    const query = (selectedDelivery.deliveryNumber || selectedDelivery.processo || selectedDelivery.codigo || '').toString().replace(/^#/, '').trim();
+    if (!query) {
+      setIcompanyRemoteRecord(null);
+      setIcompanyLookupStatus('notfound');
+      return;
+    }
+
+    setIcompanyLookupStatus('searching');
+    adminService.searchIcompanyByProcess(query)
+      .then((res) => {
+        if (res.data?.ok && res.data.data?.length > 0) {
+          setIcompanyRemoteRecord(res.data.data[0]);
+          setIcompanyLookupStatus('found');
+        } else {
+          setIcompanyRemoteRecord(null);
+          setIcompanyLookupStatus('notfound');
+        }
+      })
+      .catch((err) => {
+        console.error('Erro ao buscar Icompany via endpoint search:', err);
+        setIcompanyRemoteRecord(null);
+        setIcompanyLookupStatus('error');
+      });
+  }, [selectedDelivery, findIcompanyInCache]);
 
   useEffect(() => {
     let r = [...deliveries];
@@ -2377,13 +2454,45 @@ const MonitorEntregas = () => {
 
             <div className="overflow-y-auto flex-1 p-4 sm:p-6 space-y-5">
               {(() => {
-                const comparisons = compareWithIcompany(selectedDelivery);
-                const icompanyMatched = Object.keys(comparisons).length > 0;
-                return !icompanyMatched ? (
-                  <div className="rounded-xl p-3 bg-yellow-900/20 border border-yellow-700/50 text-yellow-200 text-xs font-semibold">
-                    ⚠️ Registro Icompany não encontrado para o processo/ID desta entrega. A comparação só funciona quando há correspondência exata em Icompany (campo código/processo).
-                  </div>
-                ) : null;
+                const localRecord = findIcompanyInCache(selectedDelivery);
+                const effectiveRecord = icompanyRemoteRecord || localRecord;
+                const comparisons = compareWithIcompany(selectedDelivery, effectiveRecord);
+                const hasNotFound = comparisons && comparisons.__notFound;
+                const icompanyMatched = !hasNotFound && comparisons && Object.keys(comparisons).length > 0;
+
+                if (hasNotFound) {
+                  return (
+                    <div className="rounded-xl p-3 bg-yellow-900/20 border border-yellow-700/50 text-yellow-200 text-xs font-semibold">
+                      ⚠️ {comparisons.mensagem || 'Registro Icompany não encontrado para esta entrega.'}
+                    </div>
+                  );
+                }
+
+                if (icompanyLookupStatus === 'searching') {
+                  return (
+                    <div className="rounded-xl p-3 bg-blue-900/20 border border-blue-700/50 text-blue-200 text-xs font-semibold">
+                      🔍 Buscando registro em Icompany...
+                    </div>
+                  );
+                }
+
+                if (icompanyLookupStatus === 'error') {
+                  return (
+                    <div className="rounded-xl p-3 bg-red-900/20 border border-red-700/50 text-red-200 text-xs font-semibold">
+                      ❌ Erro ao buscar registro em Icompany. Verifique o log no console.
+                    </div>
+                  );
+                }
+
+                if (!icompanyMatched) {
+                  return (
+                    <div className="rounded-xl p-3 bg-yellow-900/20 border border-yellow-700/50 text-yellow-200 text-xs font-semibold">
+                      ⚠️ Registro Icompany não encontrado para o processo/ID desta entrega. A comparação só funciona quando há correspondência exata em Icompany (campo código/processo/numero).
+                    </div>
+                  );
+                }
+
+                return null;
               })()}
 
               <div className="grid grid-cols-2 gap-2 sm:gap-3">

@@ -167,6 +167,41 @@ router.get('/compare', async (req, res) => {
   }
 });
 
+// Search endpoint: permite busca por número/código/processo mesmo sem filtro de cidade
+router.get('/search', async (req, res) => {
+  try {
+    const q = (req.query.q || '').toString().trim();
+    if (!q) return res.status(400).json({ ok: false, message: 'Query q é obrigatória' });
+
+    const cleaned = q.replace(/^#/, '').trim();
+    const safe = cleaned.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const regex = new RegExp(`^${safe}$`, 'i');
+
+    const client = new MongoClient(MONGODB_URI);
+    await client.connect();
+    const db = client.db(DB_NAME);
+    const collection = db.collection(COLLECTION);
+
+    const records = await collection.find({
+      $or: [
+        { numero: regex },
+        { NUMERO: regex },
+        { 'NÚMERO': regex },
+        { codigo: regex },
+        { processo: regex },
+        { geomaritima: regex },
+        { container: regex }
+      ]
+    }).toArray();
+
+    await client.close();
+    res.json({ ok: true, count: records.length, data: records });
+  } catch (e) {
+    console.error('Icompany search error:', e);
+    res.status(500).json({ ok: false, error: 'Erro ao buscar Icompany' });
+  }
+});
+
 // Debug endpoint: mostra exemplo de registros de ambas as coleções
 router.get('/debug-comparison', async (req, res) => {
   try {
