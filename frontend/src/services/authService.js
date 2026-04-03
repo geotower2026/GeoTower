@@ -88,7 +88,10 @@ export const adminService = {
   // Verificação de Arquivos (Arquivos Verificados / Icompany)
   getVerification: (deliveryId) => api.get(`/deliveries/${deliveryId}/verification`),
   updateDeliveryVerification: (deliveryId, data) => api.post(`/deliveries/${deliveryId}/verification`, data),
-  getVerificationsList: () => api.get('/deliveries/verifications/list')
+  getVerificationsList: () => api.get('/deliveries/verifications/list'),
+  // Icompany
+  getIcompanyData: () => api.get('/icompany'),
+  searchIcompanyByProcess: (processo) => api.get(`/icompany/search?q=${encodeURIComponent(processo)}`)
 };
 
 // Adiciona métodos do deliveryService para iniciar entrega

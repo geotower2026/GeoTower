@@ -945,6 +945,8 @@ const MonitorEntregas = () => {
   const [icompanyVerified, setIcompanyVerified] = useState({});
   const [confirmRemoveVerification, setConfirmRemoveVerification] = useState(false);
   const [deliveryToUnverify, setDeliveryToUnverify] = useState(null);
+  const [icompanyData, setIcompanyData] = useState([]);
+  const [icompanyComparisons, setIcompanyComparisons] = useState({});
   // Novo template para expandir a tabela e mostrar colunas completas
   const EXPANDED_COL_TEMPLATE = [
     'minmax(200px, 2.5fr)',   // Processo
@@ -1564,8 +1566,74 @@ const MonitorEntregas = () => {
     }
   }, [filters, statsPeriod]);
 
+  // Carregar dados da Icompany para comparações
+  const loadIcompanyData = useCallback(async () => {
+    try {
+      const response = await adminService.getIcompanyData();
+      if (response.data?.success) {
+        setIcompanyData(response.data.data || []);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados Icompany:', error);
+    }
+  }, []);
+
+  // Função para comparar dados do delivery com Icompany
+  const compareWithIcompany = useCallback((delivery) => {
+    if (!delivery || !icompanyData.length) return {};
+
+    // Mapeamento dos campos conforme especificado pelo usuário
+    const fieldMapping = {
+      'Contratado': { deliveryField: 'userName', icompanyField: 'CONTRATADO' },
+      'Entrega CNTR Porto': { deliveryField: 'horarioDevolucaoVazio', icompanyField: 'DT. DEVOLUÇÃO CNTR' },
+      'Agendamento': { deliveryField: 'dataAgendamento', icompanyField: 'DT. AGENDAMENTO DESCARGA' },
+      'Recebedor': { deliveryField: 'recebedor', icompanyField: 'DESTINATARIO' },
+      'Montagem Container': { deliveryField: 'containerMontadoAt', icompanyField: 'DT. RETIRADA P.D.' },
+      'Chegada': { deliveryField: 'horarioChegada', icompanyField: 'DT. ENTRADA PLANTA' },
+      'Início Desova': { deliveryField: 'horarioInicioDesova', icompanyField: 'DT. INICIO DESCARGA' },
+      'Fim Desova': { deliveryField: 'horarioFimDesova', icompanyField: 'DT. FIM DESCARGA' }
+    };
+
+    // Procurar registro correspondente na Icompany
+    const processo = delivery.deliveryNumber || delivery.processo || '';
+    const icompanyRecord = icompanyData.find(record => {
+      const recordProcesso = (record.geomaritima || record.processo || record.codigo || '').toString().toUpperCase().trim();
+      return recordProcesso === processo.toUpperCase().trim();
+    });
+
+    if (!icompanyRecord) return {};
+
+    const comparisons = {};
+
+    Object.entries(fieldMapping).forEach(([displayName, mapping]) => {
+      const deliveryValue = delivery[mapping.deliveryField];
+      const icompanyValue = icompanyRecord[mapping.icompanyField];
+
+      // Normalizar valores para comparação
+      const normalizeValue = (val) => {
+        if (!val) return '';
+        if (val instanceof Date) return val.toISOString().slice(0, 16); // YYYY-MM-DDTHH:mm
+        return val.toString().trim();
+      };
+
+      const normalizedDelivery = normalizeValue(deliveryValue);
+      const normalizedIcompany = normalizeValue(icompanyValue);
+
+      comparisons[displayName] = {
+        deliveryValue: deliveryValue,
+        icompanyValue: icompanyValue,
+        isInconsistent: normalizedDelivery !== normalizedIcompany && (normalizedDelivery || normalizedIcompany),
+        displayDelivery: deliveryValue ? (typeof deliveryValue === 'string' ? deliveryValue : formatarData(deliveryValue, city)) : '—',
+        displayIcompany: icompanyValue ? (typeof icompanyValue === 'string' ? icompanyValue : formatarData(icompanyValue, city)) : '—'
+      };
+    });
+
+    return comparisons;
+  }, [icompanyData, city]);
+
   useEffect(() => {
     loadDeliveries();
+    loadIcompanyData(); // Carregar dados da Icompany na inicialização
     if (autoRefresh) {
       const t = setInterval(() => {
         // eslint-disable-next-line no-console
@@ -1574,7 +1642,7 @@ const MonitorEntregas = () => {
       }, refreshInterval * 1000);
       return () => clearInterval(t);
     }
-  }, [loadDeliveries, autoRefresh, refreshInterval]);
+  }, [loadDeliveries, loadIcompanyData, autoRefresh, refreshInterval]);
 
   useEffect(() => {
     let r = [...deliveries];
@@ -2288,23 +2356,43 @@ const MonitorEntregas = () => {
 
             <div className="overflow-y-auto flex-1 p-4 sm:p-6 space-y-5">
               <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                {[
-                  ['Contratado', selectedDelivery.userName],
-                  ['Motorista', selectedDelivery.driverName || '—'],
-                  ['Placa', selectedDelivery.placaIcompany || selectedDelivery.vehiclePlate || '—'],
-                  ['Entrega CNTR Porto', selectedDelivery.horarioDevolucaoVazio ? formatarData(selectedDelivery.horarioDevolucaoVazio, city) : '—'],
-                  ['Recebedor', selectedDelivery.recebedor || '—'],
-                  ['Agendamento', getProgramacaoDate(selectedDelivery, city) ? formatarAgendamento(getProgramacaoDate(selectedDelivery, city)) : '—'],
-                  ['Montagem Container', selectedDelivery.containerMontadoAt ? formatarData(selectedDelivery.containerMontadoAt, city) : '—'],
-                  ['Chegada', selectedDelivery.horarioChegada ? formatarData(selectedDelivery.horarioChegada, city) : '—'],
-                  [`Início ${getDesovaStepLabel(city)}`, selectedDelivery.horarioInicioDesova ? formatarData(selectedDelivery.horarioInicioDesova, city) : '—'],
-                  [`Fim ${getDesovaStepLabel(city)}`, selectedDelivery.horarioFimDesova ? formatarData(selectedDelivery.horarioFimDesova, city) : '—'],
-                ].map(([label, value]) => (
-                  <div key={label} className="bg-white/5 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 border border-white/5">
-                    <p className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold mb-0.5">{label}</p>
-                    <p className="text-sm text-gray-100 font-semibold">{value}</p>
-                  </div>
-                ))}
+                {(() => {
+                  // Fazer comparação com Icompany
+                  const comparisons = compareWithIcompany(selectedDelivery);
+
+                  return [
+                    ['Contratado', selectedDelivery.userName],
+                    ['Motorista', selectedDelivery.driverName || '—'],
+                    ['Placa', selectedDelivery.placaIcompany || selectedDelivery.vehiclePlate || '—'],
+                    ['Entrega CNTR Porto', selectedDelivery.horarioDevolucaoVazio ? formatarData(selectedDelivery.horarioDevolucaoVazio, city) : '—'],
+                    ['Recebedor', selectedDelivery.recebedor || '—'],
+                    ['Agendamento', getProgramacaoDate(selectedDelivery, city) ? formatarAgendamento(getProgramacaoDate(selectedDelivery, city)) : '—'],
+                    ['Montagem Container', selectedDelivery.containerMontadoAt ? formatarData(selectedDelivery.containerMontadoAt, city) : '—'],
+                    ['Chegada', selectedDelivery.horarioChegada ? formatarData(selectedDelivery.horarioChegada, city) : '—'],
+                    [`Início ${getDesovaStepLabel(city)}`, selectedDelivery.horarioInicioDesova ? formatarData(selectedDelivery.horarioInicioDesova, city) : '—'],
+                    [`Fim ${getDesovaStepLabel(city)}`, selectedDelivery.horarioFimDesova ? formatarData(selectedDelivery.horarioFimDesova, city) : '—'],
+                  ].map(([label, value]) => {
+                    const comparison = comparisons[label];
+                    const isInconsistent = comparison?.isInconsistent;
+
+                    return (
+                      <div key={label} className={`bg-white/5 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 border ${isInconsistent ? 'border-red-500/50 bg-red-900/10' : 'border-white/5'}`}>
+                        <p className={`text-[10px] uppercase tracking-widest font-semibold mb-0.5 ${isInconsistent ? 'text-red-400' : 'text-gray-500'}`}>
+                          {label}
+                          {isInconsistent && <span className="ml-1 text-red-400">⚠️</span>}
+                        </p>
+                        <p className={`text-sm font-semibold ${isInconsistent ? 'text-red-300' : 'text-gray-100'}`}>
+                          {value}
+                        </p>
+                        {isInconsistent && (
+                          <p className="text-[9px] text-red-400 mt-0.5 opacity-80">
+                            Icompany: {comparison.displayIcompany}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
               </div>
 
               {flowHistory.length > 0 && (
