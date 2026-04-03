@@ -1600,7 +1600,7 @@ const MonitorEntregas = () => {
 
     const icompanyRecord = icompanyData.find((record) => {
       const recordProcesso = (record.geomaritima || record.processo || record.codigo || '').toString().replace(/^#/, '').toUpperCase().trim();
-      const recordNumero = (record.numero || record.container || '').toString().replace(/^#/, '').toUpperCase().trim();
+      const recordNumero = (record.numero || record.container || record.NUMERO || record['NÚMERO'] || '').toString().replace(/^#/, '').toUpperCase().trim();
 
       return (
         (recordProcesso && recordProcesso === processoClean) ||
