@@ -2740,7 +2740,7 @@ const MonitorEntregas = () => {
                               <span className={`w-2 h-2 rounded-full flex-shrink-0 ${present ? 'bg-emerald-400' : 'bg-gray-600'}`} />
                               <span className={`text-sm font-semibold ${mismatch ? 'text-rose-300' : 'text-gray-300'}`}>{labels[k] || k}</span>
                               {!present && <span className="text-xs text-gray-600">Não anexado</span>}
-                              {mismatch && <span className="text-xs text-rose-200">Presente no monitor, ausente no protocolo</span>}
+                              {mismatch && <span className="text-xs text-rose-200">Presente no GeoTower, ausente no Icompany</span>}
                             </div>
 
                             {present && (
