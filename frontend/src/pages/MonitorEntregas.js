@@ -949,6 +949,8 @@ const MonitorEntregas = () => {
   const [icompanyComparisons, setIcompanyComparisons] = useState({});
   const [icompanyRemoteRecord, setIcompanyRemoteRecord] = useState(null);
   const [icompanyLookupStatus, setIcompanyLookupStatus] = useState('idle');
+  const [controleProtocolosRecord, setControleProtocolosRecord] = useState(null);
+  const [controleProtocolosLookupStatus, setControleProtocolosLookupStatus] = useState('idle');
   // Novo template para expandir a tabela e mostrar colunas completas
   const EXPANDED_COL_TEMPLATE = [
     'minmax(200px, 2.5fr)',   // Processo
@@ -1272,6 +1274,23 @@ const MonitorEntregas = () => {
     diarioBordo: 'Diario de Bordo',
     devolucaoVazio: 'Baixa no Porto',
     chegadaCliente: 'Chegada no Cliente'
+  };
+
+  const controleProtocolosDocumentMap = {
+    retiradaCheio: 'RIC PORTO DESTINO',
+    canhotCTE: 'COMPROVANTE DE DESOVA',
+    diarioBordo: 'DIARIO DE BORDO',
+    canhotNF: 'CANHOTO DE DANFE',
+    devolucaoVazio: 'RIC DEPOT DESTINO'
+  };
+
+  const isControleDocumentoPresent = (value) => {
+    if (value === true || value === 1 || value === '1' || value === 'true' || value === 'TRUE') return true;
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      return ['1', 'true', 'sim', 's', 'v', 'ok'].includes(normalized);
+    }
+    return false;
   };
 
   const getLabelsForDelivery = (d) => {
@@ -1742,7 +1761,7 @@ const MonitorEntregas = () => {
       return;
     }
 
-    const query = (selectedDelivery.processoCAB || selectedDelivery.deliveryNumber || selectedDelivery.processo || selectedDelivery.codigo || '').toString().replace(/^#/, '').trim();
+    const query = (selectedDelivery.codigo || selectedDelivery.processoCAB || selectedDelivery.deliveryNumber || selectedDelivery.processo || '').toString().replace(/^#/, '').trim();
     if (!query) {
       setIcompanyRemoteRecord(null);
       setIcompanyLookupStatus('notfound');
@@ -1767,6 +1786,43 @@ const MonitorEntregas = () => {
         setIcompanyLookupStatus('error');
       });
   }, [selectedDelivery, findIcompanyInCache]);
+
+  useEffect(() => {
+    if (!selectedDelivery) {
+      setControleProtocolosRecord(null);
+      setControleProtocolosLookupStatus('idle');
+      return;
+    }
+
+    const query = (selectedDelivery.codigo || selectedDelivery.processoCAB || selectedDelivery.processo || '').toString().replace(/^#/, '').trim();
+    if (!query) {
+      setControleProtocolosRecord(null);
+      setControleProtocolosLookupStatus('notfound');
+      return;
+    }
+
+    setControleProtocolosLookupStatus('searching');
+    adminService.getControleProtocolos(query)
+      .then((res) => {
+        const records = res.data?.data || [];
+        if (records.length > 0) {
+          const exactMatch = records.find((record) => {
+            const proc = (record.processo || '').toString().replace(/^#/, '').trim().toUpperCase();
+            return proc === query.toUpperCase();
+          });
+          setControleProtocolosRecord(exactMatch || records[0]);
+          setControleProtocolosLookupStatus('found');
+        } else {
+          setControleProtocolosRecord(null);
+          setControleProtocolosLookupStatus('notfound');
+        }
+      })
+      .catch((err) => {
+        console.error('Erro ao buscar controle de protocolos:', err);
+        setControleProtocolosRecord(null);
+        setControleProtocolosLookupStatus('error');
+      });
+  }, [selectedDelivery]);
 
   useEffect(() => {
     let r = [...deliveries];
@@ -2651,6 +2707,22 @@ const MonitorEntregas = () => {
                 </div>
 
                 <div className="space-y-2">
+                  {controleProtocolosLookupStatus === 'searching' && (
+                    <div className="rounded-xl p-3 bg-blue-900/20 border border-blue-700/50 text-blue-200 text-xs font-semibold">
+                      🔍 Buscando protocolo no Controle de Protocolos por processo/código...
+                    </div>
+                  )}
+                  {controleProtocolosLookupStatus === 'notfound' && (
+                    <div className="rounded-xl p-3 bg-yellow-900/20 border border-yellow-700/50 text-yellow-200 text-xs font-semibold">
+                      ⚠️ Nenhum protocolo encontrado no Controle de Protocolos para o código/processo exibido no modal.
+                    </div>
+                  )}
+                  {controleProtocolosLookupStatus === 'error' && (
+                    <div className="rounded-xl p-3 bg-red-900/20 border border-red-700/50 text-red-200 text-xs font-semibold">
+                      ❌ Erro ao buscar protocolo no Controle de Protocolos. Verifique o console.
+                    </div>
+                  )}
+
                   {(() => {
                     const labels = getLabelsForDelivery(selectedDelivery);
 
@@ -2658,15 +2730,20 @@ const MonitorEntregas = () => {
                       .filter((k) => !['chegadaCliente', 'inicioDesova', 'fimDesova'].includes(k))
                       .map((k) => {
                         const present = !!selectedDelivery.documents[k];
+                        const controleField = controleProtocolosDocumentMap[k];
+                        const controlePresent = controleField && controleProtocolosRecord ? isControleDocumentoPresent(controleProtocolosRecord[controleField]) : false;
+                        const mismatch = present && controleField && !controlePresent;
+
                         return (
                           <div
                             key={k}
-                            className={`flex items-center justify-between px-3 sm:px-4 py-3 rounded-xl border ${present ? 'bg-white/5 border-white/10' : 'bg-white/[0.02] border-white/5 opacity-50'}`}
+                            className={`flex items-center justify-between px-3 sm:px-4 py-3 rounded-xl border ${mismatch ? 'bg-rose-900/10 border-rose-500/40' : present ? 'bg-white/5 border-white/10' : 'bg-white/[0.02] border-white/5 opacity-50'}`}
                           >
                             <div className="flex items-center gap-3">
                               <span className={`w-2 h-2 rounded-full flex-shrink-0 ${present ? 'bg-emerald-400' : 'bg-gray-600'}`} />
-                              <span className="text-sm text-gray-300 font-semibold">{labels[k] || k}</span>
+                              <span className={`text-sm font-semibold ${mismatch ? 'text-rose-300' : 'text-gray-300'}`}>{labels[k] || k}</span>
                               {!present && <span className="text-xs text-gray-600">Não anexado</span>}
+                              {mismatch && <span className="text-xs text-rose-200">Presente no monitor, ausente no protocolo</span>}
                             </div>
 
                             {present && (
