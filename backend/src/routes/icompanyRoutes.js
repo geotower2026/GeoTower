@@ -48,6 +48,7 @@ const FIELD_MAPPING = {
   'Dt. Retirada porto': 'dtRetiraPD',
   'Dt. retirada P.D.': 'dtRetiraPD',
   'Dt. Retirada P.D.': 'dtRetiraPD',
+  'Dt. entrada': 'entradaDistrito',
   'Entrada de Distrito': 'entradaDistrito',
   'Dt. início rota': 'dtInicioRota',
   'Dt. Início Rota': 'dtInicioRota',
@@ -81,26 +82,13 @@ const FIELD_MAPPING = {
 };
 
 // Função para normalizar o documento mapeando campos com espaços para camelCase
-function normalizeDocument(doc, debug = false) {
+function normalizeDocument(doc) {
   const result = { ...doc };
   
   // Mapear campos com espaços em nomes para camelCase
   for (const [sourceField, targetField] of Object.entries(FIELD_MAPPING)) {
     if (sourceField in result && !result[targetField]) {
       result[targetField] = result[sourceField];
-      if (debug && sourceField.includes('Entrada')) {
-        console.log(`[DEBUG] Mapeado: ${sourceField} => ${targetField} = ${result[targetField]}`);
-      }
-    }
-  }
-  
-  // DEBUG: Mostrar todos os campos se houver "entrada" no nome
-  if (debug) {
-    const allKeys = Object.keys(doc);
-    const entradaKeys = allKeys.filter(k => k.toLowerCase().includes('entrada') || k.toLowerCase().includes('distrito'));
-    if (entradaKeys.length > 0) {
-      console.log('[DEBUG] Campos com entrada/distrito encontrados:', entradaKeys);
-      entradaKeys.forEach(k => console.log(`  ${k}: ${doc[k]}`));
     }
   }
   
@@ -139,12 +127,7 @@ router.get('/', async (req, res) => {
     }
 
     // Normalizar documentos (mapear campos com espaços para camelCase)
-    if (data.length > 0) {
-      console.log('[ICOMPANY] Primeiro documento antes da normalização - campos:', Object.keys(data[0]).filter(k => k.toLowerCase().includes('entrada') || k.toLowerCase().includes('distrito') || k.includes('Entrada')));
-      data = data.map((doc, idx) => normalizeDocument(doc, idx === 0)); // Debug apenas no primeiro doc
-    } else {
-      data = data.map(doc => normalizeDocument(doc));
-    }
+    data = data.map(doc => normalizeDocument(doc));
 
     // Serializar datas para ISO string
     const serialized = data.map(doc => {
