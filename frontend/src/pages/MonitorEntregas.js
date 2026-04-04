@@ -1285,12 +1285,7 @@ const MonitorEntregas = () => {
   };
 
   const isControleDocumentoPresent = (value) => {
-    if (value === true || value === 1 || value === '1' || value === 'true' || value === 'TRUE') return true;
-    if (typeof value === 'string') {
-      const normalized = value.trim().toLowerCase();
-      return ['1', 'true', 'sim', 's', 'v', 'ok'].includes(normalized);
-    }
-    return false;
+    return value === true;
   };
 
   const getLabelsForDelivery = (d) => {
@@ -2731,7 +2726,9 @@ const MonitorEntregas = () => {
                       .map((k) => {
                         const present = !!selectedDelivery.documents[k];
                         const controleField = controleProtocolosDocumentMap[k];
-                        const controlePresent = controleField && controleProtocolosRecord ? isControleDocumentoPresent(controleProtocolosRecord[controleField]) : false;
+                        const controlePresent = controleField && controleProtocolosRecord && controleProtocolosRecord.documentos
+                          ? isControleDocumentoPresent(controleProtocolosRecord.documentos[controleField])
+                          : false;
                         const mismatch = present && controleField && !controlePresent;
 
                         return (
