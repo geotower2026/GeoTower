@@ -1088,6 +1088,18 @@ const Home = () => {
                       delay={400}
                     />
                   )}
+                  {hasAccess(['manager','admin']) && (
+                    <ManageCard
+                      onClick={() => navigate('/controle-protocolos')}
+                      accentColor="#8B5CF6"
+                      accentDark="#6D28D9"
+                      icon={<FaClipboardList />}
+                      titleIcon={<FaClipboardList />}
+                      title="Controle de Protocolos"
+                      description="Monitore documentos e protocolos das operações com status dos documentos obrigatórios."
+                      delay={480}
+                    />
+                  )}
                 </div>
               </>
             )}

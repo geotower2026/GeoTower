@@ -95,6 +95,21 @@ function isEmpty(v) {
   return v === null || v === undefined || (typeof v === "string" && v.trim() === "");
 }
 
+// ---------- FILTRO DE DATA ----------
+
+// 🔥 EDITA AQUI AS DATAS
+const DATA_INICIO_FILTRO = new Date("2026-04-04 00:00:00");
+const DATA_FIM_FILTRO = new Date("2026-04-30 23:59:59");
+
+function dentroDoPeriodo(dateStr) {
+  if (!dateStr) return false;
+
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return false;
+
+  return d >= DATA_INICIO_FILTRO && d <= DATA_FIM_FILTRO;
+}
+
 // ---------- MAP ----------
 
 function mapToEntrega(row) {
@@ -112,7 +127,6 @@ function mapToEntrega(row) {
     codigo: row["Código"] ?? null,
     processo: row["N° GeoMaritima"] ?? row["Nº GeoMaritima"] ?? row["Processo"] ?? null,
 
-    // ✅ MUDANÇA 1
     "Dt. Retirada porto": toLocalDateTimeString(row["Dt. retirada porto"]),
     "Dt. entrada": toLocalDateTimeString(row["Dt. entrada"]),
 
@@ -161,7 +175,6 @@ function mapToEntrega(row) {
     dtDevolucaoCNTR: dtEntradaVal,
     isValidDtRetiraPD: dtRetiraPDVal ? "V" : "X",
     isValidDtDevolucaoCNTR: dtEntradaVal ? "V" : "X",
-    
   };
 }
 
@@ -202,14 +215,25 @@ async function importarExcel(origem = "manual/startup") {
     const sheet = wb.Sheets[wb.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(sheet, { defval: null }).map(cleanRow);
 
-    const docs = rows.map(mapToEntrega).filter((d) => d.processo);
+    // 🔥 FILTRO APLICADO AQUI
+    const docs = rows
+      .map(mapToEntrega)
+      .filter((d) => d.processo)
+      .filter((d) => {
+        if (d.dtAgendamentoDescarga) {
+          return dentroDoPeriodo(d.dtAgendamentoDescarga);
+        }
+        if (d.dtColeta) {
+          return dentroDoPeriodo(d.dtColeta);
+        }
+        return false;
+      });
 
     console.log("📦 Linhas válidas do Excel:", docs.length);
 
     const antes = await col.countDocuments({});
     console.log("📌 Documentos antes da limpeza:", antes);
 
-    // ✅ MUDANÇA 2
     const processosExcel = docs.map(d => d.processo).filter(Boolean);
 
     const deleteResult = await col.deleteMany({
