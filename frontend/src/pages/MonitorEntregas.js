@@ -1794,21 +1794,21 @@ const MonitorEntregas = () => {
       return;
     }
 
-    const query = (selectedDelivery.codigo || selectedDelivery.processoCAB || selectedDelivery.processo || '').toString().replace(/^#/, '').trim();
-    if (!query) {
+    const modalCodigo = (icompanyRemoteRecord?.codigo || findIcompanyInCache(selectedDelivery)?.codigo || selectedDelivery.codigo || selectedDelivery.processoCAB || selectedDelivery.processo || '').toString().replace(/^#/, '').trim();
+    if (!modalCodigo) {
       setControleProtocolosRecord(null);
       setControleProtocolosLookupStatus('notfound');
       return;
     }
 
     setControleProtocolosLookupStatus('searching');
-    adminService.getControleProtocolos(query)
+    adminService.getControleProtocolos(modalCodigo)
       .then((res) => {
         const records = res.data?.data || [];
         if (records.length > 0) {
           const exactMatch = records.find((record) => {
             const proc = (record.processo || '').toString().replace(/^#/, '').trim().toUpperCase();
-            return proc === query.toUpperCase();
+            return proc === modalCodigo.toUpperCase();
           });
           setControleProtocolosRecord(exactMatch || records[0]);
           setControleProtocolosLookupStatus('found');
@@ -1822,7 +1822,7 @@ const MonitorEntregas = () => {
         setControleProtocolosRecord(null);
         setControleProtocolosLookupStatus('error');
       });
-  }, [selectedDelivery]);
+  }, [selectedDelivery, icompanyRemoteRecord, findIcompanyInCache]);
 
   useEffect(() => {
     let r = [...deliveries];
