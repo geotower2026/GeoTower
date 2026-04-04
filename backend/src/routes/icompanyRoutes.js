@@ -137,6 +137,7 @@ router.get('/', async (req, res) => {
       if (obj.dtRetiraPD && obj.dtRetiraPD instanceof Date) obj.dtRetiraPD = obj.dtRetiraPD.toISOString();
       if (obj.dtDevolucaoCNTR && obj.dtDevolucaoCNTR instanceof Date) obj.dtDevolucaoCNTR = obj.dtDevolucaoCNTR.toISOString();
       if (obj.arrivedAt && obj.arrivedAt instanceof Date) obj.arrivedAt = obj.arrivedAt.toISOString();
+      if (obj.entradaDistrito && obj.entradaDistrito instanceof Date) obj.entradaDistrito = obj.entradaDistrito.toISOString();
       return obj;
     });
     res.json({ ok: true, success: true, collection: collectionUsed, count: serialized.length, data: serialized, city: city });
