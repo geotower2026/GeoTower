@@ -112,7 +112,7 @@ const progressStatuses = [
 const getProgress = (delivery) => {
   const key = normalizeKey(delivery.status);
   const norm =
-    key === 'ENTREGUE' || key === 'SUBMITTED' || key === 'ENTREGUE COM PENDENCIA CANHOTO' ? 'ENTREGUE'
+    key === 'ENTREGUE' || key === 'SUBMITTED' || key === 'ENTREGUE COM PENDENCIA CANHOTO' || key === 'DOCUMENTOS ENTREGUES' ? 'ENTREGUE'
     : key === 'PENDING' || key === 'A CAMINHO DO CLIENTE' ? 'A CAMINHO DO CLIENTE'
     : key;
   if (norm === 'CANCELADO' || !norm) return 0;
@@ -123,8 +123,11 @@ const getProgress = (delivery) => {
 
 export const MemoizedProgressDots = memo(({ delivery, allModalDocsComplete }) => {
   let p = getProgress(delivery);
-  if (normalizeKey(delivery.status) === 'FINALIZADO') {
+  const statusKey = normalizeKey(delivery.status);
+  if (statusKey === 'FINALIZADO') {
     p = allModalDocsComplete(delivery) ? 100 : 90;
+  } else if (statusKey === 'DOCUMENTOS ENTREGUES') {
+    p = 100;
   }
   const total = 7;
   const filled = Math.ceil((p / 100) * total);
