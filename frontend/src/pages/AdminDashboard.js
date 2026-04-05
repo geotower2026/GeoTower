@@ -359,6 +359,7 @@ const AdminDashboard = () => {
   const exportPayload = () => ({
     statistics, deliveries, topRecebedores, avgCliByRecebedor,
     recebedorCountData, recebedorAvgData, fmtMin,
+    period: filters.startDate || filters.endDate ? 'custom' : 'all',
   });
 
   const handleExportPDF = async () => {

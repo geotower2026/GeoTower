@@ -18,7 +18,7 @@ export const formatMinutes = (m) => {
 
 /** Retorna label do período */
 export const periodLabel = (period) =>
-  ({ day: 'Hoje', week: 'Esta Semana', month: 'Este Mês' }[period] ?? period);
+  ({ day: 'Hoje', week: 'Esta Semana', month: 'Este Mês', custom: 'Personalizado', all: 'Todos' }[period] ?? period ?? 'Período');
 
 /** Captura um elemento DOM como base64 PNG via html2canvas */
 const captureElement = async (element) => {
@@ -186,7 +186,7 @@ export const exportToPDF = async (payload) => {
     avgCliByRecebedor,
     recebedorCountData,
     recebedorAvgData,
-    period,
+    period = 'custom',
     chartRefs,
     fmtMin,
   } = payload;
@@ -479,7 +479,7 @@ export const exportToPDF = async (payload) => {
   }
 
   /* ── Salva ── */
-  const fileName = `dashboard_${period}_${new Date().toISOString().slice(0, 10)}.pdf`;
+  const fileName = `dashboard_${period || 'custom'}_${new Date().toISOString().slice(0, 10)}.pdf`;
   doc.save(fileName);
   return fileName;
 };
@@ -742,7 +742,7 @@ export const exportToExcel = (payload) => {
     statistics,
     topRecebedores,
     avgCliByRecebedor,
-    period,
+    period = 'custom',
   } = payload;
 
   // Cria workbook
