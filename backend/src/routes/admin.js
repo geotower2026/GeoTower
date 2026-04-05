@@ -322,18 +322,24 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
     if (q && q.trim()) {
       const text = q.trim();
       console.log('  ✓ Aplicando filtro de busca:', text);
-      filtered = filtered.filter(d =>
-        (d.deliveryNumber || '').toLowerCase().includes(text.toLowerCase()) ||
-        (d.vehiclePlate || '').toLowerCase().includes(text.toLowerCase()) ||
-        (d.userName || '').toLowerCase().includes(text.toLowerCase()) ||
-        (d.driverName || '').toLowerCase().includes(text.toLowerCase()) ||
-        (d.recebedor || '').toLowerCase().includes(text.toLowerCase()) ||
-        (d.processoCAB || '').toLowerCase().includes(text.toLowerCase()) ||
-        (d.processo || '').toLowerCase().includes(text.toLowerCase()) ||
-        (d.containerNumero || '').toLowerCase().includes(text.toLowerCase()) ||
-        (d.container || '').toLowerCase().includes(text.toLowerCase()) ||
-        (d.processNumber || '').toLowerCase().includes(text.toLowerCase())
-      );
+      filtered = filtered.filter(d => {
+        const containerText = Array.isArray(d.containerNumero)
+          ? d.containerNumero.join(' ')
+          : d.containerNumero || '';
+
+        return (
+          (d.deliveryNumber || '').toLowerCase().includes(text.toLowerCase()) ||
+          (d.vehiclePlate || '').toLowerCase().includes(text.toLowerCase()) ||
+          (d.userName || '').toLowerCase().includes(text.toLowerCase()) ||
+          (d.driverName || '').toLowerCase().includes(text.toLowerCase()) ||
+          (d.recebedor || '').toLowerCase().includes(text.toLowerCase()) ||
+          (d.processoCAB || '').toLowerCase().includes(text.toLowerCase()) ||
+          (d.processo || '').toLowerCase().includes(text.toLowerCase()) ||
+          containerText.toLowerCase().includes(text.toLowerCase()) ||
+          (d.container || '').toLowerCase().includes(text.toLowerCase()) ||
+          (d.processNumber || '').toLowerCase().includes(text.toLowerCase())
+        );
+      });
     }
 
     // Consolida arquivos de ambas as pastas
