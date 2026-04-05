@@ -751,6 +751,8 @@ const MonitorEntregas = () => {
   const [icompanyLookupStatus, setIcompanyLookupStatus] = useState('idle');
   const [controleProtocolosRecord, setControleProtocolosRecord] = useState(null);
   const [controleProtocolosLookupStatus, setControleProtocolosLookupStatus] = useState('idle');
+  const lastIcompanyQueryRef = useRef('');
+  const lastControleProtocolosQueryRef = useRef('');
   // Novo template para expandir a tabela e mostrar colunas completas
   const EXPANDED_COL_TEMPLATE = [
     'minmax(200px, 2.5fr)',   // Processo
@@ -1550,6 +1552,7 @@ const MonitorEntregas = () => {
     if (!selectedDelivery) {
       setIcompanyRemoteRecord(null);
       setIcompanyLookupStatus('idle');
+      lastIcompanyQueryRef.current = '';
       return;
     }
 
@@ -1557,6 +1560,7 @@ const MonitorEntregas = () => {
     if (local) {
       setIcompanyRemoteRecord(local);
       setIcompanyLookupStatus('found');
+      lastIcompanyQueryRef.current = '';
       return;
     }
 
@@ -1564,9 +1568,15 @@ const MonitorEntregas = () => {
     if (!query) {
       setIcompanyRemoteRecord(null);
       setIcompanyLookupStatus('notfound');
+      lastIcompanyQueryRef.current = '';
       return;
     }
 
+    if (query === lastIcompanyQueryRef.current && icompanyLookupStatus !== 'idle') {
+      return;
+    }
+
+    lastIcompanyQueryRef.current = query;
     setIcompanyLookupStatus('searching');
     adminService.searchIcompanyByProcess(query)
       .then((res) => {
@@ -1584,12 +1594,13 @@ const MonitorEntregas = () => {
         setIcompanyRemoteRecord(null);
         setIcompanyLookupStatus('error');
       });
-  }, [selectedDelivery, findIcompanyInCache]);
+  }, [selectedDelivery, findIcompanyInCache, icompanyLookupStatus]);
 
   useEffect(() => {
     if (!selectedDelivery) {
       setControleProtocolosRecord(null);
       setControleProtocolosLookupStatus('idle');
+      lastControleProtocolosQueryRef.current = '';
       return;
     }
 
@@ -1597,9 +1608,15 @@ const MonitorEntregas = () => {
     if (!modalCodigo) {
       setControleProtocolosRecord(null);
       setControleProtocolosLookupStatus('notfound');
+      lastControleProtocolosQueryRef.current = '';
       return;
     }
 
+    if (modalCodigo === lastControleProtocolosQueryRef.current && controleProtocolosLookupStatus !== 'idle') {
+      return;
+    }
+
+    lastControleProtocolosQueryRef.current = modalCodigo;
     setControleProtocolosLookupStatus('searching');
     adminService.getControleProtocolos(modalCodigo)
       .then((res) => {
@@ -1621,7 +1638,7 @@ const MonitorEntregas = () => {
         setControleProtocolosRecord(null);
         setControleProtocolosLookupStatus('error');
       });
-  }, [selectedDelivery, icompanyRemoteRecord, findIcompanyInCache]);
+  }, [selectedDelivery, icompanyRemoteRecord, findIcompanyInCache, controleProtocolosLookupStatus]);
 
   useEffect(() => {
     let r = [...deliveries];
