@@ -1,5 +1,5 @@
 import React, {
-  useState, useEffect, useCallback, useRef, useMemo, useLayoutEffect
+  useState, useEffect, useCallback, useRef, useMemo, useLayoutEffect, lazy, Suspense
 } from 'react';
 import { useTheme, THEMES } from '../contexts/ThemeContext';
 import { useAuth } from '../services/authContext';
@@ -7,6 +7,8 @@ import { useCity } from '../contexts/CityContext';
 import { useNavigate } from 'react-router-dom';
 import Toast from '../components/Toast';
 import { adminService } from '../services/authService';
+import { getStatusColumns } from '../config/statusColumns';
+import { MemoizedBadge, MemoizedProgressDots, MemoizedPunctualityCell, MemoizedStatusCheckmark } from '../components/MemoizedTableCells';
 import { getProgramacaoDate } from '../utils/programacaoDate';
 import { formatarData, formatarDataApenas, formatarHora, formatarAgendamento } from '../utils/date';
 import {
@@ -23,6 +25,8 @@ import itajaiConfig from '../config/cities/itajai.json';
 import jsPDF from 'jspdf';
 import { getDesovaStatusLabel, getDesovaStepLabel } from '../utils/cityLabels';
 
+const DeliveryModal = lazy(() => import('../components/DeliveryModal'));
+
 /* ─────────────────────────────────────────────────────────────
    KANBAN - MESMA LÓGICA DO MONITOR DE PROCESSOS
 ───────────────────────────────────────────────────────────── */
@@ -30,131 +34,6 @@ const normalizeKey = (s) => {
   if (!s) return '';
   return String(s).replace(/_/g, ' ').toUpperCase().trim();
 };
-
-const getStatusColumns = (city = 'manaus') => [
-  {
-    key: 'NOVO_PROCESSO',
-    title: 'Novo Processo',
-    description: 'Sem motorista',
-    icon: FaPlus,
-    gradient: 'from-blue-500 to-blue-600',
-    lightBg: 'bg-blue-50',
-    border: 'border-blue-200',
-    text: 'text-blue-700',
-    badge: 'bg-blue-100 text-blue-700',
-    filter: (p) => !p.driverName || p.driverName === '-' || String(p.driverName).trim() === '',
-  },
-  {
-    key: 'PROGRAMADO',
-    title: 'Programado',
-    description: 'Agendado c/ motorista',
-    icon: FaClock,
-    gradient: 'from-violet-500 to-purple-600',
-    lightBg: 'bg-violet-50',
-    border: 'border-violet-200',
-    text: 'text-violet-700',
-    badge: 'bg-violet-100 text-violet-700',
-    filter: (p) => normalizeKey(p.status) === 'AGENDADO' && p.driverName && p.driverName !== '-',
-  },
-  {
-    key: 'CNTR_COLETADO',
-    title: 'CNTR Coletado',
-    description: 'Container montado',
-    icon: FaBox,
-    gradient: 'from-emerald-500 to-green-600',
-    lightBg: 'bg-emerald-50',
-    border: 'border-emerald-200',
-    text: 'text-emerald-700',
-    badge: 'bg-emerald-100 text-emerald-700',
-    filter: (p) => normalizeKey(p.status) === 'CONTAINER MONTADO',
-  },
-  {
-    key: 'INICIAR_VIAGEM',
-    title: 'Em Viagem',
-    description: 'A caminho do cliente',
-    icon: FaTruck,
-    gradient: 'from-orange-500 to-amber-600',
-    lightBg: 'bg-orange-50',
-    border: 'border-orange-200',
-    text: 'text-orange-700',
-    badge: 'bg-orange-100 text-orange-700',
-    filter: (p) => {
-      const s = normalizeKey(p.status);
-      return s === 'A CAMINHO DO CLIENTE' || s === 'PENDING';
-    },
-  },
-  {
-    key: 'CHEGADA_CLIENTE',
-    title: 'No Cliente',
-    description: `Aguardando ${getDesovaStepLabel(city).toLowerCase()}`,
-    icon: FaMapMarkerAlt,
-    gradient: 'from-yellow-500 to-amber-500',
-    lightBg: 'bg-yellow-50',
-    border: 'border-yellow-200',
-    text: 'text-yellow-700',
-    badge: 'bg-yellow-100 text-yellow-700',
-    filter: (p) => normalizeKey(p.status) === 'AGUARDANDO DESOVA',
-  },
-  {
-    key: 'OPERACAO_INICIADA',
-    title: `Em ${getDesovaStepLabel(city)}`,
-    description: 'Operação iniciada',
-    icon: FaShippingFast,
-    gradient: 'from-rose-500 to-red-600',
-    lightBg: 'bg-rose-50',
-    border: 'border-rose-200',
-    text: 'text-rose-700',
-    badge: 'bg-rose-100 text-rose-700',
-    filter: (p) => normalizeKey(p.status) === 'EM DESOVA',
-  },
-  {
-    key: 'OPERACAO_FINALIZADA',
-    title: 'Op. Finalizada',
-    description: `${getDesovaStepLabel(city)} concluída / anexando canhotos`,
-    icon: FaCheckCircle,
-    gradient: 'from-teal-500 to-emerald-600',
-    lightBg: 'bg-teal-50',
-    border: 'border-teal-200',
-    text: 'text-teal-700',
-    badge: 'bg-teal-100 text-teal-700',
-    filter: (p) => normalizeKey(p.status) === 'ANEXANDO DOCUMENTOS FINAIS' || normalizeKey(p.status) === 'DESOVA FINALIZADA',
-  },
-  {
-    key: 'VIAGEM_RETORNO',
-    title: 'Retorno',
-    description: 'Pend. devolução',
-    icon: FaUndo,
-    gradient: 'from-cyan-500 to-sky-600',
-    lightBg: 'bg-cyan-50',
-    border: 'border-cyan-200',
-    text: 'text-cyan-700',
-    badge: 'bg-cyan-100 text-cyan-700',
-    filter: (p) => {
-      const s = normalizeKey(p.status);
-      const isPendDevolucao = s === 'PEND. DEVOLUCAO' || s === 'PEND. DEVOLUÇÃO';
-      const isFinalizado = s === 'FINALIZADO';
-      const semDataDevolucao = !p.dtDevolucaoCNTR && !p.horarioDevolucaoVazio;
-      return (isPendDevolucao || isFinalizado) && semDataDevolucao;
-    },
-  },
-  {
-    key: 'CNTR_ENTREGUE',
-    title: 'CNTR Entregue',
-    description: 'Container devolvido',
-    icon: FaCheckCircle,
-    gradient: 'from-green-600 to-teal-700',
-    lightBg: 'bg-green-50',
-    border: 'border-green-200',
-    text: 'text-green-700',
-    badge: 'bg-green-100 text-green-700',
-    filter: (p) => {
-      // Agora mostra qualquer entrega com horarioDevolucaoVazio ou dtDevolucaoCNTR preenchido
-      return (
-        !!p.horarioDevolucaoVazio || !!p.dtDevolucaoCNTR || p.containerReturned === true
-      );
-    },
-  },
-];
 
 /* ─────────────────────────────────────────────────────────────
    DESIGN TOKENS
@@ -245,26 +124,12 @@ const getResolveConfig = (rawStatus, city = 'manaus') => {
    GLOBAL ANIMATION STYLES
 ───────────────────────────────────────────────────────────── */
 const GLOBAL_STYLES = `
-@keyframes riseToTop {
-  0%   { opacity: 0.6; transform: translateY(var(--rise-from, 120px)) scale(1.025);
-    box-shadow: 0 24px 80px rgba(139,92,246,0.85), 0 0 0 2px rgba(139,92,246,0.7); }
-  50%  { opacity: 1; transform: translateY(-12px) scale(1.01);
-    box-shadow: 0 12px 50px rgba(139,92,246,0.6), 0 0 0 2px rgba(139,92,246,0.5); }
-  100% { opacity: 1; transform: translateY(0) scale(1);
-    box-shadow: 0 8px 30px rgba(139,92,246,0.28), 0 0 0 0 rgba(139,92,246,0); }
-}
-@keyframes glowPulse {
-  0%,100% { box-shadow: 0 0 0 0 rgba(139,92,246,0); border-color: rgba(255,255,255,0.08); background: transparent; }
-  30% { box-shadow: 0 0 30px rgba(139,92,246,0.45); border-color: rgba(139,92,246,0.55); background: rgba(139,92,246,0.1); }
-}
-.row-rise { animation: riseToTop 2.5s ease-in-out forwards; position: relative; z-index: 30; }
-.row-glow { animation: glowPulse 3.5s ease-in-out forwards; position: relative; z-index: 20; }
 @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 @keyframes slideOutRight { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
 .panel-enter  { animation: slideInRight  0.3s cubic-bezier(0.34,1.2,0.64,1) forwards; }
 .panel-exit   { animation: slideOutRight 0.25s ease-in forwards; }
-@keyframes badgePopIn { 0% { transform: scale(0) rotate(-12deg); opacity: 0; } 70% { transform: scale(1.15) rotate(3deg); opacity: 1; } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
-.badge-pop { animation: badgePopIn 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+.row-rise { position: relative; z-index: 30; }
+.row-glow { position: relative; z-index: 20; }
 .monitor-table { grid-auto-rows: minmax(36px, auto); }
 .cell-trunc { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 `;
@@ -272,17 +137,8 @@ const GLOBAL_STYLES = `
 /* ─────────────────────────────────────────────────────────────
    SMALL COMPONENTS
 ───────────────────────────────────────────────────────────── */
-const Badge = ({ status, city = 'manaus' }) => {
-  const cfg = getResolveConfig(status, city);
-  const label = cfg?.label || normalizeKey(status);
-  const cls = cfg?.badge || 'bg-gray-100 text-gray-700 border border-gray-300';
-  return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide whitespace-nowrap ${cls}`}>
-      {cfg?.icon && <span className="text-[10px]">{cfg.icon}</span>}
-      {label}
-    </span>
-  );
-};
+// Badge agora importado como MemoizedBadge
+const Badge = MemoizedBadge;
 
 const SectionTitle = ({ children, sub }) => (
   <div className="mb-4">
@@ -543,67 +399,11 @@ const getProgress = (delivery) => {
   return Math.round((idx / (progressStatuses.length - 1)) * 100);
 };
 
-const ProgressDots = ({ delivery, allModalDocsComplete }) => {
-  let p = getProgress(delivery);
-  if (normalizeKey(delivery.status) === 'FINALIZADO') {
-    p = allModalDocsComplete(delivery) ? 100 : 90;
-  }
-  const total = 7;
-  const filled = Math.ceil((p / 100) * total);
-  const colorDot =
-    p === 100 ? 'bg-emerald-500 shadow-sm shadow-emerald-400' :
-    p >= 66 ? 'bg-amber-400 shadow-sm shadow-amber-300' :
-    p >= 33 ? 'bg-indigo-500 shadow-sm shadow-indigo-300' :
-    'bg-gray-300';
+// ProgressDots agora importado como MemoizedProgressDots
+const ProgressDots = MemoizedProgressDots;
 
-  return (
-    <div className="flex items-center gap-1" title={`${p}%`}>
-      <span className="text-[10px] font-bold text-gray-500 w-6 text-right">{p}%</span>
-      <div className="flex gap-[3px]">
-        {Array.from({ length: total }).map((_, i) => (
-          <span
-            key={i}
-            className={`block w-2 h-2 rounded-full transition-all ${
-              i < filled
-                ? `${colorDot} ${p < 100 && i === filled - 1 ? 'animate-pulse' : ''}`
-                : 'bg-gray-700'
-            }`}
-          />
-        ))}
-      </div>
-    </div>
-  );
-};
-
-const PunctualityCell = ({ p }) => {
-  const styles = {
-    ok: { bg: 'bg-emerald-500/15', border: 'border-emerald-500/40', text: 'text-emerald-300', dot: 'bg-emerald-400', ring: 'shadow-emerald-500/20' },
-    possible: { bg: 'bg-amber-500/15', border: 'border-amber-500/40', text: 'text-amber-300', dot: 'bg-amber-400', ring: 'shadow-amber-500/20' },
-    late: { bg: 'bg-red-500/15', border: 'border-red-500/40', text: 'text-red-300', dot: 'bg-red-400', ring: 'shadow-red-500/20' },
-    unknown: { bg: 'bg-gray-700/30', border: 'border-gray-600/30', text: 'text-gray-400', dot: 'bg-gray-500', ring: '' },
-  };
-  const s = styles[p.type] || styles.unknown;
-
-  return (
-    <div className="flex flex-col items-center gap-1 min-w-[100px]">
-      <span className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[10px] font-bold uppercase tracking-wide ${s.bg} ${s.border} ${s.text} shadow-md ${s.ring}`}>
-        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${s.dot} ${p.type === 'late' ? 'animate-pulse' : ''}`} />
-        {p.label}
-      </span>
-
-      <div className="flex items-center gap-1.5">
-        {p.eta !== null && p.eta > 0 && (
-          <span className="text-[9px] text-gray-500 font-mono">ETA {p.eta}m</span>
-        )}
-        {p.lateBy != null && p.lateBy !== 0 && (
-          <span className={`text-[9px] font-bold font-mono ${p.lateBy > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-            {p.lateBy > 0 ? `+${p.lateBy}m` : `${p.lateBy}m`}
-          </span>
-        )}
-      </div>
-    </div>
-  );
-};
+// PunctualityCell agora importado como MemoizedPunctualityCell
+const PunctualityCell = MemoizedPunctualityCell;
 
 const DEFAULT_COL_TEMPLATE = 'repeat(15, minmax(0, 1fr))';
 
@@ -1135,8 +935,8 @@ const MonitorEntregas = () => {
 
     syncVerificationsFromServer();
 
-    // Polling a cada 10 segundos para sincronizar mudanças de outros usuários
-    const syncInterval = setInterval(syncVerificationsFromServer, 10000);
+    // Polling a cada 30 segundos para sincronizar mudanças (otimizado de 10s)
+    const syncInterval = setInterval(syncVerificationsFromServer, 30000);
 
     return () => {
       clearInterval(syncInterval);
@@ -2510,422 +2310,47 @@ const MonitorEntregas = () => {
       )}
 
       {selectedDelivery && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
-          <div className="bg-[#1a1a2e] rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden shadow-2xl border border-white/10 flex flex-col max-h-[92vh]">
-            <div className="flex items-center justify-between px-5 sm:px-6 py-4 sm:py-5 bg-gradient-to-r from-purple-700/60 to-indigo-700/60 border-b border-white/10 flex-shrink-0">
-              <div>
-                <p className="text-xs text-purple-300 uppercase tracking-widest font-semibold mb-0.5">Entrega</p>
-                <h2 className="text-xl font-black text-white tracking-wide">#{selectedDelivery.deliveryNumber}</h2>
-                <p className="text-xs text-gray-300 mt-1">CAB: {selectedDelivery.processoCAB || selectedDelivery.processo || selectedDelivery.processNumber || selectedDelivery.codigo || '—'}</p>
-                <p className="text-xs text-gray-300 mt-1">Código: {(icompanyRemoteRecord?.codigo || findIcompanyInCache(selectedDelivery)?.codigo || '—')}</p>
-              </div>
-
-              <div className="flex items-center gap-2 sm:gap-3">
-                <Badge status={(selectedDelivery.status === 'FINALIZADO' && allModalDocsComplete(selectedDelivery)) ? 'DOCUMENTOS ENTREGUES' : selectedDelivery.status} />
-                <button
-                  onClick={() => setSelectedDelivery(null)}
-                  className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition"
-                >
-                  <FaTimes />
-                </button>
-              </div>
-            </div>
-
-            <div className="overflow-y-auto flex-1 p-4 sm:p-6 space-y-5">
-              {(() => {
-                const localRecord = findIcompanyInCache(selectedDelivery);
-                const effectiveRecord = icompanyRemoteRecord || localRecord;
-                const comparisons = compareWithIcompany(selectedDelivery, effectiveRecord);
-                const hasNotFound = comparisons && comparisons.__notFound;
-                const icompanyMatched = !hasNotFound && comparisons && Object.keys(comparisons).length > 0;
-
-                if (hasNotFound) {
-                  return (
-                    <div className="rounded-xl p-3 bg-yellow-900/20 border border-yellow-700/50 text-yellow-200 text-xs font-semibold">
-                      ⚠️ {comparisons.mensagem || 'Registro Icompany não encontrado para esta entrega.'}
-                    </div>
-                  );
-                }
-
-                if (icompanyLookupStatus === 'searching') {
-                  return (
-                    <div className="rounded-xl p-3 bg-blue-900/20 border border-blue-700/50 text-blue-200 text-xs font-semibold">
-                      🔍 Buscando registro em Icompany...
-                    </div>
-                  );
-                }
-
-                if (icompanyLookupStatus === 'error') {
-                  return (
-                    <div className="rounded-xl p-3 bg-red-900/20 border border-red-700/50 text-red-200 text-xs font-semibold">
-                      ❌ Erro ao buscar registro em Icompany. Verifique o log no console.
-                    </div>
-                  );
-                }
-
-                if (!icompanyMatched) {
-                  return (
-                    <div className="rounded-xl p-3 bg-yellow-900/20 border border-yellow-700/50 text-yellow-200 text-xs font-semibold">
-                      ⚠️ Registro Icompany não encontrado para o processo/ID desta entrega. A comparação só funciona quando há correspondência exata em Icompany (campo código/processo/numero).
-                    </div>
-                  );
-                }
-
-                return null;
-              })()}
-
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                {(() => {
-                  // Fazer comparação com Icompany
-                  const comparisons = compareWithIcompany(selectedDelivery);
-
-                  return [
-                    ['Contratado', selectedDelivery.userName],
-                    ['Motorista', selectedDelivery.driverName || '—'],
-                    ['Placa', selectedDelivery.placaIcompany || selectedDelivery.vehiclePlate || '—'],
-                    ['Entrega CNTR Porto', selectedDelivery.horarioDevolucaoVazio ? formatarData(selectedDelivery.horarioDevolucaoVazio, city) : '—'],
-                    ['Recebedor', selectedDelivery.recebedor || '—'],
-                    ['Agendamento', getProgramacaoDate(selectedDelivery, city) ? formatarAgendamento(getProgramacaoDate(selectedDelivery, city)) : '—'],
-                    ['Montagem Container', selectedDelivery.containerMontadoAt ? formatarData(selectedDelivery.containerMontadoAt, city) : '—'],
-                    ['Chegada', selectedDelivery.horarioChegada ? formatarData(selectedDelivery.horarioChegada, city) : '—'],
-                    [`Início ${getDesovaStepLabel(city)}`, selectedDelivery.horarioInicioDesova ? formatarData(selectedDelivery.horarioInicioDesova, city) : '—'],
-                    [`Fim ${getDesovaStepLabel(city)}`, selectedDelivery.horarioFimDesova ? formatarData(selectedDelivery.horarioFimDesova, city) : '—'],
-                  ].map(([label, value]) => {
-                    const comparison = comparisons[label];
-                    const isInconsistent = comparison?.isInconsistent;
-
-                    return (
-                      <div key={label} className={`bg-white/5 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 border ${isInconsistent ? 'border-red-500/50 bg-red-900/10' : 'border-white/5'}`}>
-                        <p className={`text-[10px] uppercase tracking-widest font-semibold mb-0.5 ${isInconsistent ? 'text-red-400' : 'text-gray-500'}`}>
-                          {label}
-                          {isInconsistent && <span className="ml-1 text-red-400">⚠️</span>}
-                        </p>
-                        <p className={`text-sm font-semibold ${isInconsistent ? 'text-red-300' : 'text-gray-100'}`}>
-                          {value}
-                        </p>
-                        {isInconsistent && (
-                          <p className="text-[9px] text-red-400 mt-0.5 opacity-80">
-                            Icompany: {comparison.displayIcompany}
-                          </p>
-                        )}
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
-
-              {flowHistory.length > 0 && (
-                <div className="bg-white/5 rounded-xl p-4 border border-white/5">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold mb-3">📍 Histórico do Fluxo</p>
-                  <div className="space-y-2">
-                    {flowHistory.map((ev, idx) => {
-                      let duration = null;
-                      if (idx < flowHistory.length - 1) {
-                        const nextDate = new Date(flowHistory[idx + 1].date);
-                        const currentDate = new Date(ev.date);
-                        const diffMs = nextDate - currentDate;
-                        if (diffMs > 0) {
-                          const totalMin = Math.floor(diffMs / 60000);
-                          const h = Math.floor(totalMin / 60);
-                          const m = totalMin % 60;
-                          duration = h > 0 ? `${h}h ${m}m` : `${m}m`;
-                        }
-                      } else {
-                        const isFinished = normalizeKey(selectedDelivery.status) === 'FINALIZADO' || selectedDelivery.status === 'ENTREGUE' || selectedDelivery.status === 'submitted' || selectedDelivery.status === 'DOCUMENTOS ENTREGUES';
-                        if (!isFinished) {
-                          const currentDate = new Date(ev.date);
-                          const now = currentTime;
-                          const diffMs = now - currentDate;
-                          if (diffMs > 0) {
-                            const totalMin = Math.floor(diffMs / 60000);
-                            const h = Math.floor(totalMin / 60);
-                            const m = totalMin % 60;
-                            duration = h > 0 ? `${h}h ${m}m` : `${m}m`;
-                          }
-                        }
-                      }
-                      return (
-                        <div key={idx} className="flex items-center gap-3">
-                          <span className="w-2 h-2 rounded-full bg-purple-400 flex-shrink-0" />
-                          <span className="text-sm text-gray-200 flex-1">{ev.label}</span>
-                          <span className="text-xs text-gray-500 font-mono">{new Date(ev.date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
-                          {duration && <span className="text-xs text-gray-500 font-mono">Tempo no status: {duration}</span>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {(selectedDelivery.observations || selectedDelivery.observacoes || selectedDelivery.documentsJustification || selectedDelivery.submissionObservation) && (
-                <div className="space-y-3">
-                  {(selectedDelivery.observations || selectedDelivery.observacoes) && (
-                    <div className="bg-blue-900/20 border border-blue-500/20 rounded-xl p-4">
-                      <p className="text-[10px] text-blue-400 uppercase tracking-widest font-bold mb-2">📝 Observações</p>
-                      {selectedDelivery.observations && <p className="text-sm text-gray-300 whitespace-pre-wrap">{selectedDelivery.observations}</p>}
-                      {selectedDelivery.observacoes && <p className="text-sm text-gray-300 whitespace-pre-wrap mt-1">{selectedDelivery.observacoes}</p>}
-                    </div>
-                  )}
-                  {selectedDelivery.documentsJustification && (
-                    <div className="bg-amber-900/20 border border-amber-500/20 rounded-xl p-4">
-                      <p className="text-[10px] text-amber-400 uppercase tracking-widest font-bold mb-2">⚠️ Justificativa de Documentos</p>
-                      <p className="text-sm text-gray-300 whitespace-pre-wrap">{selectedDelivery.documentsJustification}</p>
-                    </div>
-                  )}
-                  {selectedDelivery.submissionObservation && (
-                    <div className="bg-indigo-900/20 border border-indigo-500/20 rounded-xl p-4">
-                      <p className="text-[10px] text-indigo-400 uppercase tracking-widest font-bold mb-2">ℹ️ Observação de Submissão</p>
-                      <p className="text-sm text-gray-300 whitespace-pre-wrap">{selectedDelivery.submissionObservation}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Documentos e Fotos</p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleShareDelivery}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 hover:text-emerald-200 text-xs font-semibold rounded-lg transition border border-emerald-500/20"
-                    >
-                      <FaShareAlt /> <span className="hidden sm:inline">Gerar Comprovante de Entrega</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleDownloadAll(selectedDelivery._id)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 hover:text-blue-200 text-xs font-semibold rounded-lg transition border border-blue-500/20"
-                    >
-                      <FaDownload /> <span className="hidden sm:inline">Baixar Tudo</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  {controleProtocolosLookupStatus === 'searching' && (
-                    <div className="rounded-xl p-3 bg-blue-900/20 border border-blue-700/50 text-blue-200 text-xs font-semibold">
-                      🔍 Buscando protocolo no Controle de Protocolos por processo/código...
-                    </div>
-                  )}
-                  {controleProtocolosLookupStatus === 'notfound' && (
-                    <div className="rounded-xl p-3 bg-yellow-900/20 border border-yellow-700/50 text-yellow-200 text-xs font-semibold">
-                      ⚠️ Nenhum protocolo encontrado no Controle de Protocolos para o código/processo exibido no modal.
-                    </div>
-                  )}
-                  {controleProtocolosLookupStatus === 'error' && (
-                    <div className="rounded-xl p-3 bg-red-900/20 border border-red-700/50 text-red-200 text-xs font-semibold">
-                      ❌ Erro ao buscar protocolo no Controle de Protocolos. Verifique o console.
-                    </div>
-                  )}
-
-                  {(() => {
-                    const labels = getLabelsForDelivery(selectedDelivery);
-
-                    const docRows = Object.keys(selectedDelivery.documents || {})
-                      .filter((k) => !['chegadaCliente', 'inicioDesova', 'fimDesova'].includes(k))
-                      .map((k) => {
-                        const present = !!selectedDelivery.documents[k];
-                        const controleField = controleProtocolosDocumentMap[k];
-                        const controlePresent = controleField && controleProtocolosRecord && controleProtocolosRecord.documentos
-                          ? isControleDocumentoPresent(controleProtocolosRecord.documentos[controleField])
-                          : false;
-                        const mismatch = present && controleField && !controlePresent;
-
-                        return (
-                          <div
-                            key={k}
-                            className={`flex items-center justify-between px-3 sm:px-4 py-3 rounded-xl border ${mismatch ? 'bg-rose-900/10 border-rose-500/40' : present ? 'bg-white/5 border-white/10' : 'bg-white/[0.02] border-white/5 opacity-50'}`}
-                          >
-                            <div className="flex items-center gap-3">
-                              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${present ? 'bg-emerald-400' : 'bg-gray-600'}`} />
-                              <span className={`text-sm font-semibold ${mismatch ? 'text-rose-300' : 'text-gray-300'}`}>{labels[k] || k}</span>
-                              {!present && <span className="text-xs text-gray-600">Não anexado</span>}
-                              {mismatch && <span className="text-xs text-rose-200">Presente no GeoTower, ausente no Icompany</span>}
-                            </div>
-
-                            {present && (
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => setViewingDocument({ label: labels[k] || k, urls: getDocumentUrlsArray(selectedDelivery.documents[k]) })}
-                                  className="w-7 h-7 rounded-lg bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 flex items-center justify-center transition"
-                                >
-                                  <FaEye size={11} />
-                                </button>
-
-                                <button
-                                  onClick={() => handleDownload(selectedDelivery._id, k, labels[k] || k)}
-                                  className="w-7 h-7 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 flex items-center justify-center transition"
-                                >
-                                  <FaDownload size={11} />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      });
-
-                    const fotoFields = [
-                      { key: 'chegadaCliente', label: 'Chegada no Cliente' },
-                      { key: 'inicioDesova', label: `Início da ${getDesovaStepLabel(city)}` },
-                      { key: 'fimDesova', label: `Finalização da ${getDesovaStepLabel(city)}` }
-                    ];
-
-                    const fotosRows = fotoFields.map((f) => {
-                      const files = getDocumentUrlsArray(selectedDelivery.documents?.[f.key]);
-                      const present = files.length > 0;
-                      return (
-                        <div
-                          key={f.key}
-                          className={`flex items-center justify-between px-3 sm:px-4 py-3 rounded-xl border ${present ? 'bg-white/5 border-white/10' : 'bg-white/[0.02] border-white/5 opacity-50'}`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${present ? 'bg-sky-400' : 'bg-gray-600'}`} />
-                            <span className="text-sm text-gray-300 font-semibold">{f.label}</span>
-                            {present && <span className="text-xs text-gray-500">{files.length} foto(s)</span>}
-                            {!present && <span className="text-xs text-gray-600">Não anexado</span>}
-                          </div>
-
-                          {present && (
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => setModalFotos({ label: f.label, files })}
-                                className="w-7 h-7 rounded-lg bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 flex items-center justify-center transition"
-                              >
-                                <FaEye size={11} />
-                              </button>
-
-                              <button
-                                onClick={() => files.forEach((url, i) => {
-                                  const a = document.createElement('a');
-                                  a.href = url;
-                                  a.setAttribute('download', `${f.label.replace(/\s+/g, '_')}_${i + 1}.jpg`);
-                                  document.body.appendChild(a);
-                                  a.click();
-                                  document.body.removeChild(a);
-                                })}
-                                className="w-7 h-7 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 flex items-center justify-center transition"
-                              >
-                                <FaDownload size={11} />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    });
-
-                    return [...docRows, ...fotosRows];
-                  })()}
-                </div>
-
-                {/* ✅ VERIFICAÇÃO ICOMPANY - Checkbox para marcar documentos verificados */}
-                <div className={`mt-4 pt-4 border-t border-white/10 p-4 rounded-xl transition-all duration-300 ${
-                  icompanyVerified?.[selectedDelivery._id]?.verified
-                    ? 'bg-gradient-to-r from-emerald-900/30 to-teal-900/30 border-l-4 border-l-emerald-500'
-                    : 'bg-gradient-to-r from-emerald-900/15 to-teal-900/15 hover:from-emerald-900/20 hover:to-teal-900/20'
-                }`}>
-                  <label className="flex items-center gap-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={icompanyVerified?.[selectedDelivery._id]?.verified || false}
-                      onChange={async (e) => {
-                        if (e.target.checked) {
-                          // Marcando como verificado
-                          try {
-                            const verification = await updateVerificationWithServer(selectedDelivery._id, true, '');
-                            const newState = {
-                              ...icompanyVerified,
-                              [selectedDelivery._id]: {
-                                verified: true,
-                                verifiedAt: verification.verifiedAt,
-                                verifiedBy: verification.verifiedBy || userName
-                              }
-                            };
-                            setIcompanyVerified(newState);
-                            localStorage.setItem('icompanyVerified', JSON.stringify(newState));
-                            localStorage.setItem('icompanyVerifiedRefresh', Date.now().toString());
-                            setToast({
-                              type: 'success',
-                              message: `✓ Arquivos marcados como verificados`,
-                              duration: 3000
-                            });
-                          } catch (err) {
-                            // Erro já foi tratado em updateVerificationWithServer
-                            e.target.checked = false; // Reverti o checkbox
-                          }
-                        } else {
-                          // Tentando desmarcar - abrir modal de confirmação
-                          setDeliveryToUnverify(selectedDelivery._id);
-                          setConfirmRemoveVerification(true);
-                        }
-                      }}
-                      className="sr-only" // Use sr-only instead of hidden for accessibility
-                      id={`verification-checkbox-${selectedDelivery._id}`}
-                    />
-                    <div 
-                      className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all cursor-pointer ${
-                        icompanyVerified?.[selectedDelivery._id]?.verified
-                          ? 'bg-emerald-500 border-emerald-500 shadow-lg shadow-emerald-500/50'
-                          : 'border-emerald-400/50 group-hover:border-emerald-400'
-                      }`}>
-
-                      {icompanyVerified?.[selectedDelivery._id]?.verified && (
-                        <FaCheckCircle className="text-white text-xs" />
-                      )}
-                    </div>
-                    <div className="flex flex-col">
-                      <span className={`text-sm font-semibold transition-colors ${
-                        icompanyVerified?.[selectedDelivery._id]?.verified
-                          ? 'text-emerald-200'
-                          : 'text-emerald-300 group-hover:text-emerald-200'
-                      }`}>
-                        ✓ Arquivos Verificados
-                      </span>
-                      <span className={`text-xs transition-colors ${
-                        icompanyVerified?.[selectedDelivery._id]?.verified
-                          ? 'text-emerald-300/80'
-                          : 'text-emerald-400/70 group-hover:text-emerald-300/70'
-                      }`}>
-                        {icompanyVerified?.[selectedDelivery._id]?.verified
-                          ? (() => {
-                              const data = icompanyVerified[selectedDelivery._id];
-                              const ts = new Date(data.verifiedAt || data.timestamp);
-                              const horaBrasil = ts.toLocaleString('pt-BR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                              const [dataParte, horaParte] = horaBrasil.split(', ');
-                              const user = data.verifiedBy || data.user || userName;
-                              return `Marcado como verificado e importado para o Icompany em ${dataParte}, às ${horaParte} por ${user}`;
-                            })()
-                          : 'Marcar documentos como verificados e importados para Icompany'
-                        }
-                      </span>
-                    </div>
-                  </label>
-                </div>
-              </div>
-
-              <p className="text-[10px] text-gray-600 text-right border-t border-white/5 pt-4">
-                Criado em {selectedDelivery.createdAt ? new Date(selectedDelivery.createdAt).toLocaleString('pt-BR') : '—'}
-              </p>
-            </div>
-
-            {canEdit() && (
-              <div className="flex-shrink-0 px-5 sm:px-6 py-4 border-t border-white/10 bg-white/[0.02] flex justify-end gap-3">
-                <button
-                  onClick={() => handleEditStart(selectedDelivery)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 hover:text-blue-200 text-sm font-semibold transition border border-blue-500/20"
-                >
-                  <FaEdit /> Editar
-                </button>
-
-                <button
-                  onClick={() => handleDelete(selectedDelivery._id)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600/20 hover:bg-red-600/40 text-red-400 hover:text-red-200 text-sm font-semibold transition border border-red-500/20"
-                >
-                  <FaTrash /> Excluir
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+        <Suspense fallback={<div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50"><div className="text-white">Carregando modal...</div></div>}>
+          <DeliveryModal
+            selectedDelivery={selectedDelivery}
+            onClose={() => setSelectedDelivery(null)}
+            city={city}
+            icompanyVerified={icompanyVerified}
+            setIcompanyVerified={setIcompanyVerified}
+            icompanyRemoteRecord={icompanyRemoteRecord}
+            icompanyLookupStatus={icompanyLookupStatus}
+            controleProtocolosRecord={controleProtocolosRecord}
+            controleProtocolosLookupStatus={controleProtocolosLookupStatus}
+            findIcompanyInCache={findIcompanyInCache}
+            compareWithIcompany={compareWithIcompany}
+            allModalDocsComplete={allModalDocsComplete}
+            getFlowHistory={getFlowHistory}
+            getDocumentUrlsArray={getDocumentUrlsArray}
+            getLabelsForDelivery={getLabelsForDelivery}
+            removeProgramacaoInfo={removeProgramacaoInfo}
+            getProgramacaoDate={getProgramacaoDate}
+            handleDownload={handleDownload}
+            handleDownloadAll={handleDownloadAll}
+            handleShareDelivery={handleShareDelivery}
+            handleEditStart={handleEditStart}
+            handleDelete={handleDelete}
+            updateVerificationWithServer={updateVerificationWithServer}
+            setToast={setToast}
+            setViewingDocument={setViewingDocument}
+            setModalFotos={setModalFotos}
+            editingDelivery={editingDelivery}
+            editForm={editForm}
+            setEditingDelivery={setEditingDelivery}
+            setEditForm={setEditForm}
+            handleEditSave={handleEditSave}
+            userName={user?.name || user?.username || user?.email}
+            currentTime={currentTime}
+            deliveryToUnverify={deliveryToUnverify}
+            setDeliveryToUnverify={setDeliveryToUnverify}
+            confirmRemoveVerification={confirmRemoveVerification}
+            setConfirmRemoveVerification={setConfirmRemoveVerification}
+          />
+        </Suspense>
       )}
 
       {modalFotos && (
@@ -3181,6 +2606,7 @@ const MonitorEntregas = () => {
           </div>
         </div>
       )}
+
     </div>
   );
 };

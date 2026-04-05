@@ -1,0 +1,521 @@
+import React, { useState, useMemo } from 'react';
+import {
+  FaTimes, FaCheckCircle, FaTimesCircle, FaCalendarAlt, FaClock, 
+  FaBox, FaTruck, FaExclamationTriangle, FaShareAlt, FaDownload,
+  FaEye, FaTrash, FaEdit, FaUndo, FaMapMarkerAlt, FaShippingFast,
+  FaFilePdf, FaUsers, FaDolly, FaSearch, FaBuilding, FaLayerGroup,
+  FaUser, FaBoxOpen
+} from 'react-icons/fa';
+import { getDesovaStatusLabel, getDesovaStepLabel } from '../utils/cityLabels';
+import { formatarData, formatarAgendamento, formatarHora } from '../utils/date';
+
+const Badge = ({ status, city = 'manaus' }) => {
+  const getResolveConfig = (rawStatus, cityCode = 'manaus') => {
+    const statusConfig = getStatusConfig(cityCode);
+    const key = normalizeKey(rawStatus);
+    if (key === 'ENTREGUE' || key === 'SUBMITTED' || key === 'ENTREGUE COM PENDENCIA CANHOTO') {
+      return statusConfig['ENTREGUE'];
+    }
+    if (key === 'PENDING' || key === 'A CAMINHO DO CLIENTE') {
+      return statusConfig['A CAMINHO DO CLIENTE'];
+    }
+    return statusConfig[key] || null;
+  };
+
+  const normalizeKey = (s) => {
+    if (!s) return '';
+    return String(s).replace(/_/g, ' ').toUpperCase().trim();
+  };
+
+  const getStatusConfig = (city = 'manaus') => {
+    const desovaLabel = getDesovaStepLabel(city);
+    return {
+      AGENDADO: {
+        label: 'Não Iniciado',
+        badge: 'bg-indigo-100 text-indigo-800 border border-indigo-300',
+      },
+      'CONTAINER MONTADO': {
+        label: 'Container Montado',
+        badge: 'bg-sky-100 text-sky-800 border border-sky-300',
+      },
+      'A CAMINHO DO CLIENTE': {
+        label: 'A Caminho do Cliente',
+        badge: 'bg-amber-100 text-amber-800 border border-amber-300',
+      },
+      'AGUARDANDO DESOVA': {
+        label: `Aguard. ${desovaLabel}`,
+        badge: 'bg-orange-100 text-orange-800 border border-orange-300',
+      },
+      'EM DESOVA': {
+        label: `Em ${desovaLabel}`,
+        badge: 'bg-violet-100 text-violet-800 border border-violet-300',
+      },
+      'ANEXANDO DOCUMENTOS FINAIS': {
+        label: 'Anexando Docs',
+        badge: 'bg-pink-100 text-pink-800 border border-pink-300',
+      },
+      ENTREGUE: {
+        label: 'Entregue',
+        badge: 'bg-emerald-100 text-emerald-800 border border-emerald-300',
+      },
+      CANCELADO: {
+        label: 'Cancelado',
+        badge: 'bg-gray-100 text-gray-600 border border-gray-300',
+      }
+    };
+  };
+
+  const cfg = getResolveConfig(status, city);
+  const label = cfg?.label || normalizeKey(status);
+  const cls = cfg?.badge || 'bg-gray-100 text-gray-700 border border-gray-300';
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide whitespace-nowrap ${cls}`}>
+      {label}
+    </span>
+  );
+};
+
+const DeliveryModal = ({
+  selectedDelivery,
+  onClose,
+  city = 'manaus',
+  icompanyVerified,
+  setIcompanyVerified,
+  icompanyRemoteRecord,
+  icompanyLookupStatus,
+  controleProtocolosRecord,
+  controleProtocolosLookupStatus,
+  findIcompanyInCache,
+  compareWithIcompany,
+  allModalDocsComplete,
+  getFlowHistory,
+  getDocumentUrlsArray,
+  getLabelsForDelivery,
+  removeProgramacaoInfo,
+  getProgramacaoDate,
+  handleDownload,
+  handleDownloadAll,
+  handleShareDelivery,
+  handleEditStart,
+  handleDelete,
+  updateVerificationWithServer,
+  setToast,
+  setViewingDocument,
+  setModalFotos,
+  editingDelivery,
+  editForm,
+  setEditingDelivery,
+  setEditForm,
+  handleEditSave,
+  userName,
+  currentTime,
+  deliveryToUnverify,
+  setDeliveryToUnverify,
+  confirmRemoveVerification,
+  setConfirmRemoveVerification
+}) => {
+  if (!selectedDelivery) return null;
+
+  const flowHistory = getFlowHistory(selectedDelivery);
+  const normalizeKey = (s) => {
+    if (!s) return '';
+    return String(s).replace(/_/g, ' ').toUpperCase().trim();
+  };
+
+  const controleProtocolosDocumentMap = {
+    retiradaCheio: 'RIC PORTO DESTINO',
+    canhotCTE: 'COMPROVANTE DE DESOVA',
+    diarioBordo: 'DIARIO DE BORDO',
+    canhotNF: 'CANHOTO DE DANFE',
+    devolucaoVazio: 'RIC DEPOT DESTINO'
+  };
+
+  const isControleDocumentoPresent = (value) => {
+    return value === true;
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
+      <div className="bg-[#1a1a2e] rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden shadow-2xl border border-white/10 flex flex-col">
+        <div className="flex items-center justify-between px-5 sm:px-6 py-4 sm:py-5 bg-gradient-to-r from-purple-700/60 to-indigo-700/60 border-b border-white/10 flex-shrink-0">
+          <div>
+            <p className="text-xs text-purple-300 uppercase tracking-widest font-semibold mb-0.5">Entrega</p>
+            <h2 className="text-xl font-black text-white tracking-wide">#{selectedDelivery.deliveryNumber}</h2>
+            <p className="text-xs text-gray-300 mt-1">CAB: {selectedDelivery.processoCAB || selectedDelivery.processo || selectedDelivery.processNumber || selectedDelivery.codigo || '—'}</p>
+            <p className="text-xs text-gray-300 mt-1">Código: {(icompanyRemoteRecord?.codigo || findIcompanyInCache(selectedDelivery)?.codigo || '—')}</p>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Badge status={(selectedDelivery.status === 'FINALIZADO' && allModalDocsComplete(selectedDelivery)) ? 'DOCUMENTOS ENTREGUES' : selectedDelivery.status} />
+            <button
+              onClick={onClose}
+              className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition"
+            >
+              <FaTimes />
+            </button>
+          </div>
+        </div>
+
+        <div className="overflow-y-auto flex-1 p-4 sm:p-6 space-y-5">
+          {(() => {
+            const localRecord = findIcompanyInCache(selectedDelivery);
+            const effectiveRecord = icompanyRemoteRecord || localRecord;
+            const comparisons = compareWithIcompany(selectedDelivery, effectiveRecord);
+            const hasNotFound = comparisons && comparisons.__notFound;
+            const icompanyMatched = !hasNotFound && comparisons && Object.keys(comparisons).length > 0;
+
+            if (hasNotFound) {
+              return (
+                <div className="rounded-xl p-3 bg-yellow-900/20 border border-yellow-700/50 text-yellow-200 text-xs font-semibold">
+                  ⚠️ {comparisons.mensagem || 'Registro Icompany não encontrado para esta entrega.'}
+                </div>
+              );
+            }
+
+            if (icompanyLookupStatus === 'searching') {
+              return (
+                <div className="rounded-xl p-3 bg-blue-900/20 border border-blue-700/50 text-blue-200 text-xs font-semibold">
+                  🔍 Buscando registro em Icompany...
+                </div>
+              );
+            }
+
+            if (icompanyLookupStatus === 'error') {
+              return (
+                <div className="rounded-xl p-3 bg-red-900/20 border border-red-700/50 text-red-200 text-xs font-semibold">
+                  ❌ Erro ao buscar registro em Icompany. Verifique o log no console.
+                </div>
+              );
+            }
+
+            if (!icompanyMatched) {
+              return (
+                <div className="rounded-xl p-3 bg-yellow-900/20 border border-yellow-700/50 text-yellow-200 text-xs font-semibold">
+                  ⚠️ Registro Icompany não encontrado para o processo/ID desta entrega. A comparação só funciona quando há correspondência exata em Icompany (campo código/processo/numero).
+                </div>
+              );
+            }
+
+            return null;
+          })()}
+
+          <div className="grid grid-cols-2 gap-2 sm:gap-3">
+            {(() => {
+              const comparisons = compareWithIcompany(selectedDelivery);
+
+              return [
+                ['Contratado', selectedDelivery.userName],
+                ['Motorista', selectedDelivery.driverName || '—'],
+                ['Placa', selectedDelivery.placaIcompany || selectedDelivery.vehiclePlate || '—'],
+                ['Entrega CNTR Porto', selectedDelivery.horarioDevolucaoVazio ? formatarData(selectedDelivery.horarioDevolucaoVazio, city) : '—'],
+                ['Recebedor', selectedDelivery.recebedor || '—'],
+                ['Agendamento', getProgramacaoDate(selectedDelivery, city) ? formatarAgendamento(getProgramacaoDate(selectedDelivery, city)) : '—'],
+                ['Montagem Container', selectedDelivery.containerMontadoAt ? formatarData(selectedDelivery.containerMontadoAt, city) : '—'],
+                ['Chegada', selectedDelivery.horarioChegada ? formatarData(selectedDelivery.horarioChegada, city) : '—'],
+                [`Início ${getDesovaStepLabel(city)}`, selectedDelivery.horarioInicioDesova ? formatarData(selectedDelivery.horarioInicioDesova, city) : '—'],
+                [`Fim ${getDesovaStepLabel(city)}`, selectedDelivery.horarioFimDesova ? formatarData(selectedDelivery.horarioFimDesova, city) : '—'],
+              ].map(([label, value]) => {
+                const comparison = comparisons[label];
+                const isInconsistent = comparison?.isInconsistent;
+
+                return (
+                  <div key={label} className={`bg-white/5 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 border ${isInconsistent ? 'border-red-500/50 bg-red-900/10' : 'border-white/5'}`}>
+                    <p className={`text-[10px] uppercase tracking-widest font-semibold mb-0.5 ${isInconsistent ? 'text-red-400' : 'text-gray-500'}`}>
+                      {label}
+                      {isInconsistent && <span className="ml-1 text-red-400">⚠️</span>}
+                    </p>
+                    <p className={`text-sm font-semibold ${isInconsistent ? 'text-red-300' : 'text-gray-100'}`}>
+                      {value}
+                    </p>
+                    {isInconsistent && (
+                      <p className="text-[9px] text-red-400 mt-0.5 opacity-80">
+                        Icompany: {comparison.displayIcompany}
+                      </p>
+                    )}
+                  </div>
+                );
+              });
+            })()}
+          </div>
+
+          {flowHistory.length > 0 && (
+            <div className="bg-white/5 rounded-xl p-4 border border-white/5">
+              <p className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold mb-3">📍 Histórico do Fluxo</p>
+              <div className="space-y-2">
+                {flowHistory.map((ev, idx) => {
+                  let duration = null;
+                  if (idx < flowHistory.length - 1) {
+                    const nextDate = new Date(flowHistory[idx + 1].date);
+                    const currentDate = new Date(ev.date);
+                    const diffMs = nextDate - currentDate;
+                    if (diffMs > 0) {
+                      const totalMin = Math.floor(diffMs / 60000);
+                      const h = Math.floor(totalMin / 60);
+                      const m = totalMin % 60;
+                      duration = h > 0 ? `${h}h ${m}m` : `${m}m`;
+                    }
+                  } else {
+                    const isFinished = normalizeKey(selectedDelivery.status) === 'FINALIZADO' || selectedDelivery.status === 'ENTREGUE' || selectedDelivery.status === 'submitted' || selectedDelivery.status === 'DOCUMENTOS ENTREGUES';
+                    if (!isFinished) {
+                      const currentDate = new Date(ev.date);
+                      const now = currentTime;
+                      const diffMs = now - currentDate;
+                      if (diffMs > 0) {
+                        const totalMin = Math.floor(diffMs / 60000);
+                        const h = Math.floor(totalMin / 60);
+                        const m = totalMin % 60;
+                        duration = h > 0 ? `${h}h ${m}m` : `${m}m`;
+                      }
+                    }
+                  }
+                  return (
+                    <div key={idx} className="flex items-center gap-3">
+                      <span className="w-2 h-2 rounded-full bg-purple-400 flex-shrink-0" />
+                      <span className="text-sm text-gray-200 flex-1">{ev.label}</span>
+                      <span className="text-xs text-gray-500 font-mono">{new Date(ev.date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                      {duration && <span className="text-xs text-gray-500 font-mono">Tempo no status: {duration}</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {(selectedDelivery.observations || selectedDelivery.observacoes || selectedDelivery.documentsJustification || selectedDelivery.submissionObservation) && (
+            <div className="space-y-3">
+              {(selectedDelivery.observations || selectedDelivery.observacoes) && (
+                <div className="bg-blue-900/20 border border-blue-500/20 rounded-xl p-4">
+                  <p className="text-[10px] text-blue-400 uppercase tracking-widest font-bold mb-2">📝 Observações</p>
+                  {selectedDelivery.observations && <p className="text-sm text-gray-300 whitespace-pre-wrap">{selectedDelivery.observations}</p>}
+                  {selectedDelivery.observacoes && <p className="text-sm text-gray-300 whitespace-pre-wrap mt-1">{selectedDelivery.observacoes}</p>}
+                </div>
+              )}
+              {selectedDelivery.documentsJustification && (
+                <div className="bg-amber-900/20 border border-amber-500/20 rounded-xl p-4">
+                  <p className="text-[10px] text-amber-400 uppercase tracking-widest font-bold mb-2">⚠️ Justificativa de Documentos</p>
+                  <p className="text-sm text-gray-300 whitespace-pre-wrap">{selectedDelivery.documentsJustification}</p>
+                </div>
+              )}
+              {selectedDelivery.submissionObservation && (
+                <div className="bg-indigo-900/20 border border-indigo-500/20 rounded-xl p-4">
+                  <p className="text-[10px] text-indigo-400 uppercase tracking-widest font-bold mb-2">ℹ️ Observação de Submissão</p>
+                  <p className="text-sm text-gray-300 whitespace-pre-wrap">{selectedDelivery.submissionObservation}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Documentos e Fotos</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleShareDelivery}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 hover:text-emerald-200 text-xs font-semibold rounded-lg transition border border-emerald-500/20"
+                >
+                  <FaShareAlt /> <span className="hidden sm:inline">Gerar Comprovante de Entrega</span>
+                </button>
+
+                <button
+                  onClick={() => handleDownloadAll(selectedDelivery._id)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 hover:text-blue-200 text-xs font-semibold rounded-lg transition border border-blue-500/20"
+                >
+                  <FaDownload /> <span className="hidden sm:inline">Baixar Tudo</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {controleProtocolosLookupStatus === 'searching' && (
+                <div className="rounded-xl p-3 bg-blue-900/20 border border-blue-700/50 text-blue-200 text-xs font-semibold">
+                  🔍 Buscando protocolo no Controle de Protocolos por processo/código...
+                </div>
+              )}
+              {controleProtocolosLookupStatus === 'notfound' && (
+                <div className="rounded-xl p-3 bg-yellow-900/20 border border-yellow-700/50 text-yellow-200 text-xs font-semibold">
+                  ⚠️ Nenhum protocolo encontrado no Controle de Protocolos para o código/processo exibido no modal.
+                </div>
+              )}
+              {controleProtocolosLookupStatus === 'error' && (
+                <div className="rounded-xl p-3 bg-red-900/20 border border-red-700/50 text-red-200 text-xs font-semibold">
+                  ❌ Erro ao buscar protocolo no Controle de Protocolos. Verifique o console.
+                </div>
+              )}
+
+              {(() => {
+                const labels = getLabelsForDelivery(selectedDelivery);
+
+                const docRows = Object.keys(selectedDelivery.documents || {})
+                  .filter((k) => !['chegadaCliente', 'inicioDesova', 'fimDesova'].includes(k))
+                  .map((k) => {
+                    const present = !!selectedDelivery.documents[k];
+                    const controleField = controleProtocolosDocumentMap[k];
+                    const controlePresent = controleField && controleProtocolosRecord && controleProtocolosRecord.documentos
+                      ? isControleDocumentoPresent(controleProtocolosRecord.documentos[controleField])
+                      : false;
+                    const mismatch = present && controleField && !controlePresent;
+
+                    return (
+                      <div
+                        key={k}
+                        className={`flex items-center justify-between px-3 sm:px-4 py-3 rounded-xl border ${mismatch ? 'bg-rose-900/10 border-rose-500/40' : present ? 'bg-white/5 border-white/10' : 'bg-white/[0.02] border-white/5 opacity-50'}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${present ? 'bg-emerald-400' : 'bg-gray-600'}`} />
+                          <span className={`text-sm font-semibold ${mismatch ? 'text-rose-300' : 'text-gray-300'}`}>{labels[k] || k}</span>
+                          {!present && <span className="text-xs text-gray-600">Não anexado</span>}
+                          {mismatch && <span className="text-xs text-rose-200">Presente no GeoTower, ausente no Icompany</span>}
+                        </div>
+
+                        {present && (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setViewingDocument({ label: labels[k] || k, urls: getDocumentUrlsArray(selectedDelivery.documents[k]) })}
+                              className="w-7 h-7 rounded-lg bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 flex items-center justify-center transition"
+                            >
+                              <FaEye size={11} />
+                            </button>
+
+                            <button
+                              onClick={() => handleDownload(selectedDelivery._id, k, labels[k] || k)}
+                              className="w-7 h-7 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 flex items-center justify-center transition"
+                            >
+                              <FaDownload size={11} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  });
+
+                const fotoFields = [
+                  { key: 'chegadaCliente', label: 'Chegada no Cliente' },
+                  { key: 'inicioDesova', label: `Início da ${getDesovaStepLabel(city)}` },
+                  { key: 'fimDesova', label: `Finalização da ${getDesovaStepLabel(city)}` }
+                ];
+
+                const fotosRows = fotoFields.map((f) => {
+                  const files = getDocumentUrlsArray(selectedDelivery.documents?.[f.key]);
+                  const present = files.length > 0;
+                  return (
+                    <div
+                      key={f.key}
+                      className={`flex items-center justify-between px-3 sm:px-4 py-3 rounded-xl border ${present ? 'bg-white/5 border-white/10' : 'bg-white/[0.02] border-white/5 opacity-50'}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${present ? 'bg-sky-400' : 'bg-gray-600'}`} />
+                        <span className="text-sm text-gray-300 font-semibold">{f.label}</span>
+                        {present && <span className="text-xs text-gray-500">{files.length} foto(s)</span>}
+                        {!present && <span className="text-xs text-gray-600">Não anexado</span>}
+                      </div>
+
+                      {present && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setModalFotos({ label: f.label, files })}
+                            className="w-7 h-7 rounded-lg bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 flex items-center justify-center transition"
+                          >
+                            <FaEye size={11} />
+                          </button>
+
+                          <button
+                            onClick={() => files.forEach((url, i) => {
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.setAttribute('download', `${f.label.replace(/\s+/g, '_')}_${i + 1}.jpg`);
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                            })}
+                            className="w-7 h-7 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 flex items-center justify-center transition"
+                          >
+                            <FaDownload size={11} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                });
+
+                return [...docRows, ...fotosRows];
+              })()}
+            </div>
+
+            <div className={`mt-4 pt-4 border-t border-white/10 p-4 rounded-xl transition-all duration-300 ${
+              icompanyVerified?.[selectedDelivery._id]?.verified
+                ? 'bg-gradient-to-r from-emerald-900/30 to-teal-900/30 border-l-4 border-l-emerald-500'
+                : 'bg-gradient-to-r from-emerald-900/15 to-teal-900/15 hover:from-emerald-900/20 hover:to-teal-900/20'
+            }`}>
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={icompanyVerified?.[selectedDelivery._id]?.verified || false}
+                  onChange={async (e) => {
+                    if (e.target.checked) {
+                      try {
+                        const verification = await updateVerificationWithServer(selectedDelivery._id, true, '');
+                        const newState = {
+                          ...icompanyVerified,
+                          [selectedDelivery._id]: {
+                            verified: true,
+                            verifiedAt: verification.verifiedAt,
+                            verifiedBy: verification.verifiedBy || userName
+                          }
+                        };
+                        setIcompanyVerified(newState);
+                        localStorage.setItem('icompanyVerified', JSON.stringify(newState));
+                        localStorage.setItem('icompanyVerifiedRefresh', Date.now().toString());
+                        setToast({
+                          type: 'success',
+                          message: `✓ Arquivos marcados como verificados`,
+                          duration: 3000
+                        });
+                      } catch (err) {
+                        e.target.checked = false;
+                      }
+                    } else {
+                      setDeliveryToUnverify(selectedDelivery._id);
+                      setConfirmRemoveVerification(true);
+                    }
+                  }}
+                  className="sr-only"
+                  id={`verification-checkbox-${selectedDelivery._id}`}
+                />
+                <div 
+                  className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all cursor-pointer ${
+                    icompanyVerified?.[selectedDelivery._id]?.verified
+                      ? 'bg-emerald-500 border-emerald-500 shadow-lg shadow-emerald-500/50'
+                      : 'border-emerald-400/50 group-hover:border-emerald-400'
+                  }`}>
+                  {icompanyVerified?.[selectedDelivery._id]?.verified && (
+                    <FaCheckCircle className="text-white text-xs" />
+                  )}
+                </div>
+                <div className="flex flex-col">
+                  <span className={`text-sm font-semibold transition-colors ${
+                    icompanyVerified?.[selectedDelivery._id]?.verified
+                      ? 'text-emerald-200'
+                      : 'text-emerald-300 group-hover:text-emerald-200'
+                  }`}>
+                    ✓ Arquivos Verificados
+                  </span>
+                  <span className={`text-xs transition-colors ${
+                    icompanyVerified?.[selectedDelivery._id]?.verified
+                      ? 'text-emerald-300/80'
+                      : 'text-emerald-400/70 group-hover:text-emerald-300/70'
+                  }`}>
+                    {icompanyVerified?.[selectedDelivery._id]?.verified
+                      ? `Verificado por ${icompanyVerified[selectedDelivery._id]?.verifiedBy || 'Usuário'}`
+                      : 'Marque para confirmar que os arquivos foram verificados'}
+                  </span>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default DeliveryModal;
