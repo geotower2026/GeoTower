@@ -358,14 +358,12 @@ const DeliveryModal = ({
 
               {(() => {
                 const labels = getLabelsForDelivery(selectedDelivery);
-                const isFinalizedDocumentState = ['FINALIZADO', 'ENTREGUE', 'ENTREGUE COM PENDENCIA CANHOTO', 'DOCUMENTOS ENTREGUES']
-                  .includes(normalizeKey(selectedDelivery.status));
 
                 const docRows = Object.keys(selectedDelivery.documents || {})
                   .filter((k) => !['chegadaCliente', 'inicioDesova', 'fimDesova'].includes(k))
                   .map((k) => {
                     const present = !!selectedDelivery.documents[k];
-                    const canRemoveThisDocument = present && canRemoveDocument && isFinalizedDocumentState;
+                    const canRemoveThisDocument = present && canRemoveDocument;
                     const controleField = controleProtocolosDocumentMap[k];
                     const controlePresent = controleField && controleProtocolosRecord && controleProtocolosRecord.documentos
                       ? isControleDocumentoPresent(controleProtocolosRecord.documentos[controleField])
