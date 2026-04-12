@@ -334,9 +334,10 @@ const ProgramadasEntregas = () => {
         }
 
         // Tentar buscar o delivery por linkedDeliveryId primeiro
+        let matchedDelivery = null;
         if (p.linkedDeliveryId) {
-          const del = deliveries.find(d => d._id === p.linkedDeliveryId);
-          if (del && del.documents && ((del.documents.devolucaoVazio && del.documents.devolucaoVazio.length > 0) || (del.documents.devolucaoContainerVazio && del.documents.devolucaoContainerVazio.length > 0))) {
+          matchedDelivery = deliveries.find(d => d._id === p.linkedDeliveryId);
+          if (matchedDelivery && matchedDelivery.documents && ((matchedDelivery.documents.devolucaoVazio && matchedDelivery.documents.devolucaoVazio.length > 0) || (matchedDelivery.documents.devolucaoContainerVazio && matchedDelivery.documents.devolucaoContainerVazio.length > 0))) {
             return false;
           }
         }
@@ -344,8 +345,19 @@ const ProgramadasEntregas = () => {
         // Fallback: buscar por container/processo
         const key = ((p.container || p.processo || '').toUpperCase());
         const del = map[key];
-        if (del && del.documents && ((del.documents.devolucaoVazio && del.documents.devolucaoVazio.length > 0) || (del.documents.devolucaoContainerVazio && del.documents.devolucaoContainerVazio.length > 0))) {
+        if (!matchedDelivery && del) {
+          matchedDelivery = del;
+        }
+        if (matchedDelivery && matchedDelivery.documents && ((matchedDelivery.documents.devolucaoVazio && matchedDelivery.documents.devolucaoVazio.length > 0) || (matchedDelivery.documents.devolucaoContainerVazio && matchedDelivery.documents.devolucaoContainerVazio.length > 0))) {
           return false;
+        }
+
+        // Se houver delivery associado, atualizar o status exibido na programação
+        if (matchedDelivery) {
+          p.status = matchedDelivery.status || p.status;
+          if (matchedDelivery.containerReturned !== undefined) {
+            p.containerReturned = matchedDelivery.containerReturned;
+          }
         }
 
         return true;
@@ -1078,7 +1090,10 @@ const ProgramadasEntregas = () => {
                   p.status === 'CONTAINER_MONTADO' ? 'bg-gradient-to-r from-indigo-400 to-purple-500' :
                   p.status === 'A_CAMINHO_DO_CLIENTE' ? 'bg-gradient-to-r from-purple-400 to-pink-500' :
                   p.status === 'AGUARDANDO_DESOVA' ? 'bg-gradient-to-r from-amber-400 to-orange-500' :
+                  p.status === 'DESOVA_FINALIZADA' ? 'bg-gradient-to-r from-orange-400 to-red-500' :
                   p.status === 'EM_DESOVA' ? 'bg-gradient-to-r from-orange-400 to-red-500' :
+                  p.status === 'AGUARDANDO_ANEXO' ? 'bg-gradient-to-r from-violet-400 to-fuchsia-500' :
+                  p.status === 'ANEXANDO_DOCUMENTOS_FINAIS' ? 'bg-gradient-to-r from-teal-400 to-emerald-500' :
                   p.status === 'ENTREGUE' ? 'bg-gradient-to-r from-yellow-400 to-amber-500' :
                   p.status === 'DEVOLVENDO_CONTAINER' ? 'bg-gradient-to-r from-yellow-400 to-amber-500' :
                   p.status === 'FINALIZADO' ? 'bg-gradient-to-r from-yellow-400 to-amber-500' :
