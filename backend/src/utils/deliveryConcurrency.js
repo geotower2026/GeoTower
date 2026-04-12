@@ -11,12 +11,13 @@ const STATUS_ORDER = {
   'A_CAMINHO_DO_CLIENTE': 3,
   'AGUARDANDO_DESOVA': 4,
   'EM_DESOVA': 5,
-  'AGUARDANDO_ANEXO': 6,
-  'ANEXANDO_DOCUMENTOS_FINAIS': 7,
-  'ENTREGUE': 8,
-  'ENTREGUE_COM_PENDENCIA_CANHOTO': 8, // Mesmo nível que ENTREGUE
-  'FINALIZADO': 9,
-  'CANCELADO': 10 // Cancelado pode ser aplicado a qualquer status
+  'DESOVA_FINALIZADA': 6,
+  'AGUARDANDO_ANEXO': 7,
+  'ANEXANDO_DOCUMENTOS_FINAIS': 8,
+  'ENTREGUE': 9,
+  'ENTREGUE_COM_PENDENCIA_CANHOTO': 9, // Mesmo nível que ENTREGUE
+  'FINALIZADO': 10,
+  'CANCELADO': 11 // Cancelado pode ser aplicado a qualquer status
 };
 
 /**
