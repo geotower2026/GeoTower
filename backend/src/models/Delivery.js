@@ -39,6 +39,18 @@ const DeliverySchema = new mongoose.Schema(
     submissionForce: { type: Boolean, default: false },
     missingDocumentsAtSubmit: { type: [String], default: [] },
     documentsJustification: { type: String, default: "" },
+    documentCorrectionLog: {
+      type: [
+        {
+          removedBy: { type: String, default: "" },
+          role: { type: String, default: "" },
+          documentType: { type: String, default: "" },
+          reason: { type: String, default: "" },
+          removedAt: { type: Date, default: Date.now }
+        }
+      ],
+      default: []
+    },
 
     // usuário que criou (motorista/admin)
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },

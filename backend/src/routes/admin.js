@@ -811,6 +811,95 @@ router.get("/deliveries/:id/documents/:documentType/download", auth, onlyAdmin, 
   }
 });
 
+router.post('/deliveries/:id/documents/:documentType/remove', auth, onlyAdmin, async (req, res) => {
+  try {
+    const { id, documentType } = req.params;
+    const { reason } = req.body;
+    const city = req.city || 'manaus';
+    const db = await getDb(req);
+
+    let delivery = await db.findById('deliveries', id);
+    if (!delivery) {
+      delivery = await db.findOne('deliveries', { deliveryNumber: id });
+    }
+    if (!delivery) return res.status(404).json({ message: 'Entrega não encontrada' });
+    if (delivery.cityCode !== city) {
+      return res.status(403).json({ message: 'Acesso negado - dados de outra cidade' });
+    }
+
+    const docs = delivery.documents || {};
+    const docEntry = docs[documentType];
+    if (!docEntry) {
+      return res.status(404).json({ message: 'Documento não encontrado' });
+    }
+
+    const parseEntries = (entry) => {
+      if (!entry) return [];
+      if (Array.isArray(entry)) return entry;
+      if (typeof entry === 'string') {
+        try {
+          const parsed = JSON.parse(entry);
+          return Array.isArray(parsed) ? parsed : [parsed];
+        } catch (_err) {
+          return [entry];
+        }
+      }
+      if (typeof entry === 'object') return [entry];
+      return [entry];
+    };
+
+    const entries = parseEntries(docEntry);
+    const uploadsRoot = path.join(__dirname, '..', 'uploads');
+
+    for (const item of entries) {
+      if (!item) continue;
+      if (typeof item === 'string') {
+        const normalized = String(item).replace(/^\/+/g, '');
+        const candidate = path.join(uploadsRoot, normalized);
+        if (fs.existsSync(candidate)) {
+          try { fs.unlinkSync(candidate); } catch (e) { console.warn('Falha ao excluir arquivo local removendo documento:', e.message); }
+        }
+      } else if (item.path) {
+        const normalized = String(item.path).replace(/^\/+/g, '');
+        const candidate = path.join(uploadsRoot, normalized);
+        if (fs.existsSync(candidate)) {
+          try { fs.unlinkSync(candidate); } catch (e) { console.warn('Falha ao excluir arquivo local removendo documento:', e.message); }
+        }
+      }
+    }
+
+    docs[documentType] = null;
+
+    const missingDocumentsAtSubmit = Array.isArray(delivery.missingDocumentsAtSubmit)
+      ? [...new Set([...delivery.missingDocumentsAtSubmit, documentType])]
+      : [documentType];
+
+    const documentCorrectionLog = Array.isArray(delivery.documentCorrectionLog)
+      ? [...delivery.documentCorrectionLog]
+      : [];
+
+    documentCorrectionLog.push({
+      removedBy: req.user?.username || req.user?.name || req.user?.email || 'unknown',
+      role: req.user?.role || 'unknown',
+      documentType,
+      reason: reason ? String(reason).trim() : 'Documento inválido removido pelo ADM',
+      removedAt: new Date()
+    });
+
+    await db.updateOne('deliveries', { _id: delivery._id }, {
+      documents: docs,
+      missingDocumentsAtSubmit,
+      documentCorrectionLog
+    });
+
+    const updated = await db.findById('deliveries', delivery._id);
+    return res.json({ delivery: normalizeDeliveryForResponse(updated) });
+  } catch (err) {
+    console.error('Erro removendo documento manualmente:', err);
+    return res.status(500).json({ message: 'Erro ao remover documento' });
+  }
+});
+
 
 /**
  * GET /api/admin/deliveries/:id/documents/zip

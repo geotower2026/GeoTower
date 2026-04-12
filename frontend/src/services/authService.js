@@ -67,6 +67,8 @@ export const adminService = {
   deleteProgramacao: (id) => api.delete(`/admin/programacoes/${id}`),
   createProgramacao: (data) => api.post('/admin/programacoes', data),
   importProgramacoes: (data) => api.post('/admin/programacoes/import', data),
+  removeInvalidDocument: (deliveryId, documentType, reason) =>
+    api.post(`/admin/deliveries/${deliveryId}/documents/${documentType}/remove`, { reason }),
   syncProgramacoesIcompany: () => api.get('/admin/programacoes/sync/icompany'),
   // Reconciliação
   uploadReconciliation: (file) => {

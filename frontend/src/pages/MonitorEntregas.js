@@ -1964,6 +1964,20 @@ const MonitorEntregas = () => {
     }
   };
 
+  const handleRemoveDocument = async (deliveryId, documentType) => {
+    if (!window.confirm('Remover este documento e marcá-lo como pendência para correção?')) return;
+    try {
+      setToast({ message: 'Removendo documento...', type: 'info' });
+      const res = await adminService.removeInvalidDocument(deliveryId, documentType, 'Documento inválido removido pelo ADM');
+      const updatedDelivery = res.data.delivery;
+      setSelectedDelivery(updatedDelivery);
+      setToast({ message: 'Documento removido e pendência registrada', type: 'success' });
+      loadDeliveries();
+    } catch (err) {
+      setToast({ message: err.response?.data?.message || err.message || 'Erro ao remover documento', type: 'error' });
+    }
+  };
+
   const handleEditStart = (d) => {
     // Libera edição para geomar
 
@@ -2419,6 +2433,8 @@ const MonitorEntregas = () => {
             handleShareDelivery={handleShareDelivery}
             handleEditStart={handleEditStart}
             handleDelete={handleDelete}
+            onRemoveDocument={handleRemoveDocument}
+            canRemoveDocument={user?.role === 'admin' || user?.role === 'manager'}
             updateVerificationWithServer={updateVerificationWithServer}
             setToast={setToast}
             setViewingDocument={setViewingDocument}

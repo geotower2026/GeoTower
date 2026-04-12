@@ -98,6 +98,8 @@ const DeliveryModal = ({
   handleShareDelivery,
   handleEditStart,
   handleDelete,
+  onRemoveDocument,
+  canRemoveDocument,
   updateVerificationWithServer,
   setToast,
   setViewingDocument,
@@ -294,6 +296,20 @@ const DeliveryModal = ({
                   <p className="text-sm text-gray-300 whitespace-pre-wrap">{selectedDelivery.documentsJustification}</p>
                 </div>
               )}
+              {selectedDelivery.documentCorrectionLog && selectedDelivery.documentCorrectionLog.length > 0 && (
+                <div className="bg-rose-900/20 border border-rose-500/20 rounded-xl p-4">
+                  <p className="text-[10px] text-rose-300 uppercase tracking-widest font-bold mb-2">🛠️ Correções de Documentos</p>
+                  <div className="space-y-2 text-sm text-gray-300">
+                    {selectedDelivery.documentCorrectionLog.slice(-3).map((entry, idx) => (
+                      <div key={idx} className="rounded-xl bg-white/5 p-3 border border-white/10">
+                        <p className="font-semibold text-sm text-white">{entry.documentType}</p>
+                        <p className="text-xs text-gray-300">{entry.reason}</p>
+                        <p className="text-[10px] text-gray-400 mt-1">Removido por {entry.removedBy || entry.role} em {new Date(entry.removedAt).toLocaleString('pt-BR')}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               {selectedDelivery.submissionObservation && (
                 <div className="bg-indigo-900/20 border border-indigo-500/20 rounded-xl p-4">
                   <p className="text-[10px] text-indigo-400 uppercase tracking-widest font-bold mb-2">ℹ️ Observação de Submissão</p>
@@ -342,11 +358,14 @@ const DeliveryModal = ({
 
               {(() => {
                 const labels = getLabelsForDelivery(selectedDelivery);
+                const isFinalizedDocumentState = ['FINALIZADO', 'ENTREGUE', 'ENTREGUE COM PENDENCIA CANHOTO', 'DOCUMENTOS ENTREGUES']
+                  .includes(normalizeKey(selectedDelivery.status));
 
                 const docRows = Object.keys(selectedDelivery.documents || {})
                   .filter((k) => !['chegadaCliente', 'inicioDesova', 'fimDesova'].includes(k))
                   .map((k) => {
                     const present = !!selectedDelivery.documents[k];
+                    const canRemoveThisDocument = present && canRemoveDocument && isFinalizedDocumentState;
                     const controleField = controleProtocolosDocumentMap[k];
                     const controlePresent = controleField && controleProtocolosRecord && controleProtocolosRecord.documentos
                       ? isControleDocumentoPresent(controleProtocolosRecord.documentos[controleField])
@@ -380,6 +399,16 @@ const DeliveryModal = ({
                             >
                               <FaDownload size={11} />
                             </button>
+
+                            {canRemoveThisDocument && (
+                              <button
+                                onClick={() => onRemoveDocument(selectedDelivery._id, k)}
+                                className="w-7 h-7 rounded-lg bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 flex items-center justify-center transition"
+                                title="Remover documento inválido e marcar pendência"
+                              >
+                                <FaTrash size={11} />
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
