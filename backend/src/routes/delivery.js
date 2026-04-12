@@ -233,8 +233,8 @@ router.put("/:id", auth, async (req, res) => {
     // Validação: verificar se o novo status requer documentos obrigatórios
     if (req.body.status) {
       const statusDocumentRequirements = {
-        'A_CAMINHO_DO_CLIENTE': ['retiradaCheio'],
-        'FINALIZADO': ['devolucaoVazio'] // adicionar mais conforme necessário
+        'A_CAMINHO_DO_CLIENTE': ['retiradaCheio']
+        // 'FINALIZADO' não exige devolucaoVazio aqui, pois este campo só aparece depois dessa etapa
       };
       const requiredDocs = statusDocumentRequirements[req.body.status];
       if (requiredDocs) {
