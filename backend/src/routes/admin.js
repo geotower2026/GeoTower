@@ -1894,37 +1894,38 @@ router.get("/programacoes", auth, async (req, res) => {
       createdAt: { $gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) }
     });
 
-    // Cria mapa de entregas por número para lookup O(1)
-    const deliveryMap = new Map();
+    // Cria mapas de entregas para lookup O(1)
+    const deliveryNumberMap = new Map();
+    const deliveryIdMap = new Map();
     allDeliveries.forEach(d => {
       const num = String(d.deliveryNumber || '').trim().toUpperCase();
-      if (num) deliveryMap.set(num, d);
+      if (num) deliveryNumberMap.set(num, d);
+      if (d._id) deliveryIdMap.set(String(d._id), d);
     });
 
-    // vincular id de entrega correspondente (se existir) usando mapa otimizado
+    // vincular id de entrega correspondente (se existir) usando mapas otimizados
     const enriched = (filtered || []).map(p => {
       const obj = p.toObject ? p.toObject() : { ...p };
+      let match = null;
 
       if (obj.linkedDeliveryId) {
-        const existing = deliveryMap.get(String(obj.linkedDeliveryId));
-        if (existing && obj.missingDocumentsAtSubmit === undefined) {
-          obj.missingDocumentsAtSubmit = existing.missingDocumentsAtSubmit || [];
-          if (existing.horarioDevolucaoVazio) {
-            obj.horarioDevolucaoVazio = existing.horarioDevolucaoVazio;
-          }
-        }
-        return obj;
+        match = deliveryIdMap.get(String(obj.linkedDeliveryId));
       }
 
-      // Busca otimizada por número usando Map
-      const num = String(p.processo || p.container || '').trim().toUpperCase();
-      const match = num ? deliveryMap.get(num) : null;
+      if (!match) {
+        const num = String(p.processo || p.container || '').trim().toUpperCase();
+        match = num ? deliveryNumberMap.get(num) : null;
+      }
 
-      obj.linkedDeliveryId = match ? match._id : null;
       if (match) {
+        obj.linkedDeliveryId = match._id;
+        obj.status = match.status || obj.status;
         obj.missingDocumentsAtSubmit = match.missingDocumentsAtSubmit || [];
         if (match.horarioDevolucaoVazio) {
           obj.horarioDevolucaoVazio = match.horarioDevolucaoVazio;
+        }
+        if (match.containerReturned !== undefined) {
+          obj.containerReturned = match.containerReturned;
         }
       }
 
