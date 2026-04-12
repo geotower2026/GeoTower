@@ -119,6 +119,21 @@ export const deliveryService = {
     // This allows the interceptor to properly set Authorization and X-City headers
     return api.post(`/deliveries/${deliveryId}/documents/${documentType}`, formData);
   },
+  uploadDocumentAndUpdate: (deliveryId, documentType, files, statusUpdate) => {
+    const formData = new FormData();
+    const arr = Array.isArray(files) ? files : files instanceof FileList ? Array.from(files) : [files];
+    arr.forEach((f) => formData.append('file', f));
+    formData.append('documentType', documentType);
+    if (statusUpdate.status) formData.append('status', statusUpdate.status);
+    if (statusUpdate.currentStep) formData.append('currentStep', statusUpdate.currentStep);
+    // add other fields
+    for (const [key, value] of Object.entries(statusUpdate)) {
+      if (key !== 'status' && key !== 'currentStep') {
+        formData.append(key, value);
+      }
+    }
+    return api.post(`/deliveries/${deliveryId}/upload-and-update`, formData);
+  },
   deleteDocument: (deliveryId, documentType, index) =>
     api.delete(`/deliveries/${deliveryId}/documents/${documentType}/${index}`),
   submitDelivery: (id, data = {}) => api.post(`/deliveries/${id}/submit`, data),

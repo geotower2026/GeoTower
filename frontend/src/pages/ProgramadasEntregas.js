@@ -591,9 +591,8 @@ const ProgramadasEntregas = () => {
         compressedFiles.push(compressed);
         setUploadProgress(Math.round(((i + 1) / photos.length) * 60));
       }
-      await deliveryService.uploadDocument(currentDelivery._id, docKey, compressedFiles);
+      await deliveryService.uploadDocumentAndUpdate(currentDelivery._id, docKey, compressedFiles, { status, currentStep: nextStep, ...timestamps });
       setUploadProgress(100);
-      await deliveryService.updateDelivery(currentDelivery._id, { status, currentStep: nextStep, ...timestamps });
       goToStep(nextStep);
       loadProgramacoes();
     } catch (err) {

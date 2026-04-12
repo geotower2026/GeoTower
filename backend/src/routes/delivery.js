@@ -229,6 +229,38 @@ router.put("/:id", auth, async (req, res) => {
       return res.status(403).json({ message: 'Acesso negado' });
     }
 
+    // Validação: verificar se o novo status requer documentos obrigatórios
+    if (req.body.status) {
+      const statusDocumentRequirements = {
+        'A_CAMINHO_DO_CLIENTE': ['retiradaCheio'],
+        'FINALIZADO': ['devolucaoVazio'] // adicionar mais conforme necessário
+      };
+      const requiredDocs = statusDocumentRequirements[req.body.status];
+      if (requiredDocs) {
+        for (const doc of requiredDocs) {
+          const docs = delivery.documents || {};
+          const docEntry = docs[doc];
+          if (!docEntry) {
+            return res.status(400).json({ message: `Documento obrigatório não encontrado para avançar status: ${doc}` });
+          }
+          // Se for array, verificar se tem itens
+          let parsed;
+          if (typeof docEntry === 'string') {
+            try {
+              parsed = JSON.parse(docEntry);
+            } catch (e) {
+              parsed = [docEntry];
+            }
+          } else {
+            parsed = docEntry;
+          }
+          if (!Array.isArray(parsed) || parsed.length === 0) {
+            return res.status(400).json({ message: `Documento obrigatório não encontrado para avançar status: ${doc}` });
+          }
+        }
+      }
+    }
+
     const updates = {};
     if (req.body.status) {
       updates.status = req.body.status;
@@ -630,6 +662,166 @@ router.post("/:id/documents/:type", auth, upload.array("file"), async (req, res)
   } catch (err) {
     console.error("[UPLOAD] Erro geral ao upload:", err);
     res.status(500).json({ message: "Erro ao fazer upload", error: err.message });
+  }
+});
+
+// =======================
+// Upload documento e atualizar status atomicamente
+// POST /api/deliveries/:id/upload-and-update
+// =======================
+router.post("/:id/upload-and-update", auth, upload.array("file"), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { documentType, status, currentStep, ...otherUpdates } = req.body;
+    const city = req.city || 'manaus';
+    console.log(`[UPLOAD-UPDATE] Iniciando upload e update para entrega ${id}, tipo ${documentType}, status ${status}, city ${city}`);
+    
+    const db = await getDb(req);
+    const delivery = await db.findById("deliveries", id);
+    if (!delivery) {
+      console.error(`[UPLOAD-UPDATE] Entrega não encontrada: ${id}`);
+      return res.status(404).json({ message: "Entrega não encontrada" });
+    }
+    
+    // Validação de cidade
+    if (delivery.cityCode !== city) {
+      return res.status(403).json({ message: 'Acesso negado - dados de outra cidade' });
+    }
+
+    if (String(delivery.userId) !== String(req.user.id)) {
+      return res.status(403).json({ message: 'Acesso negado' });
+    }
+
+    // First, upload the documents
+    const docs = delivery.documents || {};
+    if (docs[documentType] && !Array.isArray(docs[documentType])) {
+      docs[documentType] = [docs[documentType]];
+    }
+
+    const savedFiles = [];
+
+    if (req.files && req.files.length) {
+      const typeNames = {
+        canhotNF: "NF",
+        canhotCTE: "CTE",
+        diarioBordo: "DIARIO",
+        devolucaoVazio: "DEVOLUCAO",
+        retiradaCheio: "RETIRADA",
+        chegadaCliente: "CHEGADA",
+        inicioDesova: "INICIO_DESOVA",
+        fimDesova: "FIM_DESOVA",
+        ricAbastecimento: "RIC_AB",
+        ricBaixa: "RIC_BAIXA",
+        ricColeta: "RIC_COLETA",
+        discoTacografo: "DISCO"
+      };
+      const baseName = typeNames[documentType] || documentType;
+      const containerFolder = delivery.deliveryNumber;
+      const containerDir = path.join(__dirname, "../uploads", city, containerFolder);
+      try {
+        fs.mkdirSync(containerDir, { recursive: true });
+      } catch (err) {
+        console.error(`[UPLOAD-UPDATE] Falha ao criar pasta: ${containerDir}`, err);
+        return res.status(500).json({ message: "Erro ao criar pasta de upload", error: err.message });
+      }
+
+      for (let idx = 0; idx < req.files.length; idx++) {
+        const file = req.files[idx];
+        const originalExt = path.extname(file.originalname) || ".jpg";
+        const finalFilename = `${baseName}_${delivery.deliveryNumber}_${Date.now()}_${idx}${originalExt}`;
+        console.log(`[UPLOAD-UPDATE] Processando arquivo ${idx + 1}/${req.files.length}: ${file.originalname} -> ${finalFilename}`);
+        
+        let fileEntry = null;
+        
+        // Try R2
+        try {
+          console.log(`[UPLOAD-UPDATE] Tentando Cloudflare R2...`);
+          const r2Storage = require('../storage/r2');
+          const fileBuffer = file.buffer || fs.readFileSync(file.path);
+          const r2Key = `uploads/${delivery.deliveryNumber}/${finalFilename}`;
+          const r2Url = await r2Storage.uploadBuffer(fileBuffer, r2Key, file.mimetype);
+          fileEntry = { name: finalFilename, url: r2Url, storage: 'r2', key: r2Key };
+          console.log(`[UPLOAD-UPDATE] ✓ R2 OK: ${finalFilename} (URL: ${r2Url})`);
+        } catch (err) {
+          console.warn(`[UPLOAD-UPDATE] ⚠️ R2 FALHOU:`, err && err.message ? err.message : err);
+          // Fallback to local
+          try {
+            const dest = path.join(containerDir, finalFilename);
+            const fileBuffer = file.buffer || fs.readFileSync(file.path);
+            fs.writeFileSync(dest, fileBuffer);
+            fileEntry = { name: finalFilename, path: path.join(city, containerFolder, finalFilename), storage: 'local' };
+            console.log(`[UPLOAD-UPDATE] ✓ Arquivo salvo LOCALMENTE: ${finalFilename}`);
+          } catch (err) {
+            console.error(`[UPLOAD-UPDATE] ✗ Local save falhou:`, err && err.message ? err.message : err);
+            continue;
+          }
+        }
+        
+        if (fileEntry) {
+          savedFiles.push(fileEntry);
+        }
+      }
+      
+      if (req.files.length > 0 && savedFiles.length === 0) {
+        console.error('[UPLOAD-UPDATE] Nenhum arquivo foi salvo.');
+        return res.status(500).json({ message: 'Erro ao fazer upload: nenhum arquivo salvo' });
+      }
+
+      // Update documents in DB
+      let existing = docs[documentType];
+      if (existing && typeof existing === 'string') {
+        try {
+          existing = JSON.parse(existing);
+        } catch (e) {
+          existing = [existing];
+        }
+      }
+      existing = Array.isArray(existing) ? existing : (existing ? [existing] : []);
+
+      const allFiles = [...existing, ...savedFiles];
+      const deduped = [];
+      const seen = new Set();
+      
+      for (const item of allFiles) {
+        if (!item) continue;
+        const uniqueKey = item.url || item.path || item.link || JSON.stringify(item);
+        if (seen.has(uniqueKey)) continue;
+        seen.add(uniqueKey);
+        deduped.push(item);
+      }
+      
+      const normalizedDocs = {};
+      for (const [k, v] of Object.entries(docs)) {
+        if (k === documentType) continue;
+        normalizedDocs[k] = Array.isArray(v) ? JSON.stringify(v) : v;
+      }
+      normalizedDocs[documentType] = deduped.length === 0 ? null : JSON.stringify(deduped);
+
+      // Now, update the delivery with documents and status
+      const updates = { documents: normalizedDocs };
+      if (status) updates.status = status;
+      if (currentStep) updates.currentStep = currentStep;
+      Object.assign(updates, otherUpdates);
+
+      await db.updateOne("deliveries", { _id: id }, updates);
+
+      // Remove from missingDocumentsAtSubmit if applicable
+      if (deduped.length > 0) {
+        const updated = await db.findById("deliveries", id);
+        if (updated.missingDocumentsAtSubmit && Array.isArray(updated.missingDocumentsAtSubmit) && updated.missingDocumentsAtSubmit.includes(documentType)) {
+          const newMissing = updated.missingDocumentsAtSubmit.filter(d => d !== documentType);
+          await db.updateOne("deliveries", { _id: id }, { missingDocumentsAtSubmit: newMissing });
+        }
+      }
+
+      const finalUpdated = await db.findById("deliveries", id);
+      res.json({ delivery: normalizeDeliveryForResponse(finalUpdated) });
+    } else {
+      return res.status(400).json({ message: "Nenhum arquivo enviado" });
+    }
+  } catch (err) {
+    console.error("[UPLOAD-UPDATE] Erro geral:", err);
+    res.status(500).json({ message: "Erro ao fazer upload e atualizar", error: err.message });
   }
 });
 
