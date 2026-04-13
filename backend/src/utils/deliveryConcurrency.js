@@ -179,10 +179,40 @@ async function updateDeliveryStatus(deliveryId, newStatus, additionalUpdates = {
     if (newStatus === 'CANCELADO') {
       updates.canceledAt = new Date();
       updates.isCanceled = true;
+      
+      // Tentar cancelar programação associada se existir
+      try {
+        const delivery = await Delivery.findById(deliveryId).populate('linkedProgramacaoId');
+        if (delivery && delivery.linkedProgramacaoId) {
+          const ProgramacaoEntrega = mongoose.model('ProgramacaoEntrega');
+          await ProgramacaoEntrega.findByIdAndUpdate(delivery.linkedProgramacaoId._id, { 
+            status: 'CANCELADO',
+            ativo: false 
+          });
+          console.log(`[STATUS_UPDATE] Programação ${delivery.linkedProgramacaoId._id} cancelada junto com entrega`);
+        }
+      } catch (progErr) {
+        console.warn('[STATUS_UPDATE] Erro ao cancelar programação:', progErr.message);
+      }
     } else if (currentDelivery.status === 'CANCELADO') {
       // Caso um cancelamento seja revertido, limpar flags de cancelamento
       updates.canceledAt = null;
       updates.isCanceled = false;
+      
+      // Tentar reativar programação associada se existir
+      try {
+        const delivery = await Delivery.findById(deliveryId).populate('linkedProgramacaoId');
+        if (delivery && delivery.linkedProgramacaoId) {
+          const ProgramacaoEntrega = mongoose.model('ProgramacaoEntrega');
+          await ProgramacaoEntrega.findByIdAndUpdate(delivery.linkedProgramacaoId._id, { 
+            status: 'AGENDADO',
+            ativo: true 
+          });
+          console.log(`[STATUS_UPDATE] Programação ${delivery.linkedProgramacaoId._id} reativada após reverter cancelamento`);
+        }
+      } catch (progErr) {
+        console.warn('[STATUS_UPDATE] Erro ao reativar programação:', progErr.message);
+      }
     }
 
     // Atualizar atomicamente
