@@ -39,6 +39,24 @@ const FIELDS_TO_CLEAR_ON_REGRESSION = {
 };
 
 /**
+ * Mapa de documentos que devem ser limpos quando retrocede de um status
+ * Usado para remover documentos de etapas posteriores ao retroceder
+ */
+const DOCUMENTS_TO_CLEAR_ON_REGRESSION = {
+  'AGENDADO': [],
+  'CONTAINER_MONTADO': [],
+  'A_CAMINHO_DO_CLIENTE': [],
+  'AGUARDANDO_DESOVA': ['chegadaCliente'],
+  'EM_DESOVA': ['chegadaCliente', 'inicioDesova'],
+  'DESOVA_FINALIZADA': ['chegadaCliente', 'inicioDesova', 'fimDesova'],
+  'AGUARDANDO_ANEXO': ['chegadaCliente', 'inicioDesova', 'fimDesova'],
+  'ANEXANDO_DOCUMENTOS_FINAIS': ['chegadaCliente', 'inicioDesova', 'fimDesova'],
+  'ENTREGUE': ['chegadaCliente', 'inicioDesova', 'fimDesova', 'cnhotoNF', 'cnhotoCTE', 'diarioBordo'],
+  'ENTREGUE_COM_PENDENCIA_CANHOTO': ['chegadaCliente', 'inicioDesova', 'fimDesova', 'cnhotoNF', 'cnhotoCTE', 'diarioBordo'],
+  'FINALIZADO': ['chegadaCliente', 'inicioDesova', 'fimDesova', 'cnhotoNF', 'cnhotoCTE', 'diarioBordo', 'devolucaoVazio']
+};
+
+/**
  * Valida se um status pode ser atualizado para outro
  * Permite ADM/GERENTE fazer retrocesso de qualquer nível
  * @param {string} currentStatus - Status atual
@@ -148,6 +166,12 @@ async function updateDeliveryStatus(deliveryId, newStatus, additionalUpdates = {
       const fieldsToClear = FIELDS_TO_CLEAR_ON_REGRESSION[currentDelivery.status] || [];
       fieldsToClear.forEach(field => {
         updates[field] = null;
+      });
+      
+      // Limpar documentos de etapas posteriores
+      const documentsToClear = DOCUMENTS_TO_CLEAR_ON_REGRESSION[currentDelivery.status] || [];
+      documentsToClear.forEach(docType => {
+        updates[`documents.${docType}`] = null;
       });
     }
 
