@@ -6,7 +6,14 @@ const PerformanceAnalysis = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [filters, setFilters] = useState({ startDate: '', endDate: '' });
+  const [filters, setFilters] = useState({ 
+    startDate: '', 
+    endDate: '', 
+    contratado: 'todos',
+    minHours: '',
+    maxHours: ''
+  });
+  const [contractorsList, setContractorsList] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
@@ -21,11 +28,16 @@ const PerformanceAnalysis = () => {
       const response = await performanceService.getPerformanceData(filters);
       console.log('[PerformanceAnalysis] Dados recebidos:', response);
       
-      // O serviço já extrai os dados, então response é diretamente { entregasPorDia, ... }
       if (response && response.entregasPorDia !== undefined) {
         setData(response);
         setError(null);
         console.log('[PerformanceAnalysis] Dados carregados com sucesso');
+        
+        // Extrair lista de contratados únicos para o filtro
+        if (response.contratadosUtilizacao) {
+          const contractors = response.contratadosUtilizacao.map(c => c.contratado);
+          setContractorsList(['todos', ...contractors]);
+        }
       } else {
         setError('Estrutura de dados inválida');
         console.error('[PerformanceAnalysis] Estrutura inválida:', response);
@@ -103,14 +115,14 @@ const PerformanceAnalysis = () => {
     totalEntregas: item.totalEntregas
   })) || [];
 
-  // Converter faixas de objeto para array
-  const faixasObj = data.tempoCliente?.faixas || { '2-4h': 0, '4-6h': 0, '+7h': 0 };
+  // Converter faixas de objeto para array com as novas faixas
+  const faixasObj = data.tempoCliente?.faixas || { '1-3h': 0, '4-6h': 0, '7-9h': 0, '10h+': 0 };
   const timeData = Object.entries(faixasObj).map(([nome, total]) => ({
     name: nome,
     value: total || 0
   })) || [];
 
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28'];
+  const COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444'];
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -121,7 +133,7 @@ const PerformanceAnalysis = () => {
 
       {/* Filtros */}
       <div className="bg-white p-6 rounded-lg shadow mb-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Data Inicial</label>
             <input
@@ -140,22 +152,60 @@ const PerformanceAnalysis = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
             />
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={handleApplyFilters}
-              disabled={refreshing}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-md font-semibold transition"
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Contratado</label>
+            <select
+              value={filters.contratado}
+              onChange={(e) => setFilters({...filters, contratado: e.target.value})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
             >
-              {refreshing ? 'Carregando...' : 'Aplicar'}
-            </button>
-            <button
-              onClick={handleClearFilters}
-              disabled={refreshing}
-              className="flex-1 bg-gray-400 hover:bg-gray-500 disabled:opacity-50 text-white px-4 py-2 rounded-md font-semibold transition"
-            >
-              Limpar
-            </button>
+              {contractorsList.map(contractor => (
+                <option key={contractor} value={contractor}>
+                  {contractor === 'todos' ? 'Todos os contratados' : contractor}
+                </option>
+              ))}
+            </select>
           </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Tempo Mínimo (h)</label>
+            <input
+              type="number"
+              min="0"
+              step="0.5"
+              value={filters.minHours}
+              onChange={(e) => setFilters({...filters, minHours: e.target.value})}
+              placeholder="Ex: 1"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Tempo Máximo (h)</label>
+            <input
+              type="number"
+              min="0"
+              step="0.5"
+              value={filters.maxHours}
+              onChange={(e) => setFilters({...filters, maxHours: e.target.value})}
+              placeholder="Ex: 10"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-blue-500"
+            />
+          </div>
+        </div>
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={handleApplyFilters}
+            disabled={refreshing}
+            className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-md font-semibold transition"
+          >
+            {refreshing ? 'Carregando...' : 'Aplicar Filtros'}
+          </button>
+          <button
+            onClick={handleClearFilters}
+            disabled={refreshing}
+            className="flex-1 bg-gray-400 hover:bg-gray-500 disabled:opacity-50 text-white px-4 py-2 rounded-md font-semibold transition"
+          >
+            Limpar Filtros
+          </button>
         </div>
       </div>
 
@@ -180,7 +230,7 @@ const PerformanceAnalysis = () => {
       )}
 
       {/* Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
         <div className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition">
           <div className="flex items-center justify-between">
             <div>
@@ -204,7 +254,18 @@ const PerformanceAnalysis = () => {
         <div className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-semibold text-gray-600 uppercase">Entregas &gt;6h</h3>
+              <h3 className="text-sm font-semibold text-gray-600 uppercase">Dia com + Entregas</h3>
+              <p className="text-lg font-bold text-purple-600 mt-1">{data.tempoCliente?.diaComMaisEntregas?.dia || 'N/A'}</p>
+              <p className="text-sm text-gray-500">{data.tempoCliente?.diaComMaisEntregas?.total || 0} entregas</p>
+            </div>
+            <span className="text-4xl text-purple-200">📅</span>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-600 uppercase">Entregas >6h</h3>
               <p className="text-3xl font-bold text-red-600 mt-2">{data.estatisticasGerais?.percentualAcima6h?.toFixed(1) || 0}%</p>
             </div>
             <span className="text-4xl text-red-200">⚠️</span>
@@ -215,32 +276,52 @@ const PerformanceAnalysis = () => {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-semibold text-gray-600 uppercase">Contratados</h3>
-              <p className="text-3xl font-bold text-purple-600 mt-2">{data.estatisticasGerais?.totalContratados || 0}</p>
+              <p className="text-3xl font-bold text-indigo-600 mt-2">{data.estatisticasGerais?.totalContratados || 0}</p>
             </div>
-            <span className="text-4xl text-purple-200">🚚</span>
+            <span className="text-4xl text-indigo-200">🚚</span>
           </div>
         </div>
       </div>
 
-      {/* Gráfico 1: Entregas por dia */}
+      {/* Análise de Dias */}
       <div className="bg-white p-6 rounded-lg shadow mb-8">
         <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
-          <span>📊</span>
-          Entregas por Dia da Semana
+          <span>📅</span>
+          Análise de Dias da Semana
         </h2>
-        {dayData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={dayData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="dia" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="entregas" fill="#8884d8" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        ) : (
-          <p className="text-center text-gray-500">Sem dados disponíveis</p>
-        )}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h3 className="font-semibold text-lg mb-4">Dia com Mais Entregas</h3>
+            <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white p-6 rounded-lg">
+              <div className="text-center">
+                <h4 className="text-2xl font-bold mb-2">{data.tempoCliente?.diaComMaisEntregas?.dia || 'N/A'}</h4>
+                <p className="text-lg">{data.tempoCliente?.diaComMaisEntregas?.total || 0} entregas</p>
+                <p className="text-sm opacity-90">({data.tempoCliente?.percentualDiaMaisEntregas || 0}% do total)</p>
+              </div>
+            </div>
+          </div>
+          <div>
+            <h3 className="font-semibold text-lg mb-4">Distribuição por Dia</h3>
+            <div className="space-y-2">
+              {dayData
+                .sort((a, b) => b.entregas - a.entregas)
+                .map((dia, index) => (
+                <div key={dia.dia} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                  <span className="font-medium">{dia.dia}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-20 bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full" 
+                        style={{ width: `${(dia.entregas / Math.max(...dayData.map(d => d.entregas))) * 100}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-sm font-semibold w-12 text-right">{dia.entregas}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Gráfico 2: Utilização dos contratados */}
@@ -295,6 +376,23 @@ const PerformanceAnalysis = () => {
         ) : (
           <p className="text-center text-gray-500">Sem dados disponíveis</p>
         )}
+      </div>
+
+      {/* Estatísticas Detalhadas das Faixas */}
+      <div className="bg-white p-6 rounded-lg shadow mb-8">
+        <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
+          <span>📊</span>
+          Estatísticas Detalhadas por Faixa de Tempo
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {Object.entries(data.tempoCliente?.percentualFaixas || {}).map(([faixa, percentual]) => (
+            <div key={faixa} className="text-center p-4 border rounded-lg">
+              <h3 className="font-semibold text-lg text-gray-800">{faixa}</h3>
+              <p className="text-2xl font-bold text-blue-600 mt-2">{data.tempoCliente?.faixas?.[faixa] || 0}</p>
+              <p className="text-sm text-gray-500">entregas ({percentual}%)</p>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Tabela */}
