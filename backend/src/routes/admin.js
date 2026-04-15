@@ -2437,4 +2437,300 @@ router.get("/programacoes/sync/icompany", auth, managerOnly, async (req, res) =>
   }
 });
 
+/**
+ * GET /api/admin/performance
+ * Análise de Produtividade e Capacidade
+ * Retorna dados analíticos sobre entregas, contratados e tempos
+ */
+router.get("/performance", auth, onlyAdmin, async (req, res) => {
+  try {
+    const city = req.city || 'manaus';
+    const { startDate, endDate } = req.query;
+
+    // Definir período (última semana se não especificado)
+    const end = endDate ? new Date(endDate) : new Date();
+    const start = startDate ? new Date(startDate) : new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    // Garantir que datas sejam válidas
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({ success: false, message: "Datas inválidas" });
+    }
+
+    // Conectar ao MongoDB
+    const { MongoClient } = require('mongodb');
+    const mongoClient = new MongoClient(process.env.MONGODB_URI);
+    await mongoClient.connect();
+    const db = mongoClient.db(process.env.MONGO_DB || "delivery-docs");
+    const collection = db.collection(process.env.MONGO_COLLECTION || "icompany");
+
+    // Pipeline de aggregation
+    const pipeline = [
+      // Filtrar por cidade e período
+      {
+        $match: {
+          city: city,
+          dtColeta: { $gte: start, $lte: end },
+          status: { $ne: null }
+        }
+      },
+      // Adicionar campos calculados
+      {
+        $addFields: {
+          diaSemana: {
+            $switch: {
+              branches: [
+                { case: { $eq: [{ $dayOfWeek: "$dtColeta" }, 1] }, then: "Domingo" },
+                { case: { $eq: [{ $dayOfWeek: "$dtColeta" }, 2] }, then: "Segunda" },
+                { case: { $eq: [{ $dayOfWeek: "$dtColeta" }, 3] }, then: "Terça" },
+                { case: { $eq: [{ $dayOfWeek: "$dtColeta" }, 4] }, then: "Quarta" },
+                { case: { $eq: [{ $dayOfWeek: "$dtColeta" }, 5] }, then: "Quinta" },
+                { case: { $eq: [{ $dayOfWeek: "$dtColeta" }, 6] }, then: "Sexta" },
+                { case: { $eq: [{ $dayOfWeek: "$dtColeta" }, 7] }, then: "Sábado" }
+              ],
+              default: "Desconhecido"
+            }
+          },
+          tempoClienteHoras: {
+            $cond: {
+              if: { $and: ["$dataChegadaCliente", "$dataSaidaCliente"] },
+              then: {
+                $divide: [
+                  { $subtract: ["$dataSaidaCliente", "$dataChegadaCliente"] },
+                  1000 * 60 * 60 // converter ms para horas
+                ]
+              },
+              else: null
+            }
+          },
+          contratadoNome: { $ifNull: ["$contratado", "Não informado"] }
+        }
+      },
+      // Fazer facet para múltiplas agregações
+      {
+        $facet: {
+          // 1. Entregas por dia da semana
+          entregasPorDia: [
+            {
+              $group: {
+                _id: "$diaSemana",
+                total: { $sum: 1 }
+              }
+            },
+            {
+              $project: {
+                dia: "$_id",
+                total: 1,
+                _id: 0
+              }
+            },
+            { $sort: { total: -1 } }
+          ],
+
+          // 2. Utilização dos contratados
+          contratadosUtilizacao: [
+            {
+              $group: {
+                _id: "$contratadoNome",
+                totalEntregas: { $sum: 1 },
+                diasAtivos: { $addToSet: { $dateToString: { format: "%Y-%m-%d", date: "$dtColeta" } } }
+              }
+            },
+            {
+              $addFields: {
+                diasAtivos: { $size: "$diasAtivos" },
+                diasOciosos: { $subtract: [7, { $size: "$diasAtivos" }] }
+              }
+            },
+            {
+              $project: {
+                contratado: "$_id",
+                totalEntregas: 1,
+                diasAtivos: 1,
+                diasOciosos: { $max: [0, "$diasOciosos"] },
+                _id: 0
+              }
+            },
+            { $sort: { totalEntregas: -1 } }
+          ],
+
+          // 3. Tempo no cliente
+          tempoCliente: [
+            {
+              $match: { tempoClienteHoras: { $ne: null } }
+            },
+            {
+              $group: {
+                _id: null,
+                tempoMedioHoras: { $avg: "$tempoClienteHoras" },
+                faixas: {
+                  $push: {
+                    $switch: {
+                      branches: [
+                        { case: { $and: [{ $gte: ["$tempoClienteHoras", 2] }, { $lt: ["$tempoClienteHoras", 4] }] }, then: "2-4h" },
+                        { case: { $and: [{ $gte: ["$tempoClienteHoras", 4] }, { $lt: ["$tempoClienteHoras", 6] }] }, then: "4-6h" },
+                        { case: { $gte: ["$tempoClienteHoras", 7] }, then: "+7h" }
+                      ],
+                      default: "Outros"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              $addFields: {
+                faixasAgrupadas: {
+                  $arrayToObject: {
+                    $map: {
+                      input: { $setUnion: "$faixas" },
+                      as: "faixa",
+                      in: {
+                        k: "$$faixa",
+                        v: { $size: { $filter: { input: "$faixas", cond: { $eq: ["$$this", "$$faixa"] } } } }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            {
+              $project: {
+                tempoMedioHoras: { $round: ["$tempoMedioHoras", 1] },
+                faixas: {
+                  $map: {
+                    input: { $objectToArray: "$faixasAgrupadas" },
+                    as: "item",
+                    in: {
+                      nome: "$$item.k",
+                      total: "$$item.v"
+                    }
+                  }
+                }
+              }
+            }
+          ],
+
+          // 4. Produtividade por dia (igual ao primeiro, mas garantido)
+          produtividadePorDia: [
+            {
+              $group: {
+                _id: "$diaSemana",
+                total: { $sum: 1 }
+              }
+            },
+            {
+              $project: {
+                dia: "$_id",
+                total: 1,
+                _id: 0
+              }
+            },
+            { $sort: { total: -1 } }
+          ],
+
+          // 5. Estatísticas gerais
+          estatisticasGerais: [
+            {
+              $group: {
+                _id: null,
+                totalEntregas: { $sum: 1 },
+                contratadosUnicos: { $addToSet: "$contratadoNome" },
+                tempoMedio: { $avg: "$tempoClienteHoras" },
+                acima6h: {
+                  $sum: {
+                    $cond: [
+                      { $and: [{ $ne: ["$tempoClienteHoras", null] }, { $gte: ["$tempoClienteHoras", 6] }] },
+                      1,
+                      0
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              $project: {
+                totalEntregas: 1,
+                tempoMedioHoras: { $round: ["$tempoMedio", 1] },
+                percentualAcima6h: {
+                  $round: [
+                    { $multiply: [{ $divide: ["$acima6h", "$totalEntregas"] }, 100] },
+                    1
+                  ]
+                },
+                totalContratados: { $size: "$contratadosUnicos" },
+                _id: 0
+              }
+            }
+          ]
+        }
+      }
+    ];
+
+    const result = await collection.aggregate(pipeline).toArray();
+    await mongoClient.close();
+
+    if (!result || result.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          entregasPorDia: [],
+          contratadosUtilizacao: [],
+          tempoCliente: { tempoMedioHoras: 0, faixas: [] },
+          produtividadePorDia: [],
+          estatisticasGerais: {
+            totalEntregas: 0,
+            tempoMedioHoras: 0,
+            percentualAcima6h: 0,
+            totalContratados: 0
+          },
+          alertas: []
+        }
+      });
+    }
+
+    const data = result[0];
+
+    // Gerar alertas automáticos
+    const alertas = [];
+    const stats = data.estatisticasGerais?.[0] || {};
+
+    // Alerta de concentração no início da semana
+    const segunda = data.entregasPorDia.find(d => d.dia === "Segunda")?.total || 0;
+    const totalSemana = data.entregasPorDia.reduce((sum, d) => sum + d.total, 0);
+    if (segunda > totalSemana * 0.3) {
+      alertas.push("Alta concentração de entregas no início da semana");
+    }
+
+    // Alerta de contratados ociosos
+    const ociosos = data.contratadosUtilizacao.filter(c => c.diasOciosos > 2).length;
+    if (ociosos > 0) {
+      alertas.push(`${ociosos} contratado(s) com mais de 2 dias ociosos`);
+    }
+
+    // Alerta de tempo excessivo
+    if (stats.percentualAcima6h > 20) {
+      alertas.push(`Alta quantidade de entregas acima de 6h (${stats.percentualAcima6h}%)`);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        entregasPorDia: data.entregasPorDia || [],
+        contratadosUtilizacao: data.contratadosUtilizacao || [],
+        tempoCliente: data.tempoCliente?.[0] || { tempoMedioHoras: 0, faixas: [] },
+        produtividadePorDia: data.produtividadePorDia || [],
+        estatisticasGerais: stats,
+        alertas
+      }
+    });
+
+  } catch (err) {
+    console.error('[PERFORMANCE] ❌ Erro:', err);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao gerar análise de performance",
+      error: err.message
+    });
+  }
+});
+
 module.exports = router;

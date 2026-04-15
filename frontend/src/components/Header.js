@@ -7,7 +7,7 @@ import NotificationPanel from './NotificationPanel';
 import {
   FaSignOutAlt, FaUser, FaBars, FaHome,
   FaTimes, FaTruck, FaChevronRight, FaCircle,
-  FaUserTie, FaUserShield, FaGlobe
+  FaUserTie, FaUserShield, FaGlobe, FaChartBar
 } from 'react-icons/fa';
 import { MdDashboard, MdSettings } from 'react-icons/md';
 
@@ -113,6 +113,17 @@ const NAV_ITEMS = [
     border: 'border-sky-200',
     text: 'text-sky-700',
     dot: 'bg-sky-500',
+  },
+  {
+    icon: <FaChartBar className="text-lg" />,
+    label: 'Análise de Produtividade',
+    path: '/admin/performance',
+    color: 'orange',
+    gradient: 'from-orange-50 to-amber-100',
+    hover: 'hover:from-orange-100 hover:to-amber-200',
+    border: 'border-orange-200',
+    text: 'text-orange-700',
+    dot: 'bg-orange-500',
   },
   {
     icon: <MdSettings className="text-lg" />,

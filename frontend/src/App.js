@@ -1,5 +1,6 @@
 import EntregasEmAndamento from './pages/EntregasEmAndamento';
 import Maintenance from './pages/Maintenance';
+import PerformanceAnalysis from './pages/PerformanceAnalysis';
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './services/authContext';
@@ -268,6 +269,17 @@ function AppContent() {
           <PrivateRoute allowedRoles={['admin', 'manager', 'geomar']}>
             <AppLayout>
               <ControleProtocolos />
+            </AppLayout>
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/admin/performance"
+        element={
+          <PrivateRoute allowedRoles={['admin', 'manager', 'geomar']}>
+            <AppLayout>
+              <PerformanceAnalysis />
             </AppLayout>
           </PrivateRoute>
         }
