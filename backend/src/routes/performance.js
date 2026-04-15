@@ -7,9 +7,22 @@ const auth = require('../middleware/auth');
 router.get('/performance', auth, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
-    const ProgramacaoEntrega = require('../models/ProgramacaoEntrega');
     
     console.log('📊 [PERFORMANCE] Iniciando análise de performance');
+    console.log('📊 [PERFORMANCE] Autenticação OK, usuário:', req.user?.username);
+
+    // Obter modelo via mongoose
+    let ProgramacaoEntrega;
+    try {
+      ProgramacaoEntrega = require('../models/ProgramacaoEntrega');
+    } catch (err) {
+      console.error('❌ Erro ao carregar modelo ProgramacaoEntrega:', err.message);
+      return res.status(500).json({
+        success: false,
+        message: 'Erro ao carregar modelo',
+        error: err.message
+      });
+    }
 
     // Definir período: última semana por padrão
     const now = new Date();
@@ -21,7 +34,17 @@ router.get('/performance', auth, async (req, res) => {
     console.log('📅 Período:', { dateStart: dateStart.toISOString(), dateEnd: dateEnd.toISOString() });
 
     // Buscar todas as programações no período (sem filtro de status para análise completa)
-    const programacoes = await ProgramacaoEntrega.find({}).lean();
+    let programacoes = [];
+    try {
+      programacoes = await ProgramacaoEntrega.find({}).lean().exec();
+    } catch (err) {
+      console.error('❌ Erro ao buscar programacoes:', err.message);
+      return res.status(500).json({
+        success: false,
+        message: 'Erro ao buscar programações',
+        error: err.message
+      });
+    }
     console.log('✅ Total de programações carregadas:', programacoes.length);
 
     // Filtrar por data (dataAgendamento ou dtColeta)
@@ -194,7 +217,7 @@ router.get('/performance', auth, async (req, res) => {
     // ═══════════════════════════════════════════════════════════
     // RESPOSTA
     // ═══════════════════════════════════════════════════════════
-    res.json({
+    const responseData = {
       success: true,
       data: {
         entregasPorDia: deliveriesByDayArray,
@@ -209,7 +232,16 @@ router.get('/performance', auth, async (req, res) => {
         },
         alertas
       }
-    });
+    };
+
+    console.log('✅ [PERFORMANCE] Resposta pronta:');
+    console.log('   - Total Entregas:', totalEntregas);
+    console.log('   - Tempo Médio:', tempoMedioHoras);
+    console.log('   - % Acima 6h:', percentualAcima6h);
+    console.log('   - Contratados:', totalContratados);
+    console.log('   - Alertas:', alertas.length);
+
+    res.json(responseData);
 
   } catch (error) {
     console.error('❌ Erro na análise de performance:', error);

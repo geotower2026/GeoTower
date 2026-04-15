@@ -19,14 +19,19 @@ const PerformanceAnalysis = () => {
       else setLoading(true);
       
       const response = await performanceService.getPerformanceData(filters);
-      if (response.success) {
-        setData(response.data);
+      console.log('[PerformanceAnalysis] Dados recebidos:', response);
+      
+      // O serviço já extrai os dados, então response é diretamente { entregasPorDia, ... }
+      if (response && response.entregasPorDia !== undefined) {
+        setData(response);
         setError(null);
+        console.log('[PerformanceAnalysis] Dados carregados com sucesso');
       } else {
-        setError('Erro ao carregar dados');
+        setError('Estrutura de dados inválida');
+        console.error('[PerformanceAnalysis] Estrutura inválida:', response);
       }
     } catch (err) {
-      console.error('Erro ao buscar performance:', err);
+      console.error('[PerformanceAnalysis] Erro ao buscar performance:', err);
       setError(err.response?.data?.message || 'Erro de conexão com o servidor');
     } finally {
       if (isRefresh) setRefreshing(false);
@@ -40,16 +45,21 @@ const PerformanceAnalysis = () => {
 
   const handleClearFilters = () => {
     setFilters({ startDate: '', endDate: '' });
+    setRefreshing(true);
     // Fetch sem filtros
     const tempFilters = { startDate: '', endDate: '' };
-    performanceService.getPerformanceData(tempFilters).then(response => {
-      if (response.success) {
-        setData(response.data);
-        setError(null);
-      }
-    }).catch(err => {
-      setError('Erro ao limpar filtros');
-    }).finally(() => setRefreshing(false));
+    performanceService.getPerformanceData(tempFilters)
+      .then(response => {
+        if (response && response.entregasPorDia !== undefined) {
+          setData(response);
+          setError(null);
+        }
+      })
+      .catch(err => {
+        console.error('[PerformanceAnalysis] Erro ao limpar filtros:', err);
+        setError('Erro ao limpar filtros');
+      })
+      .finally(() => setRefreshing(false));
   };
 
   if (loading) {

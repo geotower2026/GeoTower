@@ -9,10 +9,18 @@ export const performanceService = {
       if (filters.startDate) params.startDate = filters.startDate;
       if (filters.endDate) params.endDate = filters.endDate;
       
+      console.log('[PerformanceService] Chamando GET /admin/performance com filtros:', params);
       const response = await api.get('/admin/performance', { params });
+      console.log('[PerformanceService] Resposta recebida:', response.data);
+      
+      // Se a resposta tem estrutura { success: true, data: {...} }, extrair apenas os dados
+      if (response.data && response.data.success && response.data.data) {
+        return response.data.data;
+      }
+      
       return response.data;
     } catch (error) {
-      console.error('Erro ao buscar dados de performance:', error);
+      console.error('[PerformanceService] Erro ao buscar dados de performance:', error);
       throw error;
     }
   }
