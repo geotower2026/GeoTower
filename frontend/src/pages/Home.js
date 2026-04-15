@@ -1012,6 +1012,18 @@ const Home = () => {
                 viewOnly={false}
                 delay={120}
               />
+              <MonitorCard
+                onClick={() => navigate('/admin/performance')}
+                disabled={false}
+                accentColor="#EC4899"
+                accentDark="#BE185D"
+                icon={<FaChartLine />}
+                titleIcon={<FaBullseye />}
+                title="Análise de Produtividade"
+                description="Análise profunda de capacidade e produtividade com visualização de imbalances no agendamento e impacto dos contratados."
+                viewOnly={false}
+                delay={240}
+              />
             </div>
 
             {/* Management grid: Oculto para geomar e gestor_contratado */}
