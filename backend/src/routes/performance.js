@@ -154,12 +154,6 @@ router.get('/', auth, async (req, res) => {
         alertas
       }
     });
-        tempoCliente: { tempoMedioHoras, faixas },
-        produtividadePorDia: deliveriesByDayArray,
-        estatisticasGerais: { totalEntregas, tempoMedioHoras, percentualAcima6h, totalContratados: contractorsUsage.length },
-        alertas: percentualAcima6h > 20?[{ tipo: 'alert', mensagem: 'Alta concentração acima 6h' }] : []
-      }
-    });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Erro', error: error.message });
   }

@@ -265,7 +265,7 @@ const PerformanceAnalysis = () => {
         <div className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-semibold text-gray-600 uppercase">Entregas >6h</h3>
+              <h3 className="text-sm font-semibold text-gray-600 uppercase">Entregas {'>'}6h</h3>
               <p className="text-3xl font-bold text-red-600 mt-2">{data.estatisticasGerais?.percentualAcima6h?.toFixed(1) || 0}%</p>
             </div>
             <span className="text-4xl text-red-200">⚠️</span>
