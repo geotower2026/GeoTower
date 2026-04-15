@@ -1,4 +1,5 @@
 import EntregasEmAndamento from './pages/EntregasEmAndamento';
+import Maintenance from './pages/Maintenance';
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './services/authContext';
@@ -6,7 +7,6 @@ import PrivateRoute from './components/PrivateRoute';
 import AppLayout from './components/AppLayout';
 import { CityProvider, useCity } from './contexts/CityContext';
 import { ThemeProvider } from './contexts/ThemeContext';
-import CitySelector from './components/CitySelector';
 import PoliticaPrivacidade from './pages/PoliticaPrivacidade';
 import TermosUso from './pages/TermosUso';
 import Suporte from './pages/Suporte';
@@ -33,20 +33,20 @@ import Profile from './pages/Profile';
 import EntregaEmRota from './pages/EntregaEmRota';
 
 function AppContent() {
-
-        <Route
-          path="/entregas-em-andamento"
-          element={
-            <PrivateRoute>
-              <AppLayout>
-                <EntregasEmAndamento />
-              </AppLayout>
-            </PrivateRoute>
-          }
-        />
   const { isAuthenticated } = useAuth();
   const { city } = useCity();
 
+  const maintenanceMode = process.env.REACT_APP_MAINTENANCE_MODE === 'true';
+  const maintenanceMessage = process.env.REACT_APP_MAINTENANCE_MESSAGE ||
+    'O sistema está em manutenção. Em breve voltaremos com o serviço normal.';
+
+  if (maintenanceMode) {
+    return (
+      <Routes>
+        <Route path="*" element={<Maintenance message={maintenanceMessage} />} />
+      </Routes>
+    );
+  }
 
   return (
     <Routes>
@@ -142,6 +142,17 @@ function AppContent() {
       />
 
       <Route
+        path="/entregas-em-andamento"
+        element={
+          <PrivateRoute>
+            <AppLayout>
+              <EntregasEmAndamento />
+            </AppLayout>
+          </PrivateRoute>
+        }
+      />
+
+      <Route
         path="/admin"
         element={
           <PrivateRoute allowedRoles={[ 'admin', 'manager', 'geomar', 'gestor_contratado' ]}>
@@ -162,7 +173,6 @@ function AppContent() {
           </PrivateRoute>
         }
       />
-
 
       <Route
         path="/usuarios"
