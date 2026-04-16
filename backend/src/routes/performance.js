@@ -59,16 +59,42 @@ router.get('/', auth, async (req, res) => {
     // Faixas de tempo atualizadas conforme solicitado
     const faixas = { '1-3h': 0, '4-6h': 0, '7-9h': 0, '10h+': 0 };
 
+    const parseScheduleDate = (dateString) => {
+      if (!dateString || typeof dateString !== 'string') return null;
+      const attempt = new Date(dateString);
+      if (!isNaN(attempt)) return attempt;
+
+      const normalized = dateString.trim().replace(/\//g, '-').replace(/\./g, '-');
+      const isoMatch = normalized.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+      if (isoMatch) {
+        const [, year, month, day, hour = '00', minute = '00', second = '00'] = isoMatch;
+        return new Date(`${year}-${month}-${day}T${hour}:${minute}:${second}Z`);
+      }
+
+      const dmyMatch = normalized.match(/^(\d{2})-(\d{2})-(\d{4})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+      if (dmyMatch) {
+        const [, day, month, year, hour = '00', minute = '00', second = '00'] = dmyMatch;
+        return new Date(`${year}-${month}-${day}T${hour}:${minute}:${second}Z`);
+      }
+
+      return null;
+    };
+
+    const getDayKey = (date) => date.toISOString().slice(0, 10);
+
     enriched.forEach(item => {
       const agendDate = item.dataAgendamento || item.dtColeta;
-      if (agendDate) {
-        const d = new Date(agendDate);
-        if (!isNaN(d)) deliveriesByDay[dayNames[d.getDay()]]++;
+      const parsedDate = parseScheduleDate(agendDate);
+      if (parsedDate && !isNaN(parsedDate)) {
+        deliveriesByDay[dayNames[parsedDate.getDay()]]++;
       }
 
       const contratado = (item.contratado || 'Sem contratado').trim();
       if (!contractorsMap[contratado]) contractorsMap[contratado] = { contratado, totalEntregas: 0, diasAtivos: new Set() };
       contractorsMap[contratado].totalEntregas++;
+      if (parsedDate && !isNaN(parsedDate)) {
+        contractorsMap[contratado].diasAtivos.add(getDayKey(parsedDate));
+      }
 
       const entrega = item._entrega;
       if (entrega && entrega.arrivedAt && entrega.desovaEndAt) {
@@ -95,7 +121,15 @@ router.get('/', auth, async (req, res) => {
     });
 
     const deliveriesByDayArray = Object.entries(deliveriesByDay).map(([d, t]) => ({ dia: d, total: t }));
-    const contractorsUsage = Object.values(contractorsMap).map(c => ({ contratado: c.contratado, totalEntregas: c.totalEntregas })).sort((a, b) => b.totalEntregas - a.totalEntregas);
+    const contractorsUsage = Object.values(contractorsMap).map(c => {
+      const diasAtivos = c.diasAtivos.size;
+      return {
+        contratado: c.contratado,
+        totalEntregas: c.totalEntregas,
+        diasAtivos,
+        diasOciosos: Math.max(0, totalDays - diasAtivos)
+      };
+    }).sort((a, b) => b.totalEntregas - a.totalEntregas);
     const tempoMedioHoras = countWithTime > 0 ? parseFloat((totalHours / countWithTime).toFixed(1)) : 0;
     const totalEntregas = enriched.length;
     
