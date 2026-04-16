@@ -2490,24 +2490,25 @@ router.get("/performance", auth, onlyAdmin, async (req, res) => {
               default: "Desconhecido"
             }
           },
-          diaSemanaAgendado: {
+          dataAgendamentoOuColeta: {
             $cond: {
               if: { $ne: ["$dataAgendamento", null] },
-              then: {
-                $switch: {
-                  branches: [
-                    { case: { $eq: [{ $dayOfWeek: "$dataAgendamento" }, 1] }, then: "Domingo" },
-                    { case: { $eq: [{ $dayOfWeek: "$dataAgendamento" }, 2] }, then: "Segunda" },
-                    { case: { $eq: [{ $dayOfWeek: "$dataAgendamento" }, 3] }, then: "Terça" },
-                    { case: { $eq: [{ $dayOfWeek: "$dataAgendamento" }, 4] }, then: "Quarta" },
-                    { case: { $eq: [{ $dayOfWeek: "$dataAgendamento" }, 5] }, then: "Quinta" },
-                    { case: { $eq: [{ $dayOfWeek: "$dataAgendamento" }, 6] }, then: "Sexta" },
-                    { case: { $eq: [{ $dayOfWeek: "$dataAgendamento" }, 7] }, then: "Sábado" }
-                  ],
-                  default: "Desconhecido"
-                }
-              },
-              else: null
+              then: "$dataAgendamento",
+              else: "$dtColeta"
+            }
+          },
+          diaSemanaAgendado: {
+            $switch: {
+              branches: [
+                { case: { $eq: [{ $dayOfWeek: { $cond: [{ $ne: ["$dataAgendamento", null] }, "$dataAgendamento", "$dtColeta"] } }, 1] }, then: "Domingo" },
+                { case: { $eq: [{ $dayOfWeek: { $cond: [{ $ne: ["$dataAgendamento", null] }, "$dataAgendamento", "$dtColeta"] } }, 2] }, then: "Segunda" },
+                { case: { $eq: [{ $dayOfWeek: { $cond: [{ $ne: ["$dataAgendamento", null] }, "$dataAgendamento", "$dtColeta"] } }, 3] }, then: "Terça" },
+                { case: { $eq: [{ $dayOfWeek: { $cond: [{ $ne: ["$dataAgendamento", null] }, "$dataAgendamento", "$dtColeta"] } }, 4] }, then: "Quarta" },
+                { case: { $eq: [{ $dayOfWeek: { $cond: [{ $ne: ["$dataAgendamento", null] }, "$dataAgendamento", "$dtColeta"] } }, 5] }, then: "Quinta" },
+                { case: { $eq: [{ $dayOfWeek: { $cond: [{ $ne: ["$dataAgendamento", null] }, "$dataAgendamento", "$dtColeta"] } }, 6] }, then: "Sexta" },
+                { case: { $eq: [{ $dayOfWeek: { $cond: [{ $ne: ["$dataAgendamento", null] }, "$dataAgendamento", "$dtColeta"] } }, 7] }, then: "Sábado" }
+              ],
+              default: "Desconhecido"
             }
           },
           tempoClienteHoras: {
@@ -2553,16 +2554,6 @@ router.get("/performance", auth, onlyAdmin, async (req, res) => {
                 _id: "$contratadoNome",
                 totalEntregas: { $sum: 1 },
                 diasAgendadosUnicos: { $addToSet: "$diaSemanaAgendado" }
-              }
-            },
-            {
-              $addFields: {
-                diasAgendadosUnicos: {
-                  $filter: {
-                    input: "$diasAgendadosUnicos",
-                    cond: { $ne: ["$$this", null] }
-                  }
-                }
               }
             },
             {
