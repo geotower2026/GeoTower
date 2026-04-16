@@ -11,6 +11,13 @@ router.get('/', auth, async (req, res) => {
     const { startDate, endDate, contratado, minHours, maxHours } = req.query;
     console.log('📊 [PERFORMANCE] Filtros aplicados:', { startDate, endDate, contratado, minHours, maxHours });
 
+    const end = endDate ? new Date(endDate) : new Date();
+    const start = startDate ? new Date(startDate) : new Date(end.getTime() - 6 * 24 * 60 * 60 * 1000);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({ success: false, message: 'Datas inválidas' });
+    }
+    const totalDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+
     // Construir filtros para ProgramacaoEntrega
     let programacaoFilter = {};
     if (startDate || endDate) {
