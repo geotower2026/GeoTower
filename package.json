@@ -33,6 +33,7 @@
     "imap-simple": "^5.1.0",
     "jspdf": "^4.2.0",
     "jspdf-autotable": "^5.0.7",
+    "lucide-react": "^1.8.0",
     "mailparser": "^3.9.3",
     "markdown-it": "^14.1.1",
     "markdown-pdf": "^11.0.0",
