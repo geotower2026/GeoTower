@@ -228,10 +228,10 @@ const PerformanceAnalysis = () => {
   const contractorData = useMemo(() => {
     return (
       data?.contratadosUtilizacao?.map((item) => ({
-        contratado: item.contratado,
-        ativos: item.diasAtivos,
-        ociosos: item.diasOciosos,
-        totalEntregas: item.totalEntregas
+        contratado: item.contratado || item.contratadoNome || 'Outro',
+        ativos: Number(item.diasAtivos) || 0,
+        ociosos: Number(item.diasOciosos) || 0,
+        totalEntregas: Number(item.totalEntregas) || 0
       })) || []
     );
   }, [data]);
