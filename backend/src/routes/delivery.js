@@ -780,13 +780,26 @@ router.post("/:id/upload-and-update", auth, upload.array("file"), async (req, re
       const allowedFields = [
         "currentStep",
         "observations",
-        "documentsJustification"
+        "documentsJustification",
+        "arrivedAt",
+        "desovaStartAt",
+        "desovaEndAt",
+        "recebedor",
+        "horarioDevolucaoVazio",
+        "containerMontadoAt"
       ];
 
       const safeUpdates = {};
+      const dateFields = ["arrivedAt", "desovaStartAt", "desovaEndAt", "horarioDevolucaoVazio", "containerMontadoAt"];
+      
       for (const field of allowedFields) {
         if (req.body[field] !== undefined) {
-          safeUpdates[field] = req.body[field];
+          let value = req.body[field];
+          // Converter campos de data para object Date se fornecido como string
+          if (dateFields.includes(field) && value) {
+            value = new Date(value);
+          }
+          safeUpdates[field] = value;
         }
       }
 
