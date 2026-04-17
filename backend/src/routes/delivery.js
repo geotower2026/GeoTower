@@ -652,7 +652,7 @@ router.post("/:id/documents/:type", auth, upload.array("file"), async (req, res)
 router.post("/:id/upload-and-update", auth, upload.array("file"), async (req, res) => {
   try {
     const { id } = req.params;
-    const { documentType, status, currentStep, ...otherUpdates } = req.body;
+    const { documentType, status, currentStep } = req.body;
     const city = req.city || 'manaus';
     console.log(`[UPLOAD-UPDATE] Iniciando upload e update para entrega ${id}, tipo ${documentType}, status ${status}, city ${city}`);
     
@@ -777,20 +777,34 @@ router.post("/:id/upload-and-update", auth, upload.array("file"), async (req, re
       }
       normalizedDocs[documentType] = deduped.length === 0 ? null : JSON.stringify(deduped);
 
+      const allowedFields = [
+        "currentStep",
+        "observations",
+        "documentsJustification"
+      ];
+
+      const safeUpdates = {};
+      for (const field of allowedFields) {
+        if (req.body[field] !== undefined) {
+          safeUpdates[field] = req.body[field];
+        }
+      }
+
       // Now, update the delivery with documents and status
       const updates = { documents: normalizedDocs };
       if (status) {
         // Se há mudança de status, usar função especializada
         const statusUpdates = { documents: normalizedDocs };
-        if (currentStep) statusUpdates.currentStep = currentStep;
-        Object.assign(statusUpdates, otherUpdates);
-
+        for (const [field, value] of Object.entries(safeUpdates)) {
+          statusUpdates[field] = value;
+        }
         const updated = await updateDeliveryStatus(delivery._id, status, statusUpdates);
         return res.json({ delivery: normalizeDeliveryForResponse(updated) });
       } else {
         // Sem mudança de status, usar update atômico
-        if (currentStep) updates.currentStep = currentStep;
-        Object.assign(updates, otherUpdates);
+        for (const [field, value] of Object.entries(safeUpdates)) {
+          updates[field] = value;
+        }
 
         const updated = await updateDeliveryAtomic(delivery._id, updates);
         return res.json({ delivery: normalizeDeliveryForResponse(updated) });
