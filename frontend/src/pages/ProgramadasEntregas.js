@@ -59,6 +59,28 @@ const normalizeStatus = (status) => {
   return key === 'EM_ROTA' ? 'A_CAMINHO_DO_CLIENTE' : key;
 };
 
+const DELIVERY_STATUS_PRIORITY = [
+  'FINALIZADO',
+  'DEVOLVENDO_CONTAINER',
+  'ENTREGUE',
+  'ANEXANDO_DOCUMENTOS_FINAIS',
+  'AGUARDANDO_AGENDAMENTO_DEVOLUCAO',
+  'DESOVA_FINALIZADA',
+  'EM_DESOVA',
+  'AGUARDANDO_DESOVA',
+  'A_CAMINHO_DO_CLIENTE',
+  'CONTAINER_MONTADO',
+  'AGENDADO',
+  'PENDING',
+  'pending'
+];
+
+const getDeliveryStatusPriority = (status) => {
+  const key = String(status || '').toUpperCase();
+  const idx = DELIVERY_STATUS_PRIORITY.findIndex((s) => s === key);
+  return idx === -1 ? DELIVERY_STATUS_PRIORITY.length : idx;
+};
+
 const StepTimer = ({ start, label = 'Tempo esperando' }) => (
   <div className="flex items-center justify-between px-4 py-3 bg-blue-50 rounded-xl border border-blue-200">
     <div className="flex items-center gap-2">
@@ -310,7 +332,16 @@ const ProgramadasEntregas = () => {
       const map = {};
       const programacaoMap = {};
       deliveries.forEach(d => {
-        map[(d.deliveryNumber || '').toUpperCase()] = d;
+        const key = (d.deliveryNumber || '').toUpperCase();
+        const existing = map[key];
+        const normalizedStatus = normalizeStatus(d.status);
+        if (!existing
+          || getDeliveryStatusPriority(normalizedStatus) < getDeliveryStatusPriority(normalizeStatus(existing.status))
+          || (getDeliveryStatusPriority(normalizedStatus) === getDeliveryStatusPriority(normalizeStatus(existing.status))
+              && new Date(d.updatedAt || 0).getTime() >= new Date(existing.updatedAt || 0).getTime())
+        ) {
+          map[key] = d;
+        }
         if (d.programacaoId) programacaoMap[String(d.programacaoId)] = d;
       });
       setDeliveriesMap(map);
@@ -354,7 +385,7 @@ const ProgramadasEntregas = () => {
 
         // Se houver delivery associado, atualizar o status exibido na programação
         if (matchedDelivery) {
-          p.status = matchedDelivery.status || p.status;
+          p.status = normalizeStatus(matchedDelivery.status) || p.status;
           if (matchedDelivery.containerReturned !== undefined) {
             p.containerReturned = matchedDelivery.containerReturned;
           }
