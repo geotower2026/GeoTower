@@ -2325,9 +2325,37 @@ router.get("/programacoes/sync/icompany", auth, managerOnly, async (req, res) =>
     
     console.log(`[SYNC ICOMPANY] Filtrando por cidade: ${city}`, cityFilter);
 
-    // Buscar registros do Icompany filtrados por cidade
+    const { startDate, endDate } = req.query;
+    const parseLocalDateTime = (raw) => {
+      if (!raw) return null;
+      const dt = String(raw).trim();
+      const match = dt.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+      if (!match) return null;
+      const [, year, month, day, hour, minute] = match;
+      return new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute));
+    };
+    const getIcompanyEffectiveDate = (record) => {
+      if (city === 'itajai') {
+        return String(record.dtColeta || record.dtAgendamentoDescarga || '').trim();
+      }
+      return String(record.dtAgendamentoDescarga || record.dtColeta || '').trim();
+    };
+
     const icompanyRecords = await Icompany.find(cityFilter).lean();
-    console.log(`[SYNC ICOMPANY] Encontrados ${icompanyRecords.length} registros no Icompany`);
+    let filteredRecords = icompanyRecords;
+    if (startDate || endDate) {
+      const start = startDate ? new Date(`${startDate}T00:00:00`) : null;
+      const end = endDate ? new Date(`${endDate}T23:59:59.999`) : null;
+      filteredRecords = icompanyRecords.filter(record => {
+        const effective = getIcompanyEffectiveDate(record);
+        const parsed = parseLocalDateTime(effective);
+        if (!parsed) return false;
+        if (start && parsed < start) return false;
+        if (end && parsed > end) return false;
+        return true;
+      });
+    }
+    console.log(`[SYNC ICOMPANY] Encontrados ${filteredRecords.length} registros no Icompany`);
 
     // Buscar todos os processos já existentes para evitar duplicação e permitir atualização
     const existingProgramacoes = await ProgramacaoEntrega.find({}).lean();
@@ -2358,7 +2386,7 @@ router.get("/programacoes/sync/icompany", auth, managerOnly, async (req, res) =>
     let insertedCount = 0;
     const novosRegistros = [];
 
-    for (const y of icompanyRecords) {
+    for (const y of filteredRecords) {
       const processoRaw = String(y.processo || '').trim();
       if (!processoRaw) continue;
 
@@ -2406,8 +2434,8 @@ router.get("/programacoes/sync/icompany", auth, managerOnly, async (req, res) =>
         message: `${updatedCount} registro(s) atualizado(s) do Icompany`,
         atualizados: updatedCount,
         sincronizados: updatedCount,
-        duplicados: icompanyRecords.length - updatedCount,
-        total: icompanyRecords.length
+        duplicados: filteredRecords.length - updatedCount,
+        total: filteredRecords.length
       });
     }
 
@@ -2423,8 +2451,8 @@ router.get("/programacoes/sync/icompany", auth, managerOnly, async (req, res) =>
       sincronizados: totalSynced,
       atualizados: updatedCount,
       inseridos: insertedCount,
-      duplicados: icompanyRecords.length - (updatedCount + insertedCount),
-      total: icompanyRecords.length,
+      duplicados: filteredRecords.length - (updatedCount + insertedCount),
+      total: filteredRecords.length,
       registros: inserted
     });
   } catch (err) {

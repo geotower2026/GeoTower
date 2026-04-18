@@ -34,6 +34,8 @@ const ProgramacaoManagement = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState(null);
   const [sortDir, setSortDir] = useState('asc');
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [syncDates, setSyncDates] = useState({ startDate: '', endDate: '' });
 
   const [formData, setFormData] = useState({
     processo: '', recebedor: '', container: '', dataAgendamento: '',
@@ -78,11 +80,11 @@ const ProgramacaoManagement = () => {
     }
   };
 
-  const handleSyncIcompany = async () => {
+  const handleSyncIcompany = async (params = {}) => {
     if (syncLoading) return;
     try {
       setSyncLoading(true);
-      const response = await adminService.syncProgramacoesIcompany();
+      const response = await adminService.syncProgramacoesIcompany(params);
       
       if (response.data.success) {
         showToast(`✅ ${response.data.sincronizados} registro(s) sincronizado(s) do Icompany` + 
@@ -95,6 +97,20 @@ const ProgramacaoManagement = () => {
     } finally {
       setSyncLoading(false);
     }
+  };
+
+  const handleOpenSyncModal = () => {
+    setSyncDates({ startDate: '', endDate: '' });
+    setShowSyncModal(true);
+  };
+
+  const handleConfirmSync = async () => {
+    if (!syncDates.startDate || !syncDates.endDate) {
+      showToast('Selecione o intervalo de datas antes de sincronizar', 'error');
+      return;
+    }
+    await handleSyncIcompany(syncDates);
+    setShowSyncModal(false);
   };
 
   const getProgramacaoDate = (prog) => {
@@ -457,7 +473,7 @@ const ProgramacaoManagement = () => {
           {!isGeoMar() && (
             <>
               <button
-                onClick={handleSyncIcompany}
+                onClick={handleOpenSyncModal}
                 disabled={syncLoading}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 7,
@@ -543,6 +559,62 @@ const ProgramacaoManagement = () => {
                 onChange={e => setFilters({...filters, endDate: e.target.value})}
                 style={{ ...inputStyle(false), cursor: 'pointer' }}
               />
+            </div>
+          </div>
+        )}
+
+        {showSyncModal && (
+          <div
+            onClick={() => setShowSyncModal(false)}
+            style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15,15,30,0.55)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{ width: '100%', maxWidth: 520, background: '#fff', borderRadius: 18, overflow: 'hidden', boxShadow: '0 24px 80px rgba(0,0,0,.24)' }}
+            >
+              <div style={{ padding: '22px 24px', borderBottom: '1px solid #e5e7eb', background: '#f8fafc' }}>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#111827' }}>Sincronizar Icompany</h2>
+                <p style={{ margin: '8px 0 0', fontSize: 13, color: '#6b7280' }}>
+                  Selecione o intervalo de datas para a Data/Hora de agendamento.
+                </p>
+              </div>
+              <div style={{ padding: '22px 24px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <label style={labelStyle}>Data inicial</label>
+                  <input
+                    type="date"
+                    value={syncDates.startDate}
+                    onChange={e => setSyncDates({ ...syncDates, startDate: e.target.value })}
+                    style={{ ...inputStyle(false), cursor: 'pointer' }}
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Data final</label>
+                  <input
+                    type="date"
+                    value={syncDates.endDate}
+                    onChange={e => setSyncDates({ ...syncDates, endDate: e.target.value })}
+                    style={{ ...inputStyle(false), cursor: 'pointer' }}
+                  />
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, padding: '16px 24px 24px', background: '#f9fafb' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowSyncModal(false)}
+                  style={{ padding: '10px 18px', background: '#fff', color: '#374151', border: '1px solid #d1d5db', borderRadius: 10, cursor: 'pointer' }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmSync}
+                  disabled={syncLoading}
+                  style={{ padding: '10px 18px', background: '#22c55e', color: '#fff', borderRadius: 10, border: 'none', cursor: syncLoading ? 'not-allowed' : 'pointer' }}
+                >
+                  {syncLoading ? 'Sincronizando...' : 'Sincronizar'}
+                </button>
+              </div>
             </div>
           </div>
         )}

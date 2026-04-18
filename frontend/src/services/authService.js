@@ -69,7 +69,7 @@ export const adminService = {
   importProgramacoes: (data) => api.post('/admin/programacoes/import', data),
   removeInvalidDocument: (deliveryId, documentType, reason) =>
     api.post(`/admin/deliveries/${deliveryId}/documents/${documentType}/remove`, { reason }),
-  syncProgramacoesIcompany: () => api.get('/admin/programacoes/sync/icompany'),
+  syncProgramacoesIcompany: (params = {}) => api.get('/admin/programacoes/sync/icompany', { params }),
   // Reconciliação
   uploadReconciliation: (file) => {
     const formData = new FormData();
