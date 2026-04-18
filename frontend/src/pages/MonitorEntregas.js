@@ -2137,6 +2137,15 @@ const MonitorEntregas = () => {
               </div>
             )}
 
+          <div className="flex-1" />
+
+          <span className="hidden lg:flex items-center gap-1.5 text-sm font-mono font-semibold text-gray-400 tabular-nums">
+            <FaClock className="text-purple-400" size={12} />
+            {formatarHora(currentTime, city)}
+          </span>
+
+          {autoRefresh && (
+            <span className="hidden sm:flex items-center gap-1.5 text-xs text-emerald-400 font-bold">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               LIVE · {refreshInterval}s
             </span>
