@@ -88,9 +88,9 @@ router.get("/statistics", auth, onlyAdmin, async (req, res) => {
  */
 router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
   try {
-    const { status, q, startDate, endDate, period, periodDate } = req.query;
+    const { status, q, startDate, endDate, period, periodDate, processo, container, recebedor, pontualidade, horaStatusStart, horaStatusEnd, agendamentoStart, agendamentoEnd, tempoStatusMin, tempoStatusMax } = req.query;
     const city = req.city || 'manaus';
-    console.log('📋 GET /admin/deliveries recebido com filtros:', { status, q, startDate, endDate, period, periodDate, city });
+    console.log('📋 GET /admin/deliveries recebido com filtros:', { status, q, processo, container, recebedor, pontualidade, horaStatusStart, horaStatusEnd, agendamentoStart, agendamentoEnd, tempoStatusMin, tempoStatusMax, startDate, endDate, period, periodDate, city });
     
     // Buscar programações filtradas por cidade
     const ProgramacaoEntrega = require('../models/ProgramacaoEntrega');
@@ -273,6 +273,55 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
       return d1.day - d2.day;
     };
 
+    const parseDateTime = (value) => {
+      if (!value) return null;
+      let raw = String(value).trim();
+      raw = raw.replace(' ', 'T');
+      if (/^\d{2}\/\d{2}\/\d{4}/.test(raw)) {
+        const [datePart, timePart] = raw.split('T');
+        const [day, month, year] = datePart.split('/').map(Number);
+        const time = timePart || '00:00:00';
+        return new Date(`${year.toString().padStart(4, '0')}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}T${time}`);
+      }
+      const date = new Date(raw);
+      return Number.isNaN(date.getTime()) ? null : date;
+    };
+
+    const getProgramacaoDateString = (delivery, cityCode) => {
+      if (cityCode === 'itajai' && delivery.dtColeta) return delivery.dtColeta;
+      return delivery.dataAgendamento || delivery.dtColeta || delivery.data || '';
+    };
+
+    const getStatusEntryTime = (delivery, cityCode) => {
+      const statusKey = (delivery.status || '').toString().replace(/_/g, ' ').toUpperCase().trim();
+      if (statusKey === 'AGENDADO') {
+        return getProgramacaoDateString(delivery, cityCode) || delivery.scheduledAt || delivery.createdAt;
+      }
+      if (statusKey === 'CONTAINER MONTADO') return delivery.containerMontadoAt || delivery.createdAt;
+      if (statusKey === 'A CAMINHO DO CLIENTE' || statusKey === 'PENDING') return delivery.tripStartedAt || delivery.createdAt;
+      if (statusKey === 'AGUARDANDO DESOVA') return delivery.arrivedAt || delivery.horarioChegada || delivery.createdAt;
+      if (statusKey === 'EM DESOVA') return delivery.desovaStartedAt || delivery.horarioInicioDesova || delivery.createdAt;
+      if (statusKey === 'ANEXANDO DOCUMENTOS FINAIS') return delivery.docsStartedAt || delivery.horarioFimDesova || delivery.createdAt;
+      if (['FINALIZADO', 'ENTREGUE', 'DOCUMENTOS ENTREGUES'].includes(statusKey)) return delivery.finalizedAt || delivery.horarioFimDesova || delivery.horarioChegada || delivery.createdAt;
+      if (statusKey === 'CANCELADO') return delivery.cancelledAt || delivery.createdAt;
+      return delivery.createdAt || delivery.horarioChegada || delivery.horarioInicioDesova || delivery.horarioFimDesova;
+    };
+
+    const getPunctualityType = (delivery, cityCode) => {
+      const scheduledStr = getProgramacaoDateString(delivery, cityCode);
+      const scheduled = parseDateTime(scheduledStr);
+      if (!scheduled) return 'sem_agendamento';
+      const arrival = parseDateTime(delivery.horarioChegada || delivery.arrivedAt || '');
+      const start = parseDateTime(delivery.createdAt || '');
+      const now = new Date();
+      if (arrival) {
+        return arrival.getTime() <= scheduled.getTime() ? 'ok' : 'late';
+      }
+      if (!start) return 'no_start';
+      if (now.getTime() >= scheduled.getTime()) return 'possible';
+      return 'unknown';
+    };
+
     // NOVO: Se tem startDate/endDate, filtrar por range
     if (startDate || endDate) {
       console.log('📅 Aplicando filtro de range de datas:', { startDate, endDate }, '(cidade:', city, ')');
@@ -327,6 +376,81 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
     if (req.user && req.user.role === 'gestor_contratado' && req.user.contratado) {
       console.log('  ✓ Aplicando filtro de contratado para gestor:', req.user.contratado);
       filtered = filtered.filter(d => d.userName === req.user.contratado);
+    }
+
+    if (processo && processo.trim()) {
+      const text = processo.trim().toLowerCase();
+      filtered = filtered.filter(d => [
+        d.processoCAB,
+        d.processo,
+        d.deliveryNumber,
+        d.processNumber
+      ].some(v => String(v || '').toLowerCase().includes(text)));
+      console.log(`  ✓ Aplicando filtro de processo: ${processo}`);
+    }
+
+    if (container && container.trim()) {
+      const text = container.trim().toLowerCase();
+      filtered = filtered.filter(d => {
+        const containerText = Array.isArray(d.containerNumero)
+          ? d.containerNumero.join(' ')
+          : d.containerNumero || '';
+        return [containerText, d.container, d.deliveryNumber].some(v => String(v || '').toLowerCase().includes(text));
+      });
+      console.log(`  ✓ Aplicando filtro de container: ${container}`);
+    }
+
+    if (recebedor && recebedor.trim()) {
+      const text = recebedor.trim().toLowerCase();
+      filtered = filtered.filter(d => String(d.recebedor || '').toLowerCase().includes(text));
+      console.log(`  ✓ Aplicando filtro de recebedor: ${recebedor}`);
+    }
+
+    if (agendamentoStart || agendamentoEnd) {
+      const sd = agendamentoStart ? parseDateTime(agendamentoStart) : null;
+      const ed = agendamentoEnd ? parseDateTime(agendamentoEnd) : null;
+      filtered = filtered.filter(d => {
+        const scheduleStr = getProgramacaoDateString(d, city);
+        const scheduleDate = parseDateTime(scheduleStr);
+        if (!scheduleDate) return false;
+        if (sd && scheduleDate < sd) return false;
+        if (ed && scheduleDate > ed) return false;
+        return true;
+      });
+      console.log(`  ✓ Aplicando filtro de agendamento: ${agendamentoStart || '∞'} → ${agendamentoEnd || '∞'}`);
+    }
+
+    if (horaStatusStart || horaStatusEnd) {
+      const sd = horaStatusStart ? parseDateTime(horaStatusStart) : null;
+      const ed = horaStatusEnd ? parseDateTime(horaStatusEnd) : null;
+      filtered = filtered.filter(d => {
+        const entryTime = parseDateTime(getStatusEntryTime(d, city));
+        if (!entryTime) return false;
+        if (sd && entryTime < sd) return false;
+        if (ed && entryTime > ed) return false;
+        return true;
+      });
+      console.log(`  ✓ Aplicando filtro de hora de status: ${horaStatusStart || '∞'} → ${horaStatusEnd || '∞'}`);
+    }
+
+    if (pontualidade && pontualidade !== 'all') {
+      filtered = filtered.filter(d => getPunctualityType(d, city) === pontualidade);
+      console.log(`  ✓ Aplicando filtro de pontualidade: ${pontualidade}`);
+    }
+
+    if ((tempoStatusMin && tempoStatusMin !== '') || (tempoStatusMax && tempoStatusMax !== '')) {
+      const minMinutes = tempoStatusMin ? Number(tempoStatusMin) : null;
+      const maxMinutes = tempoStatusMax ? Number(tempoStatusMax) : null;
+      const now = new Date();
+      filtered = filtered.filter(d => {
+        const entryTime = parseDateTime(getStatusEntryTime(d, city));
+        if (!entryTime) return false;
+        const diffMinutes = Math.floor((now.getTime() - entryTime.getTime()) / 60000);
+        if (minMinutes !== null && diffMinutes < minMinutes) return false;
+        if (maxMinutes !== null && diffMinutes > maxMinutes) return false;
+        return true;
+      });
+      console.log(`  ✓ Aplicando filtro de tempo de status: ${tempoStatusMin || '0'} → ${tempoStatusMax || '∞'} minutos`);
     }
 
     if (q && q.trim()) {
@@ -2325,37 +2449,9 @@ router.get("/programacoes/sync/icompany", auth, managerOnly, async (req, res) =>
     
     console.log(`[SYNC ICOMPANY] Filtrando por cidade: ${city}`, cityFilter);
 
-    const { startDate, endDate } = req.query;
-    const parseLocalDateTime = (raw) => {
-      if (!raw) return null;
-      const dt = String(raw).trim();
-      const match = dt.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
-      if (!match) return null;
-      const [, year, month, day, hour, minute] = match;
-      return new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute));
-    };
-    const getIcompanyEffectiveDate = (record) => {
-      if (city === 'itajai') {
-        return String(record.dtColeta || record.dtAgendamentoDescarga || '').trim();
-      }
-      return String(record.dtAgendamentoDescarga || record.dtColeta || '').trim();
-    };
-
+    // Buscar registros do Icompany filtrados por cidade
     const icompanyRecords = await Icompany.find(cityFilter).lean();
-    let filteredRecords = icompanyRecords;
-    if (startDate || endDate) {
-      const start = startDate ? new Date(`${startDate}T00:00:00`) : null;
-      const end = endDate ? new Date(`${endDate}T23:59:59.999`) : null;
-      filteredRecords = icompanyRecords.filter(record => {
-        const effective = getIcompanyEffectiveDate(record);
-        const parsed = parseLocalDateTime(effective);
-        if (!parsed) return false;
-        if (start && parsed < start) return false;
-        if (end && parsed > end) return false;
-        return true;
-      });
-    }
-    console.log(`[SYNC ICOMPANY] Encontrados ${filteredRecords.length} registros no Icompany`);
+    console.log(`[SYNC ICOMPANY] Encontrados ${icompanyRecords.length} registros no Icompany`);
 
     // Buscar todos os processos já existentes para evitar duplicação e permitir atualização
     const existingProgramacoes = await ProgramacaoEntrega.find({}).lean();
@@ -2386,7 +2482,7 @@ router.get("/programacoes/sync/icompany", auth, managerOnly, async (req, res) =>
     let insertedCount = 0;
     const novosRegistros = [];
 
-    for (const y of filteredRecords) {
+    for (const y of icompanyRecords) {
       const processoRaw = String(y.processo || '').trim();
       if (!processoRaw) continue;
 
@@ -2434,8 +2530,8 @@ router.get("/programacoes/sync/icompany", auth, managerOnly, async (req, res) =>
         message: `${updatedCount} registro(s) atualizado(s) do Icompany`,
         atualizados: updatedCount,
         sincronizados: updatedCount,
-        duplicados: filteredRecords.length - updatedCount,
-        total: filteredRecords.length
+        duplicados: icompanyRecords.length - updatedCount,
+        total: icompanyRecords.length
       });
     }
 
@@ -2451,8 +2547,8 @@ router.get("/programacoes/sync/icompany", auth, managerOnly, async (req, res) =>
       sincronizados: totalSynced,
       atualizados: updatedCount,
       inseridos: insertedCount,
-      duplicados: filteredRecords.length - (updatedCount + insertedCount),
-      total: filteredRecords.length,
+      duplicados: icompanyRecords.length - (updatedCount + insertedCount),
+      total: icompanyRecords.length,
       registros: inserted
     });
   } catch (err) {

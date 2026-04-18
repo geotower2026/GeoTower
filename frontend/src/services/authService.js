@@ -18,13 +18,20 @@ export const authService = {
 
 export const adminService = {
   getDeliveries: (filters, statsPeriod, periodDate) => {
-    // Normaliza chaves do frontend para os parâmetros que o backend espera
     const params = {};
     if (!filters) return api.get('/admin/deliveries');
     if (filters.status) params.status = filters.status;
     if (filters.searchTerm) params.q = filters.searchTerm;
-    if (filters.startDate) params.startDate = filters.startDate;
-    if (filters.endDate) params.endDate = filters.endDate;
+    if (filters.processo) params.processo = filters.processo;
+    if (filters.container) params.container = filters.container;
+    if (filters.recebedor) params.recebedor = filters.recebedor;
+    if (filters.pontualidade) params.pontualidade = filters.pontualidade;
+    if (filters.horaStatusFrom) params.horaStatusStart = filters.horaStatusFrom;
+    if (filters.horaStatusTo) params.horaStatusEnd = filters.horaStatusTo;
+    if (filters.startDate) params.agendamentoStart = filters.startDate;
+    if (filters.endDate) params.agendamentoEnd = filters.endDate;
+    if (filters.tempoStatusMin) params.tempoStatusMin = filters.tempoStatusMin;
+    if (filters.tempoStatusMax) params.tempoStatusMax = filters.tempoStatusMax;
     if (statsPeriod && statsPeriod !== 'general') params.period = statsPeriod;
     if (periodDate) params.periodDate = periodDate;
     return api.get('/admin/deliveries', { params });

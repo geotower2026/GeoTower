@@ -414,6 +414,7 @@ const ProgressDots = MemoizedProgressDots;
 const PunctualityCell = MemoizedPunctualityCell;
 
 const DEFAULT_COL_TEMPLATE = 'repeat(15, minmax(0, 1fr))';
+const sharedInputCls = `w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder-gray-600`;
 
 /* ─────────────────────────────────────────────────────────────
    SETTINGS PANEL
@@ -435,8 +436,20 @@ const SettingsPanel = ({
 
   if (!visible) return null;
 
-  const inputCls = `w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm
-    focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder-gray-600`;
+  const hasAnyFilters = () => (
+    filters.searchTerm.trim() !== '' ||
+    filters.status !== 'all' ||
+    filters.processo?.trim() !== '' ||
+    filters.container?.trim() !== '' ||
+    filters.recebedor?.trim() !== '' ||
+    filters.pontualidade !== 'all' ||
+    filters.startDate ||
+    filters.endDate ||
+    filters.horaStatusFrom ||
+    filters.horaStatusTo ||
+    filters.tempoStatusMin ||
+    filters.tempoStatusMax
+  );
 
   return (
     <>
@@ -552,9 +565,14 @@ const SettingsPanel = ({
                 <FaFilter className="text-purple-400" /> Filtros
               </p>
 
-              {(filters.status !== 'all' || filters.searchTerm || filters.startDate || filters.endDate) && (
+              {hasAnyFilters() && (
                 <button
-                  onClick={() => setFilters({ status: 'all', searchTerm: '', startDate: '', endDate: '' })}
+                  onClick={() => setFilters({
+                    status: 'all', searchTerm: '', startDate: '', endDate: '',
+                    processo: '', container: '', recebedor: '',
+                    pontualidade: 'all', horaStatusFrom: '', horaStatusTo: '',
+                    tempoStatusMin: '', tempoStatusMax: ''
+                  })}
                   className="flex items-center gap-1.5 text-[11px] text-red-400 hover:text-red-300 font-semibold transition"
                 >
                   <FaTimes size={10} /> Limpar
@@ -568,7 +586,7 @@ const SettingsPanel = ({
                 <select
                   value={filters.status}
                   onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                  className={inputCls}
+                  className={sharedInputCls}
                 >
                   <option value="all" className="bg-gray-900">Todos</option>
                   <option value="OPERACAO_FINALIZADA" className="bg-gray-900">Operação Finalizada</option>
@@ -593,7 +611,7 @@ const SettingsPanel = ({
                     placeholder="Número, motorista, placa…"
                     value={filters.searchTerm}
                     onChange={(e) => setFilters({ ...filters, searchTerm: e.target.value })}
-                    className={`${inputCls} pl-8`}
+                    className={`${sharedInputCls} pl-8`}
                   />
                 </div>
               </div>
@@ -605,7 +623,7 @@ const SettingsPanel = ({
                     type="date"
                     value={filters.startDate}
                     onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
-                    className={inputCls}
+                    className={sharedInputCls}
                   />
                 </div>
 
@@ -615,7 +633,7 @@ const SettingsPanel = ({
                     type="date"
                     value={filters.endDate}
                     onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
-                    className={inputCls}
+                    className={sharedInputCls}
                   />
                 </div>
               </div>
@@ -771,7 +789,14 @@ const MonitorEntregas = () => {
     recebedor: '', status: '', dataAgendamento: '', horarioDevolucaoVazio: '',
     horarioChegada: '', horarioInicioDesova: '', horarioFimDesova: '', observations: ''
   });
-  const [filters, setFilters] = useState({ status: 'all', searchTerm: '', startDate: '', endDate: '' });
+  const [filters, setFilters] = useState({
+    status: 'all', searchTerm: '', startDate: '', endDate: '',
+    processo: '', container: '', recebedor: '',
+    pontualidade: 'all', horaStatusFrom: '', horaStatusTo: '',
+    tempoStatusMin: '', tempoStatusMax: ''
+  });
+  const [openFilterKey, setOpenFilterKey] = useState(null);
+  const filterHeaderRef = useRef(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [statsPeriod, setStatsPeriod] = useState('today');
   const [stats, setStats] = useState({ total: 0, statusCounts: {}, byDriver: 0 });
@@ -828,10 +853,63 @@ const MonitorEntregas = () => {
     CANCELADO: ['CANCELADO']
   };
 
+  const inputCls = `w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder-gray-600`;
+
+  const punctualityOptions = [
+    { value: 'all', label: 'Todos' },
+    { value: 'ok', label: 'No prazo' },
+    { value: 'late', label: 'Atrasado' },
+    { value: 'sem_agendamento', label: 'Sem agendamento' },
+    { value: 'no_start', label: 'Sem início' },
+    { value: 'possible', label: 'Possível atraso' }
+  ];
+
+  const isFilterActive = (key) => {
+    switch (key) {
+      case 'processo': return filters.processo.trim() !== '';
+      case 'container': return filters.container.trim() !== '';
+      case 'recebedor': return filters.recebedor.trim() !== '';
+      case 'status': return filters.status !== 'all';
+      case 'agendamento': return Boolean(filters.startDate || filters.endDate);
+      case 'horaStatus': return Boolean(filters.horaStatusFrom || filters.horaStatusTo);
+      case 'pontualidade': return filters.pontualidade !== 'all';
+      case 'tempoStatus': return Boolean(filters.tempoStatusMin || filters.tempoStatusMax);
+      default: return false;
+    }
+  };
+
+  const clearColumnFilter = (key) => {
+    const next = { ...filters };
+    switch (key) {
+      case 'processo': next.processo = ''; break;
+      case 'container': next.container = ''; break;
+      case 'recebedor': next.recebedor = ''; break;
+      case 'status': next.status = 'all'; break;
+      case 'agendamento': next.startDate = ''; next.endDate = ''; break;
+      case 'horaStatus': next.horaStatusFrom = ''; next.horaStatusTo = ''; break;
+      case 'pontualidade': next.pontualidade = 'all'; break;
+      case 'tempoStatus': next.tempoStatusMin = ''; next.tempoStatusMax = ''; break;
+      default: break;
+    }
+    setFilters(next);
+  };
+
   useEffect(() => {
     const t = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!openFilterKey) return;
+      if (filterHeaderRef.current && !filterHeaderRef.current.contains(event.target)) {
+        setOpenFilterKey(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openFilterKey]);
 
   useEffect(() => {
     const el = document.createElement('style');
@@ -2089,33 +2167,19 @@ const MonitorEntregas = () => {
     !!filters.endDate
   ].filter(Boolean).length;
 
-  const flowHistory = selectedDelivery ? getFlowHistory(selectedDelivery) : [];
-  const HEADERS = [
-    'Processo', // NOVA COLUNA
-    'Container', 'Recebedor',
-    'Status',
-    'Hora Status',
-    'Tempo Status',
-    'Progresso', 'Agendamento',
-    'Pontualidade', 'Check', 'Detalhes'
+  const HEADER_CONFIGS = [
+    { key: 'processo', name: 'Processo', type: 'text', placeholder: 'Buscar processo...' },
+    { key: 'container', name: 'Container', type: 'text', placeholder: 'Buscar container...' },
+    { key: 'recebedor', name: 'Recebedor', type: 'text', placeholder: 'Buscar recebedor...' },
+    { key: 'status', name: 'Status', type: 'select', options: getStatusOptions() },
+    { key: 'horaStatus', name: 'Hora Status', type: 'dateRange', startKey: 'horaStatusFrom', endKey: 'horaStatusTo' },
+    { key: 'tempoStatus', name: 'Tempo Status', type: 'range', minKey: 'tempoStatusMin', maxKey: 'tempoStatusMax' },
+    { key: 'progresso', name: 'Progresso', type: 'none' },
+    { key: 'agendamento', name: 'Agendamento', type: 'dateRange', startKey: 'startDate', endKey: 'endDate' },
+    { key: 'pontualidade', name: 'Pontualidade', type: 'select', options: punctualityOptions },
+    { key: 'check', name: 'Check', type: 'none' },
+    { key: 'detalhes', name: 'Detalhes', type: 'none' }
   ];
-
-  const computeTemplate = () => {
-    // Espaçamento máximo para melhor visibilidade
-    return [
-      'minmax(180px, 2.5fr)',   // Processo
-      'minmax(180px, 2.5fr)',   // Container
-      'minmax(180px, 2.5fr)',   // Recebedor
-      'minmax(140px, 1.5fr)',   // Status
-      'minmax(120px, 1fr)',     // Hora Status
-      'minmax(120px, 1fr)',     // Tempo Status
-      'minmax(140px, 1.2fr)',   // Progresso
-      'minmax(160px, 1.5fr)',   // Agendamento
-      'minmax(160px, 1.5fr)',   // Pontualidade
-      'minmax(70px, 0.5fr)',    // Docs
-      'minmax(60px, 0.4fr)'     // Detalhes
-    ].join(' ');
-  };
 
   return (
     <div
@@ -2308,16 +2372,127 @@ const MonitorEntregas = () => {
               <div className="overflow-x-auto">
                 <div style={{ width: '100%' }} className="monitor-table min-w-full">
                   <div
+                    ref={filterHeaderRef}
                     className="grid text-[11px] font-bold uppercase tracking-wider bg-white/[0.04] border-b border-white/10"
                     style={{ gridTemplateColumns: colTemplate, color: themeConfig.textSecondary }}
                   >
-                    {HEADERS.map((col, ci) => (
+                    {HEADER_CONFIGS.map((col, ci) => (
                       <div
-                        key={col}
-                        className={`${ci >= 6 ? 'px-2 py-3.5' : 'px-4 py-3.5'} flex items-center min-w-0 select-none ${ci >= 2 ? 'justify-center' : ''}`}
+                        key={col.key}
+                        className={`${ci >= 6 ? 'px-2 py-3.5' : 'px-4 py-3.5'} relative flex items-center min-w-0 select-none ${ci >= 2 ? 'justify-center' : ''}`}
                         style={{ whiteSpace: 'normal', overflow: 'visible', textOverflow: 'clip' }}
                       >
-                        {col}
+                        <button
+                          type="button"
+                          onClick={() => setOpenFilterKey((current) => current === col.key ? null : col.key)}
+                          className="inline-flex items-center gap-2 text-left text-[11px] font-bold uppercase tracking-wider"
+                        >
+                          <span>{col.name}</span>
+                          {col.type !== 'none' && (
+                            <FaFilter
+                              className={`text-xs transition-colors duration-200 ${isFilterActive(col.key) ? 'text-emerald-300' : 'text-gray-400 hover:text-white'}`}
+                            />
+                          )}
+                        </button>
+
+                        {openFilterKey === col.key && col.type !== 'none' && (
+                          <div className="absolute top-full left-0 z-50 mt-1 min-w-[220px] max-w-[320px] rounded-2xl border border-white/10 bg-slate-950/95 p-3 shadow-2xl">
+                            <div className="flex items-center justify-between gap-2 pb-2 border-b border-white/10 mb-2">
+                              <span className="text-xs font-semibold text-white">Filtro de {col.name}</span>
+                              <button
+                                type="button"
+                                onClick={() => clearColumnFilter(col.key)}
+                                className="text-xs text-gray-400 hover:text-white"
+                              >
+                                Limpar
+                              </button>
+                            </div>
+
+                            {col.type === 'text' && (
+                              <input
+                                type="text"
+                                placeholder={col.placeholder}
+                                value={filters[col.key]}
+                                onChange={(e) => setFilters({ ...filters, [col.key]: e.target.value })}
+                                className={`${inputCls} w-full text-xs`}
+                              />
+                            )}
+
+                            {col.type === 'select' && (
+                              <select
+                                value={filters[col.key]}
+                                onChange={(e) => setFilters({ ...filters, [col.key]: e.target.value })}
+                                className={`${inputCls} w-full text-xs`}
+                              >
+                                {(col.options || []).map((option) => (
+                                  <option key={option.value} value={option.value} className="bg-slate-950">
+                                    {option.label}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+
+                            {col.type === 'dateRange' && (
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="block text-[10px] text-gray-400 mb-1">De</label>
+                                  <input
+                                    type="date"
+                                    value={filters[col.startKey]}
+                                    onChange={(e) => setFilters({ ...filters, [col.startKey]: e.target.value })}
+                                    className={`${inputCls} w-full text-xs`}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] text-gray-400 mb-1">Até</label>
+                                  <input
+                                    type="date"
+                                    value={filters[col.endKey]}
+                                    onChange={(e) => setFilters({ ...filters, [col.endKey]: e.target.value })}
+                                    className={`${inputCls} w-full text-xs`}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {col.type === 'range' && (
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="block text-[10px] text-gray-400 mb-1">Min</label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    placeholder="0"
+                                    value={filters[col.minKey]}
+                                    onChange={(e) => setFilters({ ...filters, [col.minKey]: e.target.value })}
+                                    className={`${inputCls} w-full text-xs`}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] text-gray-400 mb-1">Max</label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    placeholder="999"
+                                    value={filters[col.maxKey]}
+                                    onChange={(e) => setFilters({ ...filters, [col.maxKey]: e.target.value })}
+                                    className={`${inputCls} w-full text-xs`}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="mt-3 text-right">
+                              <button
+                                type="button"
+                                onClick={() => setOpenFilterKey(null)}
+                                className="text-xs text-gray-400 hover:text-white"
+                              >
+                                Fechar
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
