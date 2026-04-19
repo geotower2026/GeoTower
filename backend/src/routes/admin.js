@@ -2470,8 +2470,9 @@ router.get("/programacoes/sync/icompany", auth, managerOnly, async (req, res) =>
         if (!isNaN(parsedEnd.getTime())) dateFilter.$lte = parsedEnd;
       }
       if (Object.keys(dateFilter).length) {
-        cityFilter.dtAgendamentoDescarga = dateFilter;
-        console.log('[SYNC ICOMPANY] Aplicando filtro de período de agendamento:', { startDate, endDate, dateFilter });
+        const scheduleField = city === 'itajai' ? 'dtColeta' : 'dtAgendamentoDescarga';
+        cityFilter[scheduleField] = dateFilter;
+        console.log('[SYNC ICOMPANY] Aplicando filtro de período de agendamento:', { city, scheduleField, startDate, endDate, dateFilter });
       }
     }
 
