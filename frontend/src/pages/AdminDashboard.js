@@ -15,7 +15,8 @@ import {
 import {
   AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Cell, ReferenceLine
+  ResponsiveContainer, Cell, ReferenceLine,
+  ComposedChart, Line
 } from 'recharts';
 
 /* ─── Paleta ─── */
@@ -376,6 +377,36 @@ const AdminDashboard = () => {
     const vals = deliveries.map(d => getCliMinutes(d)).filter(v => v != null);
     return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
   }, [deliveries]);
+
+  // Dados para gráfico de Pareto - Concentração de Transportadores
+  const paretoTransportadores = React.useMemo(() => {
+    if (!topContratados.length) return { data: [], summary: '', risk: '' };
+
+    const sorted = [...topContratados].sort((a, b) => b.count - a.count);
+    const total = sorted.reduce((sum, item) => sum + item.count, 0);
+
+    let cumulative = 0;
+    const data = sorted.map(item => {
+      const percentage = (item.count / total) * 100;
+      cumulative += percentage;
+      return {
+        name: item._id || 'SEM CONTRATADO',
+        count: item.count,
+        percentage: parseFloat(percentage.toFixed(1)),
+        cumulative: parseFloat(cumulative.toFixed(1))
+      };
+    });
+
+    const top2Percentage = data.slice(0, 2).reduce((sum, item) => sum + item.percentage, 0);
+    const summary = `Os 2 principais transportadores representam ${top2Percentage.toFixed(1)}% da operação`;
+
+    let risk = '';
+    if (top2Percentage >= 80) risk = 'Alto risco';
+    else if (top2Percentage >= 60) risk = 'Médio';
+    else risk = 'Saudável';
+
+    return { data, summary, risk };
+  }, [topContratados]);
 
   const exportPayload = () => ({
     statistics, deliveries, topRecebedores, avgCliByRecebedor,
@@ -821,6 +852,100 @@ const AdminDashboard = () => {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
+            </div>
+          )}
+
+          {/* Pareto — Concentração de Transportadores */}
+          {paretoTransportadores.data.length > 0 && (
+            <div className="bg-gradient-to-br from-purple-500/[0.10] via-white/[0.03] to-transparent backdrop-blur-xl rounded-2xl shadow-xl border border-white/[0.08] p-6 hover:border-purple-500/30 hover:shadow-purple-500/10 transition-all duration-300">
+              <div className="mb-4">
+                <ChartHeader
+                  title="Concentração de Transportadores (Pareto)"
+                  subtitle="Dependência operacional por volume de entregas"
+                  dotColor="#a855f7"
+                />
+                <div className="mt-3 p-3 bg-white/[0.05] rounded-lg border border-white/[0.08]">
+                  <p className="text-sm text-slate-300">{paretoTransportadores.summary}</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="text-xs text-slate-500">Classificação:</span>
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                      paretoTransportadores.risk === 'Alto risco' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                      paretoTransportadores.risk === 'Médio' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
+                      'bg-green-500/20 text-green-400 border border-green-500/30'
+                    }`}>
+                      {paretoTransportadores.risk}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <ResponsiveContainer width="100%" height={350}>
+                <ComposedChart
+                  data={paretoTransportadores.data}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                  <XAxis
+                    dataKey="name"
+                    stroke={axisStroke}
+                    tick={{ fontSize: 11, fill: tickFill }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    yAxisId="left"
+                    stroke={axisStroke}
+                    tick={{ fontSize: 11, fill: tickFill }}
+                    axisLine={false}
+                    tickLine={false}
+                    label={{ value: 'Entregas', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: tickFill } }}
+                  />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    stroke={axisStroke}
+                    tick={{ fontSize: 11, fill: tickFill }}
+                    axisLine={false}
+                    tickLine={false}
+                    domain={[0, 100]}
+                    label={{ value: 'Acumulado (%)', angle: 90, position: 'insideRight', style: { textAnchor: 'middle', fill: tickFill } }}
+                  />
+                  <Tooltip
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                          <div className="bg-slate-800 border border-white/10 rounded-lg p-3 shadow-lg">
+                            <p className="text-white font-medium">{label}</p>
+                            <p className="text-cyan-400">Entregas: {data.count}</p>
+                            <p className="text-purple-400">Percentual: {data.percentage}%</p>
+                            <p className="text-emerald-400">Acumulado: {data.cumulative}%</p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Bar
+                    yAxisId="left"
+                    dataKey="count"
+                    fill="#a855f7"
+                    radius={[4, 4, 0, 0]}
+                    isAnimationActive
+                    animationDuration={700}
+                  />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="cumulative"
+                    stroke="#34d399"
+                    strokeWidth={3}
+                    dot={{ fill: '#34d399', strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: 6, stroke: '#34d399', strokeWidth: 2 }}
+                    isAnimationActive
+                    animationDuration={1000}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
             </div>
           )}
 
