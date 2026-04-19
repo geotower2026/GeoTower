@@ -177,25 +177,46 @@ const AdminDashboard = () => {
     if (!silent) setLoading(true);
     else setRefreshing(true);
     try {
-      // Usar filtros customizados passados como parâmetro
-      // Não usar filters do state para evitar recarregar a cada digitação
-      const filtersToUse = customFilters !== null ? customFilters : {};
-      const [delivRes, statsRes, progRes] = await Promise.all([
-        adminService.getDeliveries(filtersToUse),
-        adminService.getStatistics(filtersToUse),
-        adminService.getProgramacoes(filtersToUse),
-      ]);
-      setDeliveries(delivRes.data.deliveries);
-      setStatistics(statsRes.data.statistics);
-      setProgramacoes(progRes.data.programacoes || []);
-      console.log('✅ loadData deliveries sample', delivRes.data.deliveries.slice(0, 10));
-      console.log('✅ statistics sample', statsRes.data.statistics?.deliveriesByTransportadora || statsRes.data.statistics);
+      // Carregar dados do Icompany em vez de deliveries
+      const icompanyRes = await adminService.getIcompanyData();
+      const icompanyData = icompanyRes.data?.data || [];
+      
+      // Mapear dados do Icompany para formato esperado pelo dashboard
+      const mappedDeliveries = icompanyData.map(record => ({
+        _id: record._id,
+        deliveryNumber: record.processo || record.codigo || record.geomaritima,
+        processo: record.processo,
+        driverName: record.motorista || 'Sem motorista',
+        userName: record.contratado,
+        status: 'FINALIZADO',
+        dtSaida: record.dtRetiraPD || record.dtSaida,
+        dtColeta: record.dtColeta,
+        arrivedAt: record.dtChegadaPlanta || record.dtInicioDescarga,
+        horarioChegada: record.dtChegadaPlanta || record.dtInicioDescarga,
+        desovaStartAt: record.dtInicioDescarga,
+        desovaEndAt: record.dtFimDescarga,
+        horarioFimDesova: record.dtFimDescarga,
+        horarioDevolucaoVazio: record.dtDevolucaoCNTR || record.entradaDistrito,
+        dataAgendamento: record.dtColeta || record.dtAgendamentoDescarga,
+        remetente: record.remetente,
+        destinatario: record.destinatario,
+        recebedor: record.remetente || record.destinatario,
+        container: record.container || record.placa,
+        contratado: record.contratado,
+        ...record
+      }));
+      
+      setDeliveries(mappedDeliveries);
+      // Manter as estruturas de statistics e programacoes vazias para compatibilidade
+      setStatistics({});
+      setProgramacoes([]);
+      console.log('✅ loadData Icompany sample', mappedDeliveries.slice(0, 10));
     } catch (err) {
       if (err && err.response && err.response.status === 401) {
         setToast({ message: 'Sessão expirada. Faça login novamente.', type: 'error' });
         setTimeout(() => navigate('/login'), 1200);
       } else {
-        setToast({ message: 'Erro ao carregar dados. Se o problema persistir, faça login novamente.', type: 'error' });
+        setToast({ message: 'Erro ao carregar dados do Icompany. Se o problema persistir, faça login novamente.', type: 'error' });
       }
     } finally {
       setLoading(false);
