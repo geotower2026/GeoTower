@@ -1480,8 +1480,12 @@ const AdminDashboard = () => {
                       textAnchor="end"
                       height={80}
                       tickFormatter={(value) => {
-                        const date = new Date(value);
-                        return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                        if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                          const [year, month, day] = value.split('-').map(Number);
+                          const localDate = new Date(year, month - 1, day);
+                          return localDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                        }
+                        return value;
                       }}
                     />
                     <YAxis
@@ -1496,13 +1500,17 @@ const AdminDashboard = () => {
                       content={({ active, payload, label }) => {
                         if (active && payload && payload.length) {
                           const data = payload[0].payload;
-                          const date = new Date(data.date);
-                          const formattedDate = date.toLocaleDateString('pt-BR', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric',
-                            weekday: 'long'
-                          });
+                          let formattedDate = data.date;
+                          if (typeof data.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.date)) {
+                            const [year, month, day] = data.date.split('-').map(Number);
+                            const localDate = new Date(year, month - 1, day);
+                            formattedDate = localDate.toLocaleDateString('pt-BR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                              weekday: 'long'
+                            });
+                          }
                           return (
                             <div className="bg-slate-800 border border-white/10 rounded-lg p-3 shadow-lg">
                               <p className="text-white font-medium">{formattedDate}</p>
