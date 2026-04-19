@@ -1526,7 +1526,7 @@ const AdminDashboard = () => {
                 </ResponsiveContainer>
               </div>
             );
-          )}
+          }
 
           {/* ══════ RANKING TABLE ══════ */}
           {topRecebedores.length > 0 && (
