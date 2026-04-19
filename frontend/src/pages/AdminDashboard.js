@@ -590,14 +590,11 @@ const AdminDashboard = () => {
       let date = null;
       
       if (dateValue) {
-        // Remover hora e manter apenas YYYY-MM-DD
-        const dateStr = typeof dateValue === 'string' ? dateValue : dateValue.toISOString?.() || '';
-        // Extrair apenas os primeiros 10 caracteres (YYYY-MM-DD)
-        date = dateStr.substring(0, 10);
-        
-        // Validar se é formato válido YYYY-MM-DD
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-          date = null;
+        // Parseio como Date para converter UTC para hora local
+        const parsed = new Date(dateValue);
+        if (!isNaN(parsed)) {
+          // Extrair data em hora local (não UTC)
+          date = `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`;
         }
       }
       
