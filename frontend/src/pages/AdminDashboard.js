@@ -16,7 +16,7 @@ import {
   AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell, ReferenceLine,
-  ComposedChart, Line
+  ComposedChart, Line, PieChart, Pie
 } from 'recharts';
 
 /* ─── Paleta ─── */
@@ -408,6 +408,48 @@ const AdminDashboard = () => {
     return { data, summary, risk };
   }, [topContratados]);
 
+  // Indicador de OTD (On-Time Delivery)
+  const otdMetrics = React.useMemo(() => {
+    let onTime = 0, late = 0, total = 0;
+
+    deliveries.forEach(d => {
+      if (!d.dataAgendamento || !d.horarioFimDesova) return;
+      
+      const scheduled = new Date(d.dataAgendamento).getTime();
+      const finished = new Date(d.horarioFimDesova).getTime();
+      
+      if (!isNaN(scheduled) && !isNaN(finished)) {
+        total++;
+        if (finished <= scheduled) {
+          onTime++;
+        } else {
+          late++;
+        }
+      }
+    });
+
+    const otdPercentage = total > 0 ? (onTime / total) * 100 : 0;
+    let classification = '';
+    let color = 'text-green-400';
+    
+    if (otdPercentage >= 90) {
+      classification = 'Excelente';
+      color = 'text-green-400';
+    } else if (otdPercentage >= 75) {
+      classification = 'Atenção';
+      color = 'text-yellow-400';
+    } else {
+      classification = 'Crítico';
+      color = 'text-red-400';
+    }
+
+    const bgColor = otdPercentage >= 90 ? 'from-green-500/[0.10]' : otdPercentage >= 75 ? 'from-yellow-500/[0.10]' : 'from-red-500/[0.10]';
+    const borderColor = otdPercentage >= 90 ? 'border-green-500/30' : otdPercentage >= 75 ? 'border-yellow-500/30' : 'border-red-500/30';
+    const dotColor = otdPercentage >= 90 ? '#10b981' : otdPercentage >= 75 ? '#eab308' : '#ef4444';
+
+    return { onTime, late, total, otdPercentage, classification, color, bgColor, borderColor, dotColor };
+  }, [deliveries]);
+
   const exportPayload = () => ({
     statistics, deliveries, topRecebedores, avgCliByRecebedor,
     recebedorCountData, recebedorAvgData, fmtMin,
@@ -597,13 +639,63 @@ const AdminDashboard = () => {
                 color="amber"
               />
               <KpiCard
-                title="Tempo Médio CLI"
-                value={fmtMin(avgCliOverall)}
-                subtitle="Média chegada → fim desova"
+                title={otdMetrics.total > 0 ? "OTD (On-Time Delivery)" : "OTD"}
+                value={otdMetrics.total > 0 ? `${otdMetrics.otdPercentage.toFixed(1)}%` : '-'}
+                subtitle={otdMetrics.total > 0 ? `${otdMetrics.classification}` : "Sem dados"}
                 icon={FiClock}
-                color="emerald"
-                sparkData={dailyDeliveriesData}
+                color={otdMetrics.otdPercentage >= 90 ? 'green' : otdMetrics.otdPercentage >= 75 ? 'yellow' : 'red'}
+                badge={otdMetrics.total > 0 ? `${otdMetrics.onTime}/${otdMetrics.total}` : ''}
               />
+            </div>
+          )}
+
+          {/* ══════ OTD DETALHADO ══════ */}
+          {otdMetrics.total > 0 && (
+            <div className={`bg-gradient-to-br ${otdMetrics.bgColor} via-white/[0.03] to-transparent backdrop-blur-xl rounded-2xl shadow-xl border ${otdMetrics.borderColor} border-white/[0.08] p-6 hover:shadow-lg transition-all duration-300`}>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                  <ChartHeader
+                    title="Análise de Pontualidade (OTD)"
+                    subtitle="Entregas no prazo vs atrasadas"
+                    dotColor={otdMetrics.dotColor}
+                  />
+                  <div className="grid grid-cols-2 gap-4 mt-4">
+                    <div className="bg-white/[0.05] rounded-lg p-4 border border-green-500/20">
+                      <p className="text-xs text-slate-500 uppercase tracking-wider">No Prazo</p>
+                      <p className="text-2xl font-bold text-green-400 mt-1">{otdMetrics.onTime}</p>
+                      <p className="text-xs text-slate-400 mt-1">{((otdMetrics.onTime / otdMetrics.total) * 100).toFixed(1)}% do total</p>
+                    </div>
+                    <div className="bg-white/[0.05] rounded-lg p-4 border border-red-500/20">
+                      <p className="text-xs text-slate-500 uppercase tracking-wider">Atrasadas</p>
+                      <p className="text-2xl font-bold text-red-400 mt-1">{otdMetrics.late}</p>
+                      <p className="text-xs text-slate-400 mt-1">{((otdMetrics.late / otdMetrics.total) * 100).toFixed(1)}% do total</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height={250}>
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: 'No Prazo', value: otdMetrics.onTime },
+                          { name: 'Atrasadas', value: otdMetrics.late }
+                        ]}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={90}
+                        dataKey="value"
+                        startAngle={90}
+                        endAngle={-270}
+                      >
+                        <Cell fill="#10b981" />
+                        <Cell fill="#ef4444" />
+                      </Pie>
+                      <Tooltip formatter={v => `${v} entregas`} contentStyle={{ background: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
             </div>
           )}
 
