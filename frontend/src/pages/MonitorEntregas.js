@@ -2594,10 +2594,10 @@ const MonitorEntregas = () => {
                           </div>
 
                           <div className="px-1 py-3 flex items-center justify-center min-w-0">
-                            {docsOk ? (
+                            {docsOk || icompanyVerified?.[d._id]?.verified ? (
                               <FaCheckCircle
                                 className="text-emerald-400"
-                                title="Comparação de dados OK"
+                                title={icompanyVerified?.[d._id]?.verified ? "Inconsistências verificadas" : "Comparação de dados OK"}
                                 size={15}
                               />
                             ) : (
