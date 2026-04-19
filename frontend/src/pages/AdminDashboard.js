@@ -590,17 +590,14 @@ const AdminDashboard = () => {
       let date = null;
       
       if (dateValue) {
-        // Se for string ISO (2026-04-20T...), extrair a data direto
-        if (typeof dateValue === 'string' && dateValue.includes('T')) {
-          date = dateValue.split('T')[0]; // Pega YYYY-MM-DD
-        } else if (typeof dateValue === 'string') {
-          date = dateValue; // Já é YYYY-MM-DD
-        } else {
-          // Se for Date, converter para formato local
-          const parsed = new Date(dateValue);
-          if (!isNaN(parsed)) {
-            date = `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`;
-          }
+        // Remover hora e manter apenas YYYY-MM-DD
+        const dateStr = typeof dateValue === 'string' ? dateValue : dateValue.toISOString?.() || '';
+        // Extrair apenas os primeiros 10 caracteres (YYYY-MM-DD)
+        date = dateStr.substring(0, 10);
+        
+        // Validar se é formato válido YYYY-MM-DD
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+          date = null;
         }
       }
       
