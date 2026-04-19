@@ -1139,15 +1139,20 @@ const MonitorEntregas = () => {
       return null;
     };
 
+    let urls = [];
     if (Array.isArray(docData)) {
-      return docData.map(normalizeItem).filter(Boolean);
+      urls = docData.map(normalizeItem).filter(Boolean);
+    } else if (typeof docData === 'object') {
+      urls = [normalizeItem(docData)].filter(Boolean);
     }
 
-    if (typeof docData === 'object') {
-      return [normalizeItem(docData)].filter(Boolean);
-    }
-
-    return [];
+    // Deduplicate by removing identical URLs
+    const seen = new Set();
+    return urls.filter(url => {
+      if (seen.has(url)) return false;
+      seen.add(url);
+      return true;
+    });
   };
 
   const allModalDocsComplete = (d) => {

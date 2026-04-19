@@ -576,6 +576,18 @@ const ProgramadasEntregas = () => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
+    // Validar limite de 2 fotos
+    const currentPhotoCount = photos.length;
+    const maxPhotos = 2;
+    
+    if (currentPhotoCount >= maxPhotos) {
+      setToast({ 
+        message: `Máximo de ${maxPhotos} fotos permitidas. Remova uma para adicionar outra.`, 
+        type: 'warning' 
+      });
+      return;
+    }
+
     const photoPromises = files.map(file =>
       new Promise((resolve) => {
         const reader = new FileReader();
@@ -594,10 +606,14 @@ const ProgramadasEntregas = () => {
 
     if (validPhotos.length > 0) {
       flushSync(() => {
-        setPhotos(prev => [...prev, ...validPhotos.map(data => ({
+        // Limitar para não passar de 2 fotos totais
+        const newPhotos = validPhotos.map(data => ({
           id: Date.now() + Math.random(),
           data
-        }))]);
+        }));
+        const totalPhotos = [...photos, ...newPhotos];
+        const limited = totalPhotos.slice(0, maxPhotos);
+        setPhotos(limited);
       });
       console.log(`[PhotoCapture] Added ${validPhotos.length} photos. Total photos:`, validPhotos.length);
     }
@@ -1358,7 +1374,23 @@ const ProgramadasEntregas = () => {
                 >
                   <FaCamera size={14} /> Adicionar Fotos
                 </button>
-                <input ref={montagemComprovanteRef} type="file" accept="image/*" capture="environment" multiple onChange={e => { const files = Array.from(e.target.files || []); if (files.length > 0) setMontagemComprovas(prev => [...prev, ...files]); }} className="hidden" />
+                <input ref={montagemComprovanteRef} type="file" accept="image/*" capture="environment" multiple onChange={e => { 
+                  const files = Array.from(e.target.files || []); 
+                  if (files.length > 0) {
+                    const maxPhotos = 2;
+                    const currentCount = montagemComprovas.length;
+                    if (currentCount >= maxPhotos) {
+                      setToast({ message: `Máximo de ${maxPhotos} fotos permitidas. Remova uma para adicionar outra.`, type: 'warning' });
+                      return;
+                    }
+                    const remaining = maxPhotos - currentCount;
+                    const limitedFiles = files.slice(0, remaining);
+                    setMontagemComprovas(prev => [...prev, ...limitedFiles]);
+                    if (files.length > remaining) {
+                      setToast({ message: `Apenas ${remaining} foto(s) adicionada(s). Limite de ${maxPhotos} atingido.`, type: 'info' });
+                    }
+                  }
+                }} className="hidden" />
               </div>
 
               {montagemSubmitting && (
