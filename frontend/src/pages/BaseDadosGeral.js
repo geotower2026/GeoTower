@@ -8,6 +8,7 @@ import {
 } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useCity } from '../contexts/CityContext';
+import * as XLSX from 'xlsx';
 import { getProgramacaoDate } from '../utils/programacaoDate';
 import {
   getRecebedorLabel,
@@ -73,6 +74,29 @@ const STATUS_COLOR = {
 const statusBadge = (raw) => {
   const label = formatStatus(raw);
   return STATUS_COLOR[label] ?? 'bg-gray-100 text-gray-700 ring-gray-300';
+};
+
+const formatExcelDate = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (isNaN(date)) return '';
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${day}/${month}/${year} ${hours}:${minutes}`;
+};
+
+const buildExcelColumnWidths = (headers, rows) => {
+  return headers.map((header) => {
+    const maxCellLength = rows.reduce((max, row) => {
+      const value = row[header];
+      const length = value ? String(value).length : 0;
+      return Math.max(max, length);
+    }, header.length);
+    return { wch: Math.min(Math.max(maxCellLength + 2, 12), 32) };
+  });
 };
 
 const getDocumentsStatus = (delivery) => {
@@ -226,6 +250,59 @@ const BaseDadosGeral = () => {
   useEffect(() => { carregarDados(); }, []);
   useEffect(() => { aplicarFiltros(); }, [filters]);
 
+  const exportTableToExcel = (data, cityName) => {
+    if (!data || data.length === 0) {
+      setToast({ message: 'Nenhum registro para exportar', type: 'error' });
+      return;
+    }
+
+    const desovaLabel = getDesovaStepLabel(cityName);
+    const headers = [
+      'Processo',
+      'Recebedor',
+      'Container',
+      'Agendamento',
+      'Contratado',
+      'Motorista',
+      'Status',
+      'Retirada Cheio',
+      'Chegada',
+      `Início ${desovaLabel}`,
+      `Fim ${desovaLabel}`,
+      'Entrega CNTR Porto',
+      'Documentos',
+      'Observações',
+    ];
+
+    const rows = data.map((item) => {
+      const docStatus = getDocumentsStatus(item._entrega);
+      const rawStatus = item._entrega?.status || item.status;
+      return {
+        Processo: item.processo || '',
+        Recebedor: item.recebedor || '',
+        Container: item.container || '',
+        Agendamento: formatExcelDate(getProgramacaoDate(item, cityName)),
+        Contratado: item.contratado || '',
+        Motorista: item.motorista || item._entrega?.driverName || '',
+        Status: formatStatus(rawStatus),
+        'Retirada Cheio': formatExcelDate(item._entrega?.containerMontadoAt),
+        Chegada: formatExcelDate(item._entrega?.horarioChegada || item._entrega?.arrivedAt),
+        [`Início ${desovaLabel}`]: formatExcelDate(item._entrega?.horarioInicioDesova || item._entrega?.desovaStartAt),
+        [`Fim ${desovaLabel}`]: formatExcelDate(item._entrega?.horarioFimDesova || item._entrega?.desovaEndAt),
+        'Entrega CNTR Porto': formatExcelDate(item._entrega?.horarioDevolucaoVazio || item._entrega?.dtDevolucaoCNTR),
+        Documentos: docStatus.label || '',
+        Observações: item._entrega?.observations || '',
+      };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows, { header: headers, defval: '' });
+    ws['!cols'] = buildExcelColumnWidths(headers, rows);
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Base de Dados Geral');
+    XLSX.writeFile(wb, 'base-dados-geral.xlsx');
+  };
+
   /* ── Edit / Save / Delete ── */
   const handleEdit = (item) => {
     setEditingId(item._id);
@@ -371,13 +448,22 @@ const BaseDadosGeral = () => {
           </div>
         </div>
 
-        <button
-          onClick={() => { carregarDados(); setToast({ message: 'Dados recarregados!', type: 'success' }); }}
-          className="flex items-center gap-2 px-4 py-2 bg-violet-500 hover:bg-violet-400 text-white rounded-xl text-sm font-semibold transition shadow-lg shadow-violet-500/30"
-        >
-          <FaSync size={14} />
-          Atualizar
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => { carregarDados(); setToast({ message: 'Dados recarregados!', type: 'success' }); }}
+            className="flex items-center gap-2 px-4 py-2 bg-violet-500 hover:bg-violet-400 text-white rounded-xl text-sm font-semibold transition shadow-lg shadow-violet-500/30"
+          >
+            <FaSync size={14} />
+            Atualizar
+          </button>
+          <button
+            onClick={() => exportTableToExcel(filteredData, city)}
+            className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-sm font-semibold transition border border-white/10"
+          >
+            <FaFileAlt size={14} />
+            Exportar Excel
+          </button>
+        </div>
       </header>
 
       {/* ── STATS ── */}
