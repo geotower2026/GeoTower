@@ -250,6 +250,8 @@ const ProgramadasEntregas = () => {
   const [justification, setJustification] = useState('');
   const [documentsUpload, setDocumentsUpload] = useState({});
   const [documentsJustification, setDocumentsJustification] = useState('');
+  const [arrivalDelayReason, setArrivalDelayReason] = useState('');
+  const [arrivalDelayError, setArrivalDelayError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
@@ -560,6 +562,10 @@ const ProgramadasEntregas = () => {
 
   const goToStep = async (step) => {
     setPhotos([]);
+    if (step === 'arrival') {
+      setArrivalDelayReason('');
+      setArrivalDelayError('');
+    }
     setCurrentStep(step);
     try {
       if (currentDelivery && currentDelivery._id) {
@@ -568,6 +574,33 @@ const ProgramadasEntregas = () => {
         setCurrentDelivery(refreshed.data.delivery);
       }
     } catch (_) {}
+  };
+
+  const handleArrivalConfirm = async () => {
+    const scheduled = currentProgramacao ? getProgramacaoDate(currentProgramacao, city) : null;
+    const isLate = scheduled ? Date.now() > new Date(scheduled).getTime() : false;
+    if (isLate && !arrivalDelayReason.trim()) {
+      setArrivalDelayError('Informe o motivo do atraso para prosseguir');
+      return;
+    }
+
+    let observationsToUpdate = undefined;
+    if (isLate) {
+      const existingObs = currentDelivery?.observations || '';
+      const timestamp = formatarData(new Date(), city);
+      const delayNote = `[${timestamp}] Motivo do atraso na chegada: ${arrivalDelayReason.trim()}`;
+      observationsToUpdate = existingObs ? `${existingObs}\n${delayNote}` : delayNote;
+    }
+
+    await compressAndUpload(
+      'chegadaCliente',
+      'AGUARDANDO_DESOVA',
+      'confirmDesova',
+      {
+        arrivedAt: new Date().toISOString(),
+        ...(observationsToUpdate ? { observations: observationsToUpdate } : {})
+      }
+    );
   };
 
   const removePhoto = (id) => setPhotos(prev => prev.filter(photo => photo.id !== id));
@@ -987,7 +1020,7 @@ const ProgramadasEntregas = () => {
   // ─────────────────────────────────────────────
   //  CAMERA/PHOTO SECTION REUSABLE
   // ─────────────────────────────────────────────
-  const PhotoSection = ({ onConfirm, onBack, buttonLabel = 'Enviar registro', buttonColor = 'bg-emerald-600 hover:bg-emerald-700' }) => (
+  const PhotoSection = ({ onConfirm, onBack, buttonLabel = 'Enviar registro', buttonColor = 'bg-emerald-600 hover:bg-emerald-700', confirmDisabled = false }) => (
     <div className="space-y-4">
       {/* Debug: Photo count */}
       {console.log(`[PhotoSection] Render - photos.length: ${photos.length}`) || null}
@@ -1014,7 +1047,7 @@ const ProgramadasEntregas = () => {
       <div className="flex gap-3">
         <button
           onClick={onConfirm}
-          disabled={submitting || photos.length === 0}
+          disabled={submitting || photos.length === 0 || confirmDisabled}
           className={`flex-1 py-3.5 rounded-xl text-white font-bold text-base shadow-md active:scale-95 transition disabled:opacity-40 disabled:cursor-not-allowed ${buttonColor}`}
         >
           {submitting ? (
@@ -1631,11 +1664,37 @@ const ProgramadasEntregas = () => {
                   </div>
                   <StepTimer start={currentDelivery?.createdAt} label="Tempo em rota" />
                   <p className="text-gray-500 text-sm">Tire uma ou mais fotos do local de entrega</p>
+                  {currentProgramacao && (() => {
+                    const scheduled = getProgramacaoDate(currentProgramacao, city);
+                    const isLate = scheduled ? Date.now() > new Date(scheduled).getTime() : false;
+                    const delayMinutes = scheduled ? Math.max(0, Math.round((Date.now() - new Date(scheduled).getTime()) / 60000)) : 0;
+                    return isLate ? (
+                      <div className="rounded-2xl border border-red-200 bg-red-50 p-4 space-y-3">
+                        <div>
+                          <p className="text-sm font-semibold text-red-800">Chegada atrasada</p>
+                          <p className="text-sm text-red-700">Você está {delayMinutes} minuto{delayMinutes === 1 ? '' : 's'} atrasado em relação ao horário agendado.</p>
+                          <p className="text-sm text-red-600">Informe o motivo do atraso para confirmar a chegada.</p>
+                        </div>
+                        <textarea
+                          value={arrivalDelayReason}
+                          onChange={(e) => {
+                            setArrivalDelayReason(e.target.value);
+                            if (arrivalDelayError) setArrivalDelayError('');
+                          }}
+                          className="w-full rounded-2xl border border-red-200 bg-white p-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-400"
+                          rows={4}
+                          placeholder="Explique o motivo do atraso..."
+                        />
+                        {arrivalDelayError && <p className="text-sm text-red-600">{arrivalDelayError}</p>}
+                      </div>
+                    ) : null;
+                  })()}
                   <PhotoSection
-                    onConfirm={() => compressAndUpload('chegadaCliente', 'AGUARDANDO_DESOVA', 'confirmDesova', { arrivedAt: new Date().toISOString() })}
+                    onConfirm={handleArrivalConfirm}
                     onBack={() => goToStep('welcome')}
                     buttonLabel="✓ Confirmar chegada"
                     buttonColor="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700"
+                    confirmDisabled={currentProgramacao && getProgramacaoDate(currentProgramacao, city) ? Date.now() > new Date(getProgramacaoDate(currentProgramacao, city)).getTime() && !arrivalDelayReason.trim() : false}
                   />
                 </div>
               )}
