@@ -1998,30 +1998,6 @@ const MonitorEntregas = () => {
     })));
     
     return sorted;
-  }, [filteredDeliveries, recentlyUpdated, statsPeriod, city
-          bT,
-          cmp,
-          resultado: cmp > 0 ? 'b primeiro' : 'a primeiro'
-        });
-        return cmp;
-      }
-      
-      // Só uma foi atualizada: coloca no topo
-      if (aT && !bT) return -1;
-      if (!aT && bT) return 1;
-      
-      // Nenhuma foi atualizada: mantém ordem original
-      return 0;
-    });
-    
-    // eslint-disable-next-line no-console
-    console.log('DEBUG sorted displayList:', sorted.map(d => ({
-      id: d._id,
-      processNumber: d.processoCAB,
-      timestamp: recentlyUpdated[d._id]
-    })));
-    
-    return sorted;
   }, [filteredDeliveries, recentlyUpdated, statsPeriod, city]);
 
   useLayoutEffect(() => {
