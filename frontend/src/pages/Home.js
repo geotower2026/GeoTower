@@ -1124,6 +1124,30 @@ const Home = () => {
               </>
             )}
 
+            {/* GeoMar Section: Base de Dados */}
+            {role && role.toLowerCase() === 'geomar' && (
+              <>
+                <SectionHeader
+                  icon={<FaTable style={{ color: '#059669', fontSize: '0.85rem' }} />}
+                  title="Dados"
+                  subtitle="Acesso à base de dados de programações"
+                  delay={60}
+                />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-14">
+                  <ManageCard
+                    onClick={() => navigate('/base-dados-geral')}
+                    accentColor="#059669"
+                    accentDark="#047857"
+                    icon={<FaTable />}
+                    titleIcon={<FaDatabase />}
+                    title="Base de Dados"
+                    description="Visualizar todos os dados das programações em formato de tabela completa."
+                    delay={0}
+                  />
+                </div>
+              </>
+            )}
+
             {/* Status strip */}
             <div
               className="g-fade delay-5 rounded-3xl px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center

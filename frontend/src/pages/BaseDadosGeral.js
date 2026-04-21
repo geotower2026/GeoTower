@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { adminService } from '../services/authService';
+import { useAuth } from '../services/authContext';
 import {
   FaArrowLeft, FaFilter, FaSync, FaTimes,
   FaChevronLeft, FaChevronRight, FaEdit, FaTrash,
@@ -144,7 +145,9 @@ const inputCls =
 const BaseDadosGeral = () => {
   const navigate = useNavigate();
   const { city } = useCity();
+  const { user } = useAuth();
   const tableRef = useRef(null);
+  const isGeomar = user?.role && user.role.toLowerCase() === 'geomar';
 
   const [dados, setDados] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
@@ -589,7 +592,7 @@ const BaseDadosGeral = () => {
                 <thead>
                   <tr className="bg-gradient-to-r from-violet-700 to-violet-800 text-white">
                     {[
-                      'Ações',
+                      ...(!isGeomar ? ['Ações'] : []),
                       'Processo',
                       getRecebedorLabel(city),
                       'Container',
@@ -630,25 +633,27 @@ const BaseDadosGeral = () => {
                           idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/60'
                         }`}
                       >
-                        {/* Ações */}
-                        <td className="px-4 py-3 whitespace-nowrap text-center sticky left-0 bg-white group-hover:bg-violet-50 shadow-[4px_0_8px_rgba(0,0,0,0.05)] z-10">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => handleEdit(item)}
-                              title="Editar"
-                              className="p-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition shadow-sm"
-                            >
-                              <FaEdit size={13} />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(item._id, item)}
-                              title="Excluir"
-                              className="p-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white transition shadow-sm"
-                            >
-                              <FaTrash size={13} />
-                            </button>
-                          </div>
-                        </td>
+                        {/* Ações - Oculto para GeoMar */}
+                        {!isGeomar && (
+                          <td className="px-4 py-3 whitespace-nowrap text-center sticky left-0 bg-white group-hover:bg-violet-50 shadow-[4px_0_8px_rgba(0,0,0,0.05)] z-10">
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                onClick={() => handleEdit(item)}
+                                title="Editar"
+                                className="p-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition shadow-sm"
+                              >
+                                <FaEdit size={13} />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(item._id, item)}
+                                title="Excluir"
+                                className="p-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white transition shadow-sm"
+                              >
+                                <FaTrash size={13} />
+                              </button>
+                            </div>
+                          </td>
+                        )}
                         {/* Processo */}
                         <td className="px-4 py-3 first:pl-6 whitespace-nowrap">
                           <span className="font-semibold text-violet-700 text-xs">{item.processo}</span>
