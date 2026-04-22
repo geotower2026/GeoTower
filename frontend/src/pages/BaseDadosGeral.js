@@ -386,7 +386,7 @@ const BaseDadosGeral = () => {
               <input
                 type="text"
                 placeholder="Buscar…"
-                className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-violet-400"
+                className="w-full px-2 py-1.5 text-sm text-gray-800 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-violet-400 placeholder-gray-400"
                 onClick={(e) => e.stopPropagation()}
               />
             </div>
@@ -399,7 +399,7 @@ const BaseDadosGeral = () => {
                 uniqueValues.map((val, idx) => (
                   <label
                     key={idx}
-                    className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer text-sm"
+                    className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer text-sm text-gray-800"
                   >
                     <input
                       type="checkbox"
@@ -425,7 +425,7 @@ const BaseDadosGeral = () => {
                   });
                   setOpenFilterDropdown(null);
                 }}
-                className="flex-1 px-2 py-1 text-xs bg-white border border-gray-200 rounded hover:bg-gray-100 transition"
+                className="flex-1 px-2 py-1 text-xs text-gray-800 bg-white border border-gray-200 rounded hover:bg-gray-100 transition"
               >
                 Limpar
               </button>
