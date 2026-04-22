@@ -5,7 +5,9 @@ import {
   FaArrowLeft, FaFilter, FaSync, FaTimes,
   FaChevronLeft, FaChevronRight, FaEdit, FaTrash,
   FaDatabase, FaSearch, FaCheckCircle, FaExclamationCircle,
-  FaCalendarAlt, FaTruck, FaBoxOpen, FaFileAlt, FaSave
+  FaCalendarAlt, FaTruck, FaBoxOpen, FaFileAlt, FaSave,
+  FaSort, FaSortUp, FaSortDown, FaFilterCircle, FaCheckSquare,
+  FaSquare, FaTimesCircle
 } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useCity } from '../contexts/CityContext';
@@ -51,6 +53,25 @@ const STATUS_OPTIONS = [
   'ANEXANDO_DOCUMENTOS_FINAIS', 'CANCELADO',
   'CONTAINER_MONTADO', 'A_CAMINHO_DO_CLIENTE',
 ];
+
+/* ─────────────────────────────────────────
+   Column Configuration
+───────────────────────────────────────── */
+const COLUMN_CONFIG = {
+  'Processo': { type: 'text', key: 'processo' },
+  'Recebedor': { type: 'text', key: 'recebedor' },
+  'Container': { type: 'text', key: 'container' },
+  'Agendamento': { type: 'date', key: 'dataAgendamento' },
+  'Contratado': { type: 'text', key: 'contratado' },
+  'Motorista': { type: 'text', key: 'motorista' },
+  'Status': { type: 'status', key: 'status' },
+  'Retirada Cheio': { type: 'date', key: 'containerMontadoAt' },
+  'Chegada': { type: 'date', key: 'horarioChegada' },
+  'Início Desova': { type: 'date', key: 'horarioInicioDesova' },
+  'Fim Desova': { type: 'date', key: 'horarioFimDesova' },
+  'Entrega CNTR Porto': { type: 'date', key: 'horarioDevolucaoVazio' },
+  'Documentos': { type: 'status', key: 'documentos' },
+};
 
 const formatStatus = (status) => {
   if (!status) return '—';
@@ -172,6 +193,11 @@ const BaseDadosGeral = () => {
     status: 'all', motorista: '', contratado: '', searchTerm: '',
   });
 
+  /* Advanced filters and sorting */
+  const [columnFilters, setColumnFilters] = useState({}); // { colName: [value1, value2, ...] }
+  const [sortConfig, setSortConfig] = useState({ column: null, direction: 'asc' }); // asc, desc, null
+  const [openFilterDropdown, setOpenFilterDropdown] = useState(null); // which column's filter is open
+
   /* ── Scroll arrows logic ── */
   const updateScrollButtons = useCallback(() => {
     const el = tableRef.current;
@@ -196,10 +222,61 @@ const BaseDadosGeral = () => {
     tableRef.current?.scrollBy({ left: dir * 320, behavior: 'smooth' });
   };
 
+  /* ── Helper functions ── */
+  const getColumnValue = useCallback((item, colName) => {
+    const desovaStepLabel = getDesovaStepLabel(city);
+    const recebedorLabel = getRecebedorLabel(city);
+    
+    if (colName === 'Processo') return item.processo || '';
+    if (colName === recebedorLabel) return item.recebedor || '';
+    if (colName === 'Container') return item.container || '';
+    if (colName === 'Agendamento') return getProgramacaoDate(item, city) || null;
+    if (colName === 'Contratado') return item.contratado || '';
+    if (colName === 'Motorista') return (item.motorista || item._entrega?.driverName || '').toLowerCase();
+    if (colName === 'Status') return formatStatus(item._entrega?.status || item.status);
+    if (colName === 'Retirada Cheio') return item._entrega?.containerMontadoAt || null;
+    if (colName === 'Chegada') return item._entrega?.horarioChegada || item._entrega?.arrivedAt || null;
+    if (colName === `Início ${desovaStepLabel}`) return item._entrega?.horarioInicioDesova || item._entrega?.desovaStartAt || null;
+    if (colName === `Fim ${desovaStepLabel}`) return item._entrega?.horarioFimDesova || item._entrega?.desovaEndAt || null;
+    if (colName === 'Entrega CNTR Porto') return item._entrega?.horarioDevolucaoVazio || item._entrega?.dtDevolucaoCNTR || null;
+    if (colName === 'Documentos') return getDocumentsStatus(item._entrega).label || '';
+    return '';
+  }, [city]);
+
+  const getUniqueValues = useCallback((colName, items) => {
+    const values = items
+      .map(item => getColumnValue(item, colName))
+      .filter(val => val !== '' && val !== null && val !== undefined && val !== '—');
+    
+    const unique = [...new Set(values)].sort((a, b) => {
+      if (typeof a === 'string') return a.localeCompare(b);
+      return a - b;
+    });
+    return unique;
+  }, [getColumnValue]);
+
+  const compareValues = useCallback((a, b, colName) => {
+    // Handle date columns
+    if (['Agendamento', 'Retirada Cheio', 'Chegada', 'Início Desova', 'Fim Desova', 'Entrega CNTR Porto'].includes(colName)) {
+      const dateA = new Date(a || 0).getTime();
+      const dateB = new Date(b || 0).getTime();
+      return dateA - dateB;
+    }
+    
+    // Handle text/status columns
+    if (typeof a === 'string' && typeof b === 'string') {
+      return a.localeCompare(b);
+    }
+    
+    return 0;
+  }, []);
+
   /* ── Data ── */
   const aplicarFiltros = useCallback(
     (src = dados) => {
       let f = src;
+      
+      // Apply legacy filters
       if (filters.status !== 'all')
         f = f.filter((i) => i._entrega?.status === filters.status || i.status === filters.status);
       if (filters.motorista)
@@ -215,10 +292,155 @@ const BaseDadosGeral = () => {
           (i.recebedor || '').toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
           (i.container || '').toLowerCase().includes(filters.searchTerm.toLowerCase())
         );
+      
+      // Apply advanced column filters
+      Object.entries(columnFilters).forEach(([colName, values]) => {
+        if (values && values.length > 0) {
+          f = f.filter(item => {
+            const itemValue = getColumnValue(item, colName);
+            return values.some(v => {
+              if (typeof itemValue === 'string') {
+                return itemValue.toLowerCase() === String(v).toLowerCase();
+              }
+              return String(itemValue) === String(v);
+            });
+          });
+        }
+      });
+      
+      // Apply sorting
+      if (sortConfig.column && sortConfig.direction) {
+        f = [...f].sort((a, b) => {
+          const valA = getColumnValue(a, sortConfig.column);
+          const valB = getColumnValue(b, sortConfig.column);
+          const cmp = compareValues(valA, valB, sortConfig.column);
+          return sortConfig.direction === 'asc' ? cmp : -cmp;
+        });
+      }
+      
       setFilteredData(f);
     },
-    [dados, filters]
+    [dados, filters, columnFilters, sortConfig, getColumnValue, compareValues]
   );
+
+  const handleSort = useCallback((colName) => {
+    setSortConfig((prev) => {
+      if (prev.column === colName) {
+        // Cycle: asc → desc → null
+        if (prev.direction === 'asc') {
+          return { column: colName, direction: 'desc' };
+        } else if (prev.direction === 'desc') {
+          return { column: null, direction: 'asc' };
+        }
+      }
+      // First click on new column
+      return { column: colName, direction: 'asc' };
+    });
+  }, []);
+
+  const toggleColumnFilter = useCallback((colName, value) => {
+    setColumnFilters((prev) => {
+      const current = prev[colName] || [];
+      const idx = current.findIndex(v => String(v) === String(value));
+      if (idx > -1) {
+        const newValues = current.filter((_, i) => i !== idx);
+        if (newValues.length === 0) {
+          const { [colName]: _, ...rest } = prev;
+          return rest;
+        }
+        return { ...prev, [colName]: newValues };
+      } else {
+        return { ...prev, [colName]: [...current, value] };
+      }
+    });
+  }, []);
+
+  const clearColumnFilters = useCallback(() => {
+    setColumnFilters({});
+  }, []);
+
+  /* Filter Dropdown Component */
+  const FilterDropdown = ({ colName, uniqueValues }) => {
+    const isOpen = openFilterDropdown === colName;
+    const activeFilters = columnFilters[colName] || [];
+    const hasActiveFilter = activeFilters.length > 0;
+
+    return (
+      <div className="relative inline-block">
+        <button
+          onClick={() => setOpenFilterDropdown(isOpen ? null : colName)}
+          className={`p-1 rounded transition flex items-center gap-1 ${
+            hasActiveFilter
+              ? 'text-violet-600 bg-violet-100 hover:bg-violet-200'
+              : 'text-gray-400 hover:text-gray-600'
+          }`}
+          title="Filtrar coluna"
+        >
+          <FaFilter size={12} />
+        </button>
+
+        {isOpen && (
+          <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 w-56 max-h-96 flex flex-col overflow-hidden">
+            {/* Search */}
+            <div className="p-3 border-b border-gray-100">
+              <input
+                type="text"
+                placeholder="Buscar…"
+                className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-violet-400"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+
+            {/* Values */}
+            <div className="overflow-y-auto flex-1">
+              {uniqueValues.length === 0 ? (
+                <div className="p-3 text-sm text-gray-500">Sem valores</div>
+              ) : (
+                uniqueValues.map((val, idx) => (
+                  <label
+                    key={idx}
+                    className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer text-sm"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={activeFilters.some(v => String(v) === String(val))}
+                      onChange={() => toggleColumnFilter(colName, val)}
+                      className="w-4 h-4 cursor-pointer"
+                    />
+                    <span className="flex-1 truncate">
+                      {typeof val === 'string' ? val : new Date(val).toLocaleString('pt-BR')}
+                    </span>
+                  </label>
+                ))
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="border-t border-gray-100 p-2 flex gap-2 bg-gray-50">
+              <button
+                onClick={() => {
+                  setColumnFilters((prev) => {
+                    const { [colName]: _, ...rest } = prev;
+                    return rest;
+                  });
+                  setOpenFilterDropdown(null);
+                }}
+                className="flex-1 px-2 py-1 text-xs bg-white border border-gray-200 rounded hover:bg-gray-100 transition"
+              >
+                Limpar
+              </button>
+              <button
+                onClick={() => setOpenFilterDropdown(null)}
+                className="flex-1 px-2 py-1 text-xs bg-violet-600 text-white rounded hover:bg-violet-700 transition"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const carregarDados = async () => {
     setLoading(true);
@@ -251,7 +473,7 @@ const BaseDadosGeral = () => {
   };
 
   useEffect(() => { carregarDados(); }, []);
-  useEffect(() => { aplicarFiltros(); }, [filters]);
+  useEffect(() => { aplicarFiltros(); }, [filters, columnFilters, sortConfig, aplicarFiltros]);
 
   const exportTableToExcel = (data, cityName) => {
     if (!data || data.length === 0) {
@@ -554,6 +776,27 @@ const BaseDadosGeral = () => {
       <div className="flex-1 px-6 pb-6 flex flex-col min-h-0">
         <div className="relative flex-1 flex flex-col bg-white rounded-2xl shadow-2xl overflow-hidden">
 
+          {/* Advanced Filters Bar */}
+          {Object.keys(columnFilters).length > 0 && (
+            <div className="bg-violet-50 border-b border-violet-200 px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FaFilterCircle size={16} className="text-violet-600" />
+                <span className="text-sm font-semibold text-violet-700">
+                  {Object.keys(columnFilters).reduce((sum, col) => sum + (columnFilters[col]?.length || 0), 0)} filtro(s) ativo(s)
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  setColumnFilters({});
+                  setSortConfig({ column: null, direction: 'asc' });
+                }}
+                className="px-3 py-1 text-xs bg-violet-600 hover:bg-violet-700 text-white rounded transition font-semibold flex items-center gap-1"
+              >
+                <FaTimes size={12} /> Limpar Todos
+              </button>
+            </div>
+          )}
+
           {/* Scroll arrows */}
           {canScrollLeft && (
             <button
@@ -607,18 +850,46 @@ const BaseDadosGeral = () => {
                       'Entrega CNTR Porto',
                       'Documentos',
                       'Observações',
-                    ].map((col, idx) => (
-                      <th
-                        key={col}
-                        className={`px-4 py-3 text-xs font-bold uppercase tracking-wider whitespace-nowrap border-b border-violet-600 ${
-                          col === 'Ações'
-                            ? 'text-center pl-4'
-                            : 'text-left' + (idx === 1 ? ' pl-6' : '')
-                        }`}
-                      >
-                        {col}
-                      </th>
-                    ))}
+                    ].map((col, idx) => {
+                      const isSortable = col !== 'Ações' && col !== 'Observações';
+                      const isCurrentSort = sortConfig.column === col;
+                      const uniqueValues = isSortable && col !== 'Ações' && col !== 'Observações' ? getUniqueValues(col, dados) : [];
+                      
+                      return (
+                        <th
+                          key={col}
+                          className={`px-4 py-3 text-xs font-bold uppercase tracking-wider whitespace-nowrap border-b border-violet-600 ${
+                            col === 'Ações'
+                              ? 'text-center pl-4'
+                              : 'text-left' + (idx === 1 ? ' pl-6' : '')
+                          } ${isSortable ? 'cursor-pointer hover:bg-violet-600 transition' : ''}`}
+                        >
+                          <div className="flex items-center gap-1.5 justify-between">
+                            <span>{col}</span>
+                            {isSortable && (
+                              <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  onClick={() => handleSort(col)}
+                                  className="p-0.5 rounded hover:bg-violet-500 transition"
+                                  title="Ordenar"
+                                >
+                                  {isCurrentSort ? (
+                                    sortConfig.direction === 'asc' ? (
+                                      <FaSortUp size={12} />
+                                    ) : (
+                                      <FaSortDown size={12} />
+                                    )
+                                  ) : (
+                                    <FaSort size={12} className="opacity-60" />
+                                  )}
+                                </button>
+                                <FilterDropdown colName={col} uniqueValues={uniqueValues} />
+                              </div>
+                            )}
+                          </div>
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
 
