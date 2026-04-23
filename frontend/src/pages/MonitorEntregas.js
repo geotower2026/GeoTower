@@ -2039,7 +2039,7 @@ const MonitorEntregas = () => {
     }
 
     return sorted;
-  }, [filteredDeliveries, recentlyUpdated, statsPeriod, city]);
+  }, [filteredDeliveries, sortConfig, recentlyUpdated, statsPeriod, city]);
 
   useLayoutEffect(() => {
     if (!prevPositions.current || Object.keys(prevPositions.current).length === 0) return;
