@@ -798,7 +798,7 @@ const ProgramadasEntregas = () => {
           try {
             const containerNum = currentDelivery?.deliveryNumber || currentDelivery?.containerNumber || 'N/A';
             const motoristaNome = currentDelivery?.driverName || user?.name || 'Desconhecido';
-            console.log('Enviando notificação com:', { containerNum, motoristaNome, currentDelivery });
+            console.log('📬 [ProgramadasEntregas] Enviando notificação com:', { containerNum, motoristaNome, currentDelivery });
             
             await notificationService.createNotification({
               title: 'Solicitação de Agendamento',
@@ -809,17 +809,26 @@ const ProgramadasEntregas = () => {
               driverName: motoristaNome
             });
           } catch (notifError) {
-            console.warn('Erro ao criar notificação:', notifError);
+            console.warn('⚠️ [ProgramadasEntregas] Erro ao criar notificação:', notifError);
             // Não falha a operação principal por causa da notificação
           }
           
           setToast({ message: 'Solicitação enviada ao admin', type: 'success' });
         } catch (_) { setToast({ message: 'Erro ao enviar solicitação', type: 'error' }); }
       }
-      await deliveryService.updateDelivery(currentDelivery._id, { status: 'ANEXANDO_DOCUMENTOS_FINAIS', currentStep: 'finalDocs' });
+      // Atualiza status para proxima etapa (documentos finais)
+      const updated = await deliveryService.updateDelivery(currentDelivery._id, { status: 'ANEXANDO_DOCUMENTOS_FINAIS', currentStep: 'finalDocs' });
+      console.log('✅ [ProgramadasEntregas] Status atualizado para ANEXANDO_DOCUMENTOS_FINAIS');
+      
+      // Atualiza localmente sem refazer fetch total
       if (currentProgramacao) currentProgramacao.status = 'ANEXANDO_DOCUMENTOS_FINAIS';
-      await loadProgramacoes();
+      setCurrentDelivery(updated.data.delivery);
+      
+      // Prossegue para próxima etapa
       goToStep('finalDocs');
+    } catch (err) {
+      console.error('❌ [ProgramadasEntregas] Erro em handleScheduleDecision:', err);
+      setToast({ message: 'Erro ao processar decisão', type: 'error' });
     } finally {
       setScheduleSubmitting(false);
     }
