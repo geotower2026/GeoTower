@@ -497,9 +497,17 @@ const ProgramadasEntregas = () => {
   };
 
   const closeModal = () => {
-    setShowModal(false); setCurrentStep('welcome'); setCurrentDelivery(null); setCurrentProgramacao(null);
-    setPhotos([]); setObservations(''); setJustification(''); setDocumentsUpload({}); setDocumentsJustification('');
-    loadProgramacoes();
+    console.log('🔙 [ProgramadasEntregas] Fechando modal de entrega');
+    setShowModal(false); 
+    setCurrentStep('welcome'); 
+    setCurrentDelivery(null); 
+    setCurrentProgramacao(null);
+    setPhotos([]); 
+    setObservations(''); 
+    setJustification(''); 
+    setDocumentsUpload({}); 
+    setDocumentsJustification('');
+    // Não recarrega lista - polling automático já sincroniza a cada 30s
   };
 
   const handleStartMontagem = async (p) => { setMontagemProgramacao(p); setShowMontagemModal(true); };
@@ -534,8 +542,8 @@ const ProgramadasEntregas = () => {
       }
       try { if (!isPendingCanhoto) await adminService.updateProgramacao(currentProgramacao._id, { status: 'FINALIZADO' }); } catch (_) {}
       setToast({ message: 'Entrega CNTR Porto registrada!', type: 'success' });
-      await loadProgramacoes();
       closeReturnModal();
+      // Polling automático sincroniza lista a cada 30s
     } catch (err) {
       setToast({ message: 'Erro ao fazer Entrega CNTR Porto', type: 'error' });
     } finally {
@@ -589,8 +597,10 @@ const ProgramadasEntregas = () => {
         } catch (_) {}
       }
       setToast({ message: 'Container montado com sucesso!', type: 'success' });
-      setShowMontagemModal(false); setMontagemProgramacao(null); setMontagemComprovas([]);
-      loadProgramacoes();
+      setShowMontagemModal(false); 
+      setMontagemProgramacao(null); 
+      setMontagemComprovas([]);
+      // Polling automático sincroniza lista a cada 30s
     } catch (err) {
       setToast({ message: err?.response?.data?.message || 'Erro ao marcar montagem', type: 'error' });
     } finally {
@@ -741,7 +751,7 @@ const ProgramadasEntregas = () => {
       await deliveryService.uploadDocumentAndUpdate(currentDelivery._id, docKey, compressedFiles, { status, currentStep: nextStep, ...timestamps });
       setUploadProgress(100);
       goToStep(nextStep);
-      loadProgramacoes();
+      // Polling automático (30s) sincroniza lista - não precisa recarregar aqui
     } catch (err) {
       console.error(err);
       setToast({ message: 'Erro ao enviar fotos', type: 'error' });
@@ -876,7 +886,6 @@ const ProgramadasEntregas = () => {
       await deliveryService.updateDelivery(currentDelivery._id, { observations: newObs });
 
       setToast({ message: 'Documentos enviados! Agora faça a Entrega CNTR Porto.', type: 'success' });
-      await loadProgramacoes();
       closeModal();
     } catch (err) {
       setToast({ message: 'Erro ao enviar documentos', type: 'error' });
