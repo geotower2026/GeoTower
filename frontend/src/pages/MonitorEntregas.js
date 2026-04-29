@@ -1447,36 +1447,9 @@ const MonitorEntregas = () => {
         periodDate = today.toLocaleDateString('pt-BR');
       }
 
-      // Carregar programações E entregas, depois fazer merge
-      const [progRes, delivRes] = await Promise.all([
-        adminService.getProgramacoes(statsPeriod, periodDate),
-        adminService.getDeliveries(backendFilters, statsPeriod, periodDate)
-      ]);
-
-      const programacoes = progRes?.data?.programacoes || [];
-      const deliveries = delivRes?.data?.deliveries || [];
-
-      // Criar mapa de programações por número/container
-      const mapProgramacoes = {};
-      programacoes.forEach(prog => {
-        const chaveProc = (prog.processo || '').toUpperCase().trim();
-        const chaveCont = (prog.container || '').toUpperCase().trim();
-        if (chaveProc) mapProgramacoes[chaveProc] = prog;
-        if (chaveCont) mapProgramacoes[chaveCont] = prog;
-      });
-
-      // Enriquecer entregas com dados de programações (especialmente dtColeta)
-      const enrichedDeliveries = deliveries.map(d => {
-        const chaveDeliv = (d.deliveryNumber || '').toUpperCase().trim();
-        const programacao = mapProgramacoes[chaveDeliv];
-        
-        // Se encontrou programação, adiciona dtColeta
-        if (programacao && programacao.dtColeta) {
-          return { ...d, dtColeta: programacao.dtColeta };
-        }
-        return d;
-      });
-
+      // Backend ja devolve entregas e programacoes combinadas.
+      const delivRes = await adminService.getDeliveries(backendFilters, statsPeriod, periodDate);
+      const enrichedDeliveries = delivRes?.data?.deliveries || [];
       const normalized = enrichedDeliveries.map((d) => {
         if (d.status === 'ENTREGUE_COM_PENDENCIA_CANHOTO') d.status = 'FINALIZADO';
         return d;

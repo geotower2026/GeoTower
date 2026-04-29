@@ -38,6 +38,31 @@ function onlyAdmin(req, res, next) {
   next();
 }
 
+const cleanLookupKey = (value) => {
+  if (value === null || value === undefined) return '';
+  return value.toString().replace(/^#/, '').trim().toUpperCase();
+};
+
+const addLookupKey = (set, value) => {
+  const key = cleanLookupKey(value);
+  if (key) set.add(key);
+};
+
+const addRecordToLookupMap = (map, key, record) => {
+  const cleanKey = cleanLookupKey(key);
+  if (!cleanKey) return;
+  if (!map.has(cleanKey)) map.set(cleanKey, []);
+  map.get(cleanKey).push(record);
+};
+
+const getRecordsByLookupKeys = (map, keys) => {
+  for (const key of keys) {
+    const records = map.get(cleanLookupKey(key));
+    if (records && records.length) return records;
+  }
+  return [];
+};
+
 /**
  * GET /api/admin/statistics
  * Retorna estatísticas gerais
@@ -104,7 +129,9 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
         { origem: { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] } }
       ];
     }
-    const programacoes = await ProgramacaoEntrega.find(progFilter);
+    const programacoes = await ProgramacaoEntrega.find(progFilter)
+      .select('processo recebedor container dataAgendamento dtColeta contratado motorista status createdAt observacoes origem')
+      .lean();
     console.log('  ℹ️  Total de programações (' + city + '):', programacoes ? programacoes.length : 0);
 
     // Calcula effectiveDate se period/periodDate fornecidos
@@ -131,7 +158,9 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
 
     // antes de cruzar, carregar dados do Icompany para termos placas (tracao)
     const Icompany = require('../models/Icompany');
-    const icompanyRecords = await Icompany.find({}).lean();
+    const icompanyRecords = await Icompany.find({})
+      .select('geomaritima processo codigo numero NUMERO NÚMERO container containerNumero tracao contratado entradaDistrito dtColeta remetente dtChegadaPlanta dtDevolucaoCNTR dtAgendamentoDescarga destinatario dtRetiraPD dtInicioDescarga dtFimDescarga')
+      .lean();
     const ycByProcess = new Map();  // processo -> [array de registros yc]
     const ycByContainer = new Map(); // container -> [array de registros yc]
     icompanyRecords.forEach(y => {
@@ -174,10 +203,17 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
       }
     });
 
+    const programacoesByContainer = new Map();
+    programacoes.forEach((prog) => {
+      const key = cleanLookupKey(prog.container);
+      if (key && !programacoesByContainer.has(key)) programacoesByContainer.set(key, prog);
+    });
+
+    const deliveryNumbers = new Set();
+    normalizedDeliveries.forEach((delivery) => addLookupKey(deliveryNumbers, delivery.deliveryNumber));
+
     let deliveriesWithProgramacao = normalizedDeliveries.map(delivery => {
-      const prog = programacoes.find(p => 
-        (p.container || '').toUpperCase() === (delivery.deliveryNumber || '').toUpperCase()
-      );
+      const prog = programacoesByContainer.get(cleanLookupKey(delivery.deliveryNumber));
       const keyProc = (delivery.processoCAB || '').toUpperCase();
       const keyCont = (delivery.deliveryNumber || '').toUpperCase();
       const yrecArray = ycByProcess.get(keyProc) || ycByContainer.get(keyCont) || [];
@@ -206,8 +242,8 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
 
     // adicionar programações que não têm entrega correspondente
     programacoes.forEach(prog => {
-      const key = (prog.container || '').toUpperCase();
-      const exists = normalizedDeliveries.find(d => (d.deliveryNumber || '').toUpperCase() === key);
+      const key = cleanLookupKey(prog.container);
+      const exists = deliveryNumbers.has(key);
       if (!exists) {
         // também incluir placaIcompany se existir
         const keyProc = (prog.processo || '').toUpperCase();
@@ -483,52 +519,48 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
       });
     }
 
-    // Consolida arquivos de ambas as pastas
-    const uploadsPath1 = path.join(__dirname, "../uploads");
-    const uploadsPath2 = path.join(__dirname, "../src/uploads");
-    const cities = ['manaus', 'itajai'];
-
     const deliveriesWithFiles = filtered.map(delivery => {
-      const consolidatedFiles = {};
-      [uploadsPath1, uploadsPath2].forEach(uploadsPath => {
-        const deliveryPath = path.join(uploadsPath, delivery.deliveryNumber);
-        if (fs.existsSync(deliveryPath)) {
-          try {
-            const files = fs.readdirSync(deliveryPath);
-            files.forEach(file => { consolidatedFiles[file] = true; });
-          } catch (err) {
-            console.error(`Erro ao listar arquivos em ${deliveryPath}:`, err);
-          }
-        }
-        cities.forEach(city => {
-          const cPath = path.join(uploadsPath, city, delivery.deliveryNumber);
-          if (fs.existsSync(cPath)) {
-            try {
-              const files = fs.readdirSync(cPath);
-              files.forEach(file => { consolidatedFiles[file] = true; });
-            } catch (err) {
-              console.error(`Erro ao listar arquivos em ${cPath}:`, err);
-            }
-          }
-        });
-      });
+      const uploadedFiles = Object.entries(delivery.documents || {})
+        .filter(([, value]) => {
+          if (Array.isArray(value)) return value.length > 0;
+          return !!value;
+        })
+        .map(([key]) => key);
+
       return {
         ...delivery,
-        uploadedFiles: Object.keys(consolidatedFiles),
-        hasFiles: Object.keys(consolidatedFiles).length > 0
+        uploadedFiles,
+        hasFiles: uploadedFiles.length > 0
       };
     });
 
     // NOVO: Carregar dados de controle de protocolos para comparações
     let controleProtocolosData = [];
     try {
-      const { MongoClient } = require("mongodb");
-      const mongoClient = new MongoClient(process.env.MONGODB_URI);
-      await mongoClient.connect();
-      const db = mongoClient.db(process.env.MONGO_DB || "delivery-docs");
-      const collection = db.collection("controle_protocolos");
-      controleProtocolosData = await collection.find({}).toArray();
-      await mongoClient.close();
+      const mongoose = require('mongoose');
+      const controleKeys = new Set();
+      deliveriesWithFiles.forEach((delivery) => {
+        addLookupKey(controleKeys, delivery.processoCAB);
+        addLookupKey(controleKeys, delivery.deliveryNumber);
+        addLookupKey(controleKeys, delivery.processo);
+        addLookupKey(controleKeys, delivery.container);
+      });
+
+      if (controleKeys.size > 0) {
+        const keys = Array.from(controleKeys);
+        controleProtocolosData = await mongoose.connection
+          .collection("controle_protocolos")
+          .find({
+            $or: [
+              { processo: { $in: keys } },
+              { container: { $in: keys } },
+              { destinatario: { $in: keys } },
+              { embarcador: { $in: keys } }
+            ]
+          })
+          .collation({ locale: 'pt', strength: 2 })
+          .toArray();
+      }
       console.log(`📋 Carregados ${controleProtocolosData.length} registros de controle de protocolos`);
     } catch (error) {
       console.error('Erro ao carregar controle de protocolos:', error);
@@ -570,25 +602,23 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
         && da.getDate() === db.getDate();
     };
 
+    const controleProtocolosByAny = new Map();
+    controleProtocolosData.forEach((record) => {
+      ['processo', 'container', 'destinatario', 'embarcador'].forEach((key) => {
+        addRecordToLookupMap(controleProtocolosByAny, record[key], record);
+      });
+    });
+
     const findControleProtocolosRecord = (delivery) => {
       if (!delivery || !controleProtocolosData.length) return null;
 
-      const getClean = (value) => {
-        if (value === null || value === undefined) return '';
-        return value.toString().replace(/^#/, '').trim().toUpperCase();
-      };
-
-      const target = getClean(delivery.processoCAB || delivery.deliveryNumber || delivery.processo || delivery.container || '');
-      if (!target) return null;
-
-      const lookupKeys = ['processo', 'container', 'destinatario', 'embarcador'];
-
-      return controleProtocolosData.find((record) => {
-        return lookupKeys.some((key) => {
-          const val = getClean(record[key]);
-          return val && val === target;
-        });
-      }) || null;
+      const records = getRecordsByLookupKeys(controleProtocolosByAny, [
+        delivery.processoCAB,
+        delivery.deliveryNumber,
+        delivery.processo,
+        delivery.container
+      ]);
+      return records[0] || null;
     };
 
     const getControleProtocolosMismatchCount = (delivery) => {
