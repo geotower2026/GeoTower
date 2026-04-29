@@ -14,7 +14,9 @@
     "dev:frontend": "cd frontend && npm start",
     "build:frontend": "cd frontend && npm install && npm run build",
     "start": "node start.js",
-    "clean": "node scripts/clean.js"
+    "clean": "node scripts/clean.js",
+    "import:icompany": "node backend/scripts/importEmailExcel.js --once",
+    "import:icompany:dry": "node backend/scripts/importEmailExcel.js --dry-run"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

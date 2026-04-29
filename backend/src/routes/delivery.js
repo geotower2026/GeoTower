@@ -1,5 +1,23 @@
-const express = require("express");
+﻿const express = require("express");
 const router = express.Router();
+
+const applyProgramacaoCityFilter = (filter, city) => {
+  if (city === 'manaus') {
+    filter.$or = [
+      { estab: 'LAM' },
+      { estab: { $exists: false }, origem: { $in: ['MANAUS', 'MANAUS - COELTA BALY'] } },
+      { estab: '', origem: { $in: ['MANAUS', 'MANAUS - COELTA BALY'] } },
+    ];
+  } else if (city === 'itajai') {
+    filter.$or = [
+      { estab: 'LSC' },
+      { estab: { $exists: false }, origem: { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] } },
+      { estab: '', origem: { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] } },
+      { origem: 'ITAJAI' },
+    ];
+  }
+  return filter;
+};
 const auth = require("../middleware/auth");
 const multer = require("multer");
 const path = require("path");
@@ -13,18 +31,18 @@ const { updateDeliveryAtomic, updateDeliveryStatus } = require("../utils/deliver
 const useS3 = !!process.env.S3_BUCKET;
 let upload;
 if (useS3) {
-  console.log('✓ S3 configured: using memoryStorage for multer');
+  console.log('âœ“ S3 configured: using memoryStorage for multer');
   upload = multer({ storage: multer.memoryStorage() });
 } else {
   const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-      // Dinâmico por cidade
+      // DinÃ¢mico por cidade
       const dir = path.join(__dirname, "../uploads", req.city || 'manaus');
       fs.mkdirSync(dir, { recursive: true });
       cb(null, dir);
     },
     filename: (req, file, cb) => {
-      // Garantir nome temporário único para evitar sobrescrita de uploads múltiplos
+      // Garantir nome temporÃ¡rio Ãºnico para evitar sobrescrita de uploads mÃºltiplos
       const ext = path.extname(file.originalname) || '.jpg';
       const uniqueFilename = `${Date.now()}_${Math.round(Math.random() * 1e9)}${ext}`;
       cb(null, uniqueFilename);
@@ -88,10 +106,10 @@ router.post("/", auth, async (req, res) => {
     const city = req.city || 'manaus';
     const { deliveryNumber, vehiclePlate, observations, driverName, containerMontadoAt, status } = req.body;
 
-    console.log('📦 Recebido no backend:', { deliveryNumber, vehiclePlate, observations, driverName, containerMontadoAt, status, city });
+    console.log('ðŸ“¦ Recebido no backend:', { deliveryNumber, vehiclePlate, observations, driverName, containerMontadoAt, status, city });
 
     if (!deliveryNumber) {
-      return res.status(400).json({ message: "Número da entrega obrigatório" });
+      return res.status(400).json({ message: "NÃºmero da entrega obrigatÃ³rio" });
     }
 
     const driver = await db.findById("drivers", req.user.id);
@@ -114,7 +132,7 @@ router.post("/", auth, async (req, res) => {
     // Attempt to update matching programacao to indicate it is now em rota
     try {
       const ProgramacaoEntrega = require('../models/ProgramacaoEntrega');
-      // Filtrar pelo origem também para garantir que é da mesma cidade
+      // Filtrar pelo origem tambÃ©m para garantir que Ã© da mesma cidade
       let progFilter = {
         $or: [
           { processo: new RegExp(`^${deliveryNumber}$`, 'i') },
@@ -129,9 +147,9 @@ router.post("/", auth, async (req, res) => {
       }
       const prog = await ProgramacaoEntrega.findOne(progFilter);
       if (prog) {
-        // Se status foi definido (ex: CONTAINER_MONTADO), usa esse, senão usa EM_ROTA
+        // Se status foi definido (ex: CONTAINER_MONTADO), usa esse, senÃ£o usa EM_ROTA
         prog.status = status === 'CONTAINER_MONTADO' ? 'CONTAINER_MONTADO' : 'EM_ROTA';
-        // gravar referência para futuras consultas
+        // gravar referÃªncia para futuras consultas
         prog.linkedDeliveryId = delivery._id;
         await prog.save();
         console.log('[DELIVERY] Programacao', prog._id, 'status atualizado para', prog.status);
@@ -140,10 +158,10 @@ router.post("/", auth, async (req, res) => {
       console.warn('[DELIVERY] Falha ao sincronizar programacao:', syncErr.message || syncErr);
     }
 
-    // DESABILITADO: Sincronização com Icompany foi removida
+    // DESABILITADO: SincronizaÃ§Ã£o com Icompany foi removida
     // try {
     //   const Icompany = require('../models/Icompany');
-    //   // Sincronização desabilitada por requisito do usuário
+    //   // SincronizaÃ§Ã£o desabilitada por requisito do usuÃ¡rio
     // } catch (syncErr) {
     //   console.warn('[DELIVERY] erro sync Icompany:', syncErr.message || syncErr);
     // }
@@ -159,16 +177,16 @@ router.post("/", auth, async (req, res) => {
 // Minhas entregas
 // GET /api/deliveries
 // =======================
-// ✅ OTIMIZADO: Usa deliveryService com .lean() e índices
+// âœ… OTIMIZADO: Usa deliveryService com .lean() e Ã­ndices
 router.get("/", auth, async (req, res) => {
   try {
     const Delivery = require('../models/Delivery');
     const { status, q, page = 1, limit = 50 } = req.query;
     const city = req.city || 'manaus';
     
-    console.log(`⚡ GET /api/deliveries [OTIMIZADO] user=${req.user.id} city=${city} status=${status || 'all'} search=${q || 'none'}`);
+    console.log(`âš¡ GET /api/deliveries [OTIMIZADO] user=${req.user.id} city=${city} status=${status || 'all'} search=${q || 'none'}`);
     
-    // Construir filtro otimizado - excluir canceladas por padrão
+    // Construir filtro otimizado - excluir canceladas por padrÃ£o
     const includeCanceled = req.query.includeCanceled === 'true' || req.query.includeCanceled === true;
     const filter = { userId: req.user.id, cityCode: city };
     if (!includeCanceled) {
@@ -189,7 +207,7 @@ router.get("/", auth, async (req, res) => {
       ];
     }
     
-    // Query otimizada com .lean() + índices existentes
+    // Query otimizada com .lean() + Ã­ndices existentes
     const skip = (parseInt(page) - 1) * Math.min(parseInt(limit), 100);
     const take = Math.min(parseInt(limit), 100);
     
@@ -199,9 +217,9 @@ router.get("/", auth, async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(take)
-      .lean();  // 60% mais rápido
+      .lean();  // 60% mais rÃ¡pido
     
-    console.log(`✓ Found ${deliveries.length} deliveries (total: ${total})`);
+    console.log(`âœ“ Found ${deliveries.length} deliveries (total: ${total})`);
     
     res.json({ 
       success: true,
@@ -223,8 +241,8 @@ router.get("/:id", auth, async (req, res) => {
     const db = await getDb(req);
     const city = req.city || 'manaus';
     const delivery = await db.findById("deliveries", req.params.id);
-    if (!delivery) return res.status(404).json({ message: "Entrega não encontrada" });
-    // Verificar se pertence à cidade do usuário
+    if (!delivery) return res.status(404).json({ message: "Entrega nÃ£o encontrada" });
+    // Verificar se pertence Ã  cidade do usuÃ¡rio
     if (delivery.cityCode !== city) {
       return res.status(403).json({ message: 'Acesso negado - dados de outra cidade' });
     }
@@ -240,7 +258,7 @@ router.get("/:id", auth, async (req, res) => {
 });
 
 // =======================
-// Atualizar entrega (motorista só pode alterar a própria)
+// Atualizar entrega (motorista sÃ³ pode alterar a prÃ³pria)
 // PUT /api/deliveries/:id
 // fields: status, arrivedAt, observations (other safe ones)
 // =======================
@@ -250,8 +268,8 @@ router.put("/:id", auth, async (req, res) => {
     const city = req.city || 'manaus';
     const { id } = req.params;
     const delivery = await db.findById("deliveries", id);
-    if (!delivery) return res.status(404).json({ message: "Entrega não encontrada" });
-    // Verificar se pertence à cidade do usuário
+    if (!delivery) return res.status(404).json({ message: "Entrega nÃ£o encontrada" });
+    // Verificar se pertence Ã  cidade do usuÃ¡rio
     if (delivery.cityCode !== city) {
       return res.status(403).json({ message: 'Acesso negado - dados de outra cidade' });
     }
@@ -259,11 +277,11 @@ router.put("/:id", auth, async (req, res) => {
       return res.status(403).json({ message: 'Acesso negado' });
     }
 
-    // Validação: verificar se o novo status requer documentos obrigatórios
+    // ValidaÃ§Ã£o: verificar se o novo status requer documentos obrigatÃ³rios
     if (req.body.status) {
       const statusDocumentRequirements = {
         'A_CAMINHO_DO_CLIENTE': ['retiradaCheio']
-        // 'FINALIZADO' não exige devolucaoVazio aqui, pois este campo só aparece depois dessa etapa
+        // 'FINALIZADO' nÃ£o exige devolucaoVazio aqui, pois este campo sÃ³ aparece depois dessa etapa
       };
       const requiredDocs = statusDocumentRequirements[req.body.status];
       if (requiredDocs) {
@@ -271,7 +289,7 @@ router.put("/:id", auth, async (req, res) => {
           const docs = delivery.documents || {};
           const docEntry = docs[doc];
           if (!docEntry) {
-            return res.status(400).json({ message: `Documento obrigatório não encontrado para avançar status: ${doc}` });
+            return res.status(400).json({ message: `Documento obrigatÃ³rio nÃ£o encontrado para avanÃ§ar status: ${doc}` });
           }
           // Se for array, verificar se tem itens
           let parsed;
@@ -285,7 +303,7 @@ router.put("/:id", auth, async (req, res) => {
             parsed = docEntry;
           }
           if (!Array.isArray(parsed) || parsed.length === 0) {
-            return res.status(400).json({ message: `Documento obrigatório não encontrado para avançar status: ${doc}` });
+            return res.status(400).json({ message: `Documento obrigatÃ³rio nÃ£o encontrado para avanÃ§ar status: ${doc}` });
           }
         }
       }
@@ -294,18 +312,18 @@ router.put("/:id", auth, async (req, res) => {
     // Preparar updates
     const updates = {};
 
-    // Se há mudança de status, usar função especializada com validação de ordem
+    // Se hÃ¡ mudanÃ§a de status, usar funÃ§Ã£o especializada com validaÃ§Ã£o de ordem
     if (req.body.status) {
-      // Verificar se motorista está tentando fazer retrocesso
+      // Verificar se motorista estÃ¡ tentando fazer retrocesso
       const { STATUS_ORDER } = require("../utils/deliveryConcurrency");
       const currentLevel = STATUS_ORDER[delivery.status] || 0;
       const newLevel = STATUS_ORDER[req.body.status] || 0;
       
       if (newLevel < currentLevel && req.body.status !== 'CANCELADO') {
-        return res.status(403).json({ message: 'Motorista não pode fazer retrocesso de status. Apenas ADM/GERENTE podem.' });
+        return res.status(403).json({ message: 'Motorista nÃ£o pode fazer retrocesso de status. Apenas ADM/GERENTE podem.' });
       }
 
-      // Usar updateDeliveryStatus para mudança de status (com validação de ordem)
+      // Usar updateDeliveryStatus para mudanÃ§a de status (com validaÃ§Ã£o de ordem)
       const statusUpdates = {};
       if (req.body.arrivedAt !== undefined) statusUpdates.arrivedAt = req.body.arrivedAt;
       if (req.body.containerMontadoAt !== undefined) statusUpdates.containerMontadoAt = req.body.containerMontadoAt ? new Date(req.body.containerMontadoAt) : null;
@@ -322,7 +340,7 @@ router.put("/:id", auth, async (req, res) => {
       return res.json({ delivery: normalizeDeliveryForResponse(updated) });
     }
 
-    // Para updates sem mudança de status, usar updateDeliveryAtomic
+    // Para updates sem mudanÃ§a de status, usar updateDeliveryAtomic
     if (req.body.arrivedAt !== undefined) updates.arrivedAt = req.body.arrivedAt;
     if (req.body.containerMontadoAt !== undefined) updates.containerMontadoAt = req.body.containerMontadoAt ? new Date(req.body.containerMontadoAt) : null;
     if (req.body.currentStep !== undefined) updates.currentStep = req.body.currentStep;
@@ -332,7 +350,7 @@ router.put("/:id", auth, async (req, res) => {
     if (req.body.desovaEndAt !== undefined) updates.desovaEndAt = req.body.desovaEndAt;
     if (req.body.recebedor !== undefined) updates.recebedor = req.body.recebedor;
 
-    // Se programacaoId for fornecido, guardar (será usado para atualizar depois)
+    // Se programacaoId for fornecido, guardar (serÃ¡ usado para atualizar depois)
     const programacaoIdFromBody = req.body.programacaoId;
     if (programacaoIdFromBody !== undefined) updates.programacaoId = programacaoIdFromBody;
 
@@ -344,22 +362,22 @@ router.put("/:id", auth, async (req, res) => {
 
     const updated = await updateDeliveryAtomic(delivery._id, updates);
 
-    // Se houver horário de devolução vazio agora (seja de antes ou desta chamada),
-    // marca containerReturned na programação vinculada
+    // Se houver horÃ¡rio de devoluÃ§Ã£o vazio agora (seja de antes ou desta chamada),
+    // marca containerReturned na programaÃ§Ã£o vinculada
     const shouldMarkReturned = updated.horarioDevolucaoVazio;
     const programacaoToUpdate = programacaoIdFromBody || updated.programacaoId;
     
     if (shouldMarkReturned && programacaoToUpdate) {
       try {
         const ProgramacaoEntrega = require("../models/ProgramacaoEntrega");
-        console.log(`[CONTAINER_RETURN] Marcando containerReturned=true na programação ${programacaoToUpdate}`);
+        console.log(`[CONTAINER_RETURN] Marcando containerReturned=true na programaÃ§Ã£o ${programacaoToUpdate}`);
         await ProgramacaoEntrega.findByIdAndUpdate(programacaoToUpdate, {
           containerReturned: true,
           status: 'FINALIZADO'
         });
-        console.log(`[CONTAINER_RETURN] ✅ Programação ${programacaoToUpdate} atualizada`);
+        console.log(`[CONTAINER_RETURN] âœ… ProgramaÃ§Ã£o ${programacaoToUpdate} atualizada`);
       } catch (e) {
-        console.error('[CONTAINER_RETURN] Erro ao atualizar programação:', e.message);
+        console.error('[CONTAINER_RETURN] Erro ao atualizar programaÃ§Ã£o:', e.message);
       }
     }
 
@@ -371,23 +389,23 @@ router.put("/:id", auth, async (req, res) => {
 });
 
 // =======================
-// Programações vinculadas ao contratado do usuário
+// ProgramaÃ§Ãµes vinculadas ao contratado do usuÃ¡rio
 // GET /api/programacoes/mine
-// Retorna programações pendentes vinculadas ao contratado do usuário autenticado
+// Retorna programaÃ§Ãµes pendentes vinculadas ao contratado do usuÃ¡rio autenticado
 // =======================
 router.get('/programacoes/mine', auth, async (req, res) => {
   try {
-    console.log('[PROGRAMACAO] 🚀 OTIMIZADO - Buscando programações do usuário:', req.user.id);
+    console.log('[PROGRAMACAO] ðŸš€ OTIMIZADO - Buscando programaÃ§Ãµes do usuÃ¡rio:', req.user.id);
     const ProgramacaoEntrega = require('../models/ProgramacaoEntrega');
     const Delivery = require('../models/Delivery');
 
-    // Obter contratado do usuário
+    // Obter contratado do usuÃ¡rio
     const db = await getDb(req);
     let driverRecord = null;
     try {
       driverRecord = await db.findById('drivers', req.user.id);
     } catch (e) {
-      console.warn('[PROGRAMACAO] Aviso: falha ao buscar registro do usuário:', e?.message);
+      console.warn('[PROGRAMACAO] Aviso: falha ao buscar registro do usuÃ¡rio:', e?.message);
     }
 
     const contratadoRaw = (driverRecord && (driverRecord.contratado || driverRecord.transportadora || driverRecord.name || driverRecord.fullName)) || (req.user?.transportadora || req.user?.contratado) || '';
@@ -400,29 +418,20 @@ router.get('/programacoes/mine', auth, async (req, res) => {
     const city = req.city || 'manaus';
     const regex = new RegExp(`^${contratado}$`, 'i');
     
-    // Filtro de cidade
     let cityFilter = {};
-    if (city === 'manaus') {
-      cityFilter.origem = { $in: ['MANAUS', 'MANAUS - COELTA BALY'] };
-    } else if (city === 'itajai') {
-      cityFilter.$or = [
-        { origem: { $exists: false } },
-        { origem: '' },
-        { origem: { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] } }
-      ];
-    }
+    applyProgramacaoCityFilter(cityFilter, city);
     
-    // ✅ OTIMIZADO: Query com índices compostos
+    // âœ… OTIMIZADO: Query com Ã­ndices compostos
     const programacoes = await ProgramacaoEntrega.find({
       ...cityFilter,
       contratado: regex,
       ativo: { $ne: false }
-    }).sort({ dataAgendamento: -1 }).lean();  // .lean() = 60% mais rápido
+    }).sort({ dataAgendamento: -1 }).lean();  // .lean() = 60% mais rÃ¡pido
     
-    console.log(`[PROGRAMACAO] ✓ Encontradas ${programacoes.length} programações para ${contratado}`);
+    console.log(`[PROGRAMACAO] âœ“ Encontradas ${programacoes.length} programaÃ§Ãµes para ${contratado}`);
 
-    // ✅ OTIMIZADO: Ao invés de carregar TODAS as entregas em memória,
-    // usar apenas as linkedDeliveryId necessárias
+    // âœ… OTIMIZADO: Ao invÃ©s de carregar TODAS as entregas em memÃ³ria,
+    // usar apenas as linkedDeliveryId necessÃ¡rias
     const linkedIds = (programacoes || [])
       .map(p => p.linkedDeliveryId)
       .filter(Boolean);
@@ -435,7 +444,7 @@ router.get('/programacoes/mine', auth, async (req, res) => {
       });
     }
     
-    // Se ainda precisar fazer lookup por número/processo, fazer em batch
+    // Se ainda precisar fazer lookup por nÃºmero/processo, fazer em batch
     const toMatch = programacoes.filter(p => !p.linkedDeliveryId);
     const matchedNumbers = toMatch.map(p => ({
       $or: [
@@ -454,7 +463,7 @@ router.get('/programacoes/mine', auth, async (req, res) => {
       if (key) deliveriesByNumber.set(key, d);
     });
 
-    // Enriquecer programações
+    // Enriquecer programaÃ§Ãµes
     const enrichedProgramacoes = (programacoes || []).map((p) => {
       const obj = { ...p };
       
@@ -481,12 +490,12 @@ router.get('/programacoes/mine', auth, async (req, res) => {
     return res.json({ success: true, programacoes: enrichedProgramacoes || [] });
   } catch (err) {
     console.error('[PROGRAMACAO] Erro:', err.message);
-    return res.status(500).json({ message: 'Erro ao listar programações', error: err.message });
+    return res.status(500).json({ message: 'Erro ao listar programaÃ§Ãµes', error: err.message });
   }
 });
 
 // =======================
-// Upload documento (aceita múltiplos arquivos)
+// Upload documento (aceita mÃºltiplos arquivos)
 // POST /api/deliveries/:id/documents/:type
 // =======================
 router.post("/:id/documents/:type", auth, upload.array("file"), async (req, res) => {
@@ -498,11 +507,11 @@ router.post("/:id/documents/:type", auth, upload.array("file"), async (req, res)
     const db = await getDb(req);
     const delivery = await db.findById("deliveries", id);
     if (!delivery) {
-      console.error(`[UPLOAD] Entrega não encontrada: ${id}`);
-      return res.status(404).json({ message: "Entrega não encontrada" });
+      console.error(`[UPLOAD] Entrega nÃ£o encontrada: ${id}`);
+      return res.status(404).json({ message: "Entrega nÃ£o encontrada" });
     }
     
-    // Validação de cidade
+    // ValidaÃ§Ã£o de cidade
     if (delivery.cityCode !== city) {
       return res.status(403).json({ message: 'Acesso negado - dados de outra cidade' });
     }
@@ -553,10 +562,10 @@ router.post("/:id/documents/:type", auth, upload.array("file"), async (req, res)
           const r2Key = `uploads/${delivery.deliveryNumber}/${finalFilename}`;
           const r2Url = await r2Storage.uploadBuffer(fileBuffer, r2Key, file.mimetype);
           fileEntry = { name: finalFilename, url: r2Url, storage: 'r2', key: r2Key };
-          console.log(`[UPLOAD] ✓ R2 OK: ${finalFilename} (URL: ${r2Url})`);
+          console.log(`[UPLOAD] âœ“ R2 OK: ${finalFilename} (URL: ${r2Url})`);
         } catch (err) {
-          console.warn(`[UPLOAD] ⚠️ R2 FALHOU:`, err && err.message ? err.message : err);
-          console.warn(`[UPLOAD] ⚠️ Fazendo fallback para armazenamento local...`);
+          console.warn(`[UPLOAD] âš ï¸ R2 FALHOU:`, err && err.message ? err.message : err);
+          console.warn(`[UPLOAD] âš ï¸ Fazendo fallback para armazenamento local...`);
         }
         
         // If R2 failed, use local storage as fallback
@@ -566,9 +575,9 @@ router.post("/:id/documents/:type", auth, upload.array("file"), async (req, res)
             const fileBuffer = file.buffer || fs.readFileSync(file.path);
             fs.writeFileSync(dest, fileBuffer);
             fileEntry = { name: finalFilename, path: path.join(city, containerFolder, finalFilename), storage: 'local' };
-            console.log(`[UPLOAD] ✓ Arquivo salvo LOCALMENTE (fallback): ${finalFilename}`);
+            console.log(`[UPLOAD] âœ“ Arquivo salvo LOCALMENTE (fallback): ${finalFilename}`);
           } catch (err) {
-            console.error(`[UPLOAD] ✗ Local save falhou:`, err && err.message ? err.message : err);
+            console.error(`[UPLOAD] âœ— Local save falhou:`, err && err.message ? err.message : err);
             continue; // skip this file
           }
         }
@@ -576,7 +585,7 @@ router.post("/:id/documents/:type", auth, upload.array("file"), async (req, res)
         // Add the entry (either R2 or local)
         if (fileEntry) {
           savedFiles.push(fileEntry);
-          console.log(`[UPLOAD] ✅ Arquivo ${idx + 1} adicionado. Total: ${savedFiles.length}`);
+          console.log(`[UPLOAD] âœ… Arquivo ${idx + 1} adicionado. Total: ${savedFiles.length}`);
         }
       }
       
@@ -588,7 +597,7 @@ router.post("/:id/documents/:type", auth, upload.array("file"), async (req, res)
 
       if (req.files.length > 0 && savedFiles.length === 0) {
         console.error('[UPLOAD] Nenhum arquivo foi salvo durante upload. Aborting.');
-        return res.status(500).json({ message: 'Erro ao fazer upload: nenhum arquivo salvo (verifique configuração de R2 ou armazenamento local)' });
+        return res.status(500).json({ message: 'Erro ao fazer upload: nenhum arquivo salvo (verifique configuraÃ§Ã£o de R2 ou armazenamento local)' });
       }
 
       // Combine existing docs and newly saved files
@@ -633,13 +642,13 @@ router.post("/:id/documents/:type", auth, upload.array("file"), async (req, res)
       const updated = await db.findById("deliveries", id);
       if (updated.missingDocumentsAtSubmit && Array.isArray(updated.missingDocumentsAtSubmit) && updated.missingDocumentsAtSubmit.includes(type)) {
         const newMissing = updated.missingDocumentsAtSubmit.filter(d => d !== type);
-        console.log(`[UPLOAD] Removendo "${type}" de missingDocumentsAtSubmit. Pendências restantes:`, newMissing);
+        console.log(`[UPLOAD] Removendo "${type}" de missingDocumentsAtSubmit. PendÃªncias restantes:`, newMissing);
         
-        // Também limpar o log de correção para este documento específico
+        // TambÃ©m limpar o log de correÃ§Ã£o para este documento especÃ­fico
         let newCorrectionLog = updated.documentCorrectionLog || [];
         if (Array.isArray(newCorrectionLog)) {
           newCorrectionLog = newCorrectionLog.filter(log => log.documentType !== type);
-          console.log(`[UPLOAD] Limpando log de correção para "${type}". Logs restantes:`, newCorrectionLog.length);
+          console.log(`[UPLOAD] Limpando log de correÃ§Ã£o para "${type}". Logs restantes:`, newCorrectionLog.length);
         }
         
         await db.updateOne("deliveries", { _id: id }, { missingDocumentsAtSubmit: newMissing, documentCorrectionLog: newCorrectionLog });
@@ -670,11 +679,11 @@ router.post("/:id/upload-and-update", auth, upload.array("file"), async (req, re
     const db = await getDb(req);
     const delivery = await db.findById("deliveries", id);
     if (!delivery) {
-      console.error(`[UPLOAD-UPDATE] Entrega não encontrada: ${id}`);
-      return res.status(404).json({ message: "Entrega não encontrada" });
+      console.error(`[UPLOAD-UPDATE] Entrega nÃ£o encontrada: ${id}`);
+      return res.status(404).json({ message: "Entrega nÃ£o encontrada" });
     }
     
-    // Validação de cidade
+    // ValidaÃ§Ã£o de cidade
     if (delivery.cityCode !== city) {
       return res.status(403).json({ message: 'Acesso negado - dados de outra cidade' });
     }
@@ -730,18 +739,18 @@ router.post("/:id/upload-and-update", auth, upload.array("file"), async (req, re
           const r2Key = `uploads/${delivery.deliveryNumber}/${finalFilename}`;
           const r2Url = await r2Storage.uploadBuffer(fileBuffer, r2Key, file.mimetype);
           fileEntry = { name: finalFilename, url: r2Url, storage: 'r2', key: r2Key };
-          console.log(`[UPLOAD-UPDATE] ✓ R2 OK: ${finalFilename} (URL: ${r2Url})`);
+          console.log(`[UPLOAD-UPDATE] âœ“ R2 OK: ${finalFilename} (URL: ${r2Url})`);
         } catch (err) {
-          console.warn(`[UPLOAD-UPDATE] ⚠️ R2 FALHOU:`, err && err.message ? err.message : err);
+          console.warn(`[UPLOAD-UPDATE] âš ï¸ R2 FALHOU:`, err && err.message ? err.message : err);
           // Fallback to local
           try {
             const dest = path.join(containerDir, finalFilename);
             const fileBuffer = file.buffer || fs.readFileSync(file.path);
             fs.writeFileSync(dest, fileBuffer);
             fileEntry = { name: finalFilename, path: path.join(city, containerFolder, finalFilename), storage: 'local' };
-            console.log(`[UPLOAD-UPDATE] ✓ Arquivo salvo LOCALMENTE: ${finalFilename}`);
+            console.log(`[UPLOAD-UPDATE] âœ“ Arquivo salvo LOCALMENTE: ${finalFilename}`);
           } catch (err) {
-            console.error(`[UPLOAD-UPDATE] ✗ Local save falhou:`, err && err.message ? err.message : err);
+            console.error(`[UPLOAD-UPDATE] âœ— Local save falhou:`, err && err.message ? err.message : err);
             continue;
           }
         }
@@ -805,7 +814,7 @@ router.post("/:id/upload-and-update", auth, upload.array("file"), async (req, re
       // Now, update the delivery with documents and status
       const updates = { documents: normalizedDocs };
       if (status) {
-        // Se há mudança de status, usar função especializada
+        // Se hÃ¡ mudanÃ§a de status, usar funÃ§Ã£o especializada
         const statusUpdates = { documents: normalizedDocs };
         for (const [field, value] of Object.entries(safeUpdates)) {
           statusUpdates[field] = value;
@@ -813,7 +822,7 @@ router.post("/:id/upload-and-update", auth, upload.array("file"), async (req, re
         const updated = await updateDeliveryStatus(delivery._id, status, statusUpdates);
         return res.json({ delivery: normalizeDeliveryForResponse(updated) });
       } else {
-        // Sem mudança de status, usar update atômico
+        // Sem mudanÃ§a de status, usar update atÃ´mico
         for (const [field, value] of Object.entries(safeUpdates)) {
           updates[field] = value;
         }
@@ -831,7 +840,7 @@ router.post("/:id/upload-and-update", auth, upload.array("file"), async (req, re
 });
 
 // =======================
-// Deletar um documento específico por índice
+// Deletar um documento especÃ­fico por Ã­ndice
 // DELETE /api/deliveries/:id/documents/:type/:index
 // =======================
 router.delete('/:id/documents/:type/:index', auth, async (req, res) => {
@@ -840,9 +849,9 @@ router.delete('/:id/documents/:type/:index', auth, async (req, res) => {
     const city = req.city || 'manaus';
     const db = await getDb(req);
     const delivery = await db.findById('deliveries', id);
-    if (!delivery) return res.status(404).json({ message: 'Entrega não encontrada' });
+    if (!delivery) return res.status(404).json({ message: 'Entrega nÃ£o encontrada' });
     
-    // Validação de cidade
+    // ValidaÃ§Ã£o de cidade
     if (delivery.cityCode !== city) {
       return res.status(403).json({ message: 'Acesso negado - dados de outra cidade' });
     }
@@ -850,11 +859,11 @@ router.delete('/:id/documents/:type/:index', auth, async (req, res) => {
     const docs = delivery.documents || {};
     const docEntry = docs[type];
 
-    if (!docEntry) return res.status(404).json({ message: 'Documento não encontrado' });
+    if (!docEntry) return res.status(404).json({ message: 'Documento nÃ£o encontrado' });
 
     const idx = parseInt(index, 10);
 
-    // Se for string simples, só remove
+    // Se for string simples, sÃ³ remove
     if (!Array.isArray(docEntry)) {
       const entry = docEntry;
       // If S3 URL, attempt to delete by key
@@ -876,7 +885,7 @@ router.delete('/:id/documents/:type/:index', auth, async (req, res) => {
       docs[type] = null;
       await db.updateOne('deliveries', { _id: id }, { documents: docs });
 
-      // Restaurar na lista de pendências se era faltante
+      // Restaurar na lista de pendÃªncias se era faltante
       const updated = await db.findById('deliveries', id);
       if (updated.missingDocumentsAtSubmit && Array.isArray(updated.missingDocumentsAtSubmit)) {
         if (!updated.missingDocumentsAtSubmit.includes(type)) {
@@ -890,8 +899,8 @@ router.delete('/:id/documents/:type/:index', auth, async (req, res) => {
       return res.json({ delivery: finalUpdated });
     }
 
-    // Array: remove índice
-    if (idx < 0 || idx >= docEntry.length) return res.status(400).json({ message: 'Índice inválido' });
+    // Array: remove Ã­ndice
+    if (idx < 0 || idx >= docEntry.length) return res.status(400).json({ message: 'Ãndice invÃ¡lido' });
 
     const removed = docEntry.splice(idx, 1)[0];
 
@@ -912,7 +921,7 @@ router.delete('/:id/documents/:type/:index', auth, async (req, res) => {
     docs[type] = docEntry.length ? docEntry : null;
     await db.updateOne('deliveries', { _id: id }, { documents: docs });
 
-    // Se deletou e ficou vazio, restaurar na lista de pendências se a entrega foi forçada (Itajaí)
+    // Se deletou e ficou vazio, restaurar na lista de pendÃªncias se a entrega foi forÃ§ada (ItajaÃ­)
     const updated = await db.findById('deliveries', id);
     if (!docs[type] && updated.missingDocumentsAtSubmit && Array.isArray(updated.missingDocumentsAtSubmit)) {
       if (!updated.missingDocumentsAtSubmit.includes(type)) {
@@ -938,12 +947,12 @@ router.post("/:id/submit", auth, async (req, res) => {
   try {
     const city = req.city || 'manaus';
     const db = await getDb(req);
-    console.log('📩 Submit request', { id: req.params.id, body: req.body, cidade: city, headers: { 'x-city': req.header('x-city'), host: req.headers.host } });
+    console.log('ðŸ“© Submit request', { id: req.params.id, body: req.body, cidade: city, headers: { 'x-city': req.header('x-city'), host: req.headers.host } });
 
     const delivery = await db.findById('deliveries', req.params.id);
-    if (!delivery) return res.status(404).json({ message: 'Entrega não encontrada' });
+    if (!delivery) return res.status(404).json({ message: 'Entrega nÃ£o encontrada' });
     
-    // Validação de cidade
+    // ValidaÃ§Ã£o de cidade
     if (delivery.cityCode !== city) {
       return res.status(403).json({ message: 'Acesso negado - dados de outra cidade' });
     }
@@ -956,7 +965,7 @@ router.post("/:id/submit", auth, async (req, res) => {
 
     // Check if already submitted
     if (delivery.status === 'submitted') {
-      return res.status(400).json({ success: false, message: 'Entrega já foi enviada' });
+      return res.status(400).json({ success: false, message: 'Entrega jÃ¡ foi enviada' });
     }
 
     // Helper to determine if a document field has any files
@@ -980,7 +989,7 @@ router.post("/:id/submit", auth, async (req, res) => {
     };
 
     // Determine required docs for city
-    // devolucaoVazio é opcional nesta etapa (feito separadamente)
+    // devolucaoVazio Ã© opcional nesta etapa (feito separadamente)
     const requiredDocs = ['canhotNF', 'canhotCTE', 'diarioBordo', 'retiradaCheio'];
 
     const missingDocs = requiredDocs.filter(doc => !docHasFiles(delivery.documents && delivery.documents[doc]));
@@ -989,17 +998,17 @@ router.post("/:id/submit", auth, async (req, res) => {
     console.log('  -> missingDocs:', missingDocs, 'force:', force, 'observation:', observation);
 
     if (missingDocs.length > 0) {
-      // Manaus ainda exige força/observação para docs faltantes
+      // Manaus ainda exige forÃ§a/observaÃ§Ã£o para docs faltantes
       if (city !== 'itajai') {
         if (!force) {
-          return res.status(400).json({ message: 'Documentos obrigatórios faltando: ' + missingDocs.join(', ') });
+          return res.status(400).json({ message: 'Documentos obrigatÃ³rios faltando: ' + missingDocs.join(', ') });
         }
         if (!observation || !String(observation || '').trim()) {
-          return res.status(400).json({ message: 'Observação obrigatória para finalizar com documentos faltando' });
+          return res.status(400).json({ message: 'ObservaÃ§Ã£o obrigatÃ³ria para finalizar com documentos faltando' });
         }
       }
 
-      // For Itajaí aceita, mas registra pendência para o fluxo de canhotos pendentes
+      // For ItajaÃ­ aceita, mas registra pendÃªncia para o fluxo de canhotos pendentes
       const updates = {
         status: 'submitted',
         submittedAt: new Date(),
@@ -1009,24 +1018,24 @@ router.post("/:id/submit", auth, async (req, res) => {
       };
       await db.updateOne('deliveries', { _id: req.params.id }, updates);
 
-      // Criar notificação para gestores/administradores sobre canhotos retidos
+      // Criar notificaÃ§Ã£o para gestores/administradores sobre canhotos retidos
       try {
         await NotificationService.notifyCanhotoRetido(
           req.params.id,
           delivery.deliveryNumber || 'N/A',
-          observation || 'Documentos obrigatórios não anexados',
+          observation || 'Documentos obrigatÃ³rios nÃ£o anexados',
           city
         );
       } catch (notifError) {
-        console.warn('Erro ao criar notificação de canhoto retido:', notifError);
-        // Não falha a operação principal por causa da notificação
+        console.warn('Erro ao criar notificaÃ§Ã£o de canhoto retido:', notifError);
+        // NÃ£o falha a operaÃ§Ã£o principal por causa da notificaÃ§Ã£o
       }
 
       const deliveryAfterUpdate = await db.findById('deliveries', req.params.id);
-      return res.json({ message: 'Entrega enviada com sucesso (com pendências)', delivery: deliveryAfterUpdate });
+      return res.json({ message: 'Entrega enviada com sucesso (com pendÃªncias)', delivery: deliveryAfterUpdate });
     }
 
-    // No missing docs, mark as submitted and limpar pendências
+    // No missing docs, mark as submitted and limpar pendÃªncias
     await db.updateOne('deliveries', { _id: req.params.id }, { status: 'submitted', submittedAt: new Date(), missingDocumentsAtSubmit: [] });
     const deliveryAfterUpdate = await db.findById('deliveries', req.params.id);
     return res.json({ success: true, message: 'Entrega enviada com sucesso', delivery: deliveryAfterUpdate });
@@ -1047,14 +1056,14 @@ router.delete("/:id", auth, async (req, res) => {
     const city = req.city || 'manaus';
     const db = req.mockdb;
     const delivery = await db.findById("deliveries", req.params.id);
-    if (!delivery) return res.status(404).json({ message: "Entrega não encontrada" });
+    if (!delivery) return res.status(404).json({ message: "Entrega nÃ£o encontrada" });
     
-    // Validação de cidade
+    // ValidaÃ§Ã£o de cidade
     if (delivery.cityCode !== city) {
       return res.status(403).json({ message: 'Acesso negado - dados de outra cidade' });
     }
 
-    // NOVO: Se gestor_contratado, validar se é do seu contratado
+    // NOVO: Se gestor_contratado, validar se Ã© do seu contratado
     if (req.user && req.user.role === 'gestor_contratado' && req.user.contratado) {
       if (delivery.userName !== req.user.contratado) {
         return res.status(403).json({ message: 'Acesso negado - entrega de outro contratado' });
@@ -1062,18 +1071,18 @@ router.delete("/:id", auth, async (req, res) => {
     }
 
     if (delivery.status !== "pending") {
-      return res.status(400).json({ message: "Entrega enviada não pode ser deletada" });
+      return res.status(400).json({ message: "Entrega enviada nÃ£o pode ser deletada" });
     }
 
     // Remove associated files from disk/S3
     try {
       const removed = await deleteDeliveryFiles(delivery);
-      console.log('🗑️ Removed files for delivery', req.params.id, removed);
+      console.log('ðŸ—‘ï¸ Removed files for delivery', req.params.id, removed);
     } catch (err) {
-      console.warn('⚠️ Error while removing delivery files:', err.message || err);
+      console.warn('âš ï¸ Error while removing delivery files:', err.message || err);
     }
 
-    // CASCADE DELETE: Clear link from programação if exists
+    // CASCADE DELETE: Clear link from programaÃ§Ã£o if exists
     try {
       const ProgramacaoEntrega = require("../models/ProgramacaoEntrega");
       if (delivery.linkedProgramacaoId) {
@@ -1081,10 +1090,10 @@ router.delete("/:id", auth, async (req, res) => {
           delivery.linkedProgramacaoId,
           { linkedDeliveryId: null }
         );
-        console.log('🗑️ Cleared programação link for driver delivery', req.params.id);
+        console.log('ðŸ—‘ï¸ Cleared programaÃ§Ã£o link for driver delivery', req.params.id);
       }
     } catch (cascadeErr) {
-      console.warn('⚠️ Cascade cleanup error (driver delete):', cascadeErr.message);
+      console.warn('âš ï¸ Cascade cleanup error (driver delete):', cascadeErr.message);
     }
 
     await db.deleteOne("deliveries", { _id: req.params.id });
@@ -1096,26 +1105,26 @@ router.delete("/:id", auth, async (req, res) => {
 });
 
 // =======================
-// VERIFICAÇÃO DE ARQUIVOS (Arquivos Verificados / Icompany)
+// VERIFICAÃ‡ÃƒO DE ARQUIVOS (Arquivos Verificados / Icompany)
 // =======================
 
-// GET - Buscar status de verificação de uma entrega
+// GET - Buscar status de verificaÃ§Ã£o de uma entrega
 // GET /api/deliveries/:id/verification
 router.get("/:id/verification", auth, async (req, res) => {
   try {
     const city = req.city || 'manaus';
     const { id } = req.params;
 
-    // Importar modelo de verificação
+    // Importar modelo de verificaÃ§Ã£o
     const DeliveryVerification = require('../models/DeliveryVerification');
 
-    // Buscar status de verificação
+    // Buscar status de verificaÃ§Ã£o
     const verification = await DeliveryVerification.findOne({
       deliveryId: id,
       cityCode: city
     });
 
-    // Retornar null se não existir, ou o status se existir
+    // Retornar null se nÃ£o existir, ou o status se existir
     const result = verification ? {
       verified: verification.verified,
       verifiedBy: verification.verifiedBy,
@@ -1125,8 +1134,8 @@ router.get("/:id/verification", auth, async (req, res) => {
 
     res.json({ success: true, verification: result });
   } catch (err) {
-    console.error('❌ Erro ao buscar verificação:', err);
-    res.status(500).json({ success: false, message: 'Erro ao buscar verificação' });
+    console.error('âŒ Erro ao buscar verificaÃ§Ã£o:', err);
+    res.status(500).json({ success: false, message: 'Erro ao buscar verificaÃ§Ã£o' });
   }
 });
 
@@ -1137,7 +1146,7 @@ router.post("/:id/verification", auth, async (req, res) => {
     const city = req.city || 'manaus';
     const { id } = req.params;
     const { verified, notes } = req.body;
-    const userName = req.user?.name || req.user?.fullName || req.user?.username || 'Usuário Desconhecido';
+    const userName = req.user?.name || req.user?.fullName || req.user?.username || 'UsuÃ¡rio Desconhecido';
 
     const DeliveryVerification = require('../models/DeliveryVerification');
     const Delivery = require('../models/Delivery');
@@ -1145,15 +1154,15 @@ router.post("/:id/verification", auth, async (req, res) => {
     // Validar que a entrega existe
     const delivery = await Delivery.findById(id);
     if (!delivery) {
-      return res.status(404).json({ success: false, message: 'Entrega não encontrada' });
+      return res.status(404).json({ success: false, message: 'Entrega nÃ£o encontrada' });
     }
 
-    // Validar que é da mesma cidade
+    // Validar que Ã© da mesma cidade
     if (delivery.cityCode !== city) {
       return res.status(403).json({ success: false, message: 'Aceso negado - dados de outra cidade' });
     }
 
-    // Atualizar ou criar verificação
+    // Atualizar ou criar verificaÃ§Ã£o
     const verification = await DeliveryVerification.findOneAndUpdate(
       { deliveryId: id, cityCode: city },
       {
@@ -1168,7 +1177,7 @@ router.post("/:id/verification", auth, async (req, res) => {
       { upsert: true, new: true }
     );
 
-    console.log(`✅ Entrega ${delivery.deliveryNumber} marcada como ${verified ? 'verificada' : 'não verificada'} por ${userName}`);
+    console.log(`âœ… Entrega ${delivery.deliveryNumber} marcada como ${verified ? 'verificada' : 'nÃ£o verificada'} por ${userName}`);
 
     res.json({
       success: true,
@@ -1181,17 +1190,17 @@ router.post("/:id/verification", auth, async (req, res) => {
       }
     });
   } catch (err) {
-    console.error('❌ Erro ao atualizar verificação:', err);
-    res.status(500).json({ success: false, message: 'Erro ao atualizar verificação' });
+    console.error('âŒ Erro ao atualizar verificaÃ§Ã£o:', err);
+    res.status(500).json({ success: false, message: 'Erro ao atualizar verificaÃ§Ã£o' });
   }
 });
 
-// GET - Listar todas as verificações por cidade (para sincronização em massa)
+// GET - Listar todas as verificaÃ§Ãµes por cidade (para sincronizaÃ§Ã£o em massa)
 // GET /api/deliveries/verifications/list
 router.get("/verifications/list", auth, async (req, res) => {
   try {
     const city = req.city || 'manaus';
-    const { verified } = req.query; // filter por verified status se necessário
+    const { verified } = req.query; // filter por verified status se necessÃ¡rio
 
     const DeliveryVerification = require('../models/DeliveryVerification');
 
@@ -1217,8 +1226,8 @@ router.get("/verifications/list", auth, async (req, res) => {
 
     res.json({ success: true, data: verificationMap, count: verifications.length });
   } catch (err) {
-    console.error('❌ Erro ao listar verificações:', err);
-    res.status(500).json({ success: false, message: 'Erro ao listar verificações' });
+    console.error('âŒ Erro ao listar verificaÃ§Ãµes:', err);
+    res.status(500).json({ success: false, message: 'Erro ao listar verificaÃ§Ãµes' });
   }
 });
 

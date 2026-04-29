@@ -1,13 +1,39 @@
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-require("dotenv").config();
+require("dotenv").config({ path: require("path").join(__dirname, "../../.env") });
 
 const XLSX = require("xlsx");
 const { MongoClient } = require("mongodb");
 const fs = require("fs");
 
-const EXCEL_PATH = "C:/Icompany/IcompanyErpGeoLogisticaNuvem/data/ic_uldPx00200.xls";
+const EXCEL_PATH =
+  process.env.ICOMPANY_EXCEL_PATH ||
+  "C:/Icompany/IcompanyErpGeoLogisticaNuvem/data/ic_uldConsulta_PX90016.xls";
 
-// ---------- helpers ----------
+const DB_NAME = process.env.MONGO_DB || "delivery-docs";
+const COLLECTION_NAME = process.env.MONGO_COLLECTION || "icompany";
+const DEFAULT_CITY = process.env.ICOMPANY_DEFAULT_CITY || "manaus";
+const DEFAULT_ORIGEM = process.env.ICOMPANY_DEFAULT_ORIGEM || "MANAUS";
+const DEFAULT_UF = process.env.ICOMPANY_DEFAULT_UF || "AM";
+const WATCH_INTERVAL_MS = Number(process.env.ICOMPANY_WATCH_INTERVAL_MS || 5000);
+
+const DRY_RUN = process.argv.includes("--dry-run");
+const RUN_ONCE = process.argv.includes("--once") || DRY_RUN;
+
+function firstValue(row, keys) {
+  for (const key of keys) {
+    const value = row[key];
+    if (value !== null && value !== undefined && String(value).trim() !== "") {
+      return value;
+    }
+  }
+  return null;
+}
+
+function normalizeText(value) {
+  if (value === null || value === undefined) return null;
+  const text = String(value).trim();
+  return text === "" ? null : text;
+}
 
 function formatDateLocal(date) {
   const year = date.getFullYear();
@@ -47,7 +73,6 @@ function parseBrazilianDateTimeString(value) {
   if (!value || typeof value !== "string") return null;
 
   const text = value.trim();
-
   const match = text.match(
     /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
   );
@@ -55,253 +80,290 @@ function parseBrazilianDateTimeString(value) {
   if (!match) return null;
 
   const [, dd, mm, yyyy, hh = "00", mi = "00", ss = "00"] = match;
-
-  return new Date(yyyy, mm - 1, dd, hh, mi, ss);
+  return new Date(yyyy, Number(mm) - 1, dd, hh, mi, ss);
 }
 
 function toLocalDateTimeString(value) {
   if (value === null || value === undefined || value === "") return null;
 
-  if (value instanceof Date && !isNaN(value.getTime())) {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
     return formatDateLocal(value);
   }
 
   if (typeof value === "number" && !Number.isNaN(value)) {
-    const d = excelSerialToDate(value);
-    if (!isNaN(d.getTime())) return formatDateLocal(d);
+    const date = excelSerialToDate(value);
+    if (!Number.isNaN(date.getTime())) return formatDateLocal(date);
   }
 
   if (typeof value === "string") {
     const brDate = parseBrazilianDateTimeString(value);
-    if (brDate) return formatDateLocal(brDate);
+    if (brDate && !Number.isNaN(brDate.getTime())) return formatDateLocal(brDate);
 
-    const d = new Date(value);
-    if (!isNaN(d.getTime())) return formatDateLocal(d);
+    const date = new Date(value);
+    if (!Number.isNaN(date.getTime())) return formatDateLocal(date);
   }
 
   return null;
 }
 
+function toNumber(value) {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "number") return value;
+
+  const text = String(value).trim();
+  if (!text) return null;
+
+  const normalized = text.includes(",") && text.includes(".")
+    ? text.replace(/,/g, "")
+    : text.replace(",", ".");
+
+  const number = Number(normalized);
+  return Number.isNaN(number) ? null : number;
+}
+
 function cleanRow(row) {
   const out = {};
-  for (const [k, v] of Object.entries(row)) {
-    if (!k || String(k).startsWith("Unnamed")) continue;
-    out[String(k).trim()] = typeof v === "string" ? v.trim() : v;
+  for (const [key, value] of Object.entries(row)) {
+    const cleanKey = String(key || "").trim();
+    if (!cleanKey || cleanKey.startsWith("Unnamed")) continue;
+    out[cleanKey] = typeof value === "string" ? value.trim() : value;
   }
   return out;
 }
 
-function isEmpty(v) {
-  return v === null || v === undefined || (typeof v === "string" && v.trim() === "");
+function hasValue(value) {
+  return value !== null && value !== undefined && String(value).trim() !== "";
 }
 
-// ---------- FILTRO DE DATA ----------
+function getCityFromEstab(estab) {
+  const value = normalizeText(estab)?.toUpperCase();
 
-// 🔥 EDITA AQUI AS DATAS
-const DATA_INICIO_FILTRO = new Date("2026-04-01 00:00:00");
-const DATA_FIM_FILTRO = new Date("2026-04-30 23:59:59");
+  if (value === "LAM") {
+    return { city: "manaus", origem: "MANAUS", destino: "MANAUS", uf: "AM" };
+  }
 
-function dentroDoPeriodo(dateStr) {
-  if (!dateStr) return false;
-
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return false;
-
-  return d >= DATA_INICIO_FILTRO && d <= DATA_FIM_FILTRO;
-}
-
-// ---------- MAP ----------
-
-function mapToEntrega(row) {
-  const dtRetiraPDVal = toLocalDateTimeString(row["Dt. retirada P.D."] ?? row["Dt. Retirada porto"]);
-  const dtColetaVal = toLocalDateTimeString(row["Dt. coleta"] ?? row["Data agendamento"] ?? row["Data Agendamento"]);
-  const dtChegadaVal = toLocalDateTimeString(row["Dt. chegada planta"] ?? row["Dt. chegada cliente"]);
-  const dtEntradaVal = toLocalDateTimeString(
-    row["Dt. entrada planta"] ??
-    row["Dt. devolução CNTR"] ??
-    row["Dt. devolução container"] ??
-    row["Dt devolução container"]
-  );
+  if (value === "LSC") {
+    return { city: "itajai", origem: "ITAJAI", destino: "ITAJAI", uf: "SC" };
+  }
 
   return {
-    codigo: row["Código"] ?? null,
-    processo: row["N° GeoMaritima"] ?? row["Nº GeoMaritima"] ?? row["Processo"] ?? null,
-
-    "Dt. Retirada porto": toLocalDateTimeString(row["Dt. retirada porto"]),
-    "Dt. entrada": toLocalDateTimeString(row["Dt. entrada"]),
-
-    dtInicio: toLocalDateTimeString(row["Dt. início"]),
-    situacao: row["Situação"] ?? null,
-    cliente: row["Cliente"] ?? null,
-    remetente: row["Remetente"] ?? null,
-    destinatario: row["Destinatário"] ?? null,
-    contratado: row["Contratado"] ?? null,
-    tipo: row["Tipo"] ?? null,
-    dtSM: toLocalDateTimeString(row["Dt. SM"]),
-    motorista: row["Motorista"] ?? null,
-    tracao: row["Tração"] ?? null,
-    reboque: row["Reboque"] ?? null,
-    origem: row["Origem"] ?? null,
-    ufColeta: row["UF coleta"] ?? null,
-    destino: row["Destino"] ?? null,
-    ufEntrega: row["UF entrega"] ?? null,
-    pagamento: row["Pagamento"] ?? null,
-    vlFreteProcesso: row["Vl. frete processo"] ?? null,
-    vlPedagio: row["Vl. pedágio"] ?? null,
-    vlFreteLista: row["Vl. frete lista"] ?? null,
-    vlAbastecimento: row["Vl. abastecimento"] ?? null,
-    dtAgendamentoDescarga: toLocalDateTimeString(row["Dt. agendamento descarga"]),
-    dtChegada: toLocalDateTimeString(row["Dt. chegada"]),
-    dtInicioDescarga: toLocalDateTimeString(row["Dt.Início Descarga"]),
-    hrInicioDescarga: row["Hr.Inicio Descarga"] ?? null,
-    dtFimDescarga: toLocalDateTimeString(row["Dt. fim descarga"]),
-    isValidDtInicioDescarga: !isEmpty(row["Dt.Início Descarga"]) ? "V" : "X",
-    isValidDtFimDescarga: !isEmpty(row["Dt. fim descarga"]) ? "V" : "X",
-    dtColeta: dtColetaVal,
-    dtChegadaPlanta: dtChegadaVal,
-    dtInicioCarregamento: toLocalDateTimeString(row["Dt início carregamento"]),
-    dtFimCarregamento: toLocalDateTimeString(row["Dt fim carregamento"]),
-    dtSaidaPlanta: toLocalDateTimeString(row["Dt saida planta"]),
-    dtEntradaPlanta: dtEntradaVal,
-    containerNumero: row["Número"] ?? null,
-    tara: row["Tara"] ?? null,
-    lacre: row["Lacre"] ?? null,
-    payload: row["Payload"] ?? null,
-    temperatura: row["Temperatura (C°)"] ?? null,
-    nCTe: row["N° CT-e/NFS-e"] ?? null,
-    nMDFE: row["N° MDFE"] ?? null,
-    situacaoMDFE: row["Situação MDFE"] ?? null,
-    dtRetiraPD: dtRetiraPDVal,
-    dtDevolucaoCNTR: dtEntradaVal,
-    isValidDtRetiraPD: dtRetiraPDVal ? "V" : "X",
-    isValidDtDevolucaoCNTR: dtEntradaVal ? "V" : "X",
+    city: DEFAULT_CITY,
+    origem: DEFAULT_ORIGEM,
+    destino: DEFAULT_ORIGEM,
+    uf: DEFAULT_UF,
   };
 }
 
-// ---------- MAIN ----------
+function mapToIcompany(row) {
+  const codigo = normalizeText(firstValue(row, ["Codigo do processo", "Código do processo", "Codigo", "Código"]));
+  const processo = normalizeText(firstValue(row, [
+    "Cod. processo integracao",
+    "Cód. processo integração",
+    "N° GeoMaritima",
+    "Nº GeoMaritima",
+    "N° GeoMarítima",
+    "Processo",
+    "Nr. do processo",
+  ]));
+  const nrProcesso = normalizeText(firstValue(row, ["Nr. do processo"]));
+  const container = normalizeText(firstValue(row, ["Nº Container", "Numero", "Número", "Container"]));
+  const estab = normalizeText(firstValue(row, ["Estab."]));
+  const cityInfo = getCityFromEstab(estab);
 
-let importando = false;
+  const dtRetiraPD = toLocalDateTimeString(firstValue(row, [
+    "Dt. retirada P.D.",
+    "Dt. retirada CNTR vazio",
+    "Dt. Retirada porto",
+  ]));
+  const dtInicioDescarga = toLocalDateTimeString(firstValue(row, [
+    "Dt. inicio descarga",
+    "Dt. início descarga",
+    "Dt.Início Descarga",
+    "Dt. Início Descarga",
+  ]));
+  const dtFimDescarga = toLocalDateTimeString(firstValue(row, ["Dt. fim descarga", "Dt. Fim Descarga"]));
+  const dtDevolucaoCNTR = toLocalDateTimeString(firstValue(row, [
+    "Dt. devolução CNTR",
+    "Dt. devolucao CNTR",
+    "Dt Entrega CNTR Porto",
+  ]));
 
-async function importarExcel(origem = "manual/startup") {
-  if (importando) {
-    console.log("⏳ Importação já em andamento, ignorando novo disparo...");
-    return;
+  return {
+    codigo,
+    processo,
+    geomaritima: processo,
+    nrProcesso,
+    estab,
+    sentido: normalizeText(firstValue(row, ["Sentido"])),
+    dtInicio: toLocalDateTimeString(firstValue(row, ["Dt. criado", "Dt. início", "Dt. Inicio"])),
+    situacao: normalizeText(firstValue(row, ["Situação", "Situacao"])),
+    status: normalizeText(firstValue(row, ["Status", "Situação", "Situacao"])) || "AGENDADO",
+    cliente: normalizeText(firstValue(row, ["Cliente"])),
+    remetente: normalizeText(firstValue(row, ["Remetente"])),
+    destinatario: normalizeText(firstValue(row, ["Destinatário", "Destinatario"])),
+    contratado: normalizeText(firstValue(row, ["Contratado"])),
+    tipo: normalizeText(firstValue(row, ["Tipo frota", "Tipo"])),
+    motorista: normalizeText(firstValue(row, ["Motorista"])),
+    tracao: normalizeText(firstValue(row, ["Placa tracao", "Placa tração", "Tração", "Tracao"])),
+    reboque: normalizeText(firstValue(row, ["Reboque"])),
+    origem: normalizeText(firstValue(row, ["Origem"])) || cityInfo.origem,
+    ufColeta: normalizeText(firstValue(row, ["UF coleta"])) || cityInfo.uf,
+    destino: normalizeText(firstValue(row, ["Destino"])) || cityInfo.destino,
+    ufEntrega: normalizeText(firstValue(row, ["UF entrega"])) || cityInfo.uf,
+    dtColeta: toLocalDateTimeString(firstValue(row, ["Dt. coleta", "Data agendamento", "Data Agendamento"])),
+    dtChegadaPlanta: toLocalDateTimeString(firstValue(row, ["Dt. chegada planta", "Dt. chegada cliente"])),
+    dtRetiradaCNTRVazio: toLocalDateTimeString(firstValue(row, ["Dt. retirada CNTR vazio"])),
+    dtInicioCarregamento: toLocalDateTimeString(firstValue(row, ["Dt. início carregamento", "Dt. inicio carregamento"])),
+    dtFimCarregamento: toLocalDateTimeString(firstValue(row, ["Dt. fim carregamento"])),
+    dtSaidaPlanta: toLocalDateTimeString(firstValue(row, ["Dt. saída planta", "Dt. saida planta"])),
+    dtFimAgendamento: toLocalDateTimeString(firstValue(row, ["Dt. fim agendamento"])),
+    dtAgendamentoDescarga: toLocalDateTimeString(firstValue(row, ["Dt. agendamento descarga", "Dt. Agendamento Descarga"])),
+    dtRetiraPD,
+    dtInicioDescarga,
+    hrInicioDescarga: dtInicioDescarga ? dtInicioDescarga.slice(11, 16) : null,
+    dtFimDescarga,
+    dtDevolucaoCNTR,
+    arrivedAt: dtInicioDescarga,
+    entradaDistrito: dtDevolucaoCNTR,
+    containerNumero: container,
+    numero: container,
+    observacao: normalizeText(firstValue(row, ["Observação", "Observacao"])),
+    codProcessoIntegracao: normalizeText(firstValue(row, ["Cód. processo integração", "Cod. processo integracao"])),
+    ricAbastecimento: toNumber(firstValue(row, ["RIC DE ABASTECIMENTO"])),
+    ricPortoDestino: toNumber(firstValue(row, ["RIC PORTO DESTINO"])),
+    comprovanteDesova: toNumber(firstValue(row, ["COMPROVANTE DE DESOVA"])),
+    ricDepot: toNumber(firstValue(row, ["RIC DEPOT"])),
+    diarioBordo: toNumber(firstValue(row, ["DIARIO DE BORDO"])),
+    solicitacaoMonitoramento: toNumber(firstValue(row, ["SOLICITAÇÃO DE MONITORAMENTO", "SOLICITACAO DE MONITORAMENTO"])),
+    ricPorto: toNumber(firstValue(row, ["RIC PORTO"])),
+    discoTacografo: toNumber(firstValue(row, ["DISCO/ARQUIVO TACOGRAFO"])),
+    canhotoDanfe: toNumber(firstValue(row, ["CANHOTO DE DANFE"])),
+    valePallet: toNumber(firstValue(row, ["VALE PALLET"])),
+    noshow: toNumber(firstValue(row, ["NOSHOW"])),
+    ricDepotDestino: toNumber(firstValue(row, ["RIC DEPOT DESTINO"])),
+    fotos: toNumber(firstValue(row, ["FOTOS"])),
+    ricRetroarea: toNumber(firstValue(row, ["RIC RETROAREA"])),
+    city: cityInfo.city,
+    ativo: true,
+    _source: "erp_consulta_px90016",
+  };
+}
+
+function readExcel() {
+  if (!fs.existsSync(EXCEL_PATH)) {
+    throw new Error(`Planilha nao encontrada: ${EXCEL_PATH}`);
   }
 
-  importando = true;
+  const workbook = XLSX.readFile(EXCEL_PATH, { cellDates: true });
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(sheet, { defval: null }).map(cleanRow);
+
+  return rows
+    .map(mapToIcompany)
+    .filter((doc) => hasValue(doc.codigo) || hasValue(doc.processo) || hasValue(doc.containerNumero));
+}
+
+async function importarExcel(origem = "manual") {
   let mongo;
 
   try {
-    const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
-
-    if (!MONGO_URI) {
-      throw new Error("MONGO_URI ou MONGODB_URI não definido no .env");
-    }
+    const docs = readExcel();
+    const now = new Date();
+    const docsToInsert = docs.map((doc) => ({
+      ...doc,
+      createdAt: now,
+      updatedAt: now,
+      _lastImportAt: now,
+    }));
 
     console.log("==================================================");
-    console.log(`🚀 Iniciando importação [origem=${origem}]`);
-    console.log("📄 Excel:", EXCEL_PATH);
-    console.log("🗄️ Banco: delivery-docs | Collection: icompany");
+    console.log(`Importacao Icompany [origem=${origem}]`);
+    console.log("Excel:", EXCEL_PATH);
+    console.log("Banco:", DB_NAME, "| Collection:", COLLECTION_NAME);
+    console.log("Linhas validas:", docsToInsert.length);
+
+    if (DRY_RUN) {
+      console.log("DRY RUN: nada sera gravado no MongoDB.");
+      console.log("Amostra:", JSON.stringify(docsToInsert.slice(0, 3), null, 2));
+      console.log("==================================================");
+      return;
+    }
+
+    const MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
+    if (!MONGO_URI) {
+      throw new Error("MONGODB_URI ou MONGO_URI nao definido no .env");
+    }
 
     mongo = new MongoClient(MONGO_URI);
     await mongo.connect();
 
-    const db = mongo.db("delivery-docs");
-    const col = db.collection("icompany");
-
-    console.log("📊 Lendo Excel...");
-
-    const wb = XLSX.readFile(EXCEL_PATH, { cellDates: true });
-    const sheet = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet, { defval: null }).map(cleanRow);
-
-    // 🔥 FILTRO APLICADO AQUI
-    const docs = rows
-      .map(mapToEntrega)
-      .filter((d) => d.processo)
-      .filter((d) => {
-        if (d.dtAgendamentoDescarga) {
-          return dentroDoPeriodo(d.dtAgendamentoDescarga);
-        }
-        if (d.dtColeta) {
-          return dentroDoPeriodo(d.dtColeta);
-        }
-        return false;
-      });
-
-    console.log("📦 Linhas válidas do Excel:", docs.length);
-
-    const antes = await col.countDocuments({});
-    console.log("📌 Documentos antes da limpeza:", antes);
-
-    const processosExcel = docs.map(d => d.processo).filter(Boolean);
+    const col = mongo.db(DB_NAME).collection(COLLECTION_NAME);
+    const processos = docsToInsert.map((doc) => doc.processo).filter(Boolean);
+    const codigos = docsToInsert.map((doc) => doc.codigo).filter(Boolean);
+    const containers = docsToInsert.map((doc) => doc.containerNumero).filter(Boolean);
 
     const deleteResult = await col.deleteMany({
-      processo: { $in: processosExcel }
+      $or: [
+        { _source: "erp_consulta_px90016" },
+        { _source: "erp_excel" },
+        { processo: { $in: processos } },
+        { codigo: { $in: codigos } },
+        { containerNumero: { $in: containers } },
+        { numero: { $in: containers } },
+      ],
     });
 
-    console.log("🧹 Removidos da icompany:", deleteResult.deletedCount);
+    console.log("Removidos antes da nova carga:", deleteResult.deletedCount);
 
-    if (docs.length > 0) {
-      const agora = new Date();
-
-      const docsToInsert = docs.map((d) => ({
-        ...d,
-        createdAt: agora,
-        updatedAt: agora,
-        _lastImportAt: agora,
-        ativo: true,
-        status: "AGENDADO",
-        _source: "erp_excel",
-      }));
-
+    if (docsToInsert.length > 0) {
       const insertResult = await col.insertMany(docsToInsert, { ordered: false });
-      console.log("📥 Inseridos:", Object.keys(insertResult.insertedIds).length);
-    } else {
-      console.log("⚠️ Nenhum documento válido encontrado no Excel para inserir.");
+      console.log("Inseridos:", Object.keys(insertResult.insertedIds).length);
     }
 
     const totalFinal = await col.countDocuments({});
-    console.log("✅ Total final na icompany:", totalFinal);
+    console.log("Total final na collection:", totalFinal);
     console.log("==================================================");
   } catch (error) {
-    console.error("❌ Erro na importação:", error);
+    console.error("Erro na importacao Icompany:", error);
+    process.exitCode = 1;
   } finally {
-    if (mongo) {
-      await mongo.close();
-    }
-    importando = false;
+    if (mongo) await mongo.close();
   }
 }
 
-// ---------- MONITOR ----------
+async function main() {
+  await importarExcel("startup");
 
-console.log("👀 Monitorando Excel...");
+  if (RUN_ONCE) return;
 
-let ultimaModificacao = 0;
+  console.log("Monitorando Excel:", EXCEL_PATH);
 
-if (fs.existsSync(EXCEL_PATH)) {
-  try {
-    ultimaModificacao = fs.statSync(EXCEL_PATH).mtimeMs;
-  } catch (e) {
-    console.error("❌ Erro ao ler data de modificação inicial do Excel:", e);
-  }
+  let ultimaModificacao = fs.existsSync(EXCEL_PATH) ? fs.statSync(EXCEL_PATH).mtimeMs : 0;
+
+  setInterval(() => {
+    try {
+      if (!fs.existsSync(EXCEL_PATH)) return;
+
+      const stats = fs.statSync(EXCEL_PATH);
+      if (stats.mtimeMs !== ultimaModificacao) {
+        ultimaModificacao = stats.mtimeMs;
+        importarExcel("watcher").catch(console.error);
+      }
+    } catch (error) {
+      console.error("Erro no monitor Icompany:", error);
+    }
+  }, WATCH_INTERVAL_MS);
 }
 
-importarExcel("startup").catch(console.error);
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+}
 
-setInterval(() => {
-  try {
-    if (!fs.existsSync(EXCEL_PATH)) return;
-
-    const stats = fs.statSync(EXCEL_PATH);
-
-    if (stats.mtimeMs !== ultimaModificacao) {
-      ultimaModificacao = stats.mtimeMs;
-      console.log("📥 Excel atualizado pelo ERP");
-      importarExcel("watcher").catch(console.error);
-    }
-  } catch (error) {
-    console.error("❌ Erro no monitor:", error);
-  }
-}, 5000);
+module.exports = {
+  importarExcel,
+  mapToIcompany,
+  readExcel,
+};

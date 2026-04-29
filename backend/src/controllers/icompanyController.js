@@ -1,17 +1,21 @@
 const Icompany = require('../models/Icompany');
 
+function applyEstabCityFilter(filter, city) {
+  if (city === 'manaus') {
+    filter.estab = 'LAM';
+  } else if (city === 'itajai') {
+    filter.estab = 'LSC';
+  }
+  return filter;
+}
+
 // GET all Icompany records
 exports.getAll = async (req, res) => {
   try {
     // Filtrar por cidade do usuário
     const city = req.city || 'manaus';
     const filter = {};
-    
-    if (city === 'manaus') {
-      filter.origem = { $in: ['MANAUS', 'MANAUS - COELTA BALY'] };
-    } else if (city === 'itajai') {
-      filter.origem = { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] };
-    }
+    applyEstabCityFilter(filter, city)
     
     const records = await Icompany.find(filter)
       .sort({ createdAt: -1 })
@@ -179,11 +183,7 @@ exports.search = async (req, res) => {
     const filter = {};
     
     // Filtro por cidade
-    if (city === 'manaus') {
-      filter.origem = { $in: ['MANAUS', 'MANAUS - COELTA BALY'] };
-    } else if (city === 'itajai') {
-      filter.origem = { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] };
-    }
+    applyEstabCityFilter(filter, city)
 
     if (q) {
       filter.$or = [

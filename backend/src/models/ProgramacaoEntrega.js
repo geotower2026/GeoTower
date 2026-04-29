@@ -78,6 +78,12 @@ const programacaoEntregaSchema = new mongoose.Schema({
     trim: true,
     default: ''
   },
+  estab: {
+    type: String,
+    trim: true,
+    enum: ['', 'LAM', 'LSC'],
+    default: ''
+  },
   ativo: {
     type: Boolean,
     default: true
@@ -112,12 +118,15 @@ programacaoEntregaSchema.index({ processo: 1 });
 programacaoEntregaSchema.index({ dataAgendamento: 1 });
 programacaoEntregaSchema.index({ status: 1 });
 programacaoEntregaSchema.index({ origem: 1 });
+programacaoEntregaSchema.index({ estab: 1 });
 programacaoEntregaSchema.index({ contratado: 1 });
 programacaoEntregaSchema.index({ ativo: 1 });
 
 // Índices compostos (multi-campo) para queries frequentes
 programacaoEntregaSchema.index({ origem: 1, dataAgendamento: 1 });
 programacaoEntregaSchema.index({ origem: 1, dtColeta: 1 });
+programacaoEntregaSchema.index({ estab: 1, dataAgendamento: 1 });
+programacaoEntregaSchema.index({ estab: 1, dtColeta: 1 });
 programacaoEntregaSchema.index({ contratado: 1, status: 1 });
 programacaoEntregaSchema.index({ contratado: 1, ativo: 1 });
 programacaoEntregaSchema.index({ ativo: 1, status: 1 });

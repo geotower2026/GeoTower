@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 const path = require("path");
 const fs = require("fs");
 const archiver = require('archiver');
@@ -33,7 +33,7 @@ function onlyAdmin(req, res, next) {
   const role = req.user?.role || "operacao";
   // Libera acesso para admin, gestor, manager, geomar e gestor_contratado
   if (role !== "admin" && role !== "gestor" && role !== "manager" && role !== "geomar" && role !== "gestor_contratado") {
-    return res.status(403).json({ message: "Sem permissão" });
+    return res.status(403).json({ message: "Sem permissÃ£o" });
   }
   next();
 }
@@ -63,10 +63,48 @@ const getRecordsByLookupKeys = (map, keys) => {
   return [];
 };
 
+const cityConfigFromRequest = (city) => {
+  if (city === 'itajai') {
+    return { estab: 'LSC', origem: 'ITAJAI', uf: 'SC' };
+  }
+  return { estab: 'LAM', origem: 'MANAUS', uf: 'AM' };
+};
+
+const applyProgramacaoCityFilter = (filter, city) => {
+  const cfg = cityConfigFromRequest(city);
+  if (city === 'manaus') {
+    filter.$or = [
+      { estab: cfg.estab },
+      { estab: { $exists: false }, origem: { $in: ['MANAUS', 'MANAUS - COELTA BALY'] } },
+      { estab: '', origem: { $in: ['MANAUS', 'MANAUS - COELTA BALY'] } },
+    ];
+  } else if (city === 'itajai') {
+    filter.$or = [
+      { estab: cfg.estab },
+      { estab: { $exists: false }, origem: { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] } },
+      { estab: '', origem: { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] } },
+      { origem: 'ITAJAI' },
+    ];
+  }
+  return filter;
+};
+
+const userCanAccessProgramacaoCity = (programacao, city) => {
+  const cfg = cityConfigFromRequest(city);
+  if (programacao.estab) return programacao.estab === cfg.estab;
+  if (city === 'manaus') return !programacao.origem || ['MANAUS', 'MANAUS - COELTA BALY'].includes(programacao.origem);
+  return !['MANAUS', 'MANAUS - COELTA BALY'].includes(programacao.origem || '');
+};
+
+const applyIcompanyEstabFilter = (filter, city) => {
+  filter.estab = cityConfigFromRequest(city).estab;
+  return filter;
+};
+
 /**
  * GET /api/admin/statistics
- * Retorna estatísticas gerais
- * ✅ OTIMIZADO: Usa deliveryService com aggregation pipeline
+ * Retorna estatÃ­sticas gerais
+ * âœ… OTIMIZADO: Usa deliveryService com aggregation pipeline
  */
 router.get("/statistics", auth, onlyAdmin, async (req, res) => {
   try {
@@ -74,17 +112,17 @@ router.get("/statistics", auth, onlyAdmin, async (req, res) => {
     const city = req.city || 'manaus';
     const { startDate, endDate } = req.query;
 
-    // Determinar filtro de contratado se user é gestor_contratado
+    // Determinar filtro de contratado se user Ã© gestor_contratado
     const contratadobFilter = req.user?.role === 'gestor_contratado'
       ? req.user.contratado
       : null;
 
-    console.log(`⚡ GET /admin/statistics [OTIMIZADO] city=${city} contratado=${contratadobFilter || 'all'} startDate=${startDate} endDate=${endDate}`);
+    console.log(`âš¡ GET /admin/statistics [OTIMIZADO] city=${city} contratado=${contratadobFilter || 'all'} startDate=${startDate} endDate=${endDate}`);
 
-    // Usar serviço otimizado com aggregation pipeline
+    // Usar serviÃ§o otimizado com aggregation pipeline
     const stats = await deliveryService.getStatistics(city, contratadobFilter, startDate, endDate);
 
-    // Converter para formato compatível com frontend
+    // Converter para formato compatÃ­vel com frontend
     const statistics = {
       totalDeliveries: stats.total,
       submitted: stats.submitted,
@@ -96,8 +134,8 @@ router.get("/statistics", auth, onlyAdmin, async (req, res) => {
 
     return res.json({ statistics });
   } catch (error) {
-    console.error("❌ Erro ao buscar estatísticas:", error);
-    return res.status(500).json({ message: "Erro ao buscar estatísticas" });
+    console.error("âŒ Erro ao buscar estatÃ­sticas:", error);
+    return res.status(500).json({ message: "Erro ao buscar estatÃ­sticas" });
   }
 });
 
@@ -115,32 +153,24 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
   try {
     const { status, q, startDate, endDate, period, periodDate, processo, container, recebedor, pontualidade, horaStatusStart, horaStatusEnd, agendamentoStart, agendamentoEnd, tempoStatusMin, tempoStatusMax } = req.query;
     const city = req.city || 'manaus';
-    console.log('📋 GET /admin/deliveries recebido com filtros:', { status, q, processo, container, recebedor, pontualidade, horaStatusStart, horaStatusEnd, agendamentoStart, agendamentoEnd, tempoStatusMin, tempoStatusMax, startDate, endDate, period, periodDate, city });
+    console.log('ðŸ“‹ GET /admin/deliveries recebido com filtros:', { status, q, processo, container, recebedor, pontualidade, horaStatusStart, horaStatusEnd, agendamentoStart, agendamentoEnd, tempoStatusMin, tempoStatusMax, startDate, endDate, period, periodDate, city });
     
-    // Buscar programações filtradas por cidade
+    // Buscar programaÃ§Ãµes filtradas por cidade
     const ProgramacaoEntrega = require('../models/ProgramacaoEntrega');
     let progFilter = {};
-    if (city === 'manaus') {
-      progFilter.origem = { $in: ['MANAUS', 'MANAUS - COELTA BALY'] };
-    } else if (city === 'itajai') {
-      progFilter.$or = [
-        { origem: { $exists: false } },
-        { origem: '' },
-        { origem: { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] } }
-      ];
-    }
+    applyProgramacaoCityFilter(progFilter, city);
     const programacoes = await ProgramacaoEntrega.find(progFilter)
-      .select('processo recebedor container dataAgendamento dtColeta contratado motorista status createdAt observacoes origem')
+      .select('processo recebedor container dataAgendamento dtColeta contratado motorista status createdAt observacoes origem estab')
       .lean();
-    console.log('  ℹ️  Total de programações (' + city + '):', programacoes ? programacoes.length : 0);
+    console.log('  â„¹ï¸  Total de programaÃ§Ãµes (' + city + '):', programacoes ? programacoes.length : 0);
 
     // Calcula effectiveDate se period/periodDate fornecidos
     let effectiveDate = '';
     if (periodDate && String(periodDate).trim()) {
       effectiveDate = String(periodDate).trim();
-      console.log('🗓️  Usando periodDate do cliente:', effectiveDate);
+      console.log('ðŸ—“ï¸  Usando periodDate do cliente:', effectiveDate);
     } else if (period && period !== 'general') {
-      console.log('🗓️  Aplicando filtro de período:', period);
+      console.log('ðŸ—“ï¸  Aplicando filtro de perÃ­odo:', period);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       if (period === 'yesterday') {
@@ -153,13 +183,13 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
     }
 
     // *** UNIFIED LOGIC BELOW ***
-    // buscamos entregas iniciadas e também levamos em conta programações não iniciadas
+    // buscamos entregas iniciadas e tambÃ©m levamos em conta programaÃ§Ãµes nÃ£o iniciadas
     const db = await getDb(req);
 
     // antes de cruzar, carregar dados do Icompany para termos placas (tracao)
     const Icompany = require('../models/Icompany');
     const icompanyRecords = await Icompany.find({})
-      .select('geomaritima processo codigo numero NUMERO NÚMERO container containerNumero tracao contratado entradaDistrito dtColeta remetente dtChegadaPlanta dtDevolucaoCNTR dtAgendamentoDescarga destinatario dtRetiraPD dtInicioDescarga dtFimDescarga')
+      .select('geomaritima processo codigo numero NUMERO NÃšMERO container containerNumero tracao contratado entradaDistrito dtColeta remetente dtChegadaPlanta dtDevolucaoCNTR dtAgendamentoDescarga destinatario dtRetiraPD dtInicioDescarga dtFimDescarga')
       .lean();
     const ycByProcess = new Map();  // processo -> [array de registros yc]
     const ycByContainer = new Map(); // container -> [array de registros yc]
@@ -170,14 +200,14 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
         ycByProcess.get(proc).push(y);
       }
       // container pode estar em `numero` ou `containerNumero`
-      const cont = String(y.numero || y.NUMERO || y['NÚMERO'] || y.containerNumero || '').trim().toUpperCase();
+      const cont = String(y.numero || y.NUMERO || y['NÃšMERO'] || y.containerNumero || '').trim().toUpperCase();
       if (cont) {
         if (!ycByContainer.has(cont)) ycByContainer.set(cont, []);
         ycByContainer.get(cont).push(y);
       }
     });
 
-    // Cruzar dados de programação (por container) e construir lista combinada
+    // Cruzar dados de programaÃ§Ã£o (por container) e construir lista combinada
     const deliveryFilter = { cityCode: city };
     if (status && status !== 'all') {
       if (status === 'CANCELADO') {
@@ -191,7 +221,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
     }
 
     const allDeliveries = await db.find("deliveries", deliveryFilter);
-    console.log('  ℹ️  Total de entregas na DB (' + city + '):', allDeliveries ? allDeliveries.length : 0);
+    console.log('  â„¹ï¸  Total de entregas na DB (' + city + '):', allDeliveries ? allDeliveries.length : 0);
 
     // Normaliza documentos para resposta
     const normalizedDeliveries = (allDeliveries || []).map(d => {
@@ -225,13 +255,13 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
 
       return {
         ...delivery,
-        // incluir número de processo CAB quando houver programação
+        // incluir nÃºmero de processo CAB quando houver programaÃ§Ã£o
         processoCAB: prog ? prog.processo || '' : delivery.processoCAB || '',
         placaIcompany: placaY,
         containerNumero: containerNumeros.length > 0 ? containerNumeros : undefined,  // Array de containers
         recebedor: prog ? prog.recebedor : '',
         dataAgendamento: prog ? prog.dataAgendamento : '',
-        dtColeta: prog ? prog.dtColeta : '',  // Itajaí: data de coleta
+        dtColeta: prog ? prog.dtColeta : '',  // ItajaÃ­: data de coleta
         horarioChegada: delivery.arrivedAt || '',
         horarioDevolucaoVazio: delivery.horarioDevolucaoVazio || '',
         horarioInicioDesova: delivery.desovaStartAt || '',
@@ -240,19 +270,19 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
       };
     });
 
-    // adicionar programações que não têm entrega correspondente
+    // adicionar programaÃ§Ãµes que nÃ£o tÃªm entrega correspondente
     programacoes.forEach(prog => {
       const key = cleanLookupKey(prog.container);
       const exists = deliveryNumbers.has(key);
       if (!exists) {
-        // também incluir placaIcompany se existir
+        // tambÃ©m incluir placaIcompany se existir
         const keyProc = (prog.processo || '').toUpperCase();
         const keyCont = (prog.container || '').toUpperCase();
         const yrecArray2 = ycByProcess.get(keyProc) || ycByContainer.get(keyCont) || [];
         const yrec2 = Array.isArray(yrecArray2) ? yrecArray2[0] : yrecArray2;
         const placaY2 = yrec2 ? (yrec2.tracao || '') : '';
         
-        // Extrair todos os containers únicos
+        // Extrair todos os containers Ãºnicos
         const containerNumeros2 = Array.isArray(yrecArray2) 
           ? [...new Set(yrecArray2.map(y => y.numero || y.containerNumero).filter(Boolean))]
           : [];
@@ -267,19 +297,19 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
           driverName: prog.motorista || '-',
           recebedor: prog.recebedor || '',
           dataAgendamento: prog.dataAgendamento || '',
-          dtColeta: prog.dtColeta || '',  // Itajaí: data de coleta
+          dtColeta: prog.dtColeta || '',  // ItajaÃ­: data de coleta
           status: prog.status || 'AGENDADO',
           documents: {},
           uploadedFiles: [],
           hasFiles: false,
           createdAt: prog.createdAt,
           observations: prog.observacoes || '',
-          cityCode: city  // ← ADICIONADO: identificar a cidade desta programação
+          cityCode: city  // â† ADICIONADO: identificar a cidade desta programaÃ§Ã£o
         });
       }
     });
 
-    console.log(`  ✓ Combinação total após incluir agendadas: ${deliveriesWithProgramacao.length}`);
+    console.log(`  âœ“ CombinaÃ§Ã£o total apÃ³s incluir agendadas: ${deliveriesWithProgramacao.length}`);
 
     // HELPER: Parse data string para objeto {day, month, year}
     const parseStringDate = (dateStr) => {
@@ -360,12 +390,12 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
 
     // NOVO: Se tem startDate/endDate, filtrar por range
     if (startDate || endDate) {
-      console.log('📅 Aplicando filtro de range de datas:', { startDate, endDate }, '(cidade:', city, ')');
+      console.log('ðŸ“… Aplicando filtro de range de datas:', { startDate, endDate }, '(cidade:', city, ')');
       const sd = startDate ? parseStringDate(startDate) : null;
       const ed = endDate ? parseStringDate(endDate) : null;
       
       deliveriesWithProgramacao = deliveriesWithProgramacao.filter(d => {
-        // Para Itajaí, usar dtColeta; para Manaus, usar dataAgendamento
+        // Para ItajaÃ­, usar dtColeta; para Manaus, usar dataAgendamento
         const dateField = city === 'itajai' && d.dtColeta ? d.dtColeta : d.dataAgendamento;
         if (!dateField) return false;
         const pd = parseStringDate(dateField);
@@ -377,30 +407,30 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
         
         return inRange;
       });
-      console.log(`  ✓ ${deliveriesWithProgramacao.length} registros após filtro de range de datas`);
+      console.log(`  âœ“ ${deliveriesWithProgramacao.length} registros apÃ³s filtro de range de datas`);
     }
-    // se não tem startDate/endDate mas tem effectiveDate, usa período único
+    // se nÃ£o tem startDate/endDate mas tem effectiveDate, usa perÃ­odo Ãºnico
     else if (effectiveDate) {
-      console.log('📅 Aplicando filtro de período sobre lista combinada para data:', effectiveDate, '(cidade:', city, ')');
+      console.log('ðŸ“… Aplicando filtro de perÃ­odo sobre lista combinada para data:', effectiveDate, '(cidade:', city, ')');
       const [edDay, edMonth, edYear] = effectiveDate.split('/').map(Number);
       deliveriesWithProgramacao = deliveriesWithProgramacao.filter(d => {
-        // Para Itajaí, usar dtColeta; para Manaus, usar dataAgendamento
+        // Para ItajaÃ­, usar dtColeta; para Manaus, usar dataAgendamento
         const dateField = city === 'itajai' && d.dtColeta ? d.dtColeta : d.dataAgendamento;
         if (!dateField) return false;
         const pd = parseStringDate(dateField);
         if (!pd) return false;
         const match = pd.day === edDay && pd.month === edMonth && pd.year === edYear;
-        if (match) console.log(`   ✓ "${dateField}" corresponde a ${effectiveDate}`);
+        if (match) console.log(`   âœ“ "${dateField}" corresponde a ${effectiveDate}`);
         return match;
       });
-      console.log(`  ✓ ${deliveriesWithProgramacao.length} registros após filtro de data`);
+      console.log(`  âœ“ ${deliveriesWithProgramacao.length} registros apÃ³s filtro de data`);
     }
 
-    // começa a trabalhar com o array já filtrado (ou não)
+    // comeÃ§a a trabalhar com o array jÃ¡ filtrado (ou nÃ£o)
     let filtered = deliveriesWithProgramacao;
 
     if (status && status !== "all") {
-      console.log('  ✓ Aplicando filtro de status:', status);
+      console.log('  âœ“ Aplicando filtro de status:', status);
       filtered = filtered.filter(d => {
         if (status === 'OPERACAO_FINALIZADA') return d.status === 'ENTREGUE' || d.status === 'submitted' || d.status === 'FINALIZADO';
         if (status === 'A CAMINHO DO CLIENTE') return d.status === 'A_CAMINHO_DO_CLIENTE' || d.status === 'pending' || d.status === 'PENDING';
@@ -410,7 +440,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
 
     // NOVO: Se gestor_contratado, filtrar por contratado
     if (req.user && req.user.role === 'gestor_contratado' && req.user.contratado) {
-      console.log('  ✓ Aplicando filtro de contratado para gestor:', req.user.contratado);
+      console.log('  âœ“ Aplicando filtro de contratado para gestor:', req.user.contratado);
       filtered = filtered.filter(d => d.userName === req.user.contratado);
     }
 
@@ -422,7 +452,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
         d.deliveryNumber,
         d.processNumber
       ].some(v => String(v || '').toLowerCase().includes(text)));
-      console.log(`  ✓ Aplicando filtro de processo: ${processo}`);
+      console.log(`  âœ“ Aplicando filtro de processo: ${processo}`);
     }
 
     if (container && container.trim()) {
@@ -433,13 +463,13 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
           : d.containerNumero || '';
         return [containerText, d.container, d.deliveryNumber].some(v => String(v || '').toLowerCase().includes(text));
       });
-      console.log(`  ✓ Aplicando filtro de container: ${container}`);
+      console.log(`  âœ“ Aplicando filtro de container: ${container}`);
     }
 
     if (recebedor && recebedor.trim()) {
       const text = recebedor.trim().toLowerCase();
       filtered = filtered.filter(d => String(d.recebedor || '').toLowerCase().includes(text));
-      console.log(`  ✓ Aplicando filtro de recebedor: ${recebedor}`);
+      console.log(`  âœ“ Aplicando filtro de recebedor: ${recebedor}`);
     }
 
     if (agendamentoStart || agendamentoEnd) {
@@ -460,7 +490,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
         if (ed && scheduleDate > ed) return false;
         return true;
       });
-      console.log(`  ✓ Aplicando filtro de agendamento: ${agendamentoStart || '∞'} → ${agendamentoEnd || '∞'}`);
+      console.log(`  âœ“ Aplicando filtro de agendamento: ${agendamentoStart || 'âˆž'} â†’ ${agendamentoEnd || 'âˆž'}`);
     }
 
     if (horaStatusStart || horaStatusEnd) {
@@ -473,12 +503,12 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
         if (ed && entryTime > ed) return false;
         return true;
       });
-      console.log(`  ✓ Aplicando filtro de hora de status: ${horaStatusStart || '∞'} → ${horaStatusEnd || '∞'}`);
+      console.log(`  âœ“ Aplicando filtro de hora de status: ${horaStatusStart || 'âˆž'} â†’ ${horaStatusEnd || 'âˆž'}`);
     }
 
     if (pontualidade && pontualidade !== 'all') {
       filtered = filtered.filter(d => getPunctualityType(d, city) === pontualidade);
-      console.log(`  ✓ Aplicando filtro de pontualidade: ${pontualidade}`);
+      console.log(`  âœ“ Aplicando filtro de pontualidade: ${pontualidade}`);
     }
 
     if ((tempoStatusMin && tempoStatusMin !== '') || (tempoStatusMax && tempoStatusMax !== '')) {
@@ -493,12 +523,12 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
         if (maxMinutes !== null && diffMinutes > maxMinutes) return false;
         return true;
       });
-      console.log(`  ✓ Aplicando filtro de tempo de status: ${tempoStatusMin || '0'} → ${tempoStatusMax || '∞'} minutos`);
+      console.log(`  âœ“ Aplicando filtro de tempo de status: ${tempoStatusMin || '0'} â†’ ${tempoStatusMax || 'âˆž'} minutos`);
     }
 
     if (q && q.trim()) {
       const text = q.trim();
-      console.log('  ✓ Aplicando filtro de busca:', text);
+      console.log('  âœ“ Aplicando filtro de busca:', text);
       filtered = filtered.filter(d => {
         const containerText = Array.isArray(d.containerNumero)
           ? d.containerNumero.join(' ')
@@ -534,7 +564,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
       };
     });
 
-    // NOVO: Carregar dados de controle de protocolos para comparações
+    // NOVO: Carregar dados de controle de protocolos para comparaÃ§Ãµes
     let controleProtocolosData = [];
     try {
       const mongoose = require('mongoose');
@@ -561,12 +591,12 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
           .collation({ locale: 'pt', strength: 2 })
           .toArray();
       }
-      console.log(`📋 Carregados ${controleProtocolosData.length} registros de controle de protocolos`);
+      console.log(`ðŸ“‹ Carregados ${controleProtocolosData.length} registros de controle de protocolos`);
     } catch (error) {
       console.error('Erro ao carregar controle de protocolos:', error);
     }
 
-    // HELPER FUNCTIONS para comparações
+    // HELPER FUNCTIONS para comparaÃ§Ãµes
     const controleProtocolosDocumentMap = {
       retiradaCheio: 'RIC PORTO DESTINO',
       canhotCTE: 'COMPROVANTE DE DESOVA',
@@ -647,7 +677,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
       const target = getClean(delivery.processoCAB || delivery.deliveryNumber || delivery.processo || delivery.container || '');
       if (!target) return null;
 
-      const lookupKeys = ['geomaritima', 'processo', 'codigo', 'numero', 'NUMERO', 'NÚMERO', 'container', 'containerNumero'];
+      const lookupKeys = ['geomaritima', 'processo', 'codigo', 'numero', 'NUMERO', 'NÃšMERO', 'container', 'containerNumero'];
 
       return icompanyRecords.find((record) => {
         return lookupKeys.some((key) => {
@@ -706,7 +736,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
       return mismatchCount;
     };
 
-    // Adicionar comparações a cada entrega
+    // Adicionar comparaÃ§Ãµes a cada entrega
     const deliveriesWithComparisons = deliveriesWithFiles.map(delivery => {
       const icompanyMismatchCount = getIcompanyMismatchCount(delivery, icompanyRecords, city);
       const controleMismatchCount = getControleProtocolosMismatchCount(delivery);
@@ -721,10 +751,10 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
       };
     });
 
-    console.log(`📤 Retornando ${deliveriesWithComparisons.length} entregas`);
+    console.log(`ðŸ“¤ Retornando ${deliveriesWithComparisons.length} entregas`);
     return res.json({ deliveries: deliveriesWithComparisons });
   } catch (err) {
-    console.error('❌ Erro em /admin/deliveries:', err);
+    console.error('âŒ Erro em /admin/deliveries:', err);
     return res.status(500).json({ message: "Erro ao listar entregas (admin)", error: err.message });
   }
 });
@@ -741,9 +771,9 @@ router.get("/deliveries/:id", auth, onlyAdmin, async (req, res) => {
     if (!delivery) {
       delivery = await db.findOne("deliveries", { deliveryNumber: req.params.id });
     }
-    if (!delivery) return res.status(404).json({ message: "Entrega não encontrada" });
+    if (!delivery) return res.status(404).json({ message: "Entrega nÃ£o encontrada" });
     
-    // Validação de cidade
+    // ValidaÃ§Ã£o de cidade
     if (delivery.cityCode !== city) {
       return res.status(403).json({ message: 'Acesso negado - dados de outra cidade' });
     }
@@ -762,14 +792,14 @@ router.get("/deliveries/:id", auth, onlyAdmin, async (req, res) => {
 
 /**
  * GET /api/admin/deliveries/:id/documents/:documentType/download
- * Download de documento específico
+ * Download de documento especÃ­fico
  */
 router.get("/deliveries/:id/documents/:documentType/download", auth, onlyAdmin, async (req, res) => {
   try {
     const city = req.city || 'manaus';
     const { id, documentType } = req.params;
     console.log(`\n${'='.repeat(80)}`);
-    console.log(`[DOWNLOAD] 🔴 ROTA ATINGIDA! id=${id}, documentType=${documentType}, city=${city}`);
+    console.log(`[DOWNLOAD] ðŸ”´ ROTA ATINGIDA! id=${id}, documentType=${documentType}, city=${city}`);
     console.log(`[DOWNLOAD] query params:`, req.query);
     console.log(`${'='.repeat(80)}\n`);
 
@@ -777,16 +807,16 @@ router.get("/deliveries/:id/documents/:documentType/download", auth, onlyAdmin, 
     const db = await getDb(req);
     const delivery = await db.findById("deliveries", id);
     if (!delivery) {
-      console.error(`[DOWNLOAD] Entrega não encontrada: ${id}`);
-      return res.status(404).json({ message: "Entrega não encontrada" });
+      console.error(`[DOWNLOAD] Entrega nÃ£o encontrada: ${id}`);
+      return res.status(404).json({ message: "Entrega nÃ£o encontrada" });
     }
     
-    // Validação de cidade
+    // ValidaÃ§Ã£o de cidade
     if (delivery.cityCode !== city) {
       return res.status(403).json({ message: 'Acesso negado - dados de outra cidade' });
     }
 
-    // Verifica se o tipo de documento é conhecido para esta entrega
+    // Verifica se o tipo de documento Ã© conhecido para esta entrega
     const docs = delivery.documents || {};
     console.log(`[DOWNLOAD] delivery id=${id} city=${delivery.city || 'N/A'}`);
     console.log(`[DOWNLOAD] Documentos na entrega (keys):`, Object.keys(docs));
@@ -812,16 +842,16 @@ router.get("/deliveries/:id/documents/:documentType/download", auth, onlyAdmin, 
         docArray = [entry];
       }
       
-      // Garante que é array
+      // Garante que Ã© array
       if (!Array.isArray(docArray)) {
         docArray = [docArray];
       }
     }
     
-    console.log(`[DOWNLOAD] docArray após processamento:`, JSON.stringify(docArray));
+    console.log(`[DOWNLOAD] docArray apÃ³s processamento:`, JSON.stringify(docArray));
     
     const idx = parseInt(req.query.index || '0', 10);
-    console.log(`[DOWNLOAD] Tentando acessar índice ${idx} de um array de ${docArray.length} itens`);
+    console.log(`[DOWNLOAD] Tentando acessar Ã­ndice ${idx} de um array de ${docArray.length} itens`);
     
     if (docArray.length === 0) {
       console.error(`[DOWNLOAD] docArray vazio para tipo "${documentType}"`);
@@ -829,12 +859,12 @@ router.get("/deliveries/:id/documents/:documentType/download", auth, onlyAdmin, 
     }
     
     if (isNaN(idx) || idx < 0 || idx >= docArray.length) {
-      console.error(`[DOWNLOAD] Índice inválido: ${idx}, tamanho do array: ${docArray.length}`);
-      return res.status(400).json({ message: 'Índice de documento inválido' });
+      console.error(`[DOWNLOAD] Ãndice invÃ¡lido: ${idx}, tamanho do array: ${docArray.length}`);
+      return res.status(400).json({ message: 'Ãndice de documento invÃ¡lido' });
     }
     
     const docInfo = docArray[idx];
-    console.log(`[DOWNLOAD] Informações do documento [${idx}]:`, JSON.stringify(docInfo));
+    console.log(`[DOWNLOAD] InformaÃ§Ãµes do documento [${idx}]:`, JSON.stringify(docInfo));
 
     // Se tem URL do R2, redireciona
     if (docInfo && docInfo.url) {
@@ -885,9 +915,9 @@ router.get("/deliveries/:id/documents/:documentType/download", auth, onlyAdmin, 
         console.log(`[DOWNLOAD] Caminho resolvido: ${filePath}`);
 
         if (!filePath) {
-          console.error(`[DOWNLOAD] Arquivo não existe em nenhum local: ${docInfo.path}`);
-          // Retorna também os caminhos testados para ajudar a debugar remotamente (remover depois)
-          return res.status(404).json({ message: 'Arquivo não encontrado no servidor', triedPaths: tried });
+          console.error(`[DOWNLOAD] Arquivo nÃ£o existe em nenhum local: ${docInfo.path}`);
+          // Retorna tambÃ©m os caminhos testados para ajudar a debugar remotamente (remover depois)
+          return res.status(404).json({ message: 'Arquivo nÃ£o encontrado no servidor', triedPaths: tried });
         }
         
         const stat = fs.statSync(filePath);
@@ -905,16 +935,16 @@ router.get("/deliveries/:id/documents/:documentType/download", auth, onlyAdmin, 
           }
         });
         
-        console.log(`[DOWNLOAD] ✓ Iniciando stream do arquivo local: ${filename}`);
+        console.log(`[DOWNLOAD] âœ“ Iniciando stream do arquivo local: ${filename}`);
         readStream.pipe(res);
       } catch (err) {
-        console.error(`[DOWNLOAD] ✗ Erro ao servir arquivo local:`, err && err.message ? err.message : err);
+        console.error(`[DOWNLOAD] âœ— Erro ao servir arquivo local:`, err && err.message ? err.message : err);
         return res.status(500).json({ message: 'Erro ao servir arquivo' });
       }
     } 
-    // Se não tem path mas tem name, tentamos localizar pelo nome em locais prováveis
+    // Se nÃ£o tem path mas tem name, tentamos localizar pelo nome em locais provÃ¡veis
     else if (docInfo && !docInfo.path && docInfo.name) {
-      console.log(`[DOWNLOAD] Documento sem path mas com name: ${docInfo.name} — tentando localizar por nome`);
+      console.log(`[DOWNLOAD] Documento sem path mas com name: ${docInfo.name} â€” tentando localizar por nome`);
       try {
         const uploadsPath1 = path.join(__dirname, "../uploads");
         const uploadsPath2 = path.join(__dirname, "../src/uploads");
@@ -948,8 +978,8 @@ router.get("/deliveries/:id/documents/:documentType/download", auth, onlyAdmin, 
         console.log(`[DOWNLOAD] Tentativas por nome: ${tried.join(', ')}`);
 
         if (!filePathFound) {
-          console.error(`[DOWNLOAD] Não foi possível localizar arquivo pelo name: ${docInfo.name}`);
-          return res.status(404).json({ message: 'Arquivo não encontrado no servidor', docInfo, triedPaths: tried });
+          console.error(`[DOWNLOAD] NÃ£o foi possÃ­vel localizar arquivo pelo name: ${docInfo.name}`);
+          return res.status(404).json({ message: 'Arquivo nÃ£o encontrado no servidor', docInfo, triedPaths: tried });
         }
 
         const stat = fs.statSync(filePathFound);
@@ -963,17 +993,17 @@ router.get("/deliveries/:id/documents/:documentType/download", auth, onlyAdmin, 
             res.status(500).json({ message: 'Erro ao ler arquivo', error: err.message });
           }
         });
-        console.log(`[DOWNLOAD] ✓ Iniciando stream do arquivo localizado por nome: ${filename}`);
+        console.log(`[DOWNLOAD] âœ“ Iniciando stream do arquivo localizado por nome: ${filename}`);
         readStream.pipe(res);
       } catch (err) {
-        console.error(`[DOWNLOAD] ✗ Erro ao localizar/servir arquivo por name:`, err && err.message ? err.message : err);
+        console.error(`[DOWNLOAD] âœ— Erro ao localizar/servir arquivo por name:`, err && err.message ? err.message : err);
         return res.status(500).json({ message: 'Erro ao localizar arquivo por nome', error: err && err.message ? err.message : err, docInfo });
       }
     }
     // Documento sem ID, path ou name
     else {
       console.error(`[DOWNLOAD] Documento sem ID, path ou name:`, docInfo);
-      return res.status(404).json({ message: 'Documento inválido: sem ID, path ou name', docInfo });
+      return res.status(404).json({ message: 'Documento invÃ¡lido: sem ID, path ou name', docInfo });
     }
   } catch (err) {
     console.error(`[DOWNLOAD] Erro geral:`, err && err.message ? err.message : err);
@@ -993,7 +1023,7 @@ router.post('/deliveries/:id/documents/:documentType/remove', auth, onlyAdmin, a
     if (!delivery) {
       delivery = await db.findOne('deliveries', { deliveryNumber: id });
     }
-    if (!delivery) return res.status(404).json({ message: 'Entrega não encontrada' });
+    if (!delivery) return res.status(404).json({ message: 'Entrega nÃ£o encontrada' });
     if (delivery.cityCode !== city) {
       return res.status(403).json({ message: 'Acesso negado - dados de outra cidade' });
     }
@@ -1001,7 +1031,7 @@ router.post('/deliveries/:id/documents/:documentType/remove', auth, onlyAdmin, a
     const docs = delivery.documents || {};
     const docEntry = docs[documentType];
     if (!docEntry) {
-      return res.status(404).json({ message: 'Documento não encontrado' });
+      return res.status(404).json({ message: 'Documento nÃ£o encontrado' });
     }
 
     const parseEntries = (entry) => {
@@ -1053,7 +1083,7 @@ router.post('/deliveries/:id/documents/:documentType/remove', auth, onlyAdmin, a
       removedBy: req.user?.username || req.user?.name || req.user?.email || 'unknown',
       role: req.user?.role || 'unknown',
       documentType,
-      reason: reason ? String(reason).trim() : 'Documento inválido removido pelo ADM',
+      reason: reason ? String(reason).trim() : 'Documento invÃ¡lido removido pelo ADM',
       removedAt: new Date()
     });
 
@@ -1079,13 +1109,13 @@ router.post('/deliveries/:id/documents/:documentType/remove', auth, onlyAdmin, a
 router.get('/deliveries/:id/documents/zip', auth, onlyAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`[ZIP] Iniciando geração de ZIP para entrega: ${id}`);
+    console.log(`[ZIP] Iniciando geraÃ§Ã£o de ZIP para entrega: ${id}`);
     
     const db = await getDb(req);
     const delivery = await db.findById('deliveries', id);
     if (!delivery) {
-      console.error(`[ZIP] Entrega não encontrada: ${id}`);
-      return res.status(404).json({ message: 'Entrega não encontrada' });
+      console.error(`[ZIP] Entrega nÃ£o encontrada: ${id}`);
+      return res.status(404).json({ message: 'Entrega nÃ£o encontrada' });
     }
 
     const docs = delivery.documents || {};
@@ -1113,7 +1143,7 @@ router.get('/deliveries/:id/documents/zip', auth, onlyAdmin, async (req, res) =>
         }
       }
       
-      // Garante que é array
+      // Garante que Ã© array
       if (!Array.isArray(docArray)) {
         docArray = [docArray];
       }
@@ -1126,7 +1156,7 @@ router.get('/deliveries/:id/documents/zip', auth, onlyAdmin, async (req, res) =>
       });
     });
 
-    // Se não houver arquivos, retorna 404
+    // Se nÃ£o houver arquivos, retorna 404
     if (filesToAdd.length === 0) {
       console.warn(`[ZIP] Nenhum documento encontrado para entrega: ${id}`);
       return res.status(404).json({ message: 'Nenhum documento encontrado para esta entrega' });
@@ -1172,12 +1202,12 @@ router.get('/deliveries/:id/documents/zip', auth, onlyAdmin, async (req, res) =>
               archive.append(res, { name: path.join(delivery.deliveryNumber, filename) });
               addedCount++;
               added = true;
-              console.log(`[ZIP] ✓ Adicionado do R2: ${filename}`);
+              console.log(`[ZIP] âœ“ Adicionado do R2: ${filename}`);
               resolve();
             }).on('error', reject);
           });
         } catch (err) {
-          console.error(`[ZIP] ✗ Falha do R2 para ${docType}[${idx}]:`, err.message);
+          console.error(`[ZIP] âœ— Falha do R2 para ${docType}[${idx}]:`, err.message);
           missing.push(`${docType}[${idx}] (R2: ${doc.url})`);
         }
       }
@@ -1209,13 +1239,13 @@ router.get('/deliveries/:id/documents/zip', auth, onlyAdmin, async (req, res) =>
               archive.file(filePath, { name: path.join(delivery.deliveryNumber, filename) });
               addedCount++;
               added = true;
-              console.log(`[ZIP] ✓ Adicionado arquivo local: ${filename} (${stat.size} bytes)`);
+              console.log(`[ZIP] âœ“ Adicionado arquivo local: ${filename} (${stat.size} bytes)`);
             } else {
-              console.warn(`[ZIP] Arquivo local não encontrado: ${doc.path}`);
+              console.warn(`[ZIP] Arquivo local nÃ£o encontrado: ${doc.path}`);
               missing.push(`${docType}[${idx}] (Local: ${doc.path})`);
             }
         } catch (err) {
-          console.error(`[ZIP] ✗ Falha ao adicionar arquivo local ${docType}[${idx}]:`, err.message);
+          console.error(`[ZIP] âœ— Falha ao adicionar arquivo local ${docType}[${idx}]:`, err.message);
           missing.push(`${docType}[${idx}] (Erro: ${err.message})`);
         }
       }
@@ -1228,14 +1258,14 @@ router.get('/deliveries/:id/documents/zip', auth, onlyAdmin, async (req, res) =>
 
     if (missing.length) {
       console.log(`[ZIP] Adicionando arquivo de documentos faltando (${missing.length} itens)`);
-      archive.append('Arquivos não encontrados:\n' + missing.join('\n'), { name: 'MISSING_FILES.txt' });
+      archive.append('Arquivos nÃ£o encontrados:\n' + missing.join('\n'), { name: 'MISSING_FILES.txt' });
     }
 
     console.log(`[ZIP] Finalizando arquivo (${addedCount} arquivos adicionados)`);
     await archive.finalize();
-    console.log(`[ZIP] ✓ ZIP gerado com sucesso`);
+    console.log(`[ZIP] âœ“ ZIP gerado com sucesso`);
   } catch (err) {
-    console.error(`[ZIP] ✗ Erro ao gerar ZIP:`, err && err.message ? err.message : err);
+    console.error(`[ZIP] âœ— Erro ao gerar ZIP:`, err && err.message ? err.message : err);
     console.error(`[ZIP] Stack:`, err && err.stack ? err.stack : 'N/A');
     if (!res.headersSent) {
       return res.status(500).json({ message: 'Erro ao gerar ZIP', error: err && err.message ? err.message : err });
@@ -1253,26 +1283,26 @@ router.put("/deliveries/:id", auth, onlyAdmin, async (req, res) => {
     const { id } = req.params;
     const { deliveryNumber, userName, driverName, vehiclePlate, observations, dataAgendamento, horarioChegada, horarioDevolucaoVazio, horarioInicioDesova, horarioFimDesova, containerMontadoAt, status } = req.body;
 
-    console.log('📝 Recebido PUT /deliveries/:id', { id, deliveryNumber, userName, driverName, vehiclePlate, observations, horarioDevolucaoVazio, city, status });
+    console.log('ðŸ“ Recebido PUT /deliveries/:id', { id, deliveryNumber, userName, driverName, vehiclePlate, observations, horarioDevolucaoVazio, city, status });
 
-    // Validar se motivo da edição foi fornecido
+    // Validar se motivo da ediÃ§Ã£o foi fornecido
     if (!observations || observations.trim() === '') {
-      console.log('❌ Motivo vazio');
-      return res.status(400).json({ message: "Motivo da edição é obrigatório" });
+      console.log('âŒ Motivo vazio');
+      return res.status(400).json({ message: "Motivo da ediÃ§Ã£o Ã© obrigatÃ³rio" });
     }
 
-    // Busca entrega (tenta por _id ou por deliveryNumber para suportar diferentes chaves de identificação)
+    // Busca entrega (tenta por _id ou por deliveryNumber para suportar diferentes chaves de identificaÃ§Ã£o)
     const db = await getDb(req);
     let delivery = await db.findById("deliveries", req.params.id);
     if (!delivery) {
       delivery = await db.findOne("deliveries", { deliveryNumber: req.params.id });
     }
-    console.log('🔍 Entrega encontrada:', delivery?.deliveryNumber);
+    console.log('ðŸ” Entrega encontrada:', delivery?.deliveryNumber);
     if (!delivery) {
-      return res.status(404).json({ message: "Entrega não encontrada" });
+      return res.status(404).json({ message: "Entrega nÃ£o encontrada" });
     }
     
-    // Validação de cidade
+    // ValidaÃ§Ã£o de cidade
     if (delivery.cityCode !== city) {
       return res.status(403).json({ message: 'Acesso negado - dados de outra cidade' });
     }
@@ -1290,26 +1320,26 @@ router.put("/deliveries/:id", auth, onlyAdmin, async (req, res) => {
     if (horarioFimDesova !== undefined && horarioFimDesova) updates.desovaEndAt = new Date(horarioFimDesova);
     if (containerMontadoAt !== undefined && containerMontadoAt) updates.containerMontadoAt = new Date(containerMontadoAt);
     
-    // Adicionar metadados de edição
+    // Adicionar metadados de ediÃ§Ã£o
     updates.editedAt = new Date().toISOString();
     updates.editReason = observations;
 
-    console.log('🔄 Updates a fazer:', updates);
+    console.log('ðŸ”„ Updates a fazer:', updates);
 
-    // Se há mudança de status, usar updateDeliveryStatus (que valida e limpa campos)
+    // Se hÃ¡ mudanÃ§a de status, usar updateDeliveryStatus (que valida e limpa campos)
     const targetId = delivery._id || req.params.id;
     let updated;
 
     if (status !== undefined) {
       const { updateDeliveryStatus } = require("../utils/deliveryConcurrency");
       
-      // Admin pode fazer qualquer transição incluindo retrocesso
+      // Admin pode fazer qualquer transiÃ§Ã£o incluindo retrocesso
       updated = await updateDeliveryStatus(targetId, status, updates, true);
-      console.log('✅ Status atualizado via updateDeliveryStatus:', updated?.status);
+      console.log('âœ… Status atualizado via updateDeliveryStatus:', updated?.status);
     } else {
-      // Sem mudança de status, usar updateOne direto
+      // Sem mudanÃ§a de status, usar updateOne direto
       updated = await db.updateOne("deliveries", { _id: targetId }, updates);
-      console.log('✅ Atualizado:', updated?.deliveryNumber);
+      console.log('âœ… Atualizado:', updated?.deliveryNumber);
     }
 
     if (!updated) {
@@ -1336,10 +1366,10 @@ router.delete("/deliveries/:id", auth, onlyAdmin, async (req, res) => {
     const db = await getDb(req);
     const delivery = await db.findById("deliveries", id);
     if (!delivery) {
-      return res.status(404).json({ message: "Entrega não encontrada" });
+      return res.status(404).json({ message: "Entrega nÃ£o encontrada" });
     }
     
-    // Validação de cidade
+    // ValidaÃ§Ã£o de cidade
     if (delivery.cityCode !== city) {
       return res.status(403).json({ message: 'Acesso negado - dados de outra cidade' });
     }
@@ -1348,21 +1378,21 @@ router.delete("/deliveries/:id", auth, onlyAdmin, async (req, res) => {
     try {
       const { deleteDeliveryFiles } = require('../utils/storageUtils');
       const removed = await deleteDeliveryFiles(delivery);
-      console.log('🗑️ Admin removed files for delivery', id, removed);
+      console.log('ðŸ—‘ï¸ Admin removed files for delivery', id, removed);
     } catch (err) {
-      console.warn('⚠️ Error while removing files for delivery (admin):', err.message || err);
+      console.warn('âš ï¸ Error while removing files for delivery (admin):', err.message || err);
     }
 
-    // CASCADE DELETE: Clear link from programação if exists
+    // CASCADE DELETE: Clear link from programaÃ§Ã£o if exists
     try {
       const ProgramacaoEntrega = require("../models/ProgramacaoEntrega");
       await ProgramacaoEntrega.findByIdAndUpdate(
         { linkedDeliveryId: id },
         { linkedDeliveryId: null }
       );
-      console.log('[DELIVERY] 🗑️ Cleared programação link for delivery', id);
+      console.log('[DELIVERY] ðŸ—‘ï¸ Cleared programaÃ§Ã£o link for delivery', id);
     } catch (cascadeErr) {
-      console.warn('[DELIVERY] ⚠️ Cascade cleanup error:', cascadeErr.message);
+      console.warn('[DELIVERY] âš ï¸ Cascade cleanup error:', cascadeErr.message);
     }
 
     // Deleta entrega do banco
@@ -1380,14 +1410,14 @@ router.delete("/deliveries/:id", auth, onlyAdmin, async (req, res) => {
 
 /**
  * GET /api/admin/users
- * Lista todos os usuários
+ * Lista todos os usuÃ¡rios
  */
 router.get("/users", auth, async (req, res) => {
   try {
-    // Permitir que gerentes, admins, GeoMar e Gestor Contratado visualizem a lista de usuários.
+    // Permitir que gerentes, admins, GeoMar e Gestor Contratado visualizem a lista de usuÃ¡rios.
     const role = req.user?.role;
     if (!role || (role !== 'manager' && role !== 'admin' && role !== 'geomar' && role !== 'gestor_contratado')) {
-      return res.status(403).json({ message: "Sem permissão" });
+      return res.status(403).json({ message: "Sem permissÃ£o" });
     }
     const db = await getDb(req);
     const users = await db.find("drivers", {}) || [];
@@ -1403,13 +1433,13 @@ router.get("/users", auth, async (req, res) => {
     return res.json({ users: usersWithoutPasswords });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ message: "Erro ao listar usuários" });
+    return res.status(500).json({ message: "Erro ao listar usuÃ¡rios" });
   }
 });
 
 /**
  * POST /api/admin/users
- * Criar novo usuário
+ * Criar novo usuÃ¡rio
  */
 router.post("/users", auth, managerOnly, async (req, res) => {
   try {
@@ -1419,17 +1449,17 @@ router.post("/users", auth, managerOnly, async (req, res) => {
       return res.status(400).json({ message: "Preencha todos os campos" });
     }
     if (role === 'gestor_contratado' && !contratado) {
-      return res.status(400).json({ message: "Contratado é obrigatório para Gestor Contratado" });
+      return res.status(400).json({ message: "Contratado Ã© obrigatÃ³rio para Gestor Contratado" });
     }
     if (role !== 'manager' && !city) {
-      return res.status(400).json({ message: "Cidade é obrigatória para este perfil" });
+      return res.status(400).json({ message: "Cidade Ã© obrigatÃ³ria para este perfil" });
     }
 
-    // Normaliza username/email para minúsculas — login procura por username.toLowerCase()
+    // Normaliza username/email para minÃºsculas â€” login procura por username.toLowerCase()
     const normalizedUsername = String(username).toLowerCase();
     const normalizedEmail = String(email).toLowerCase();
 
-    // Verifica se usuário existe (por username ou email)
+    // Verifica se usuÃ¡rio existe (por username ou email)
     const db = await getDb(req);
     const allDrivers = await db.find('drivers', {}) || [];
     const existing = allDrivers.find(d => 
@@ -1437,7 +1467,7 @@ router.post("/users", auth, managerOnly, async (req, res) => {
       String(d.email || '').toLowerCase() === normalizedEmail
     );
     if (existing) {
-      return res.status(400).json({ message: "Usuário já existe" });
+      return res.status(400).json({ message: "UsuÃ¡rio jÃ¡ existe" });
     }
 
     const crypto = require('crypto');
@@ -1458,11 +1488,11 @@ router.post("/users", auth, managerOnly, async (req, res) => {
 
     // Use API do DB (mockdb or mongo adapter) to insert
     const created = await db.create('drivers', newUser);
-    console.log('➕ Novo usuário criado:', { _id: created._id, username: created.username, email: created.email, role: created.role, city: created.city });
+    console.log('âž• Novo usuÃ¡rio criado:', { _id: created._id, username: created.username, email: created.email, role: created.role, city: created.city });
 
     return res.json({ 
       success: true, 
-      message: "Usuário criado com sucesso",
+      message: "UsuÃ¡rio criado com sucesso",
       user: {
         _id: newUser._id,
         username: newUser.username,
@@ -1472,15 +1502,15 @@ router.post("/users", auth, managerOnly, async (req, res) => {
       }
     });
   } catch (err) {
-    console.error('❌ Erro ao criar usuário:', err.message || err);
+    console.error('âŒ Erro ao criar usuÃ¡rio:', err.message || err);
     console.error('Stack:', err.stack);
-    return res.status(500).json({ message: "Erro ao criar usuário", error: err.message });
+    return res.status(500).json({ message: "Erro ao criar usuÃ¡rio", error: err.message });
   }
 });
 
 /**
  * PUT /api/admin/users/:id
- * Atualizar usuário
+ * Atualizar usuÃ¡rio
  */
 router.put("/users/:id", auth, managerOnly, async (req, res) => {
   try {
@@ -1490,7 +1520,7 @@ router.put("/users/:id", auth, managerOnly, async (req, res) => {
     const db = await getDb(req);
     const user = await db.findById("drivers", id);
     if (!user) {
-      return res.status(404).json({ message: "Usuário não encontrado" });
+      return res.status(404).json({ message: "UsuÃ¡rio nÃ£o encontrado" });
     }
 
     const updates = {};
@@ -1501,9 +1531,9 @@ router.put("/users/:id", auth, managerOnly, async (req, res) => {
     }
     if (role) {
       updates.role = role;
-      // Validação: gestor_contratado precisa ter contratado
+      // ValidaÃ§Ã£o: gestor_contratado precisa ter contratado
       if (role === 'gestor_contratado' && !contratado) {
-        return res.status(400).json({ message: "Contratado é obrigatório para Gestor Contratado" });
+        return res.status(400).json({ message: "Contratado Ã© obrigatÃ³rio para Gestor Contratado" });
       }
       // Atualizar contratado
       if (role === 'gestor_contratado' && contratado) {
@@ -1518,27 +1548,27 @@ router.put("/users/:id", auth, managerOnly, async (req, res) => {
         updates.city = city;
       }
     } else if (city !== undefined) {
-      // Se não mudou role mas mudou city: atualiza
+      // Se nÃ£o mudou role mas mudou city: atualiza
       updates.city = city;
     }
 
-    console.log('✏️ Atualizando usuário:', { userId: id, updates });
+    console.log('âœï¸ Atualizando usuÃ¡rio:', { userId: id, updates });
 
     await db.updateOne("drivers", { _id: id }, updates);
 
     return res.json({ 
       success: true, 
-      message: "Usuário atualizado com sucesso"
+      message: "UsuÃ¡rio atualizado com sucesso"
     });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ message: "Erro ao atualizar usuário" });
+    return res.status(500).json({ message: "Erro ao atualizar usuÃ¡rio" });
   }
 });
 
 /**
  * DELETE /api/admin/users/:id
- * Deletar usuário
+ * Deletar usuÃ¡rio
  */
 router.delete("/users/:id", auth, managerOnly, async (req, res) => {
   try {
@@ -1547,18 +1577,18 @@ router.delete("/users/:id", auth, managerOnly, async (req, res) => {
     const db = await getDb(req);
     const user = await db.findById("drivers", id);
     if (!user) {
-      return res.status(404).json({ message: "Usuário não encontrado" });
+      return res.status(404).json({ message: "UsuÃ¡rio nÃ£o encontrado" });
     }
 
     await db.deleteOne("drivers", { _id: id });
 
     return res.json({ 
       success: true, 
-      message: "Usuário deletado com sucesso"
+      message: "UsuÃ¡rio deletado com sucesso"
     });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ message: "Erro ao deletar usuário" });
+    return res.status(500).json({ message: "Erro ao deletar usuÃ¡rio" });
   }
 });
 
@@ -1579,7 +1609,7 @@ router.get('/programs', auth, onlyAdmin, async (req, res) => {
 
 /**
  * POST /api/admin/programs
- * Salva uma programação (simples)
+ * Salva uma programaÃ§Ã£o (simples)
  */
 router.post('/programs', auth, onlyAdmin, async (req, res) => {
   try {
@@ -1588,26 +1618,26 @@ router.post('/programs', auth, onlyAdmin, async (req, res) => {
     const program = await db.create('programs', Object.assign({}, payload, { createdAt: new Date().toISOString(), createdBy: req.user.id }));
     return res.json({ success: true, program });
   } catch (err) {
-    console.error('Erro ao criar programação:', err);
-    return res.status(500).json({ message: 'Erro ao criar programação' });
+    console.error('Erro ao criar programaÃ§Ã£o:', err);
+    return res.status(500).json({ message: 'Erro ao criar programaÃ§Ã£o' });
   }
 });
 
 // -------------------------
-// Importar CSV de Programações
+// Importar CSV de ProgramaÃ§Ãµes
 // POST /api/admin/programs/import
 // Aceita multipart/form-data com campo 'file' (CSV) ou JSON { text: 'csv content' }
 // -------------------------
 const upload = multer({ dest: path.join(os.tmpdir(), 'geo_programs') });
 
 function parseCsv(text) {
-  const requiredHeaders = ['Processo','Recebedor','FORNECEDOR','Destinatário','Navio','Nr. vi','Nº container','NF','CNTR','Dt. Agendamento','Observação destino','CONTRATADO','PROCESSO2','PERFORMANCE','Ocorrencia'];
+  const requiredHeaders = ['Processo','Recebedor','FORNECEDOR','DestinatÃ¡rio','Navio','Nr. vi','NÂº container','NF','CNTR','Dt. Agendamento','ObservaÃ§Ã£o destino','CONTRATADO','PROCESSO2','PERFORMANCE','Ocorrencia'];
   const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
   if (lines.length === 0) return { error: 'CSV vazio' };
 
   const header = lines[0].split(/,|\t/).map(h => h.trim());
   const missing = requiredHeaders.filter(h => !header.includes(h));
-  if (missing.length) return { error: 'Cabeçalho inválido. Faltando colunas: ' + missing.join(', ') };
+  if (missing.length) return { error: 'CabeÃ§alho invÃ¡lido. Faltando colunas: ' + missing.join(', ') };
 
   const rows = [];
   for (let i = 1; i < lines.length; i++) {
@@ -1652,8 +1682,8 @@ router.post('/programs/import', auth, onlyAdmin, upload.single('file'), async (r
 
     return res.json({ success: true, created });
   } catch (err) {
-    console.error('Erro ao importar programações:', err);
-    return res.status(500).json({ message: 'Erro ao importar programações' });
+    console.error('Erro ao importar programaÃ§Ãµes:', err);
+    return res.status(500).json({ message: 'Erro ao importar programaÃ§Ãµes' });
   }
 });
 
@@ -1695,28 +1725,28 @@ router.get('/gdrive/test', auth, onlyAdmin, async (req, res) => {
     
     const result = await uploadFileToDrive(testBuffer, testFilename, 'text/plain');
     
-    console.log('[GDRIVE-TEST] ✓ Sucesso! Arquivo ID:', result.id);
+    console.log('[GDRIVE-TEST] âœ“ Sucesso! Arquivo ID:', result.id);
     
     return res.json({ 
       success: true, 
-      message: 'Google Drive está funcionando!',
+      message: 'Google Drive estÃ¡ funcionando!',
       fileId: result.id,
       fileName: testFilename,
       webViewLink: result.webViewLink,
       folderId: process.env.GDRIVE_FOLDER_ID,
-      note: 'Arquivo de teste foi criado no Google Drive. Você pode deletá-lo manualmente.'
+      note: 'Arquivo de teste foi criado no Google Drive. VocÃª pode deletÃ¡-lo manualmente.'
     });
   } catch (err) {
-    console.error('[GDRIVE-TEST] ✗ Erro:', err.message);
+    console.error('[GDRIVE-TEST] âœ— Erro:', err.message);
     return res.status(500).json({ 
       success: false, 
-      message: 'Google Drive NÃO está funcionando',
+      message: 'Google Drive NÃƒO estÃ¡ funcionando',
       error: err.message,
       troubleshooting: [
-        '1. Verifique se GOOGLE_CREDENTIALS_JSON está setado no Render',
-        '2. Verifique se GOOGLE_TOKEN_JSON está setado no Render',
-        '3. Verifique se GDRIVE_FOLDER_ID está setado no Render',
-        '4. Acesse https://drive.google.com/drive/folders/YOUR_FOLDER_ID para confirmar que você tem acesso'
+        '1. Verifique se GOOGLE_CREDENTIALS_JSON estÃ¡ setado no Render',
+        '2. Verifique se GOOGLE_TOKEN_JSON estÃ¡ setado no Render',
+        '3. Verifique se GDRIVE_FOLDER_ID estÃ¡ setado no Render',
+        '4. Acesse https://drive.google.com/drive/folders/YOUR_FOLDER_ID para confirmar que vocÃª tem acesso'
       ]
     });
   }
@@ -1758,12 +1788,12 @@ router.get("/motoristas", auth, managerOnly, async (req, res) => {
         new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 2000))
       ]);
     } catch (mongoErr) {
-      console.warn('[MOTORISTA] MongoDB não disponível, retornando array vazio');
+      console.warn('[MOTORISTA] MongoDB nÃ£o disponÃ­vel, retornando array vazio');
       motoristas = [];
     }
     return res.json({ motoristas });
   } catch (err) {
-    console.error('[MOTORISTA] ❌ Erro ao listar:', err);
+    console.error('[MOTORISTA] âŒ Erro ao listar:', err);
     console.error(err.stack);
     return res.status(500).json({ message: "Erro ao listar motoristas", error: err.message });
   }
@@ -1771,7 +1801,7 @@ router.get("/motoristas", auth, managerOnly, async (req, res) => {
 
 /**
  * GET /api/admin/contractors
- * Lista todos os contratados únicos (transportadoras)
+ * Lista todos os contratados Ãºnicos (transportadoras)
  */
 router.get("/contractors", auth, onlyAdmin, async (req, res) => {
   try {
@@ -1780,21 +1810,21 @@ router.get("/contractors", auth, onlyAdmin, async (req, res) => {
     try {
       motoristas = await Motorista.find().select('transportadora').sort({ createdAt: -1 });
     } catch (mongoErr) {
-      console.warn('[CONTRACTORS] MongoDB não disponível, retornando array vazio');
+      console.warn('[CONTRACTORS] MongoDB nÃ£o disponÃ­vel, retornando array vazio');
       motoristas = [];
     }
     
-    // Extrair transportadoras únicas
+    // Extrair transportadoras Ãºnicas
     const contractors = [...new Set(
       (motoristas || [])
         .filter(m => m.transportadora && m.transportadora.trim())
         .map(m => m.transportadora.trim())
     )].sort();
     
-    console.log('[CONTRACTORS] Retornando ', contractors.length, ' contratados únicos');
+    console.log('[CONTRACTORS] Retornando ', contractors.length, ' contratados Ãºnicos');
     return res.json({ contractors });
   } catch (err) {
-    console.error('[CONTRACTORS] ❌ Erro ao listar:', err);
+    console.error('[CONTRACTORS] âŒ Erro ao listar:', err);
     return res.status(500).json({ message: "Erro ao listar contratados", error: err.message });
   }
 });
@@ -1825,7 +1855,7 @@ router.post("/motoristas", auth, managerOnly, async (req, res) => {
     console.log('[MOTORISTA] Recebido:', { transportadora, nome, cpf, vinculo, telefone });
 
     if (!transportadora || !nome || !cpf || !vinculo || !telefone) {
-      return res.status(400).json({ message: "Preencha todos os campos obrigatórios" });
+      return res.status(400).json({ message: "Preencha todos os campos obrigatÃ³rios" });
     }
 
     const Motorista = require("../models/Motorista");
@@ -1833,7 +1863,7 @@ router.post("/motoristas", auth, managerOnly, async (req, res) => {
     // Check if motorista already exists (same transportadora + cpf)
     const existing = await Motorista.findOne({ transportadora, cpf });
     if (existing) {
-      return res.status(400).json({ message: "Motorista já existe para esta transportadora" });
+      return res.status(400).json({ message: "Motorista jÃ¡ existe para esta transportadora" });
     }
 
     const newMotorista = new Motorista({
@@ -1857,7 +1887,7 @@ router.post("/motoristas", auth, managerOnly, async (req, res) => {
     });
 
     const saved = await newMotorista.save();
-    console.log('[MOTORISTA] ✅ Novo motorista criado:', { _id: saved._id, nome: saved.nome, cpf: saved.cpf });
+    console.log('[MOTORISTA] âœ… Novo motorista criado:', { _id: saved._id, nome: saved.nome, cpf: saved.cpf });
 
     return res.status(201).json({
       success: true,
@@ -1865,9 +1895,9 @@ router.post("/motoristas", auth, managerOnly, async (req, res) => {
       motorista: saved
     });
   } catch (err) {
-    console.error('[MOTORISTA] ❌ Erro ao criar:', err);
+    console.error('[MOTORISTA] âŒ Erro ao criar:', err);
     if (err.code === 11000) {
-      return res.status(400).json({ message: "Motorista já existe para esta transportadora" });
+      return res.status(400).json({ message: "Motorista jÃ¡ existe para esta transportadora" });
     }
     return res.status(500).json({ message: "Erro ao criar motorista", error: err.message });
   }
@@ -1901,7 +1931,7 @@ router.put("/motoristas/:id", auth, managerOnly, async (req, res) => {
     console.log('[MOTORISTA] Atualizando:', { id, transportadora, nome, cpf });
 
     if (!transportadora || !nome || !cpf || !vinculo || !telefone) {
-      return res.status(400).json({ message: "Preencha todos os campos obrigatórios" });
+      return res.status(400).json({ message: "Preencha todos os campos obrigatÃ³rios" });
     }
 
     const Motorista = require("../models/Motorista");
@@ -1913,10 +1943,10 @@ router.put("/motoristas/:id", auth, managerOnly, async (req, res) => {
       ]);
     } catch (mongoErr) {
       console.warn('[MOTORISTA] MongoDB timeout ao buscar motorista');
-      return res.status(500).json({ message: "Serviço temporariamente indisponível" });
+      return res.status(500).json({ message: "ServiÃ§o temporariamente indisponÃ­vel" });
     }
     if (!motorista) {
-      return res.status(404).json({ message: "Motorista não encontrado" });
+      return res.status(404).json({ message: "Motorista nÃ£o encontrado" });
     }
 
     // Check if CPF is being changed and if new CPF already exists
@@ -1931,7 +1961,7 @@ router.put("/motoristas/:id", auth, managerOnly, async (req, res) => {
         console.warn('[MOTORISTA] MongoDB timeout ao verificar CPF');
       }
       if (existing) {
-        return res.status(400).json({ message: "CPF já existe para esta transportadora" });
+        return res.status(400).json({ message: "CPF jÃ¡ existe para esta transportadora" });
       }
     }
 
@@ -1953,7 +1983,7 @@ router.put("/motoristas/:id", auth, managerOnly, async (req, res) => {
     motorista.updatedAt = new Date();
 
     const updated = await motorista.save();
-    console.log('[MOTORISTA] ✏️ Motorista atualizado:', { _id: updated._id, nome: updated.nome });
+    console.log('[MOTORISTA] âœï¸ Motorista atualizado:', { _id: updated._id, nome: updated.nome });
 
     return res.json({
       success: true,
@@ -1961,9 +1991,9 @@ router.put("/motoristas/:id", auth, managerOnly, async (req, res) => {
       motorista: updated
     });
   } catch (err) {
-    console.error('[MOTORISTA] ❌ Erro ao atualizar:', err);
+    console.error('[MOTORISTA] âŒ Erro ao atualizar:', err);
     if (err.code === 11000) {
-      return res.status(400).json({ message: "CPF já existe para esta transportadora" });
+      return res.status(400).json({ message: "CPF jÃ¡ existe para esta transportadora" });
     }
     return res.status(500).json({ message: "Erro ao atualizar motorista", error: err.message });
   }
@@ -1982,51 +2012,39 @@ router.delete("/motoristas/:id", auth, managerOnly, async (req, res) => {
     const Motorista = require("../models/Motorista");
     const motorista = await Motorista.findById(id);
     if (!motorista) {
-      return res.status(404).json({ message: "Motorista não encontrado" });
+      return res.status(404).json({ message: "Motorista nÃ£o encontrado" });
     }
 
     await Motorista.findByIdAndDelete(id);
-    console.log('[MOTORISTA] 🗑️ Motorista deletado:', { _id: id, nome: motorista.nome });
+    console.log('[MOTORISTA] ðŸ—‘ï¸ Motorista deletado:', { _id: id, nome: motorista.nome });
 
     return res.json({
       success: true,
       message: "Motorista deletado com sucesso"
     });
   } catch (err) {
-    console.error('[MOTORISTA] ❌ Erro ao deletar:', err);
+    console.error('[MOTORISTA] âŒ Erro ao deletar:', err);
     return res.status(500).json({ message: "Erro ao deletar motorista", error: err.message });
   }
 });
 
 /**
  * GET /api/admin/programacoes
- * Listar programações de entrega
- * Suporta filtro de período: ?period=today|yesterday|tomorrow&periodDate=DD/MM/YYYY
+ * Listar programaÃ§Ãµes de entrega
+ * Suporta filtro de perÃ­odo: ?period=today|yesterday|tomorrow&periodDate=DD/MM/YYYY
  */
 router.get("/programacoes", auth, async (req, res) => {
   try {
     const { period, periodDate, startDate, endDate, page = 1, limit = 500 } = req.query;
-    console.log('[PROGRAMACAO] Listando programações de entrega, filtros:', { period, periodDate, startDate, endDate, page, limit });
+    console.log('[PROGRAMACAO] Listando programaÃ§Ãµes de entrega, filtros:', { period, periodDate, startDate, endDate, page, limit });
 
     const ProgramacaoEntrega = require("../models/ProgramacaoEntrega");
     
-    // Construir filtro de cidade baseado na origem
     let cityFilter = {};
     const city = req.city || 'manaus';
-    
-    if (city === 'manaus') {
-      // Manaus: apenas dados de MANAUS e MANAUS - COELTA BALY
-      cityFilter.origem = { $in: ['MANAUS', 'MANAUS - COELTA BALY'] };
-    } else if (city === 'itajai') {
-      // Itajaí: todos os outros dados (origem vazio ou diferente)
-      cityFilter.$or = [
-        { origem: { $exists: false } },
-        { origem: '' },
-        { origem: { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] } }
-      ];
-    }
+    applyProgramacaoCityFilter(cityFilter, city);
 
-    // Calcular o filtro de data para aplicar no DB sempre que possível
+    // Calcular o filtro de data para aplicar no DB sempre que possÃ­vel
     let effectiveDate = '';
     let rangeStart = null;
     let rangeEnd = null;
@@ -2041,9 +2059,9 @@ router.get("/programacoes", auth, async (req, res) => {
 
     if (periodDate && String(periodDate).trim()) {
       effectiveDate = String(periodDate).trim();
-      console.log('🗓️  Usando periodDate do cliente:', effectiveDate);
+      console.log('ðŸ—“ï¸  Usando periodDate do cliente:', effectiveDate);
     } else if (!startDate && !endDate && period && period !== 'general') {
-      console.log('🗓️  Aplicando filtro de período:', period);
+      console.log('ðŸ—“ï¸  Aplicando filtro de perÃ­odo:', period);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       if (period === 'yesterday') {
@@ -2058,20 +2076,26 @@ router.get("/programacoes", auth, async (req, res) => {
     const dbFilter = { ...cityFilter };
     if (effectiveDate) {
       if (city === 'itajai') {
-        dbFilter.$or = dbFilter.$or || [];
-        dbFilter.$or.push(
-          { dtColeta: effectiveDate },
-          { dtColeta: { $in: [null, '', undefined] }, dataAgendamento: effectiveDate }
-        );
+        const cityOr = dbFilter.$or || [];
+        delete dbFilter.$or;
+        dbFilter.$and = [
+          { $or: cityOr },
+          {
+            $or: [
+              { dtColeta: effectiveDate },
+              { dtColeta: { $in: [null, '', undefined] }, dataAgendamento: effectiveDate },
+            ],
+          },
+        ];
       } else {
         dbFilter.dataAgendamento = effectiveDate;
       }
-      console.log('📅 Aplicando filtro de data ao DB (data única):', dbFilter);
+      console.log('ðŸ“… Aplicando filtro de data ao DB (data Ãºnica):', dbFilter);
     }
 
     if (!effectiveDate && (rangeStart || rangeEnd)) {
-      console.log('📅 Aplicando filtro de data por intervalo:', { rangeStart, rangeEnd });
-      // dbFilter cannot reliably compare string dates, aplicamos filtro em memória abaixo
+      console.log('ðŸ“… Aplicando filtro de data por intervalo:', { rangeStart, rangeEnd });
+      // dbFilter cannot reliably compare string dates, aplicamos filtro em memÃ³ria abaixo
     }
 
     const limitNum = Math.min(Math.max(parseInt(limit, 10) || 500, 10), 1000);
@@ -2084,7 +2108,7 @@ router.get("/programacoes", auth, async (req, res) => {
 
     let filtered = programacoes;
 
-    // Fallback de refinamento em memória para formatos de data não padronizados
+    // Fallback de refinamento em memÃ³ria para formatos de data nÃ£o padronizados
     if (effectiveDate) {
       const [edDay, edMonth, edYear] = effectiveDate.split('/').map(Number);
       filtered = filtered.filter(d => {
@@ -2105,7 +2129,7 @@ router.get("/programacoes", auth, async (req, res) => {
         if (!pd) return false;
         return pd.day === edDay && pd.month === edMonth && pd.year === edYear;
       });
-      console.log(`  ✓ ${filtered.length} programações após filtro de data única`);
+      console.log(`  âœ“ ${filtered.length} programaÃ§Ãµes apÃ³s filtro de data Ãºnica`);
     }
 
     if (!effectiveDate && (rangeStart || rangeEnd)) {
@@ -2134,15 +2158,15 @@ router.get("/programacoes", auth, async (req, res) => {
         if (rangeEnd && progDate > rangeEnd) return false;
         return true;
       });
-      console.log(`  ✓ ${filtered.length} programações após filtro por intervalo`);
+      console.log(`  âœ“ ${filtered.length} programaÃ§Ãµes apÃ³s filtro por intervalo`);
     }
 
-    // também trazemos entregas para permitir associação com motoristas (apenas da mesma cidade)
+    // tambÃ©m trazemos entregas para permitir associaÃ§Ã£o com motoristas (apenas da mesma cidade)
     // Otimizado: busca apenas entregas ativas/recentes para evitar timeout
     const db = await getDb(req);
     const allDeliveries = await db.find("deliveries", {
       cityCode: city,
-      // Limita a entregas dos últimos 90 dias para performance
+      // Limita a entregas dos Ãºltimos 90 dias para performance
       createdAt: { $gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) }
     });
 
@@ -2184,7 +2208,7 @@ router.get("/programacoes", auth, async (req, res) => {
       return obj;
     });
 
-    console.log('[PROGRAMACAO] ✅ Encontradas', enriched.length, 'programações');
+    console.log('[PROGRAMACAO] âœ… Encontradas', enriched.length, 'programaÃ§Ãµes');
 
     return res.json({
       success: true,
@@ -2192,19 +2216,20 @@ router.get("/programacoes", auth, async (req, res) => {
       city: city
     });
   } catch (err) {
-    console.error('[PROGRAMACAO] ❌ Erro ao listar:', err);
-    return res.status(500).json({ message: "Erro ao listar programações", error: err.message });
+    console.error('[PROGRAMACAO] âŒ Erro ao listar:', err);
+    return res.status(500).json({ message: "Erro ao listar programaÃ§Ãµes", error: err.message });
   }
 });
 
 /**
  * POST /api/admin/programacoes
- * Criar nova programação de entrega
+ * Criar nova programaÃ§Ã£o de entrega
  */
 router.post("/programacoes", auth, managerOnly, async (req, res) => {
   try {
     const city = req.city || 'manaus';
-    const { processo, recebedor, container, dataAgendamento, dtColeta, contratado, motorista, status, observacoes, origem } = req.body;
+    const cfg = cityConfigFromRequest(city);
+    const { processo, recebedor, container, dataAgendamento, dtColeta, contratado, motorista, status, observacoes, origem, estab } = req.body;
 
     console.log('[PROGRAMACAO] Criando:', { processo, recebedor, contratado, cidade: city, dtColeta });
 
@@ -2220,37 +2245,38 @@ router.post("/programacoes", auth, managerOnly, async (req, res) => {
       motorista,
       status,
       observacoes,
-      origem: origem || (city === 'manaus' ? 'MANAUS' : '')
+      origem: origem || cfg.origem,
+      estab: estab || cfg.estab
     });
 
     await novaProgramacao.save();
-    console.log('[PROGRAMACAO] ✅ Criada:', { _id: novaProgramacao._id, processo, origem: novaProgramacao.origem });
+    console.log('[PROGRAMACAO] âœ… Criada:', { _id: novaProgramacao._id, processo, origem: novaProgramacao.origem });
 
     return res.status(201).json({
       success: true,
-      message: "Programação criada com sucesso",
+      message: "ProgramaÃ§Ã£o criada com sucesso",
       programacao: novaProgramacao
     });
   } catch (err) {
-    console.error('[PROGRAMACAO] ❌ Erro ao criar:', err);
+    console.error('[PROGRAMACAO] âŒ Erro ao criar:', err);
     
     if (err.code === 11000) {
-      return res.status(400).json({ message: "Esse processo já existe" });
+      return res.status(400).json({ message: "Esse processo jÃ¡ existe" });
     }
     
-    return res.status(500).json({ message: "Erro ao criar programação", error: err.message });
+    return res.status(500).json({ message: "Erro ao criar programaÃ§Ã£o", error: err.message });
   }
 });
 
 /**
  * PUT /api/admin/programacoes/:id
- * Atualizar programação de entrega
+ * Atualizar programaÃ§Ã£o de entrega
  */
 router.put("/programacoes/:id", auth, managerOnly, async (req, res) => {
   try {
     const city = req.city || 'manaus';
     const { id } = req.params;
-    const { processo, recebedor, container, dataAgendamento, dtColeta, contratado, motorista, status, observacoes, containerReturned, origem } = req.body;
+    const { processo, recebedor, container, dataAgendamento, dtColeta, contratado, motorista, status, observacoes, containerReturned, origem, estab } = req.body;
     // Get editor name from logged-in user
     const editorName = req.user?.name || req.user?.username || req.user?._id || 'Desconhecido';
 
@@ -2260,18 +2286,11 @@ router.put("/programacoes/:id", auth, managerOnly, async (req, res) => {
     
     const programacao = await ProgramacaoEntrega.findById(id);
     if (!programacao) {
-      return res.status(404).json({ message: "Programação não encontrada" });
+      return res.status(404).json({ message: "ProgramaÃ§Ã£o nÃ£o encontrada" });
     }
     
-    // Validação de cidade baseada no campo origem
-    if (city === 'manaus') {
-      if (programacao.origem && !['MANAUS', 'MANAUS - COELTA BALY'].includes(programacao.origem)) {
-        return res.status(403).json({ message: 'Acesso negado - programação de outra cidade' });
-      }
-    } else if (city === 'itajai') {
-      if (programacao.origem && ['MANAUS', 'MANAUS - COELTA BALY'].includes(programacao.origem)) {
-        return res.status(403).json({ message: 'Acesso negado - programação de outra cidade' });
-      }
+    if (!userCanAccessProgramacaoCity(programacao, city)) {
+      return res.status(403).json({ message: 'Acesso negado - programação de outra cidade' });
     }
 
     // Atualizar apenas os campos fornecidos
@@ -2286,39 +2305,40 @@ router.put("/programacoes/:id", auth, managerOnly, async (req, res) => {
     if (observacoes !== undefined) programacao.observacoes = observacoes;
     if (containerReturned !== undefined) programacao.containerReturned = containerReturned;
     if (origem !== undefined) programacao.origem = origem;
+    if (estab !== undefined) programacao.estab = estab;
     // Register editor and time
     programacao.editedBy = editorName;
     programacao.editedAt = new Date();
 
     try {
       await programacao.save();
-      console.log('[PROGRAMACAO] ✅ Atualizada:', { _id: id, processo: programacao.processo, origem: programacao.origem });
+      console.log('[PROGRAMACAO] âœ… Atualizada:', { _id: id, processo: programacao.processo, origem: programacao.origem });
       return res.json({
         success: true,
-        message: "Programação atualizada com sucesso",
+        message: "ProgramaÃ§Ã£o atualizada com sucesso",
         programacao
       });
     } catch (saveErr) {
-      console.error('[PROGRAMACAO] ❌ Erro ao salvar atualização:', saveErr);
+      console.error('[PROGRAMACAO] âŒ Erro ao salvar atualizaÃ§Ã£o:', saveErr);
       if (saveErr.code === 11000) {
-        return res.status(400).json({ message: "Esse processo já existe" });
+        return res.status(400).json({ message: "Esse processo jÃ¡ existe" });
       }
-      return res.status(500).json({ message: "Erro ao salvar atualização", error: saveErr.message });
+      return res.status(500).json({ message: "Erro ao salvar atualizaÃ§Ã£o", error: saveErr.message });
     }
   } catch (err) {
-    console.error('[PROGRAMACAO] ❌ Erro ao atualizar:', err);
+    console.error('[PROGRAMACAO] âŒ Erro ao atualizar:', err);
     
     if (err.code === 11000) {
-      return res.status(400).json({ message: "Esse processo já existe" });
+      return res.status(400).json({ message: "Esse processo jÃ¡ existe" });
     }
     
-    return res.status(500).json({ message: "Erro ao atualizar programação", error: err.message });
+    return res.status(500).json({ message: "Erro ao atualizar programaÃ§Ã£o", error: err.message });
   }
 });
 
 /**
  * DELETE /api/admin/programacoes/:id
- * Deletar programação de entrega
+ * Deletar programaÃ§Ã£o de entrega
  */
 router.delete("/programacoes/:id", auth, managerOnly, async (req, res) => {
   try {
@@ -2330,18 +2350,11 @@ router.delete("/programacoes/:id", auth, managerOnly, async (req, res) => {
     const ProgramacaoEntrega = require("../models/ProgramacaoEntrega");
     const programacao = await ProgramacaoEntrega.findById(id);
     if (!programacao) {
-      return res.status(404).json({ message: "Programação não encontrada" });
+      return res.status(404).json({ message: "ProgramaÃ§Ã£o nÃ£o encontrada" });
     }
     
-    // Validação de cidade baseada no campo origem
-    if (city === 'manaus') {
-      if (programacao.origem && !['MANAUS', 'MANAUS - COELTA BALY'].includes(programacao.origem)) {
-        return res.status(403).json({ message: 'Acesso negado - programação de outra cidade' });
-      }
-    } else if (city === 'itajai') {
-      if (programacao.origem && ['MANAUS', 'MANAUS - COELTA BALY'].includes(programacao.origem)) {
-        return res.status(403).json({ message: 'Acesso negado - programação de outra cidade' });
-      }
+    if (!userCanAccessProgramacaoCity(programacao, city)) {
+      return res.status(403).json({ message: 'Acesso negado - programação de outra cidade' });
     }
 
     // CASCADE DELETE: Remove linked delivery if exists
@@ -2349,43 +2362,44 @@ router.delete("/programacoes/:id", auth, managerOnly, async (req, res) => {
       try {
         const Delivery = require("../models/Delivery");
         await Delivery.findByIdAndDelete(programacao.linkedDeliveryId);
-        console.log('[PROGRAMACAO] 🗑️ Cascaded deletion: Delivery removed', { _id: programacao.linkedDeliveryId });
+        console.log('[PROGRAMACAO] ðŸ—‘ï¸ Cascaded deletion: Delivery removed', { _id: programacao.linkedDeliveryId });
       } catch (cascadeErr) {
-        console.warn('[PROGRAMACAO] ⚠️ Cascade delete error for delivery:', cascadeErr.message);
+        console.warn('[PROGRAMACAO] âš ï¸ Cascade delete error for delivery:', cascadeErr.message);
       }
     }
 
     await ProgramacaoEntrega.findByIdAndDelete(id);
-    console.log('[PROGRAMACAO] 🗑️ Programação deletada:', { _id: id, processo: programacao.processo });
+    console.log('[PROGRAMACAO] ðŸ—‘ï¸ ProgramaÃ§Ã£o deletada:', { _id: id, processo: programacao.processo });
 
     return res.json({
       success: true,
-      message: "Programação deletada com sucesso"
+      message: "ProgramaÃ§Ã£o deletada com sucesso"
     });
   } catch (err) {
-    console.error('[PROGRAMACAO] ❌ Erro ao deletar:', err);
-    return res.status(500).json({ message: "Erro ao deletar programação", error: err.message });
+    console.error('[PROGRAMACAO] âŒ Erro ao deletar:', err);
+    return res.status(500).json({ message: "Erro ao deletar programaÃ§Ã£o", error: err.message });
   }
 });
 
 /**
  * POST /api/admin/programacoes/import
- * Importar múltiplas programações em batch
+ * Importar mÃºltiplas programaÃ§Ãµes em batch
  */
 router.post("/programacoes/import", auth, managerOnly, async (req, res) => {
   try {
     const city = req.city || 'manaus';
+    const cfg = cityConfigFromRequest(city);
     const programacoes = req.body;
 
     if (!Array.isArray(programacoes)) {
-      return res.status(400).json({ message: "Body deve ser um array de programações" });
+      return res.status(400).json({ message: "Body deve ser um array de programaÃ§Ãµes" });
     }
 
     if (programacoes.length === 0) {
-      return res.status(400).json({ message: "Nenhuma programação para importar" });
+      return res.status(400).json({ message: "Nenhuma programaÃ§Ã£o para importar" });
     }
 
-    console.log('[PROGRAMACAO] Importando', programacoes.length, 'programações em batch (cidade:', city, ')');
+    console.log('[PROGRAMACAO] Importando', programacoes.length, 'programaÃ§Ãµes em batch (cidade:', city, ')');
 
     const ProgramacaoEntrega = require("../models/ProgramacaoEntrega");
     
@@ -2395,22 +2409,22 @@ router.post("/programacoes/import", auth, managerOnly, async (req, res) => {
 
     for (const prog of programacoes) {
       try {
-        const { processo, container, dataAgendamento, contratado, motorista, status, observacoes, origem } = prog;
+        const { processo, container, dataAgendamento, contratado, motorista, status, observacoes, origem, estab } = prog;
         // Case-insensitive recebedor field
         const recebedorField = prog.recebedor || prog.Recebedor || prog.RECEBEDOR || '';
 
-        // Validar campos obrigatórios
+        // Validar campos obrigatÃ³rios
         if (!processo || !recebedorField || !dataAgendamento || !contratado) {
           erros++;
           resultados.push({
             processo: processo || 'N/A',
             sucesso: false,
-            erro: 'Campos obrigatórios faltando: processo, recebedor, dataAgendamento, contratado'
+            erro: 'Campos obrigatÃ³rios faltando: processo, recebedor, dataAgendamento, contratado'
           });
           continue;
         }
 
-        // Tenta criar a programação
+        // Tenta criar a programaÃ§Ã£o
         const novaProgramacao = new ProgramacaoEntrega({
           processo,
           recebedor: recebedorField,
@@ -2420,7 +2434,8 @@ router.post("/programacoes/import", auth, managerOnly, async (req, res) => {
           motorista: motorista || '',
           status: status || 'AGENDADO',
           observacoes: observacoes || '',
-          origem: origem || (city === 'manaus' ? 'MANAUS' : '')
+          origem: origem || cfg.origem,
+          estab: estab || cfg.estab
         });
 
         await novaProgramacao.save();
@@ -2435,36 +2450,36 @@ router.post("/programacoes/import", auth, managerOnly, async (req, res) => {
         resultados.push({
           processo: prog.processo || 'N/A',
           sucesso: false,
-          erro: err.code === 11000 ? 'Processo já existe' : err.message
+          erro: err.code === 11000 ? 'Processo jÃ¡ existe' : err.message
         });
       }
     }
 
-    console.log('[PROGRAMACAO] ✅ Import concluído:', { importados, erros, total: programacoes.length });
+    console.log('[PROGRAMACAO] âœ… Import concluÃ­do:', { importados, erros, total: programacoes.length });
 
     return res.json({
       success: true,
-      message: `${importados} programação(ões) importada(s) com sucesso${erros > 0 ? `, ${erros} erro(s)` : ''}`,
+      message: `${importados} programaÃ§Ã£o(Ãµes) importada(s) com sucesso${erros > 0 ? `, ${erros} erro(s)` : ''}`,
       importados,
       erros,
       resultados: erros > 0 ? resultados : undefined
     });
   } catch (err) {
-    console.error('[PROGRAMACAO] ❌ Erro ao importar:', err);
+    console.error('[PROGRAMACAO] âŒ Erro ao importar:', err);
 
-    return res.status(500).json({ message: "Erro ao importar programações", error: err.message });
+    return res.status(500).json({ message: "Erro ao importar programaÃ§Ãµes", error: err.message });
   }
 });
 
 /**
  * GET /api/admin/programacoes/sync/icompany
- * Sincronizar dados do Icompany para Programação de Entregas
- * Mapeia: Processo←processo, RECEBEDOR←destinatario, CONTAINER←containerNumero, STATUS=AGENDADO
- * Filtra dados baseado na cidade do usuário (Manaus vs Itajaí)
+ * Sincronizar dados do Icompany para ProgramaÃ§Ã£o de Entregas
+ * Mapeia: Processoâ†processo, RECEBEDORâ†destinatario, CONTAINERâ†containerNumero, STATUS=AGENDADO
+ * Filtra dados baseado na cidade do usuÃ¡rio (Manaus vs ItajaÃ­)
  */
 router.get("/programacoes/sync/icompany", auth, managerOnly, async (req, res) => {
   try {
-    console.log('[SYNC ICOMPANY] Iniciando sincronização');
+    console.log('[SYNC ICOMPANY] Iniciando sincronizaÃ§Ã£o');
 
     const { connectIfNeeded } = require("../db/mongo");
     await connectIfNeeded();
@@ -2472,25 +2487,18 @@ router.get("/programacoes/sync/icompany", auth, managerOnly, async (req, res) =>
     const Icompany = require("../models/Icompany");
     const ProgramacaoEntrega = require("../models/ProgramacaoEntrega");
 
-    // Construir filtro de cidade
-    let cityFilter = {};
     const city = req.city || 'manaus';
-    
-    if (city === 'manaus') {
-      // Manaus: apenas dados de MANAUS e MANAUS - COELTA BALY
-      cityFilter.origem = { $in: ['MANAUS', 'MANAUS - COELTA BALY'] };
-    } else if (city === 'itajai') {
-      // Itajaí: todos os outros dados
-      cityFilter.origem = { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] };
-    }
+    const cfg = cityConfigFromRequest(city);
+    const cityFilter = {};
+    applyIcompanyEstabFilter(cityFilter, city);
     
     console.log(`[SYNC ICOMPANY] Filtrando por cidade: ${city}`, cityFilter);
 
     const { startDate, endDate } = req.query;
     console.log('[SYNC ICOMPANY] Query params recebidos:', { startDate, endDate });
 
-    // Primeiro, buscar registros do Icompany apenas por cidade, ANTES de aplicar filtro de data
-    let icompanyRecords = await Icompany.find({ origem: cityFilter.origem ? cityFilter.origem : undefined }).lean();
+    // Primeiro, buscar registros do Icompany pela coluna Estab. da nova base.
+    let icompanyRecords = await Icompany.find(cityFilter).lean();
     console.log(`[SYNC ICOMPANY] Encontrados ${icompanyRecords.length} registros no Icompany (antes de filtro de data)`);
 
     // Agora aplicar filtro de data se informado
@@ -2506,9 +2514,9 @@ router.get("/programacoes/sync/icompany", auth, managerOnly, async (req, res) =>
       }
       if (Object.keys(dateFilter).length) {
         const scheduleField = city === 'itajai' ? 'dtColeta' : 'dtAgendamentoDescarga';
-        console.log('[SYNC ICOMPANY] Aplicando filtro de período:', { city, scheduleField, startDate, endDate, dateFilter });
+        console.log('[SYNC ICOMPANY] Aplicando filtro de perÃ­odo:', { city, scheduleField, startDate, endDate, dateFilter });
         
-        // Filtrar por data no array já carregado
+        // Filtrar por data no array jÃ¡ carregado
         icompanyRecords = icompanyRecords.filter(rec => {
           const dateVal = rec[scheduleField];
           if (!dateVal) return false;
@@ -2518,17 +2526,19 @@ router.get("/programacoes/sync/icompany", auth, managerOnly, async (req, res) =>
           if (dateFilter.$lte && dateObj > dateFilter.$lte) return false;
           return true;
         });
-        console.log(`[SYNC ICOMPANY] Após filtro de data: ${icompanyRecords.length} registros`);
+        console.log(`[SYNC ICOMPANY] ApÃ³s filtro de data: ${icompanyRecords.length} registros`);
       }
     }
 
-    // Buscar todos os processos já existentes para evitar duplicação e permitir atualização
-    const existingProgramacoes = await ProgramacaoEntrega.find({}).lean();
+    // Buscar todos os processos jÃ¡ existentes para evitar duplicaÃ§Ã£o e permitir atualizaÃ§Ã£o
+    const existingFilter = {};
+    applyProgramacaoCityFilter(existingFilter, city);
+    const existingProgramacoes = await ProgramacaoEntrega.find(existingFilter).lean();
     const existingMap = new Map(existingProgramacoes.map(p => [String(p.processo || '').trim().toUpperCase(), p]));
 
-    console.log(`[SYNC ICOMPANY] ${existingMap.size} processos já existentes`);
+    console.log(`[SYNC ICOMPANY] ${existingMap.size} processos jÃ¡ existentes`);
 
-    // Converter função de data uma única vez
+    // Converter funÃ§Ã£o de data uma Ãºnica vez
     const formatSyncDate = (raw) => {
       if (!raw) return '';
       const dtStr = String(raw).trim();
@@ -2559,11 +2569,14 @@ router.get("/programacoes/sync/icompany", auth, managerOnly, async (req, res) =>
       const existing = existingMap.get(processoKey);
 
       let dataAgendamento = formatSyncDate(y.dtAgendamentoDescarga);
+      if (!dataAgendamento && city === 'itajai') dataAgendamento = formatSyncDate(y.dtColeta);
       if (!dataAgendamento) dataAgendamento = new Date().toISOString().slice(0, 16);
       const dtColeta = formatSyncDate(y.dtColeta);
       const recebedorValue = city === 'itajai'
         ? String(y.remetente || '').trim() || 'N/A'
         : String(y.destinatario || '').trim() || 'N/A';
+
+      const observacaoIcompany = String(y.observacao || y.observacoes || '').trim();
 
       const mappedData = {
         recebedor: recebedorValue,
@@ -2572,12 +2585,13 @@ router.get("/programacoes/sync/icompany", auth, managerOnly, async (req, res) =>
         dtColeta,
         contratado: String(y.contratado || '').trim() || 'OUTRO',
         motorista: String(y.motorista || '').trim() || '',
-        origem: String(y.origem || '').trim() || '',
-        observacoes: `Sincronizado do Icompany - ${y.situacao || 'N/A'}`
+        origem: String(y.origem || '').trim() || cfg.origem,
+        estab: String(y.estab || '').trim() || cfg.estab,
+        observacoes: observacaoIcompany || `Sincronizado do Icompany - ${y.situacao || 'N/A'}`
       };
 
       if (existing) {
-        // Atualiza dados, mas mantém status atual
+        // Atualiza dados, mas mantÃ©m status atual
         await ProgramacaoEntrega.updateOne({ _id: existing._id }, { $set: mappedData });
         updatedCount++;
       } else {
@@ -2591,7 +2605,7 @@ router.get("/programacoes/sync/icompany", auth, managerOnly, async (req, res) =>
 
     console.log(`[SYNC ICOMPANY] ${updatedCount} registros existentes atualizados`);
 
-    console.log(`[SYNC ICOMPANY] ${novosRegistros.length} novos registros para importar (sem duplicação)`);
+    console.log(`[SYNC ICOMPANY] ${novosRegistros.length} novos registros para importar (sem duplicaÃ§Ã£o)`);
 
     if (novosRegistros.length === 0) {
       return res.json({
@@ -2607,7 +2621,7 @@ router.get("/programacoes/sync/icompany", auth, managerOnly, async (req, res) =>
     // Inserir novos registros
     const inserted = await ProgramacaoEntrega.insertMany(novosRegistros, { ordered: false });
     insertedCount = inserted.length;
-    console.log(`[SYNC ICOMPANY] ✅ ${insertedCount} registros inseridos com sucesso`);
+    console.log(`[SYNC ICOMPANY] âœ… ${insertedCount} registros inseridos com sucesso`);
 
     const totalSynced = updatedCount + insertedCount;
     return res.json({
@@ -2621,7 +2635,7 @@ router.get("/programacoes/sync/icompany", auth, managerOnly, async (req, res) =>
       registros: inserted
     });
   } catch (err) {
-    console.error('[SYNC ICOMPANY] ❌ Erro ao sincronizar:', err);
+    console.error('[SYNC ICOMPANY] âŒ Erro ao sincronizar:', err);
     return res.status(500).json({ 
       success: false,
       message: "Erro ao sincronizar dados do Icompany", 
@@ -2632,21 +2646,21 @@ router.get("/programacoes/sync/icompany", auth, managerOnly, async (req, res) =>
 
 /**
  * GET /api/admin/performance
- * Análise de Produtividade e Capacidade
- * Retorna dados analíticos sobre entregas, contratados e tempos
+ * AnÃ¡lise de Produtividade e Capacidade
+ * Retorna dados analÃ­ticos sobre entregas, contratados e tempos
  */
 router.get("/performance", auth, onlyAdmin, async (req, res) => {
   try {
     const city = req.city || 'manaus';
     const { startDate, endDate } = req.query;
 
-    // Definir período (última semana se não especificado)
+    // Definir perÃ­odo (Ãºltima semana se nÃ£o especificado)
     const end = endDate ? new Date(endDate) : new Date();
     const start = startDate ? new Date(startDate) : new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    // Garantir que datas sejam válidas
+    // Garantir que datas sejam vÃ¡lidas
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-      return res.status(400).json({ success: false, message: "Datas inválidas" });
+      return res.status(400).json({ success: false, message: "Datas invÃ¡lidas" });
     }
 
     // Conectar ao MongoDB
@@ -2660,7 +2674,7 @@ router.get("/performance", auth, onlyAdmin, async (req, res) => {
 
     // Pipeline de aggregation
     const pipeline = [
-      // Filtrar por período (usar dtAgendamentoDescarga ou dtColeta)
+      // Filtrar por perÃ­odo (usar dtAgendamentoDescarga ou dtColeta)
       {
         $match: {
           contratado: { $ne: null },
@@ -2691,11 +2705,11 @@ router.get("/performance", auth, onlyAdmin, async (req, res) => {
               branches: [
                 { case: { $eq: [{ $dayOfWeek: "$scheduleDate" }, 1] }, then: "Domingo" },
                 { case: { $eq: [{ $dayOfWeek: "$scheduleDate" }, 2] }, then: "Segunda" },
-                { case: { $eq: [{ $dayOfWeek: "$scheduleDate" }, 3] }, then: "Terça" },
+                { case: { $eq: [{ $dayOfWeek: "$scheduleDate" }, 3] }, then: "TerÃ§a" },
                 { case: { $eq: [{ $dayOfWeek: "$scheduleDate" }, 4] }, then: "Quarta" },
                 { case: { $eq: [{ $dayOfWeek: "$scheduleDate" }, 5] }, then: "Quinta" },
                 { case: { $eq: [{ $dayOfWeek: "$scheduleDate" }, 6] }, then: "Sexta" },
-                { case: { $eq: [{ $dayOfWeek: "$scheduleDate" }, 7] }, then: "Sábado" }
+                { case: { $eq: [{ $dayOfWeek: "$scheduleDate" }, 7] }, then: "SÃ¡bado" }
               ],
               default: "Desconhecido"
             }
@@ -2712,7 +2726,7 @@ router.get("/performance", auth, onlyAdmin, async (req, res) => {
               else: null
             }
           },
-          contratadoNome: { $ifNull: ["$contratado", "Não informado"] }
+          contratadoNome: { $ifNull: ["$contratado", "NÃ£o informado"] }
         }
       },
       {
@@ -2720,7 +2734,7 @@ router.get("/performance", auth, onlyAdmin, async (req, res) => {
           scheduleDate: { $gte: start, $lte: end }
         }
       },
-      // Fazer facet para múltiplas agregações
+      // Fazer facet para mÃºltiplas agregaÃ§Ãµes
       {
         $facet: {
           // 1. Entregas por dia da semana
@@ -2741,7 +2755,7 @@ router.get("/performance", auth, onlyAdmin, async (req, res) => {
             { $sort: { total: -1 } }
           ],
 
-          // 2. Utilização dos contratados
+          // 2. UtilizaÃ§Ã£o dos contratados
           contratadosUtilizacao: [
             {
               $group: {
@@ -2852,7 +2866,7 @@ router.get("/performance", auth, onlyAdmin, async (req, res) => {
             { $sort: { total: -1 } }
           ],
 
-          // 5. Estatísticas gerais
+          // 5. EstatÃ­sticas gerais
           estatisticasGerais: [
             {
               $group: {
@@ -2914,15 +2928,15 @@ router.get("/performance", auth, onlyAdmin, async (req, res) => {
 
     const data = result[0];
 
-    // Gerar alertas automáticos
+    // Gerar alertas automÃ¡ticos
     const alertas = [];
     const stats = data.estatisticasGerais?.[0] || {};
 
-    // Alerta de concentração no início da semana
+    // Alerta de concentraÃ§Ã£o no inÃ­cio da semana
     const segunda = data.entregasPorDia.find(d => d.dia === "Segunda")?.total || 0;
     const totalSemana = data.entregasPorDia.reduce((sum, d) => sum + d.total, 0);
     if (segunda > totalSemana * 0.3) {
-      alertas.push("Alta concentração de entregas no início da semana");
+      alertas.push("Alta concentraÃ§Ã£o de entregas no inÃ­cio da semana");
     }
 
     // Alerta de contratados ociosos
@@ -2949,10 +2963,10 @@ router.get("/performance", auth, onlyAdmin, async (req, res) => {
     });
 
   } catch (err) {
-    console.error('[PERFORMANCE] ❌ Erro:', err);
+    console.error('[PERFORMANCE] âŒ Erro:', err);
     res.status(500).json({
       success: false,
-      message: "Erro ao gerar análise de performance",
+      message: "Erro ao gerar anÃ¡lise de performance",
       error: err.message
     });
   }

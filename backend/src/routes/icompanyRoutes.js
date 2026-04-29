@@ -95,23 +95,24 @@ function normalizeDocument(doc) {
   return result;
 }
 
+function applyEstabCityFilter(filter, city) {
+  if (city === 'manaus') {
+    filter.estab = 'LAM';
+  } else if (city === 'itajai') {
+    filter.estab = 'LSC';
+  }
+  return filter;
+}
+
 // --- new endpoints for the React Icompany page ------------------------------------------------
 router.get('/', async (req, res) => {
   try {
     const c = await col();
-    
-    // Construir filtro baseado na cidade do usuário
+
     let filter = {};
-    const city = req.city || 'manaus'; // req.city vem do middleware city.js
-    
-    if (city === 'manaus') {
-      // Manaus: mostra apenas dados de MANAUS e MANAUS - COELTA BALY
-      filter.origem = { $in: ['MANAUS', 'MANAUS - COELTA BALY'] };
-    } else if (city === 'itajai') {
-      // Itajaí: mostra todos os dados que NÃO sejam de Manaus
-      filter.origem = { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] };
-    }
-    
+    const city = req.city || 'manaus';
+    applyEstabCityFilter(filter, city);
+
     let data = await c.find(filter)
       .sort({ updatedAt: -1, _id: -1 })
       .limit(2000)
@@ -126,10 +127,8 @@ router.get('/', async (req, res) => {
       }
     }
 
-    // Normalizar documentos (mapear campos com espaços para camelCase)
     data = data.map(doc => normalizeDocument(doc));
 
-    // Serializar datas para ISO string
     const serialized = data.map(doc => {
       const obj = { ...doc };
       if (obj.dtInicioRota && obj.dtInicioRota instanceof Date) obj.dtInicioRota = obj.dtInicioRota.toISOString();
@@ -162,14 +161,7 @@ router.get('/compare', async (req, res) => {
     // Construir filtro baseado na cidade do usuário
     let filter = {};
     const city = req.city || 'manaus';
-    
-    if (city === 'manaus') {
-      // Manaus: mostra apenas dados de MANAUS e MANAUS - COELTA BALY
-      filter.origem = { $in: ['MANAUS', 'MANAUS - COELTA BALY'] };
-    } else if (city === 'itajai') {
-      // Itajaí: mostra todos os dados que NÃO sejam de Manaus
-      filter.origem = { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] };
-    }
+    applyEstabCityFilter(filter, city)
     
     // Mapeamento dos 4 campos para comparação
     // [fieldNameInGeoTower, fieldNameInIcompany, displayName]
@@ -307,12 +299,7 @@ router.get('/debug-comparison', async (req, res) => {
     // Construir filtro baseado na cidade do usuário
     let filter = {};
     const city = req.city || 'manaus';
-    
-    if (city === 'manaus') {
-      filter.origem = { $in: ['MANAUS', 'MANAUS - COELTA BALY'] };
-    } else if (city === 'itajai') {
-      filter.origem = { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] };
-    }
+    applyEstabCityFilter(filter, city)
     
     // Get 3 records from each collection for detailed analysis
     const icompanyRecords = await icompanyCol.find(filter).limit(5).toArray();
@@ -396,11 +383,7 @@ router.get('/search', async (req, res) => {
     
     // Filtro por cidade
     const city = req.city || 'manaus';
-    if (city === 'manaus') {
-      filter.origem = { $in: ['MANAUS', 'MANAUS - COELTA BALY'] };
-    } else if (city === 'itajai') {
-      filter.origem = { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] };
-    }
+    applyEstabCityFilter(filter, city)
     
     if (q && q.trim()) {
       filter.$or = [
@@ -443,11 +426,7 @@ router.get('/export', async (req, res) => {
     // Filtro por cidade
     let filter = {};
     const city = req.city || 'manaus';
-    if (city === 'manaus') {
-      filter.origem = { $in: ['MANAUS', 'MANAUS - COELTA BALY'] };
-    } else if (city === 'itajai') {
-      filter.origem = { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] };
-    }
+    applyEstabCityFilter(filter, city)
     
     const records = await c.find(filter).toArray();
     
@@ -487,11 +466,7 @@ router.get("/entregas", async (req, res) => {
     // Filtro por cidade
     let filter = {};
     const city = req.city || 'manaus';
-    if (city === 'manaus') {
-      filter.origem = { $in: ['MANAUS', 'MANAUS - COELTA BALY'] };
-    } else if (city === 'itajai') {
-      filter.origem = { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] };
-    }
+    applyEstabCityFilter(filter, city)
 
     if (status) filter.status = status;
 
@@ -603,11 +578,7 @@ router.get("/relatorio-contratado", async (req, res) => {
     // Filtro por cidade
     let filter = {};
     const city = req.city || 'manaus';
-    if (city === 'manaus') {
-      filter.origem = { $in: ['MANAUS', 'MANAUS - COELTA BALY'] };
-    } else if (city === 'itajai') {
-      filter.origem = { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] };
-    }
+    applyEstabCityFilter(filter, city)
     
     // Buscar dados com filtro de cidade
     const dados = await c
@@ -677,11 +648,7 @@ router.get("/contratados-unicos", async (req, res) => {
     // Filtro por cidade
     let filter = {};
     const city = req.city || 'manaus';
-    if (city === 'manaus') {
-      filter.origem = { $in: ['MANAUS', 'MANAUS - COELTA BALY'] };
-    } else if (city === 'itajai') {
-      filter.origem = { $nin: ['MANAUS', 'MANAUS - COELTA BALY'] };
-    }
+    applyEstabCityFilter(filter, city)
     
     const contratados = await c.distinct("contratado", { ...filter, contratado: { $ne: null, $ne: "" } });
     res.json({ ok: true, contratados: contratados.sort(), city: city });
