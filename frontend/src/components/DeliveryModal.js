@@ -136,14 +136,19 @@ const DeliveryModal = ({
     return value === true;
   };
 
+  const linkedIcompanyRecord = icompanyRemoteRecord || findIcompanyInCache(selectedDelivery) || null;
+
   const parseObservationSections = () => {
+    const currentIcompanyObservation = String(
+      linkedIcompanyRecord?.observacao || linkedIcompanyRecord?.observacoes || ''
+    ).trim();
     const raw = [selectedDelivery.observations, selectedDelivery.observacoes]
       .filter(Boolean)
       .map((value) => String(value).trim())
       .filter(Boolean)
       .join('\n');
 
-    const sections = { icompany: '', operation: [] };
+    const sections = { icompany: currentIcompanyObservation, operation: [] };
     if (!raw) return sections;
 
     const marker = 'Observação Icompany:';
@@ -175,6 +180,10 @@ const DeliveryModal = ({
       sections.operation.push(text);
     });
 
+    if (currentIcompanyObservation) {
+      sections.icompany = currentIcompanyObservation;
+    }
+
     return sections;
   };
 
@@ -200,7 +209,7 @@ const DeliveryModal = ({
             <p className="text-xs text-purple-300 uppercase tracking-widest font-semibold mb-0.5">Entrega</p>
             <h2 className="text-xl font-black text-white tracking-wide">#{selectedDelivery.deliveryNumber}</h2>
             <p className="text-xs text-gray-300 mt-1">CAB: {selectedDelivery.processoCAB || selectedDelivery.processo || selectedDelivery.processNumber || selectedDelivery.codigo || '—'}</p>
-            <p className="text-xs text-gray-300 mt-1">Código: {(icompanyRemoteRecord?.codigo || findIcompanyInCache(selectedDelivery)?.codigo || '—')}</p>
+            <p className="text-xs text-gray-300 mt-1">Código: {(linkedIcompanyRecord?.codigo || '—')}</p>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
@@ -216,8 +225,7 @@ const DeliveryModal = ({
 
         <div className="overflow-y-auto flex-1 p-4 sm:p-6 space-y-5">
           {(() => {
-            const localRecord = findIcompanyInCache(selectedDelivery);
-            const effectiveRecord = icompanyRemoteRecord || localRecord;
+            const effectiveRecord = linkedIcompanyRecord;
             const effectiveComparisons = compareWithIcompany(selectedDelivery, effectiveRecord);
             const hasNotFound = effectiveComparisons && effectiveComparisons.__notFound;
             const icompanyMatched = !hasNotFound && effectiveComparisons && Object.keys(effectiveComparisons).length > 0;
