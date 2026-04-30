@@ -363,6 +363,7 @@ router.put("/:id", auth, async (req, res) => {
 
     // Preparar updates
     const updates = {};
+    const programacaoIdFromBody = req.body.programacaoId || req.body.linkedProgramacaoId;
 
     // Se hÃ¡ mudanÃ§a de status, usar funÃ§Ã£o especializada com validaÃ§Ã£o de ordem
     if (req.body.status) {
@@ -387,10 +388,30 @@ router.put("/:id", auth, async (req, res) => {
       if (req.body.desovaStartAt !== undefined) statusUpdates.desovaStartAt = req.body.desovaStartAt;
       if (req.body.desovaEndAt !== undefined) statusUpdates.desovaEndAt = req.body.desovaEndAt;
       if (req.body.recebedor !== undefined) statusUpdates.recebedor = req.body.recebedor;
-      if (req.body.programacaoId !== undefined) statusUpdates.programacaoId = req.body.programacaoId;
+      if (programacaoIdFromBody !== undefined) {
+        statusUpdates.programacaoId = programacaoIdFromBody;
+        statusUpdates.linkedProgramacaoId = programacaoIdFromBody;
+      }
       if (req.body.horarioDevolucaoVazio !== undefined) statusUpdates.horarioDevolucaoVazio = req.body.horarioDevolucaoVazio;
 
       const updated = await updateDeliveryStatus(delivery._id, req.body.status, statusUpdates, false);
+      const shouldMarkReturned = updated.horarioDevolucaoVazio;
+      const programacaoToUpdate = programacaoIdFromBody || updated.programacaoId || updated.linkedProgramacaoId;
+
+      if (shouldMarkReturned && programacaoToUpdate) {
+        try {
+          const ProgramacaoEntrega = require("../models/ProgramacaoEntrega");
+          console.log(`[CONTAINER_RETURN] Marcando containerReturned=true na programaÃ§Ã£o ${programacaoToUpdate}`);
+          await ProgramacaoEntrega.findByIdAndUpdate(programacaoToUpdate, {
+            containerReturned: true,
+            status: 'FINALIZADO'
+          });
+          console.log(`[CONTAINER_RETURN] âœ… ProgramaÃ§Ã£o ${programacaoToUpdate} atualizada`);
+        } catch (e) {
+          console.error('[CONTAINER_RETURN] Erro ao atualizar programaÃ§Ã£o:', e.message);
+        }
+      }
+
       return res.json({ delivery: normalizeDeliveryForResponse(updated) });
     }
 
@@ -407,8 +428,10 @@ router.put("/:id", auth, async (req, res) => {
     if (req.body.recebedor !== undefined) updates.recebedor = req.body.recebedor;
 
     // Se programacaoId for fornecido, guardar (serÃ¡ usado para atualizar depois)
-    const programacaoIdFromBody = req.body.programacaoId;
-    if (programacaoIdFromBody !== undefined) updates.programacaoId = programacaoIdFromBody;
+    if (programacaoIdFromBody !== undefined) {
+      updates.programacaoId = programacaoIdFromBody;
+      updates.linkedProgramacaoId = programacaoIdFromBody;
+    }
 
     if (req.body.horarioDevolucaoVazio !== undefined) updates.horarioDevolucaoVazio = req.body.horarioDevolucaoVazio;
 
@@ -421,7 +444,7 @@ router.put("/:id", auth, async (req, res) => {
     // Se houver horÃ¡rio de devoluÃ§Ã£o vazio agora (seja de antes ou desta chamada),
     // marca containerReturned na programaÃ§Ã£o vinculada
     const shouldMarkReturned = updated.horarioDevolucaoVazio;
-    const programacaoToUpdate = programacaoIdFromBody || updated.programacaoId;
+    const programacaoToUpdate = programacaoIdFromBody || updated.programacaoId || updated.linkedProgramacaoId;
     
     if (shouldMarkReturned && programacaoToUpdate) {
       try {
@@ -520,6 +543,7 @@ router.get('/programacoes/mine', auth, async (req, res) => {
     });
 
     // Enriquecer programaÃ§Ãµes
+    const hasDocumentValue = (value) => Array.isArray(value) ? value.length > 0 : !!value;
     const enrichedProgramacoes = (programacoes || []).map((p) => {
       const obj = { ...p };
       
@@ -535,8 +559,11 @@ router.get('/programacoes/mine', auth, async (req, res) => {
       if (matchedDelivery) {
         obj.linkedDeliveryId = matchedDelivery._id;
         obj.missingDocumentsAtSubmit = matchedDelivery.missingDocumentsAtSubmit || [];
-        if (matchedDelivery.horarioDevolucaoVazio) {
+        const hasReturnProof = hasDocumentValue(matchedDelivery.documents?.devolucaoVazio) || hasDocumentValue(matchedDelivery.documents?.devolucaoContainerVazio);
+        if (matchedDelivery.horarioDevolucaoVazio || hasReturnProof) {
           obj.horarioDevolucaoVazio = matchedDelivery.horarioDevolucaoVazio;
+          obj.containerReturned = true;
+          obj.status = 'FINALIZADO';
         }
       }
       

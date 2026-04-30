@@ -387,6 +387,7 @@ const ProgramadasEntregas = () => {
 
         // Se marcada como containerReturned, não mostra
         if (p.containerReturned === true) return false;
+        if (p.horarioDevolucaoVazio) return false;
 
         // Se o delivery indexado por programacaoId já tem comprovante, não mostra
         const byProg = programacaoMap[String(p._id)];

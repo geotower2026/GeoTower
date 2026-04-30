@@ -2180,6 +2180,7 @@ router.get("/programacoes", auth, async (req, res) => {
     });
 
     // vincular id de entrega correspondente (se existir) usando mapas otimizados
+    const hasDocumentValue = (value) => Array.isArray(value) ? value.length > 0 : !!value;
     const enriched = (filtered || []).map(p => {
       const obj = p.toObject ? p.toObject() : { ...p };
       let match = null;
@@ -2197,8 +2198,11 @@ router.get("/programacoes", auth, async (req, res) => {
         obj.linkedDeliveryId = match._id;
         obj.status = match.status || obj.status;
         obj.missingDocumentsAtSubmit = match.missingDocumentsAtSubmit || [];
-        if (match.horarioDevolucaoVazio) {
+        const hasReturnProof = hasDocumentValue(match.documents?.devolucaoVazio) || hasDocumentValue(match.documents?.devolucaoContainerVazio);
+        if (match.horarioDevolucaoVazio || hasReturnProof) {
           obj.horarioDevolucaoVazio = match.horarioDevolucaoVazio;
+          obj.containerReturned = true;
+          obj.status = 'FINALIZADO';
         }
         if (match.containerReturned !== undefined) {
           obj.containerReturned = match.containerReturned;
