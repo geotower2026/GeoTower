@@ -219,28 +219,44 @@ router.post("/", auth, async (req, res) => {
 
     let delivery = null;
     if (programacaoKey) {
-      const samePartyConditions = partyName ? [
-        { deliveryNumber: normalizedDeliveryNumber, recebedor: new RegExp(`^${escapeRegExp(partyName)}$`, 'i') }
-      ] : [];
-      const existingByProgramacao = await Delivery.findOneAndUpdate(
-        {
-          cityCode: city,
-          isCanceled: { $ne: true },
-          $or: [
-            { programacaoId: programacaoKey },
-            { linkedProgramacaoId: programacaoKey },
-            ...samePartyConditions
-          ]
-        },
-        {
-          $set: { updatedAt: new Date(), ...(partyName ? { recebedor: partyName } : {}) },
-          $setOnInsert: baseDeliveryPayload
-        },
-        { new: true, upsert: true, setDefaultsOnInsert: true }
-      ).lean();
+      const baseLookup = {
+        cityCode: city,
+        isCanceled: { $ne: true }
+      };
+      const programacaoLookup = {
+        ...baseLookup,
+        $or: [
+          { programacaoId: programacaoKey },
+          { linkedProgramacaoId: programacaoKey }
+        ]
+      };
+      const samePartyLookup = partyName ? {
+        ...baseLookup,
+        deliveryNumber: normalizedDeliveryNumber,
+        recebedor: new RegExp(`^${escapeRegExp(partyName)}$`, 'i')
+      } : null;
 
-      delivery = existingByProgramacao;
-      if (String(delivery.userId) !== String(req.user.id)) {
+      const existing = await Delivery.findOne(programacaoLookup).lean() ||
+        (samePartyLookup ? await Delivery.findOne(samePartyLookup).lean() : null);
+
+      if (existing) {
+        delivery = await Delivery.findByIdAndUpdate(
+          existing._id,
+          {
+            $set: {
+              updatedAt: new Date(),
+              linkedProgramacaoId: existing.linkedProgramacaoId || programacaoKey,
+              programacaoId: existing.programacaoId || programacaoKey,
+              ...(partyName ? { recebedor: partyName } : {})
+            }
+          },
+          { new: true }
+        ).lean();
+      } else {
+        delivery = (await Delivery.create(baseDeliveryPayload)).toObject();
+      }
+
+      if (delivery && String(delivery.userId) !== String(req.user.id)) {
         console.warn('[DELIVERY] Programacao ja possuia delivery de outro usuario; reutilizando para evitar duplicidade:', {
           deliveryId: delivery._id,
           programacaoKey,
@@ -249,20 +265,23 @@ router.post("/", auth, async (req, res) => {
         });
       }
     } else {
-      delivery = await Delivery.findOneAndUpdate(
-        {
-          deliveryNumber: normalizedDeliveryNumber,
-          ...(partyName ? { recebedor: new RegExp(`^${escapeRegExp(partyName)}$`, 'i') } : {}),
-          userId: req.user.id,
-          cityCode: city,
-          isCanceled: { $ne: true }
-        },
-        {
-          $set: { updatedAt: new Date(), ...(partyName ? { recebedor: partyName } : {}) },
-          $setOnInsert: baseDeliveryPayload
-        },
-        { new: true, upsert: true, setDefaultsOnInsert: true }
-      ).lean();
+      const lookup = {
+        cityCode: city,
+        isCanceled: { $ne: true },
+        deliveryNumber: normalizedDeliveryNumber,
+        ...(partyName ? { recebedor: new RegExp(`^${escapeRegExp(partyName)}$`, 'i') } : {}),
+        userId: req.user.id
+      };
+      const existing = await Delivery.findOne(lookup).lean();
+      if (existing) {
+        delivery = await Delivery.findByIdAndUpdate(
+          existing._id,
+          { $set: { updatedAt: new Date(), ...(partyName ? { recebedor: partyName } : {}) } },
+          { new: true }
+        ).lean();
+      } else {
+        delivery = (await Delivery.create(baseDeliveryPayload)).toObject();
+      }
     }
 
     // Attempt to update matching programacao to indicate it is now em rota
