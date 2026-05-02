@@ -94,6 +94,13 @@ const getProgramacaoGroupKey = (programacao) => {
   return `${container || 'SEM_CONTAINER'}::${party || 'SEM_CLIENTE'}`;
 };
 
+const deliveryMatchesProgramacaoContext = (delivery, programacao) => {
+  if (!delivery || !programacao) return false;
+  if (deliveryBelongsToProgramacao(delivery, programacao._id)) return true;
+  return normalizeGroupValue(delivery.deliveryNumber) === normalizeGroupValue(programacao.container || programacao.processo) &&
+    normalizeGroupValue(delivery.recebedor) === normalizeGroupValue(programacao.recebedor);
+};
+
 const buildInitialDeliveryObservation = (programacao, flowText) => {
   const icompanyObs = String(programacao?.observacoes || '').trim();
   const flowObs = String(flowText || '').trim();
@@ -379,13 +386,10 @@ const ProgramadasEntregas = () => {
   const loadProgramacoes = async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
     try {
-      const res = await adminService.getProgramacoes();
+      const res = await deliveryService.getProgramacoesAssigned();
       const todas = res.data.programacoes || [];
       setAllProgramacoes(todas);
-      let nomeFiltro = '';
-      if (user) nomeFiltro = (user.name || '').trim().toUpperCase();
-      let filtradas = [];
-      if (nomeFiltro) filtradas = todas.filter(p => String(p.contratado).trim().toUpperCase() === nomeFiltro);
+      const filtradas = todas;
       
       const deliveriesRes = await deliveryService.getMyDeliveries({ includeCanceled: true });
       const deliveries = deliveriesRes.data.deliveries || [];
@@ -420,7 +424,8 @@ const ProgramadasEntregas = () => {
         if (p.horarioDevolucaoVazio) return false;
 
         // Se o delivery indexado por programacaoId já tem comprovante, não mostra
-        const byProg = programacaoMap[String(p._id)];
+        const byProgRaw = programacaoMap[String(p._id)];
+        const byProg = deliveryMatchesProgramacaoContext(byProgRaw, p) ? byProgRaw : null;
         if (byProg && byProg.documents && (byProg.documents.devolucaoVazio || byProg.documents.devolucaoContainerVazio) && ((byProg.documents.devolucaoVazio && byProg.documents.devolucaoVazio.length > 0) || (byProg.documents.devolucaoContainerVazio && byProg.documents.devolucaoContainerVazio.length > 0))) {
           return false;
         }
@@ -432,7 +437,8 @@ const ProgramadasEntregas = () => {
         // Tentar buscar o delivery por programacaoId primeiro, depois linkedDeliveryId, e só então por número
         let matchedDelivery = byProg || null;
         if (!matchedDelivery && p.linkedDeliveryId) {
-          matchedDelivery = deliveries.find(d => d._id === p.linkedDeliveryId);
+          const linkedDelivery = deliveries.find(d => String(d._id) === String(p.linkedDeliveryId));
+          matchedDelivery = deliveryMatchesProgramacaoContext(linkedDelivery, p) ? linkedDelivery : null;
           if (matchedDelivery && matchedDelivery.documents && ((matchedDelivery.documents.devolucaoVazio && matchedDelivery.documents.devolucaoVazio.length > 0) || (matchedDelivery.documents.devolucaoContainerVazio && matchedDelivery.documents.devolucaoContainerVazio.length > 0))) {
             return false;
           }

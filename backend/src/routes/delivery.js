@@ -616,8 +616,9 @@ router.get('/programacoes/mine', auth, async (req, res) => {
       });
     }
     
-    // Se ainda precisar fazer lookup por nÃºmero/processo, fazer em batch
-    const toMatch = programacoes.filter(p => !p.linkedDeliveryId);
+    // Buscar por nÃºmero/processo tambÃ©m para validar linkedDeliveryId legado.
+    // Programacoes com mesmo container e clientes diferentes nao podem herdar o mesmo delivery.
+    const toMatch = programacoes;
     const matchedNumbers = toMatch.map(p => ({
       $or: [
         { deliveryNumber: new RegExp(`^${p.processo}$`, 'i') },
@@ -641,9 +642,23 @@ router.get('/programacoes/mine', auth, async (req, res) => {
     const hasDocumentValue = (value) => Array.isArray(value) ? value.length > 0 : !!value;
     const enrichedProgramacoes = (programacoes || []).map((p) => {
       const obj = { ...p };
+      const party = normalizePartyName(p.recebedor).toUpperCase();
+      const deliveryMatchesProgramacao = (delivery) => {
+        if (!delivery) return false;
+        const linkedToProgramacao = String(delivery.programacaoId || '') === String(p._id) ||
+          String(delivery.linkedProgramacaoId || '') === String(p._id);
+        const deliveryNumber = String(delivery.deliveryNumber || '').toUpperCase();
+        const sameContainer = deliveryNumber === String(p.container || '').toUpperCase() ||
+          deliveryNumber === String(p.processo || '').toUpperCase();
+        const sameParty = normalizePartyName(delivery.recebedor).toUpperCase() === party;
+        return linkedToProgramacao || (sameContainer && sameParty);
+      };
       
       // Tentar buscar entrega vinculada
       let matchedDelivery = deliveriesByLinkedId.get(String(p.linkedDeliveryId));
+      if (matchedDelivery && !deliveryMatchesProgramacao(matchedDelivery)) {
+        matchedDelivery = null;
+      }
       
       if (!matchedDelivery) {
         const procKey = String(p.processo || '').toUpperCase();
@@ -651,10 +666,9 @@ router.get('/programacoes/mine', auth, async (req, res) => {
         const candidates = [
           ...(deliveriesByNumber.get(procKey) || []),
           ...(deliveriesByNumber.get(contKey) || [])
-        ];
-        const party = normalizePartyName(p.recebedor).toUpperCase();
-        matchedDelivery = candidates.find(d => normalizePartyName(d.recebedor).toUpperCase() === party) ||
-          candidates.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))[0];
+        ].filter(deliveryMatchesProgramacao);
+        matchedDelivery = candidates
+          .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))[0];
       }
       
       if (matchedDelivery) {
