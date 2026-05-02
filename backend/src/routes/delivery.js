@@ -174,8 +174,11 @@ router.post("/", auth, async (req, res) => {
       console.warn('[DELIVERY] Falha ao buscar programacao para observacao:', progErr.message || progErr);
     }
 
-    const delivery = await db.create("deliveries", {
-      deliveryNumber,
+    const programacaoKey = linkedProgramacao?._id || programacaoId || linkedProgramacaoId || undefined;
+    const Delivery = require('../models/Delivery');
+    const normalizedDeliveryNumber = String(deliveryNumber || '').trim().toUpperCase();
+    const baseDeliveryPayload = {
+      deliveryNumber: normalizedDeliveryNumber,
       vehiclePlate,
       observations: mergeDeliveryObservations(linkedProgramacao, observations),
       driverName: driverName || "",
@@ -185,11 +188,54 @@ router.post("/", auth, async (req, res) => {
       status: status || "pending",
       currentStep: 'welcome',
       documents: {},
-      linkedProgramacaoId: linkedProgramacao?._id || linkedProgramacaoId || programacaoId || undefined,
-      programacaoId: linkedProgramacao?._id || programacaoId || linkedProgramacaoId || undefined,
+      linkedProgramacaoId: programacaoKey,
+      programacaoId: programacaoKey,
       city,
       cityCode: city
-    });
+    };
+
+    let delivery = null;
+    if (programacaoKey) {
+      const existingByProgramacao = await Delivery.findOneAndUpdate(
+        {
+          cityCode: city,
+          isCanceled: { $ne: true },
+          $or: [
+            { programacaoId: programacaoKey },
+            { linkedProgramacaoId: programacaoKey }
+          ]
+        },
+        {
+          $set: { updatedAt: new Date() },
+          $setOnInsert: baseDeliveryPayload
+        },
+        { new: true, upsert: true, setDefaultsOnInsert: true }
+      ).lean();
+
+      delivery = existingByProgramacao;
+      if (String(delivery.userId) !== String(req.user.id)) {
+        console.warn('[DELIVERY] Programacao ja possuia delivery de outro usuario; reutilizando para evitar duplicidade:', {
+          deliveryId: delivery._id,
+          programacaoKey,
+          owner: delivery.userId,
+          requester: req.user.id
+        });
+      }
+    } else {
+      delivery = await Delivery.findOneAndUpdate(
+        {
+          deliveryNumber: normalizedDeliveryNumber,
+          userId: req.user.id,
+          cityCode: city,
+          isCanceled: { $ne: true }
+        },
+        {
+          $set: { updatedAt: new Date() },
+          $setOnInsert: baseDeliveryPayload
+        },
+        { new: true, upsert: true, setDefaultsOnInsert: true }
+      ).lean();
+    }
 
     // Attempt to update matching programacao to indicate it is now em rota
     try {
@@ -741,6 +787,21 @@ router.post("/:id/documents/:type", auth, upload.array("file"), async (req, res)
       return res.status(400).json({ message: "Nenhum arquivo enviado" });
     }
     const updated = await db.findById("deliveries", id);
+    if (type === 'devolucaoVazio' || type === 'devolucaoContainerVazio') {
+      try {
+        const ProgramacaoEntrega = require("../models/ProgramacaoEntrega");
+        const programacaoToUpdate = updated.programacaoId || updated.linkedProgramacaoId;
+        if (programacaoToUpdate) {
+          await ProgramacaoEntrega.findByIdAndUpdate(programacaoToUpdate, {
+            containerReturned: true,
+            status: 'FINALIZADO',
+            updatedAt: new Date()
+          });
+        }
+      } catch (progErr) {
+        console.warn('[UPLOAD] Falha ao marcar devolucao na programacao:', progErr.message || progErr);
+      }
+    }
     res.json({ delivery: normalizeDeliveryForResponse(updated) });
   } catch (err) {
     console.error("[UPLOAD] Erro geral ao upload:", err);

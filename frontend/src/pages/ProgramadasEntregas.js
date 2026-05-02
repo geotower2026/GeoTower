@@ -64,6 +64,22 @@ const getDeliveryTimestamp = (delivery) => {
   return Number.isFinite(time) ? time : 0;
 };
 
+const deliveryBelongsToProgramacao = (delivery, programacaoId) => {
+  if (!delivery || !programacaoId) return false;
+  return String(delivery.programacaoId || '') === String(programacaoId) ||
+    String(delivery.linkedProgramacaoId || '') === String(programacaoId);
+};
+
+const selectDeliveryForProgramacao = (deliveries, programacaoId) => {
+  const list = Array.isArray(deliveries) ? deliveries : [];
+  const linked = list.filter(d => deliveryBelongsToProgramacao(d, programacaoId));
+  const candidates = linked.length > 0 ? linked : list;
+  return candidates.reduce((best, next) =>
+    !best || getDeliveryTimestamp(next) > getDeliveryTimestamp(best) ? next : best,
+    null
+  );
+};
+
 const buildInitialDeliveryObservation = (programacao, flowText) => {
   const icompanyObs = String(programacao?.observacoes || '').trim();
   const flowObs = String(flowText || '').trim();
@@ -297,7 +313,7 @@ const ProgramadasEntregas = () => {
   useEffect(() => {
     const syncInterval = setInterval(() => {
       console.log('🔄 [ProgramadasEntregas] Sincronizando programações...');
-      loadProgramacoes();
+      loadProgramacoes({ silent: true });
       // Se houver entrega aberta, sincroniza também
       if (currentDelivery && currentDelivery._id) {
         deliveryService.getDelivery(currentDelivery._id).then(res => {
@@ -311,7 +327,7 @@ const ProgramadasEntregas = () => {
           // Só atualiza se o status mudou (detecta mudanças de outros clientes)
           if (updated.status !== currentDelivery.status) {
             console.log('⚠️ [ProgramadasEntregas] STATUS MUDOU! Atualizando de', currentDelivery.status, 'para', updated.status);
-            setCurrentDelivery(updated);
+            applyDeliveryUpdate(updated);
             setToast({ 
               message: `Status atualizado: ${updated.status}`, 
               type: 'info' 
@@ -322,7 +338,7 @@ const ProgramadasEntregas = () => {
           console.error('❌ [ProgramadasEntregas] Erro ao sincronizar:', err.message);
         });
       }
-    }, 30000); // A cada 30 segundos
+    }, 10000);
 
     return () => clearInterval(syncInterval);
   }, [currentDelivery]);
@@ -346,8 +362,8 @@ const ProgramadasEntregas = () => {
     }
   }, [programacoes, location.search]);
 
-  const loadProgramacoes = async () => {
-    setLoading(true);
+  const loadProgramacoes = async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
     try {
       const res = await adminService.getProgramacoes();
       const todas = res.data.programacoes || [];
@@ -370,13 +386,13 @@ const ProgramadasEntregas = () => {
         if (!existing || getDeliveryTimestamp(d) >= getDeliveryTimestamp(existing)) {
           map[key] = d;
         }
-        if (d.programacaoId) {
-          const progKey = String(d.programacaoId);
+        [d.programacaoId, d.linkedProgramacaoId].filter(Boolean).forEach(id => {
+          const progKey = String(id);
           const existingProg = programacaoMap[progKey];
           if (!existingProg || getDeliveryTimestamp(d) >= getDeliveryTimestamp(existingProg)) {
             programacaoMap[progKey] = d;
           }
-        }
+        });
       });
       setDeliveriesMap(map);
       
@@ -413,8 +429,7 @@ const ProgramadasEntregas = () => {
         if (!matchedDelivery) {
           const candidates = deliveriesByNumber[key] || [];
           if (candidates.length > 0) {
-            matchedDelivery = candidates.find(d => String(d.programacaoId) === String(p._id)) ||
-              candidates.reduce((best, next) => getDeliveryTimestamp(next) > getDeliveryTimestamp(best) ? next : best, candidates[0]);
+            matchedDelivery = selectDeliveryForProgramacao(candidates, p._id);
           }
         }
         if (matchedDelivery && matchedDelivery.documents && ((matchedDelivery.documents.devolucaoVazio && matchedDelivery.documents.devolucaoVazio.length > 0) || (matchedDelivery.documents.devolucaoContainerVazio && matchedDelivery.documents.devolucaoContainerVazio.length > 0))) {
@@ -437,9 +452,39 @@ const ProgramadasEntregas = () => {
       setToast({ message: 'Erro ao carregar entregas programadas', type: 'error' });
       setTimeout(() => setToast(null), 5000);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };;
+
+  const updateProgramacaoInList = (programacaoId, updates) => {
+    if (!programacaoId) return;
+    const applyUpdates = (items) => items.map(item =>
+      String(item._id) === String(programacaoId) ? { ...item, ...updates } : item
+    );
+    setProgramacoes(applyUpdates);
+    setAllProgramacoes(applyUpdates);
+    setCurrentProgramacao(prev =>
+      prev && String(prev._id) === String(programacaoId) ? { ...prev, ...updates } : prev
+    );
+  };
+
+  const applyDeliveryUpdate = (delivery, programacaoId = currentProgramacao?._id) => {
+    if (!delivery) return;
+    setCurrentDelivery(delivery);
+    if (delivery.deliveryNumber) {
+      setDeliveriesMap(prev => ({
+        ...prev,
+        [String(delivery.deliveryNumber).toUpperCase()]: delivery
+      }));
+    }
+    if (programacaoId) {
+      updateProgramacaoInList(programacaoId, {
+        linkedDeliveryId: delivery._id,
+        status: normalizeStatus(delivery.status),
+        containerReturned: !!delivery.horarioDevolucaoVazio
+      });
+    }
+  };
 
   const handleStartDelivery = async (p) => {
     const deliveryNumber = (p.container && p.container.trim()) || (p.processo && p.processo.trim());
@@ -452,8 +497,7 @@ const ProgramadasEntregas = () => {
         const list = searchRes.data.deliveries || [];
         const exactMatches = list.filter(d => String(d.deliveryNumber).toUpperCase() === deliveryNumber.toUpperCase());
         if (exactMatches.length > 0) {
-          existing = exactMatches.find(d => String(d.programacaoId) === String(p._id)) ||
-            exactMatches.reduce((best, next) => getDeliveryTimestamp(next) > getDeliveryTimestamp(best) ? next : best, exactMatches[0]);
+          existing = selectDeliveryForProgramacao(exactMatches, p._id);
         }
       } catch (_) {}
 
@@ -467,9 +511,9 @@ const ProgramadasEntregas = () => {
           _id: existing._id
         });
         if (existing.status === 'CONTAINER_MONTADO') {
-          await deliveryService.updateDelivery(existing._id, { status: 'A_CAMINHO_DO_CLIENTE' });
-          existing.status = 'A_CAMINHO_DO_CLIENTE';
-          p.status = 'A_CAMINHO_DO_CLIENTE';
+          const updated = await deliveryService.updateDelivery(existing._id, { status: 'A_CAMINHO_DO_CLIENTE' });
+          existing = updated.data.delivery;
+          applyDeliveryUpdate(existing, p._id);
         }
         let restoredStep = 'welcome';
         switch ((existing.status || '').toUpperCase()) {
@@ -495,7 +539,7 @@ const ProgramadasEntregas = () => {
         };
         const res = await deliveryService.createDelivery(payload);
         const newDelivery = res.data.delivery;
-        setCurrentDelivery(newDelivery);
+        applyDeliveryUpdate(newDelivery, p._id);
         setCurrentProgramacao(p);
         setCurrentStep(newDelivery.currentStep || 'welcome');
         setPhotos([]); setObservations(''); setJustification(''); setDocumentsUpload({});
@@ -520,6 +564,7 @@ const ProgramadasEntregas = () => {
     setJustification(''); 
     setDocumentsUpload({}); 
     setDocumentsJustification('');
+    loadProgramacoes({ silent: true });
     // Não recarrega lista - polling automático já sincroniza a cada 30s
   };
 
@@ -533,29 +578,41 @@ const ProgramadasEntregas = () => {
     setReturnSubmitting(true);
     try {
       const isPendingCanhoto = Array.isArray(currentProgramacao.missingDocumentsAtSubmit) && currentProgramacao.missingDocumentsAtSubmit.length > 0;
+      const returnAt = new Date().toISOString();
       if (currentProgramacao.linkedDeliveryId) {
-        if (!isPendingCanhoto) await deliveryService.updateDelivery(currentProgramacao.linkedDeliveryId, { status: 'FINALIZADO' });
         if (returnProof) {
           const proofFile = await compressUploadFile(returnProof);
           await deliveryService.uploadDocument(currentProgramacao.linkedDeliveryId, 'devolucaoVazio', proofFile);
         }
+        await deliveryService.updateDelivery(currentProgramacao.linkedDeliveryId, {
+          status: isPendingCanhoto ? 'ENTREGUE_COM_PENDENCIA_CANHOTO' : 'FINALIZADO',
+          horarioDevolucaoVazio: returnAt,
+          programacaoId: currentProgramacao._id
+        });
       } else {
         const searchVal = (currentProgramacao.container || currentProgramacao.processo || '').trim();
         if (searchVal) {
           const resp = await deliveryService.getMyDeliveries({ q: searchVal, includeCanceled: true });
-          const found = resp.data.deliveries && resp.data.deliveries[0];
+          const found = selectDeliveryForProgramacao(resp.data.deliveries, currentProgramacao._id);
           if (found) {
-            if (!isPendingCanhoto) await deliveryService.updateDelivery(found._id, { status: 'FINALIZADO' });
             if (returnProof) {
               const proofFile = await compressUploadFile(returnProof);
               await deliveryService.uploadDocument(found._id, 'devolucaoVazio', proofFile);
             }
+            await deliveryService.updateDelivery(found._id, {
+              status: isPendingCanhoto ? 'ENTREGUE_COM_PENDENCIA_CANHOTO' : 'FINALIZADO',
+              horarioDevolucaoVazio: returnAt,
+              programacaoId: currentProgramacao._id
+            });
           }
         }
       }
-      try { if (!isPendingCanhoto) await adminService.updateProgramacao(currentProgramacao._id, { status: 'FINALIZADO' }); } catch (_) {}
+      try { await adminService.updateProgramacao(currentProgramacao._id, { status: 'FINALIZADO', containerReturned: true }); } catch (_) {}
+      setProgramacoes(prev => prev.filter(p => p._id !== currentProgramacao._id));
+      window.dispatchEvent(new Event('programacoesUpdated'));
       setToast({ message: 'Entrega CNTR Porto registrada!', type: 'success' });
       closeReturnModal();
+      await loadProgramacoes({ silent: true });
       // Polling automático sincroniza lista a cada 30s
     } catch (err) {
       setToast({ message: 'Erro ao fazer Entrega CNTR Porto', type: 'error' });
@@ -590,8 +647,7 @@ const ProgramadasEntregas = () => {
         const exactMatches = list.filter(d => String(d.deliveryNumber).toUpperCase() === deliveryNumber.toUpperCase());
         let existing = null;
         if (exactMatches.length > 0) {
-          existing = exactMatches.find(d => String(d.programacaoId) === String(montagemProgramacao._id)) ||
-            exactMatches.reduce((best, next) => getDeliveryTimestamp(next) > getDeliveryTimestamp(best) ? next : best, exactMatches[0]);
+          existing = selectDeliveryForProgramacao(exactMatches, montagemProgramacao._id);
         }
         if (existing) {
           await deliveryService.updateDelivery(existing._id, payload);
@@ -613,6 +669,7 @@ const ProgramadasEntregas = () => {
         } catch (_) {}
       }
       setToast({ message: 'Container montado com sucesso!', type: 'success' });
+      await loadProgramacoes({ silent: true });
       setShowMontagemModal(false); 
       setMontagemProgramacao(null); 
       setMontagemComprovas([]);
@@ -636,7 +693,8 @@ const ProgramadasEntregas = () => {
     try {
       if (currentDelivery && currentDelivery._id) {
         // Salva passo no backend
-        await deliveryService.updateDelivery(currentDelivery._id, { currentStep: step });
+        const updated = await deliveryService.updateDelivery(currentDelivery._id, { currentStep: step });
+        applyDeliveryUpdate(updated.data.delivery);
         // Apenas refaz fetch se for crítico, não em cada mudança de passo
         // Isso evita perder dados locais não salvos
       }
@@ -764,9 +822,11 @@ const ProgramadasEntregas = () => {
         compressedFiles.push(compressed);
         setUploadProgress(Math.round(((i + 1) / photos.length) * 60));
       }
-      await deliveryService.uploadDocumentAndUpdate(currentDelivery._id, docKey, compressedFiles, { status, currentStep: nextStep, ...timestamps });
+      const updated = await deliveryService.uploadDocumentAndUpdate(currentDelivery._id, docKey, compressedFiles, { status, currentStep: nextStep, ...timestamps });
+      applyDeliveryUpdate(updated.data.delivery);
       setUploadProgress(100);
       goToStep(nextStep);
+      await loadProgramacoes({ silent: true });
       // Polling automático (30s) sincroniza lista - não precisa recarregar aqui
     } catch (err) {
       console.error(err);
@@ -783,7 +843,8 @@ const ProgramadasEntregas = () => {
       const fresh = await deliveryService.getDelivery(currentDelivery._id);
       const existingObs = fresh.data.delivery.observations || '';
       const timestamp = formatarData(new Date(), city);
-      await deliveryService.updateDelivery(currentDelivery._id, { observations: `${existingObs ? existingObs + '\n' : ''}[${timestamp}] ${observations}` });
+      const updated = await deliveryService.updateDelivery(currentDelivery._id, { observations: `${existingObs ? existingObs + '\n' : ''}[${timestamp}] ${observations}` });
+      applyDeliveryUpdate(updated.data.delivery);
       setToast({ message: 'Observação registrada', type: 'success' });
       goToStep('welcome');
     } catch (_) { setToast({ message: 'Erro ao salvar observação', type: 'error' }); }
@@ -803,7 +864,8 @@ const ProgramadasEntregas = () => {
       const fresh = await deliveryService.getDelivery(currentDelivery._id);
       const existingObs = fresh.data.delivery.observations || '';
       const timestamp = formatarData(new Date(), city);
-      await deliveryService.updateDelivery(currentDelivery._id, { observations: `${existingObs ? existingObs + '\n' : ''}[${timestamp}] (${getDesovaObservationLabel()}) ${justification}` });
+      const updated = await deliveryService.updateDelivery(currentDelivery._id, { observations: `${existingObs ? existingObs + '\n' : ''}[${timestamp}] (${getDesovaObservationLabel()}) ${justification}` });
+      applyDeliveryUpdate(updated.data.delivery);
       setToast({ message: 'Justificativa enviada', type: 'success' });
       goToStep('confirmDesova');
     } catch (_) { setToast({ message: 'Erro ao enviar justificativa', type: 'error' }); }
@@ -818,7 +880,8 @@ const ProgramadasEntregas = () => {
           const existingObs = fresh.data.delivery.observations || '';
           const timestamp = formatarData(new Date(), city);
           const obs = `(SOLICITACAO_AGENDAMENTO) Motorista solicitou agendamento de devolução do container.`;
-          await deliveryService.updateDelivery(currentDelivery._id, { observations: `${existingObs ? existingObs + '\n' : ''}[${timestamp}] ${obs}` });
+          const obsUpdated = await deliveryService.updateDelivery(currentDelivery._id, { observations: `${existingObs ? existingObs + '\n' : ''}[${timestamp}] ${obs}` });
+          applyDeliveryUpdate(obsUpdated.data.delivery);
           
           // Criar notificação para gestores/administradores
           try {
@@ -846,12 +909,11 @@ const ProgramadasEntregas = () => {
       const updated = await deliveryService.updateDelivery(currentDelivery._id, { status: 'ANEXANDO_DOCUMENTOS_FINAIS', currentStep: 'finalDocs' });
       console.log('✅ [ProgramadasEntregas] Status atualizado para ANEXANDO_DOCUMENTOS_FINAIS');
       
-      // Atualiza localmente sem refazer fetch total
-      if (currentProgramacao) currentProgramacao.status = 'ANEXANDO_DOCUMENTOS_FINAIS';
-      setCurrentDelivery(updated.data.delivery);
+      applyDeliveryUpdate(updated.data.delivery);
       
       // Prossegue para próxima etapa
       goToStep('finalDocs');
+      await loadProgramacoes({ silent: true });
     } catch (err) {
       console.error('❌ [ProgramadasEntregas] Erro em handleScheduleDecision:', err);
       setToast({ message: 'Erro ao processar decisão', type: 'error' });
@@ -886,11 +948,11 @@ const ProgramadasEntregas = () => {
       }
 
       // update delivery to finalizado (backend tracking), but keep programacao as ENTREGUE
-      await deliveryService.updateDelivery(currentDelivery._id, { status: 'FINALIZADO' });
+      const finalized = await deliveryService.updateDelivery(currentDelivery._id, { status: 'FINALIZADO' });
+      applyDeliveryUpdate(finalized.data.delivery);
       try {
         await adminService.updateProgramacao(currentProgramacao._id, { status: 'ENTREGUE' });
-        // reflect immediately in UI
-        currentProgramacao.status = 'ENTREGUE';
+        updateProgramacaoInList(currentProgramacao._id, { status: 'ENTREGUE' });
       } catch (_) {}
 
       const fresh = await deliveryService.getDelivery(currentDelivery._id);
@@ -899,9 +961,11 @@ const ProgramadasEntregas = () => {
       const docsObs = documentsJustification ? `(JUSTIFICATIVA_DOCS) ${documentsJustification}` : '';
       const newObs = `${existingObs ? existingObs + '\n' : ''}${docsObs ? `[${timestamp}] ${docsObs}` : ''}`;
       // ensure observation stored as well
-      await deliveryService.updateDelivery(currentDelivery._id, { observations: newObs });
+      const obsSaved = await deliveryService.updateDelivery(currentDelivery._id, { observations: newObs });
+      applyDeliveryUpdate(obsSaved.data.delivery);
 
       setToast({ message: 'Documentos enviados! Agora faça a Entrega CNTR Porto.', type: 'success' });
+      await loadProgramacoes({ silent: true });
       closeModal();
     } catch (err) {
       setToast({ message: 'Erro ao enviar documentos', type: 'error' });
@@ -923,7 +987,7 @@ const ProgramadasEntregas = () => {
       let deliveryId = currentProgramacaoForReturn.linkedDeliveryId;
       if (!deliveryId && deliveryNumber) {
         const resp = await deliveryService.getMyDeliveries({ q: deliveryNumber, includeCanceled: true });
-        const found = resp.data.deliveries && resp.data.deliveries[0];
+        const found = selectDeliveryForProgramacao(resp.data.deliveries, currentProgramacaoForReturn._id);
         if (found) deliveryId = found._id;
       }
       if (!deliveryId) {
@@ -954,12 +1018,13 @@ const ProgramadasEntregas = () => {
       const horarioDevolucaoVazio = new Date().toISOString();
       
       // Atualizar entrega com horário de devolução (backend marcará containerReturned na programação)
-      await deliveryService.updateDelivery(deliveryId, { 
+      const returned = await deliveryService.updateDelivery(deliveryId, { 
         status: finalStatus, 
         observations: newObs, 
         horarioDevolucaoVazio,
         programacaoId: currentProgramacaoForReturn._id 
       });
+      applyDeliveryUpdate(returned.data.delivery, currentProgramacaoForReturn._id);
 
       const msg = finalStatus === 'FINALIZADO' ? 'Entrega finalizada com sucesso!' : 'Container devolvido. Canhoto pendente!';
       setToast({ message: msg, type: 'success' });
@@ -972,6 +1037,7 @@ const ProgramadasEntregas = () => {
       setShowContainerReturnModal(false);
       setCurrentProgramacaoForReturn(null);
       setContainerVazioProof(null);
+      await loadProgramacoes({ silent: true });
     } catch (err) {
       setToast({ message: 'Erro ao registrar Entrega CNTR Porto', type: 'error' });
     } finally {
