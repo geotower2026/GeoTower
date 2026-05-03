@@ -171,8 +171,8 @@ const getStepFromDeliveryStatus = (delivery) => {
     case 'AGUARDANDO_ANEXO': case 'ANEXANDO_DOCUMENTOS_FINAIS': restoredStep = 'finalDocs'; break;
     case 'DESOVA_FINALIZADA': case 'AGUARDANDO_AGENDAMENTO_DEVOLUCAO': restoredStep = 'finalDocs'; break;
     case 'SAINDO_CLIENTE': restoredStep = delivery?.currentStep || 'leavingClient'; break;
-    case 'RETORNANDO_PORTO': restoredStep = delivery?.currentStep || 'arrivingPort'; break;
-    case 'CHEGOU_PORTO': restoredStep = delivery?.currentStep || 'arrivingPort'; break;
+    case 'RETORNANDO_PORTO': restoredStep = delivery?.currentStep === 'portReturn' ? 'portReturn' : 'arrivingPort'; break;
+    case 'CHEGOU_PORTO': restoredStep = 'portReturn'; break;
     case 'ENTREGUE': case 'DEVOLVENDO_CONTAINER': case 'FINALIZADO': restoredStep = 'welcome'; break;
     default: restoredStep = 'welcome';
   }
