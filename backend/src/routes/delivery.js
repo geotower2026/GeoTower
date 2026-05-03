@@ -240,6 +240,65 @@ async function getDb(req) {
   return wrapper;
 }
 
+async function getRequesterRecord(req, db) {
+  try {
+    return await db.findById('drivers', req.user.id);
+  } catch (_) {
+    return null;
+  }
+}
+
+function requesterNames(req, requesterRecord) {
+  return [
+    req.user?.name,
+    req.user?.fullName,
+    req.user?.username,
+    requesterRecord?.name,
+    requesterRecord?.fullName,
+    requesterRecord?.username
+  ].map(value => normalizePartyName(value).toUpperCase()).filter(Boolean);
+}
+
+function requesterContractors(req, requesterRecord) {
+  return [
+    req.user?.contratado,
+    req.user?.transportadora,
+    requesterRecord?.contratado,
+    requesterRecord?.transportadora
+  ].map(value => normalizePartyName(value).toUpperCase()).filter(Boolean);
+}
+
+async function canAccessDelivery(req, delivery, db) {
+  if (!delivery || !req.user) return false;
+  if (req.user.role === 'admin') return true;
+  if (String(delivery.userId || '') === String(req.user.id)) return true;
+
+  const requesterRecord = await getRequesterRecord(req, db);
+  const names = requesterNames(req, requesterRecord);
+  const contractors = requesterContractors(req, requesterRecord);
+  const deliveryDriver = normalizePartyName(delivery.driverName).toUpperCase();
+  const deliveryContractor = normalizePartyName(delivery.userName || delivery.vehiclePlate).toUpperCase();
+
+  if (deliveryDriver && names.includes(deliveryDriver)) return true;
+  if (deliveryContractor && contractors.includes(deliveryContractor)) return true;
+
+  const programacaoId = delivery.programacaoId || delivery.linkedProgramacaoId;
+  if (programacaoId) {
+    try {
+      const ProgramacaoEntrega = require('../models/ProgramacaoEntrega');
+      const programacao = await ProgramacaoEntrega.findById(programacaoId).lean();
+      if (programacao) {
+        const programacaoDriver = normalizePartyName(programacao.motorista).toUpperCase();
+        const programacaoContractor = normalizePartyName(programacao.contratado).toUpperCase();
+        if (programacaoDriver && names.includes(programacaoDriver)) return true;
+        if (programacaoContractor && contractors.includes(programacaoContractor)) return true;
+      }
+    } catch (_) {}
+  }
+
+  return false;
+}
+
 // =======================
 // Criar entrega
 // POST /api/deliveries
@@ -475,7 +534,7 @@ router.get("/:id", auth, async (req, res) => {
       return res.status(403).json({ message: 'Acesso negado - dados de outra cidade' });
     }
     // drivers should only access their own deliveries; admins may view all
-    if (req.user.role !== 'admin' && String(delivery.userId) !== String(req.user.id)) {
+    if (!(await canAccessDelivery(req, delivery, db))) {
       return res.status(403).json({ message: 'Acesso negado' });
     }
     res.json({ delivery: normalizeDeliveryForResponse(delivery) });
@@ -501,7 +560,7 @@ router.put("/:id", auth, async (req, res) => {
     if (delivery.cityCode !== city) {
       return res.status(403).json({ message: 'Acesso negado - dados de outra cidade' });
     }
-    if (String(delivery.userId) !== String(req.user.id)) {
+    if (!(await canAccessDelivery(req, delivery, db))) {
       return res.status(403).json({ message: 'Acesso negado' });
     }
 
@@ -832,6 +891,10 @@ router.post("/:id/documents/:type", auth, upload.array("file"), async (req, res)
       return res.status(403).json({ message: 'Acesso negado - dados de outra cidade' });
     }
 
+    if (!(await canAccessDelivery(req, delivery, db))) {
+      return res.status(403).json({ message: 'Acesso negado' });
+    }
+
     const typeNames = {
       canhotNF: "NF",
       canhotCTE: "CTE",
@@ -1019,7 +1082,7 @@ router.post("/:id/upload-and-update", auth, upload.array("file"), async (req, re
       return res.status(403).json({ message: 'Acesso negado - dados de outra cidade' });
     }
 
-    if (String(delivery.userId) !== String(req.user.id)) {
+    if (!(await canAccessDelivery(req, delivery, db))) {
       return res.status(403).json({ message: 'Acesso negado' });
     }
 
@@ -1289,8 +1352,7 @@ router.post("/:id/submit", auth, async (req, res) => {
     }
 
     // Check ownership: prefer driverId if present, else userId
-    const ownerId = (delivery.driverId && String(delivery.driverId)) || (delivery.userId && String(delivery.userId));
-    if (ownerId && ownerId !== req.user.id) {
+    if (!(await canAccessDelivery(req, delivery, db))) {
       return res.status(403).json({ message: 'Acesso negado' });
     }
 
