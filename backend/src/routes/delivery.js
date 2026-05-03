@@ -64,6 +64,7 @@ function buildProgramacaoLookupFilter(deliveryNumber, city, programacaoId) {
 
   const baseFilter = {
     $or: [
+      { processoLog: new RegExp(`^${safeDeliveryNumber}$`, 'i') },
       { processo: new RegExp(`^${safeDeliveryNumber}$`, 'i') },
       { container: new RegExp(`^${safeDeliveryNumber}$`, 'i') }
     ]
@@ -140,7 +141,8 @@ function deliveryMatchesProgramacaoContext(delivery, programacao) {
   if (linkedToProgramacao) return true;
 
   const deliveryNumber = String(delivery.deliveryNumber || '').trim().toUpperCase();
-  const sameContainer = deliveryNumber === String(programacao.container || '').trim().toUpperCase() ||
+  const sameContainer = deliveryNumber === String(programacao.processoLog || '').trim().toUpperCase() ||
+    deliveryNumber === String(programacao.container || '').trim().toUpperCase() ||
     deliveryNumber === String(programacao.processo || '').trim().toUpperCase();
   const deliveryParty = normalizePartyName(delivery.recebedor).toUpperCase();
   const programacaoParty = normalizePartyName(programacao.recebedor).toUpperCase();
@@ -647,12 +649,14 @@ router.get('/programacoes/mine', auth, async (req, res) => {
     // Buscar por nÃºmero/processo tambÃ©m para validar linkedDeliveryId legado.
     // Programacoes com mesmo container e clientes diferentes nao podem herdar o mesmo delivery.
     const toMatch = programacoes;
-    const matchedNumbers = toMatch.map(p => ({
-      $or: [
-        { deliveryNumber: new RegExp(`^${p.processo}$`, 'i') },
-        { deliveryNumber: new RegExp(`^${p.container}$`, 'i') }
-      ]
-    }));
+    const matchedNumbers = toMatch
+      .map(p => [p.processoLog, p.processo, p.container]
+        .map(value => String(value || '').trim())
+        .filter(Boolean)
+        .map(value => ({ deliveryNumber: new RegExp(`^${escapeRegExp(value)}$`, 'i') }))
+      )
+      .filter(conditions => conditions.length > 0)
+      .map(conditions => ({ $or: conditions }));
     
     const unmatchedDeliveries = matchedNumbers.length > 0 
       ? await Delivery.find({ $or: matchedNumbers }).lean()
@@ -679,9 +683,11 @@ router.get('/programacoes/mine', auth, async (req, res) => {
       }
       
       if (!matchedDelivery) {
+        const logKey = String(p.processoLog || '').toUpperCase();
         const procKey = String(p.processo || '').toUpperCase();
         const contKey = String(p.container || '').toUpperCase();
         const candidates = [
+          ...(deliveriesByNumber.get(logKey) || []),
           ...(deliveriesByNumber.get(procKey) || []),
           ...(deliveriesByNumber.get(contKey) || [])
         ].filter(deliveryMatchesProgramacao);

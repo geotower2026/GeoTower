@@ -103,6 +103,16 @@ const normalizeGroupValue = (value) => String(value || '')
   .replace(/\s+/g, ' ')
   .toUpperCase();
 
+const getProgramacaoDeliveryNumber = (programacao) =>
+  String(programacao?.processoLog || programacao?.container || programacao?.processo || '').trim();
+
+const getProgramacaoLegacyDeliveryNumbers = (programacao) => [
+  programacao?.container,
+  programacao?.processo
+]
+  .map(value => String(value || '').trim())
+  .filter(Boolean);
+
 const getProgramacaoGroupKey = (programacao) => {
   const container = normalizeGroupValue(programacao?.container || programacao?.processo);
   const party = normalizeGroupValue(programacao?.recebedor);
@@ -112,7 +122,11 @@ const getProgramacaoGroupKey = (programacao) => {
 const deliveryMatchesProgramacaoContext = (delivery, programacao) => {
   if (!delivery || !programacao) return false;
   if (deliveryBelongsToProgramacao(delivery, programacao._id)) return true;
-  return normalizeGroupValue(delivery.deliveryNumber) === normalizeGroupValue(programacao.container || programacao.processo) &&
+  const validNumbers = [
+    getProgramacaoDeliveryNumber(programacao),
+    ...getProgramacaoLegacyDeliveryNumbers(programacao)
+  ].map(normalizeGroupValue).filter(Boolean);
+  return validNumbers.includes(normalizeGroupValue(delivery.deliveryNumber)) &&
     normalizeGroupValue(delivery.recebedor) === normalizeGroupValue(programacao.recebedor);
 };
 
@@ -460,9 +474,14 @@ const ProgramadasEntregas = () => {
         }
 
         // Fallback: buscar por container/processo
-        const key = ((p.container || p.processo || '').toUpperCase());
+        const key = normalizeGroupValue(getProgramacaoDeliveryNumber(p));
         if (!matchedDelivery) {
-          const candidates = deliveriesByNumber[key] || [];
+          const legacyCandidates = getProgramacaoLegacyDeliveryNumbers(p)
+            .flatMap(number => deliveriesByNumber[normalizeGroupValue(number)] || []);
+          const candidates = [
+            ...(deliveriesByNumber[key] || []),
+            ...legacyCandidates
+          ];
           if (candidates.length > 0) {
             matchedDelivery = selectDeliveryForProgramacao(candidates, p._id, p);
           }
@@ -522,15 +541,19 @@ const ProgramadasEntregas = () => {
   };
 
   const handleStartDelivery = async (p) => {
-    const deliveryNumber = (p.container && p.container.trim()) || (p.processo && p.processo.trim());
-    if (!deliveryNumber) { setToast({ message: 'Sem número de container/processo', type: 'error' }); return; }
+    const deliveryNumber = getProgramacaoDeliveryNumber(p);
+    if (!deliveryNumber) { setToast({ message: 'Sem Processo Log/container/processo', type: 'error' }); return; }
     try {
       setSubmitting(true);
       let existing = null;
       try {
-        const searchRes = await deliveryService.getMyDeliveries({ q: deliveryNumber.toUpperCase(), includeCanceled: true });
-        const list = searchRes.data.deliveries || [];
-        const exactMatches = list.filter(d => String(d.deliveryNumber).toUpperCase() === deliveryNumber.toUpperCase());
+        const searchNumbers = [deliveryNumber, ...getProgramacaoLegacyDeliveryNumbers(p)];
+        const results = await Promise.all(searchNumbers.map(number =>
+          deliveryService.getMyDeliveries({ q: number.toUpperCase(), includeCanceled: true }).catch(() => ({ data: { deliveries: [] } }))
+        ));
+        const list = results.flatMap(result => result.data.deliveries || []);
+        const validNumbers = searchNumbers.map(normalizeGroupValue);
+        const exactMatches = list.filter(d => validNumbers.includes(normalizeGroupValue(d.deliveryNumber)));
         if (exactMatches.length > 0) {
           existing = selectDeliveryForProgramacao(exactMatches, p._id, p);
         }
@@ -626,10 +649,17 @@ const ProgramadasEntregas = () => {
           programacaoId: currentProgramacao._id
         });
       } else {
-        const searchVal = (currentProgramacao.container || currentProgramacao.processo || '').trim();
+        const searchVal = getProgramacaoDeliveryNumber(currentProgramacao);
         if (searchVal) {
-          const resp = await deliveryService.getMyDeliveries({ q: searchVal, includeCanceled: true });
-          const found = selectDeliveryForProgramacao(resp.data.deliveries, currentProgramacao._id, currentProgramacao);
+          const searchNumbers = [searchVal, ...getProgramacaoLegacyDeliveryNumbers(currentProgramacao)];
+          const results = await Promise.all(searchNumbers.map(number =>
+            deliveryService.getMyDeliveries({ q: number, includeCanceled: true }).catch(() => ({ data: { deliveries: [] } }))
+          ));
+          const found = selectDeliveryForProgramacao(
+            results.flatMap(result => result.data.deliveries || []),
+            currentProgramacao._id,
+            currentProgramacao
+          );
           if (found) {
             if (returnProof) {
               const proofFile = await compressUploadFile(returnProof);
@@ -662,8 +692,7 @@ const ProgramadasEntregas = () => {
     if (!montagemComprovas || montagemComprovas.length === 0) { setToast({ message: 'Anexe pelo menos um comprovante da montagem', type: 'error' }); return; }
     try {
       setMontagemSubmitting(true);
-      const deliveryNumber = (montagemProgramacao.container && montagemProgramacao.container.trim()) ||
-        (montagemProgramacao.processo && montagemProgramacao.processo.trim());
+      const deliveryNumber = getProgramacaoDeliveryNumber(montagemProgramacao);
       if (!deliveryNumber) { setToast({ message: 'Sem número de container/processo', type: 'error' }); setShowMontagemModal(false); setMontagemProgramacao(null); return; }
       const payload = {
         deliveryNumber: deliveryNumber.toUpperCase(),
@@ -679,9 +708,13 @@ const ProgramadasEntregas = () => {
       };
       let delivery = null;
       try {
-        const searchRes = await deliveryService.getMyDeliveries({ q: deliveryNumber.toUpperCase(), includeCanceled: true });
-        const list = searchRes.data.deliveries || [];
-        const exactMatches = list.filter(d => String(d.deliveryNumber).toUpperCase() === deliveryNumber.toUpperCase());
+        const searchNumbers = [deliveryNumber, ...getProgramacaoLegacyDeliveryNumbers(montagemProgramacao)];
+        const results = await Promise.all(searchNumbers.map(number =>
+          deliveryService.getMyDeliveries({ q: number.toUpperCase(), includeCanceled: true }).catch(() => ({ data: { deliveries: [] } }))
+        ));
+        const list = results.flatMap(result => result.data.deliveries || []);
+        const validNumbers = searchNumbers.map(normalizeGroupValue);
+        const exactMatches = list.filter(d => validNumbers.includes(normalizeGroupValue(d.deliveryNumber)));
         let existing = null;
         if (exactMatches.length > 0) {
           existing = selectDeliveryForProgramacao(exactMatches, montagemProgramacao._id, montagemProgramacao);
@@ -1020,11 +1053,18 @@ const ProgramadasEntregas = () => {
         setContainerVazioSubmitting(false);
         return;
       }
-      const deliveryNumber = (currentProgramacaoForReturn.container && currentProgramacaoForReturn.container.trim()) || (currentProgramacaoForReturn.processo && currentProgramacaoForReturn.processo.trim());
+      const deliveryNumber = getProgramacaoDeliveryNumber(currentProgramacaoForReturn);
       let deliveryId = currentProgramacaoForReturn.linkedDeliveryId;
       if (!deliveryId && deliveryNumber) {
-        const resp = await deliveryService.getMyDeliveries({ q: deliveryNumber, includeCanceled: true });
-        const found = selectDeliveryForProgramacao(resp.data.deliveries, currentProgramacaoForReturn._id, currentProgramacaoForReturn);
+        const searchNumbers = [deliveryNumber, ...getProgramacaoLegacyDeliveryNumbers(currentProgramacaoForReturn)];
+        const results = await Promise.all(searchNumbers.map(number =>
+          deliveryService.getMyDeliveries({ q: number, includeCanceled: true }).catch(() => ({ data: { deliveries: [] } }))
+        ));
+        const found = selectDeliveryForProgramacao(
+          results.flatMap(result => result.data.deliveries || []),
+          currentProgramacaoForReturn._id,
+          currentProgramacaoForReturn
+        );
         if (found) deliveryId = found._id;
       }
       if (!deliveryId) {

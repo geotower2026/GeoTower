@@ -2190,7 +2190,7 @@ router.get("/programacoes", auth, async (req, res) => {
       }
 
       if (!match) {
-        const num = String(p.processo || p.container || '').trim().toUpperCase();
+        const num = String(p.processoLog || p.processo || p.container || '').trim().toUpperCase();
         match = num ? deliveryNumberMap.get(num) : null;
       }
 
