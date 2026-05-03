@@ -319,6 +319,7 @@ const AdminDashboard = () => {
     const chegada = new Date(start);
     const ref = d.horarioFimDesova ? new Date(d.horarioFimDesova) : new Date();
     const diff = ref - chegada;
+    if (diff > 24 * 60 * 60000) return null;
     return diff < 0 ? null : diff / 60000;
   };
 
@@ -567,6 +568,7 @@ const AdminDashboard = () => {
 
       const durationMs = fim - chegada;
       const durationHours = durationMs / (1000 * 60 * 60);
+      if (durationHours > 24) return;
       validDeliveries++;
 
       if (durationHours <= 2) faixas['Até 2h'].count++;
@@ -599,6 +601,7 @@ const AdminDashboard = () => {
       if (isNaN(chegada) || isNaN(fim) || fim < chegada) return;
 
       const durationHours = (fim - chegada) / (1000 * 60 * 60);
+      if (durationHours > 24) return;
       
       if (!clienteData[d.recebedor]) {
         clienteData[d.recebedor] = { totalHours: 0, count: 0 };
