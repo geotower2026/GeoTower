@@ -384,6 +384,7 @@ const ProgramadasEntregas = () => {
   const [arrivalDelayReason, setArrivalDelayReason] = useState('');
   const [arrivalDelayError, setArrivalDelayError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [processingPhoto, setProcessingPhoto] = useState(false);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
 
@@ -779,13 +780,12 @@ const ProgramadasEntregas = () => {
         const res = await deliveryService.createDelivery(payload);
         delivery = res.data.delivery;
       }
-      // Enviar múltiplas fotos
+
+      const compressedComprovas = [];
       for (const file of montagemComprovas) {
-        try {
-          const compressed = await compressUploadFile(file);
-          await deliveryService.uploadDocument(delivery._id, 'retiradaCheio', compressed);
-        } catch (_) {}
+        compressedComprovas.push(await compressUploadFile(file));
       }
+      await deliveryService.uploadDocument(delivery._id, 'retiradaCheio', compressedComprovas);
       setToast({ message: 'Container montado com sucesso!', type: 'success' });
       await loadProgramacoes({ silent: true });
       setShowMontagemModal(false); 
@@ -851,50 +851,48 @@ const ProgramadasEntregas = () => {
   const handleCameraCapture = async (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
+    setProcessingPhoto(true);
 
-    // Validar limite de 2 fotos
-    const currentPhotoCount = photos.length;
-    const maxPhotos = 2;
-    
-    if (currentPhotoCount >= maxPhotos) {
-      setToast({ 
-        message: `Máximo de ${maxPhotos} fotos permitidas. Remova uma para adicionar outra.`, 
-        type: 'warning' 
-      });
-      return;
-    }
+    try {
+      const maxPhotos = 2;
+      const photoPromises = files.map(file =>
+        new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => {
+            console.error(`Failed to read ${file.name}`);
+            resolve(null);
+          };
+          reader.readAsDataURL(file);
+        })
+      );
 
-    const photoPromises = files.map(file =>
-      new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = () => {
-          console.error(`Failed to read ${file.name}`);
-          resolve(null);
-        };
-        reader.readAsDataURL(file);
-      })
-    );
+      const photoDataUrls = await Promise.all(photoPromises);
+      const validPhotos = photoDataUrls.filter(data => data !== null);
 
-    const photoDataUrls = await Promise.all(photoPromises);
-
-    const validPhotos = photoDataUrls.filter(data => data !== null);
-
-    if (validPhotos.length > 0) {
-      flushSync(() => {
-        // Limitar para não passar de 2 fotos totais
+      if (validPhotos.length > 0) {
         const newPhotos = validPhotos.map(data => ({
           id: Date.now() + Math.random(),
           data
         }));
-        const totalPhotos = [...photos, ...newPhotos];
-        const limited = totalPhotos.slice(0, maxPhotos);
-        setPhotos(limited);
-      });
-      console.log(`[PhotoCapture] Added ${validPhotos.length} photos. Total photos:`, validPhotos.length);
-    }
 
-    e.target.value = null;
+        flushSync(() => {
+          setPhotos(prev => {
+            if (prev.length >= maxPhotos) {
+              setToast({
+                message: `Maximo de ${maxPhotos} fotos permitidas. Remova uma para adicionar outra.`,
+                type: 'warning'
+              });
+              return prev;
+            }
+            return [...prev, ...newPhotos].slice(0, maxPhotos);
+          });
+        });
+      }
+    } finally {
+      setProcessingPhoto(false);
+      e.target.value = null;
+    }
   };
 
   function dataURLtoFile(dataurl, filename) {
@@ -1229,8 +1227,6 @@ const ProgramadasEntregas = () => {
   // ─────────────────────────────────────────────
   const PhotoSection = ({ onConfirm, onBack, buttonLabel = 'Enviar registro', buttonColor = 'bg-emerald-600 hover:bg-emerald-700', confirmDisabled = false }) => (
     <div className="space-y-4">
-      {/* Debug: Photo count */}
-      {console.log(`[PhotoSection] Render - photos.length: ${photos.length}`) || null}
       {uploadProgress > 0 && (
         <div className="space-y-1">
           <div className="flex justify-between text-xs font-semibold text-gray-600">
@@ -1240,13 +1236,23 @@ const ProgramadasEntregas = () => {
         </div>
       )}
       <PhotoGrid photos={photos} onRemove={removePhoto} />
+      {processingPhoto && (
+        <div className="flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-sm font-semibold">
+          <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+          </svg>
+          Processando foto...
+        </div>
+      )}
       <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleCameraCapture} className="hidden" />
       <button
         onClick={() => {
           if (cameraInputRef.current) cameraInputRef.current.value = null;
           cameraInputRef.current?.click();
         }}
-        className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold text-base shadow-lg hover:shadow-xl active:scale-95 transition"
+        disabled={processingPhoto}
+        className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold text-base shadow-lg hover:shadow-xl active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <FaCamera size={18} />
         {photos.length === 0 ? 'Tirar Foto' : 'Tirar Mais Fotos'}
@@ -1254,7 +1260,7 @@ const ProgramadasEntregas = () => {
       <div className="flex gap-3">
         <button
           onClick={onConfirm}
-          disabled={submitting || photos.length === 0 || confirmDisabled}
+          disabled={submitting || processingPhoto || photos.length === 0 || confirmDisabled}
           className={`flex-1 py-3.5 rounded-xl text-white font-bold text-base shadow-md active:scale-95 transition disabled:opacity-40 disabled:cursor-not-allowed ${buttonColor}`}
         >
           {submitting ? (

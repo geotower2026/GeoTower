@@ -1196,7 +1196,19 @@ const MonitorEntregas = () => {
   const getDocumentUrlsArray = (docData) => {
     if (!docData) return [];
     const normalizeItem = (i) => {
-      if (typeof i === 'string') return i;
+      if (typeof i === 'string') {
+        const text = i.trim();
+        if (!text) return null;
+        if (text.startsWith('[') || text.startsWith('{')) {
+          try {
+            const parsed = JSON.parse(text);
+            return Array.isArray(parsed)
+              ? parsed.map(normalizeItem).filter(Boolean)
+              : normalizeItem(parsed);
+          } catch (_) {}
+        }
+        return text;
+      }
       if (typeof i === 'object' && i) {
         // Prefer stored path over potentially shortened/obfuscated URL
         const pathUrl = i.path ? `/uploads/${i.path}` : null;
@@ -1208,9 +1220,15 @@ const MonitorEntregas = () => {
 
     let urls = [];
     if (Array.isArray(docData)) {
-      urls = docData.map(normalizeItem).filter(Boolean);
+      urls = docData.flatMap(item => {
+        const normalized = normalizeItem(item);
+        return Array.isArray(normalized) ? normalized : [normalized];
+      }).filter(Boolean);
     } else if (typeof docData === 'object') {
       urls = [normalizeItem(docData)].filter(Boolean);
+    } else if (typeof docData === 'string') {
+      const normalized = normalizeItem(docData);
+      urls = (Array.isArray(normalized) ? normalized : [normalized]).filter(Boolean);
     }
 
     // Deduplicate by removing identical URLs
