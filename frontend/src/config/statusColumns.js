@@ -89,7 +89,7 @@ export const getStatusColumns = (city = 'manaus') => [
   {
     key: 'OPERACAO_FINALIZADA',
     title: 'Op. Finalizada',
-    description: 'Operação concluída / anexando canhotos',
+    description: 'Fim Desova/Ovação',
     icon: FaCheckCircle,
     gradient: 'from-teal-500 to-emerald-600',
     lightBg: 'bg-teal-50',
@@ -104,7 +104,7 @@ export const getStatusColumns = (city = 'manaus') => [
   {
     key: 'VIAGEM_RETORNO',
     title: 'Retorno',
-    description: 'Pend. devolução',
+    description: 'Pend. Baixa',
     icon: FaUndo,
     gradient: 'from-cyan-500 to-sky-600',
     lightBg: 'bg-cyan-50',
@@ -123,7 +123,7 @@ export const getStatusColumns = (city = 'manaus') => [
   {
     key: 'CNTR_ENTREGUE',
     title: 'CNTR Entregue',
-    description: 'Container devolvido',
+    description: 'Container Baixado',
     icon: FaCheckCircle,
     gradient: 'from-green-600 to-teal-700',
     lightBg: 'bg-green-50',
