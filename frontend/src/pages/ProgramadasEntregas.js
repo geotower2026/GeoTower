@@ -126,8 +126,15 @@ const deliveryMatchesProgramacaoContext = (delivery, programacao) => {
     getProgramacaoDeliveryNumber(programacao),
     ...getProgramacaoLegacyDeliveryNumbers(programacao)
   ].map(normalizeGroupValue).filter(Boolean);
-  return validNumbers.includes(normalizeGroupValue(delivery.deliveryNumber)) &&
-    normalizeGroupValue(delivery.recebedor) === normalizeGroupValue(programacao.recebedor);
+  if (!validNumbers.includes(normalizeGroupValue(delivery.deliveryNumber))) return false;
+
+  const deliveryParty = normalizeGroupValue(delivery.recebedor);
+  const programacaoParty = normalizeGroupValue(programacao.recebedor);
+  if (deliveryParty && programacaoParty) return deliveryParty === programacaoParty;
+
+  const deliveryDriver = normalizeGroupValue(delivery.driverName);
+  const programacaoDriver = normalizeGroupValue(programacao.motorista);
+  return !!deliveryDriver && !!programacaoDriver && deliveryDriver === programacaoDriver;
 };
 
 const hasDocumentValue = (value) => {

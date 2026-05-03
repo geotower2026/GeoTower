@@ -187,13 +187,21 @@ function deliveryNumberMatchesProgramacao(delivery, programacao) {
   ].some(value => deliveryNumber === String(value || '').trim().toUpperCase());
 }
 
-function returnedDeliveryMatchesProgramacao(delivery, programacao) {
+function deliveryDriverMatchesProgramacao(delivery, programacao) {
+  const deliveryDriver = normalizePartyName(delivery?.driverName).toUpperCase();
+  const programacaoDriver = normalizePartyName(programacao?.motorista).toUpperCase();
+  return !!deliveryDriver && !!programacaoDriver && deliveryDriver === programacaoDriver;
+}
+
+function legacyDeliveryMatchesProgramacao(delivery, programacao) {
   if (deliveryMatchesProgramacaoContext(delivery, programacao)) return true;
-  if (!isReturnedDelivery(delivery) || !deliveryNumberMatchesProgramacao(delivery, programacao)) return false;
+  if (!deliveryNumberMatchesProgramacao(delivery, programacao)) return false;
 
   const deliveryParty = normalizePartyName(delivery.recebedor).toUpperCase();
   const programacaoParty = normalizePartyName(programacao.recebedor).toUpperCase();
-  return !deliveryParty || !programacaoParty || deliveryParty === programacaoParty;
+  if (deliveryParty && programacaoParty) return deliveryParty === programacaoParty;
+
+  return deliveryDriverMatchesProgramacao(delivery, programacao);
 }
 
 function safeStorageSegment(value) {
@@ -299,9 +307,20 @@ router.post("/", auth, async (req, res) => {
         deliveryNumber: normalizedDeliveryNumber,
         recebedor: new RegExp(`^${escapeRegExp(partyName)}$`, 'i')
       } : null;
+      const sameDriverWithoutPartyLookup = driverName ? {
+        ...baseLookup,
+        deliveryNumber: normalizedDeliveryNumber,
+        driverName: new RegExp(`^${escapeRegExp(driverName)}$`, 'i'),
+        $or: [
+          { recebedor: '' },
+          { recebedor: { $exists: false } },
+          { recebedor: null }
+        ]
+      } : null;
 
       const existing = await Delivery.findOne(programacaoLookup).lean() ||
-        (samePartyLookup ? await Delivery.findOne(samePartyLookup).lean() : null);
+        (samePartyLookup ? await Delivery.findOne(samePartyLookup).lean() : null) ||
+        (sameDriverWithoutPartyLookup ? await Delivery.findOne(sameDriverWithoutPartyLookup).lean() : null);
 
       if (existing) {
         delivery = await Delivery.findByIdAndUpdate(
@@ -753,7 +772,7 @@ router.get('/programacoes/mine', auth, async (req, res) => {
       // Tentar buscar entrega vinculada
       let matchedDelivery = deliveriesByProgramacaoId.get(String(p._id)) ||
         deliveriesByLinkedId.get(String(p.linkedDeliveryId));
-      if (matchedDelivery && !returnedDeliveryMatchesProgramacao(matchedDelivery, p)) {
+      if (matchedDelivery && !legacyDeliveryMatchesProgramacao(matchedDelivery, p)) {
         matchedDelivery = null;
       }
       
@@ -765,7 +784,7 @@ router.get('/programacoes/mine', auth, async (req, res) => {
           ...(deliveriesByNumber.get(logKey) || []),
           ...(deliveriesByNumber.get(procKey) || []),
           ...(deliveriesByNumber.get(contKey) || [])
-        ].filter(delivery => deliveryMatchesProgramacao(delivery) || returnedDeliveryMatchesProgramacao(delivery, p));
+        ].filter(delivery => deliveryMatchesProgramacao(delivery) || legacyDeliveryMatchesProgramacao(delivery, p));
         matchedDelivery = candidates
           .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))[0];
       }
