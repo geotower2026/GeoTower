@@ -130,6 +130,32 @@ const deliveryMatchesProgramacaoContext = (delivery, programacao) => {
     normalizeGroupValue(delivery.recebedor) === normalizeGroupValue(programacao.recebedor);
 };
 
+const hasDocumentValue = (value) => {
+  if (Array.isArray(value)) return value.length > 0;
+  if (!value) return false;
+  if (typeof value === 'object') return Object.keys(value).length > 0;
+  return true;
+};
+
+const hasReturnProof = (delivery) => (
+  hasDocumentValue(delivery?.documents?.devolucaoVazio) ||
+  hasDocumentValue(delivery?.documents?.devolucaoContainerVazio)
+);
+
+const hasReturnMarker = (delivery) => {
+  const observations = String(delivery?.observations || '');
+  return observations.includes('(CONTAINER_VAZIO_DEVOLVIDO)') || observations.includes('(Baixa_Container)');
+};
+
+const isReturnedDelivery = (delivery) => (
+  !!delivery && (
+    delivery.containerReturned === true ||
+    !!delivery.horarioDevolucaoVazio ||
+    hasReturnProof(delivery) ||
+    hasReturnMarker(delivery)
+  )
+);
+
 const buildInitialDeliveryObservation = (programacao, flowText) => {
   const icompanyObs = String(programacao?.observacoes || '').trim();
   const flowObs = String(flowText || '').trim();
@@ -455,11 +481,7 @@ const ProgramadasEntregas = () => {
         // Se o delivery indexado por programacaoId já tem comprovante, não mostra
         const byProgRaw = programacaoMap[String(p._id)];
         const byProg = deliveryMatchesProgramacaoContext(byProgRaw, p) ? byProgRaw : null;
-        if (byProg && byProg.documents && (byProg.documents.devolucaoVazio || byProg.documents.devolucaoContainerVazio) && ((byProg.documents.devolucaoVazio && byProg.documents.devolucaoVazio.length > 0) || (byProg.documents.devolucaoContainerVazio && byProg.documents.devolucaoContainerVazio.length > 0))) {
-          return false;
-        }
-        // also hide if delivery has observation marker (in case document upload failed)
-        if (byProg && byProg.observations && (byProg.observations.includes('(CONTAINER_VAZIO_DEVOLVIDO)') || byProg.observations.includes('(Baixa_Container)'))) {
+        if (isReturnedDelivery(byProg)) {
           return false;
         }
 
@@ -468,7 +490,7 @@ const ProgramadasEntregas = () => {
         if (!matchedDelivery && p.linkedDeliveryId) {
           const linkedDelivery = deliveries.find(d => String(d._id) === String(p.linkedDeliveryId));
           matchedDelivery = deliveryMatchesProgramacaoContext(linkedDelivery, p) ? linkedDelivery : null;
-          if (matchedDelivery && matchedDelivery.documents && ((matchedDelivery.documents.devolucaoVazio && matchedDelivery.documents.devolucaoVazio.length > 0) || (matchedDelivery.documents.devolucaoContainerVazio && matchedDelivery.documents.devolucaoContainerVazio.length > 0))) {
+          if (isReturnedDelivery(matchedDelivery)) {
             return false;
           }
         }
@@ -486,7 +508,7 @@ const ProgramadasEntregas = () => {
             matchedDelivery = selectDeliveryForProgramacao(candidates, p._id, p);
           }
         }
-        if (matchedDelivery && matchedDelivery.documents && ((matchedDelivery.documents.devolucaoVazio && matchedDelivery.documents.devolucaoVazio.length > 0) || (matchedDelivery.documents.devolucaoContainerVazio && matchedDelivery.documents.devolucaoContainerVazio.length > 0))) {
+        if (isReturnedDelivery(matchedDelivery)) {
           return false;
         }
 

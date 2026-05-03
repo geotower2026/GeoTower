@@ -634,15 +634,40 @@ router.get('/programacoes/mine', auth, async (req, res) => {
 
     // âœ… OTIMIZADO: Ao invÃ©s de carregar TODAS as entregas em memÃ³ria,
     // usar apenas as linkedDeliveryId necessÃ¡rias
+    const programacaoIds = (programacoes || [])
+      .map(p => p._id)
+      .filter(Boolean);
+
     const linkedIds = (programacoes || [])
       .map(p => p.linkedDeliveryId)
       .filter(Boolean);
     
     const deliveriesByLinkedId = new Map();
+    const deliveriesByProgramacaoId = new Map();
     if (linkedIds.length > 0) {
       const linkedDeliveries = await Delivery.find({ _id: { $in: linkedIds } }).lean();
       linkedDeliveries.forEach(d => {
         deliveriesByLinkedId.set(String(d._id), d);
+      });
+    }
+
+    if (programacaoIds.length > 0) {
+      const programacaoDeliveries = await Delivery.find({
+        $or: [
+          { programacaoId: { $in: programacaoIds } },
+          { linkedProgramacaoId: { $in: programacaoIds } }
+        ],
+        isCanceled: { $ne: true }
+      }).lean();
+
+      programacaoDeliveries.forEach(d => {
+        [d.programacaoId, d.linkedProgramacaoId].filter(Boolean).forEach(id => {
+          const key = String(id);
+          const existing = deliveriesByProgramacaoId.get(key);
+          if (!existing || new Date(d.updatedAt || d.createdAt || 0) >= new Date(existing.updatedAt || existing.createdAt || 0)) {
+            deliveriesByProgramacaoId.set(key, d);
+          }
+        });
       });
     }
     
@@ -677,7 +702,8 @@ router.get('/programacoes/mine', auth, async (req, res) => {
       const deliveryMatchesProgramacao = (delivery) => deliveryMatchesProgramacaoContext(delivery, p);
       
       // Tentar buscar entrega vinculada
-      let matchedDelivery = deliveriesByLinkedId.get(String(p.linkedDeliveryId));
+      let matchedDelivery = deliveriesByProgramacaoId.get(String(p._id)) ||
+        deliveriesByLinkedId.get(String(p.linkedDeliveryId));
       if (matchedDelivery && !deliveryMatchesProgramacao(matchedDelivery)) {
         matchedDelivery = null;
       }
