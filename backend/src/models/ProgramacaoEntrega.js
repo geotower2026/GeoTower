@@ -18,6 +18,16 @@ const programacaoEntregaSchema = new mongoose.Schema({
     required: [true, 'Recebedor é obrigatório'],
     trim: true
   },
+  remetente: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  destinatario: {
+    type: String,
+    trim: true,
+    default: ''
+  },
   container: {
     type: String,
     trim: true,
@@ -149,7 +159,7 @@ programacaoEntregaSchema.index({ ativo: 1, status: 1 });
 programacaoEntregaSchema.index({ dataAgendamento: 1, status: 1 });
 
 // Índices de text search
-programacaoEntregaSchema.index({ processo: 'text', container: 'text', recebedor: 'text' });
+programacaoEntregaSchema.index({ processo: 'text', container: 'text', recebedor: 'text', remetente: 'text', destinatario: 'text' });
 
 const ProgramacaoEntrega = mongoose.model('ProgramacaoEntrega', programacaoEntregaSchema);
 

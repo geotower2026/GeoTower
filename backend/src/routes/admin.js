@@ -48,6 +48,14 @@ const addLookupKey = (set, value) => {
   if (key) set.add(key);
 };
 
+const getClienteBySentido = (record) => {
+  const sentidoValue = String(record?.sentido || record?.SENTIDO || '').trim().toUpperCase();
+  const remetenteValue = String(record?.remetente || '').trim();
+  const destinatarioValue = String(record?.destinatario || record?.recebedor || '').trim();
+  if (sentidoValue === 'ORIGEM') return remetenteValue || destinatarioValue;
+  if (sentidoValue === 'DESTINO') return destinatarioValue || remetenteValue;
+  return destinatarioValue || remetenteValue;
+};
 const addRecordToLookupMap = (map, key, record) => {
   const cleanKey = cleanLookupKey(key);
   if (!cleanKey) return;
@@ -161,7 +169,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
     applyProgramacaoCityFilter(progFilter, city);
     if (sentido && sentido !== 'all') progFilter.sentido = String(sentido || '').trim().toUpperCase();
     const programacoes = await ProgramacaoEntrega.find(progFilter)
-      .select('processo processoLog recebedor container dataAgendamento dtColeta contratado motorista status createdAt observacoes origem estab sentido')
+      .select('processo processoLog recebedor remetente destinatario container dataAgendamento dtColeta contratado motorista status createdAt observacoes origem estab sentido')
       .lean();
     console.log('  ℹ️  Total de programações (' + city + '):', programacoes ? programacoes.length : 0);
 
@@ -277,6 +285,8 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
         container: prog ? prog.container || delivery.container || '' : delivery.container || '',
         containerNumero: containerNumeros.length > 0 ? containerNumeros : (prog?.container ? [prog.container] : undefined),  // Array de containers
         recebedor: prog ? prog.recebedor : delivery.recebedor || '',
+        remetente: prog ? prog.remetente || '' : delivery.remetente || '',
+        destinatario: prog ? prog.destinatario || '' : delivery.destinatario || '',
         dataAgendamento: prog ? prog.dataAgendamento : delivery.dataAgendamento || '',
         dtColeta: prog ? prog.dtColeta : delivery.dtColeta || '',  // Itajaí: data de coleta
         horarioChegada: delivery.arrivedAt || '',
@@ -318,6 +328,8 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
           userName: prog.contratado || '',
           driverName: prog.motorista || '-',
           recebedor: prog.recebedor || '',
+          remetente: prog.remetente || '',
+          destinatario: prog.destinatario || '',
           dataAgendamento: prog.dataAgendamento || '',
           dtColeta: prog.dtColeta || '',  // Itajaí: data de coleta
           status: prog.status || 'AGENDADO',
@@ -728,7 +740,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
         'Contratado': { deliveryField: 'userName', icompanyField: 'contratado' },
         'Entrega CNTR Porto': { deliveryField: 'horarioDevolucaoVazio', icompanyField: 'entradaDistrito' },
         'Agendamento': { deliveryField: 'dataAgendamento', icompanyField: 'dtColeta' },
-        'Recebedor': { deliveryField: 'recebedor', icompanyField: 'remetente' },
+        'Recebedor': { deliveryField: 'recebedor', icompanyField: 'clientePorSentido' },
         'Montagem Container': { deliveryField: 'containerMontadoAt', icompanyField: 'dtRetiraPD' },
         'Chegada': { deliveryField: 'horarioChegada', icompanyField: 'dtChegadaPlanta' },
         'Fim Desova': { deliveryField: 'horarioFimDesova', icompanyField: 'dtFimDescarga' }
@@ -736,7 +748,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
         'Contratado': { deliveryField: 'userName', icompanyField: 'contratado' },
         'Entrega CNTR Porto': { deliveryField: 'horarioDevolucaoVazio', icompanyField: 'dtDevolucaoCNTR' },
         'Agendamento': { deliveryField: 'dataAgendamento', icompanyField: 'dtAgendamentoDescarga' },
-        'Recebedor': { deliveryField: 'recebedor', icompanyField: 'destinatario' },
+        'Recebedor': { deliveryField: 'recebedor', icompanyField: 'clientePorSentido' },
         'Montagem Container': { deliveryField: 'containerMontadoAt', icompanyField: 'dtRetiraPD' },
         'Chegada': { deliveryField: 'horarioChegada', icompanyField: 'dtInicioDescarga' },
         'Fim Desova': { deliveryField: 'horarioFimDesova', icompanyField: 'dtFimDescarga' }
@@ -746,7 +758,9 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
 
       Object.entries(fieldMapping).forEach(([displayName, mapping]) => {
         const deliveryValue = delivery[mapping.deliveryField];
-        const icompanyValue = icompanyRecord[mapping.icompanyField];
+        const icompanyValue = mapping.icompanyField === 'clientePorSentido'
+          ? getClienteBySentido(icompanyRecord)
+          : icompanyRecord[mapping.icompanyField];
 
         const normalizedDelivery = normalizeValue(deliveryValue);
         const normalizedIcompany = normalizeValue(icompanyValue);
@@ -2285,7 +2299,7 @@ router.post("/programacoes", auth, managerOnly, async (req, res) => {
   try {
     const city = req.city || 'manaus';
     const cfg = cityConfigFromRequest(city);
-    const { processo, processoLog, recebedor, container, dataAgendamento, dtColeta, contratado, motorista, status, observacoes, origem, estab, sentido } = req.body;
+    const { processo, processoLog, recebedor, remetente, destinatario, container, dataAgendamento, dtColeta, contratado, motorista, status, observacoes, origem, estab, sentido } = req.body;
 
     console.log('[PROGRAMACAO] Criando:', { processo, recebedor, contratado, cidade: city, dtColeta });
 
@@ -2295,6 +2309,8 @@ router.post("/programacoes", auth, managerOnly, async (req, res) => {
       processo,
       processoLog: processoLog || '',
       recebedor,
+      remetente: remetente || '',
+      destinatario: destinatario || '',
       container,
       dataAgendamento,
       dtColeta: dtColeta || (city === 'itajai' ? dataAgendamento : ''),
@@ -2334,7 +2350,7 @@ router.put("/programacoes/:id", auth, managerOnly, async (req, res) => {
   try {
     const city = req.city || 'manaus';
     const { id } = req.params;
-    const { processo, processoLog, recebedor, container, dataAgendamento, dtColeta, contratado, motorista, status, observacoes, containerReturned, origem, estab, sentido } = req.body;
+    const { processo, processoLog, recebedor, remetente, destinatario, container, dataAgendamento, dtColeta, contratado, motorista, status, observacoes, containerReturned, origem, estab, sentido } = req.body;
     // Get editor name from logged-in user
     const editorName = req.user?.name || req.user?.username || req.user?._id || 'Desconhecido';
 
@@ -2355,6 +2371,8 @@ router.put("/programacoes/:id", auth, managerOnly, async (req, res) => {
     if (processo !== undefined) programacao.processo = processo;
     if (processoLog !== undefined) programacao.processoLog = processoLog;
     if (recebedor !== undefined) programacao.recebedor = recebedor;
+    if (remetente !== undefined) programacao.remetente = remetente;
+    if (destinatario !== undefined) programacao.destinatario = destinatario;
     if (container !== undefined) programacao.container = container;
     if (dataAgendamento !== undefined) programacao.dataAgendamento = dataAgendamento;
     if (dtColeta !== undefined) programacao.dtColeta = dtColeta;
@@ -2469,7 +2487,7 @@ router.post("/programacoes/import", auth, managerOnly, async (req, res) => {
 
     for (const prog of programacoes) {
       try {
-        const { processo, processoLog, container, dataAgendamento, contratado, motorista, status, observacoes, origem, estab, sentido } = prog;
+        const { processo, processoLog, container, dataAgendamento, contratado, motorista, status, observacoes, origem, estab, sentido, remetente, destinatario } = prog;
         // Case-insensitive recebedor field
         const recebedorField = prog.recebedor || prog.Recebedor || prog.RECEBEDOR || '';
 
@@ -2489,6 +2507,8 @@ router.post("/programacoes/import", auth, managerOnly, async (req, res) => {
           processo,
           processoLog: processoLog || '',
           recebedor: recebedorField,
+          remetente: remetente || '',
+          destinatario: destinatario || '',
           container: container || '',
           dataAgendamento,
           contratado,
@@ -2631,7 +2651,6 @@ router.get("/programacoes/sync/icompany", auth, managerOnly, async (req, res) =>
       }
       return '';
     };
-
     let updatedCount = 0;
     let insertedCount = 0;
     const novosRegistros = [];
@@ -2644,18 +2663,20 @@ router.get("/programacoes/sync/icompany", auth, managerOnly, async (req, res) =>
       const existing = existingMap.get(processoKey);
 
       let dataAgendamento = formatSyncDate(y.dtAgendamentoDescarga);
-      if (!dataAgendamento && city === 'itajai') dataAgendamento = formatSyncDate(y.dtColeta);
+      if (!dataAgendamento) dataAgendamento = formatSyncDate(y.dtColeta);
       if (!dataAgendamento) dataAgendamento = new Date().toISOString().slice(0, 16);
       const dtColeta = formatSyncDate(y.dtColeta);
-      const recebedorValue = city === 'itajai'
-        ? String(y.remetente || '').trim() || 'N/A'
-        : String(y.destinatario || '').trim() || 'N/A';
+      const remetenteValue = String(y.remetente || '').trim();
+      const destinatarioValue = String(y.destinatario || y.recebedor || '').trim();
+      const recebedorValue = getClienteBySentido(y) || 'N/A';
 
       const observacaoIcompany = String(y.observacao || y.observacoes || '').trim();
 
       const mappedData = {
         processoLog: pickIcompanyValue(y, ['nrProcesso', 'Nr. do processo', 'Nr do processo', 'Nro. do processo', 'Numero do processo', 'N�mero do processo']),
         recebedor: recebedorValue,
+        remetente: remetenteValue,
+        destinatario: destinatarioValue,
         container: String(y.containerNumero || '').trim() || '',
         dataAgendamento,
         dtColeta,

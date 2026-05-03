@@ -228,6 +228,15 @@ const AdminDashboard = () => {
   const getIcompanyProcessNumber = (record) =>
     normalizeProcessKey(record?.nrProcesso || record?.['Nr. do processo'] || record?.['Nr do processo']);
 
+  const getClienteBySentido = (record) => {
+    const sentidoValue = String(record?.sentido || record?.SENTIDO || '').trim().toUpperCase();
+    const remetenteValue = String(record?.remetente || '').trim();
+    const destinatarioValue = String(record?.destinatario || record?.recebedor || '').trim();
+    if (sentidoValue === 'ORIGEM') return remetenteValue || destinatarioValue;
+    if (sentidoValue === 'DESTINO') return destinatarioValue || remetenteValue;
+    return destinatarioValue || remetenteValue;
+  };
+
   const dedupeByNrProcesso = (items) => {
     const seen = new Set();
     return (items || []).filter((item) => {
@@ -273,7 +282,7 @@ const AdminDashboard = () => {
         dataAgendamento: record.dtColeta || record.dtAgendamentoDescarga,
         remetente: record.remetente,
         destinatario: record.destinatario,
-        recebedor: city === 'manaus' ? record.destinatario || record.remetente : record.remetente || record.destinatario,
+        recebedor: getClienteBySentido(record),
         container: record.container || record.placa,
         contratado: record.contratado
       };

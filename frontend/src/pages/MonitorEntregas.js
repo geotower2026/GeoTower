@@ -1628,14 +1628,23 @@ const MonitorEntregas = () => {
       return { __notFound: true, mensagem: `Nenhum registro iCompany encontrado para ${delivery.deliveryNumber || delivery.processo || delivery.codigo || 'N/D'}` };
     }
 
+    const getClienteBySentido = (record) => {
+      const sentidoValue = String(record?.sentido || record?.SENTIDO || '').trim().toUpperCase();
+      const remetenteValue = String(record?.remetente || '').trim();
+      const destinatarioValue = String(record?.destinatario || record?.recebedor || '').trim();
+      if (sentidoValue === 'ORIGEM') return remetenteValue || destinatarioValue;
+      if (sentidoValue === 'DESTINO') return destinatarioValue || remetenteValue;
+      return destinatarioValue || remetenteValue;
+    };
+
     // Mapeamento dos campos conforme o modelo Icompany (var nomes reais do banco)
-    // Ajuste baseado na cidade: Itajaí tem mapeamentos diferentes
+    // Cliente agora é definido pelo SENTIDO: ORIGEM=remetente, DESTINO=recebedor/destinatario.
     const isItajai = city.toLowerCase() === 'itajai';
     const fieldMapping = isItajai ? {
       'Contratado': { deliveryField: 'userName', icompanyField: 'contratado' },
       'Entrega CNTR Porto': { deliveryField: 'horarioDevolucaoVazio', icompanyField: 'entradaDistrito' },
       'Agendamento': { deliveryField: 'dataAgendamento', icompanyField: 'dtColeta' },
-      'Recebedor': { deliveryField: 'recebedor', icompanyField: 'remetente' },
+      'Recebedor': { deliveryField: 'recebedor', icompanyField: 'clientePorSentido' },
       'Montagem Container': { deliveryField: 'containerMontadoAt', icompanyField: 'dtRetiraPD' },
       'Chegada': { deliveryField: 'horarioChegada', icompanyField: 'dtChegadaPlanta' },
       'Fim Desova': { deliveryField: 'horarioFimDesova', icompanyField: 'dtFimDescarga' }
@@ -1643,7 +1652,7 @@ const MonitorEntregas = () => {
       'Contratado': { deliveryField: 'userName', icompanyField: 'contratado' },
       'Entrega CNTR Porto': { deliveryField: 'horarioDevolucaoVazio', icompanyField: 'dtDevolucaoCNTR' },
       'Agendamento': { deliveryField: 'dataAgendamento', icompanyField: 'dtAgendamentoDescarga' },
-      'Recebedor': { deliveryField: 'recebedor', icompanyField: 'destinatario' },
+      'Recebedor': { deliveryField: 'recebedor', icompanyField: 'clientePorSentido' },
       'Montagem Container': { deliveryField: 'containerMontadoAt', icompanyField: 'dtRetiraPD' },
       'Chegada': { deliveryField: 'horarioChegada', icompanyField: 'dtInicioDescarga' },
       'Fim Desova': { deliveryField: 'horarioFimDesova', icompanyField: 'dtFimDescarga' }
@@ -1715,7 +1724,9 @@ const MonitorEntregas = () => {
 
     Object.entries(fieldMapping).forEach(([displayName, mapping]) => {
       const deliveryValue = delivery[mapping.deliveryField];
-      const icompanyValue = icompanyRecord[mapping.icompanyField];
+      const icompanyValue = mapping.icompanyField === 'clientePorSentido'
+        ? getClienteBySentido(icompanyRecord)
+        : icompanyRecord[mapping.icompanyField];
 
       const normalizedDelivery = normalizeValue(deliveryValue);
       const normalizedIcompany = normalizeValue(icompanyValue);

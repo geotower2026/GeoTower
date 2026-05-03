@@ -40,7 +40,7 @@ const ProgramacaoManagement = () => {
   const [syncDates, setSyncDates] = useState({ startDate: '', endDate: '' });
 
   const [formData, setFormData] = useState({
-    processo: '', recebedor: '', container: '', dataAgendamento: '',
+    processo: '', recebedor: '', remetente: '', destinatario: '', container: '', dataAgendamento: '',
     contratado: 'GEO', motorista: '', status: 'AGENDADO', observacoes: ''
   });
   const [motoristasList, setMotoristasList] = useState([]);
@@ -48,6 +48,15 @@ const ProgramacaoManagement = () => {
   const normalize = (s) =>
     String(s || '').toLowerCase().normalize('NFD')
       .replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9 ]/g, '').trim();
+
+  const getClientePorSentido = (sentido, remetente, destinatario, fallback = '') => {
+    const sentidoKey = String(sentido || '').trim().toUpperCase();
+    const remetenteValue = String(remetente || '').trim();
+    const destinatarioValue = String(destinatario || '').trim();
+    if (sentidoKey === 'ORIGEM') return remetenteValue || destinatarioValue || fallback;
+    if (sentidoKey === 'DESTINO') return destinatarioValue || remetenteValue || fallback;
+    return fallback || destinatarioValue || remetenteValue;
+  };
 
   const getContratadosOptions = () => {
     const fixed = ['GEO', 'MACHADO', 'BANDEIRA', 'TRANSCAVALCANTE', 'OUTRO'];
@@ -134,6 +143,8 @@ const ProgramacaoManagement = () => {
         (p.processo || '').toLowerCase().includes(term) ||
         (p.processoLog || '').toLowerCase().includes(term) ||
         (p.recebedor || '').toLowerCase().includes(term) ||
+        (p.remetente || '').toLowerCase().includes(term) ||
+        (p.destinatario || '').toLowerCase().includes(term) ||
         (p.container || '').toLowerCase().includes(term) ||
         (p.motorista || '').toLowerCase().includes(term)
       );
@@ -181,7 +192,7 @@ const ProgramacaoManagement = () => {
   };
 
   const resetForm = () => {
-    setFormData({ processo: '', recebedor: '', container: '', dataAgendamento: '', contratado: 'GEO', motorista: '', status: 'AGENDADO', observacoes: '' });
+    setFormData({ processo: '', recebedor: '', remetente: '', destinatario: '', container: '', dataAgendamento: '', contratado: 'GEO', motorista: '', status: 'AGENDADO', observacoes: '' });
     setEditingId(null);
   };
 
@@ -196,6 +207,7 @@ const ProgramacaoManagement = () => {
       }
       setFormData({
         processo: programacao.processo, recebedor: programacao.recebedor,
+        remetente: programacao.remetente || '', destinatario: programacao.destinatario || '',
         container: programacao.container || '', dataAgendamento,
         contratado: programacao.contratado, motorista: programacao.motorista || '',
         status: normalizeProgramacaoStatus(programacao.status), observacoes: programacao.observacoes || ''
@@ -331,12 +343,15 @@ const ProgramacaoManagement = () => {
         processoLog: ['processolog', 'nrdoprocesso', 'nroprocesso', 'numerodoprocesso'],
         processo: ['processo', 'codprocessointegracao', 'codigoprocesso', 'codigodoprocesso', 'nrdoprocesso'],
         recebedor: ['recebedor', 'destinatario', 'remetente'],
+        remetente: ['remetente'],
+        destinatario: ['destinatario', 'recebedor'],
         container: ['container', 'ncontainer', 'numercontainer', 'nrcontainer', 'numerocontainer'],
         dataAgendamento: ['dataagendamento', 'dtagendamento', 'dtgendamento', 'data', 'agendamento', 'dataagend', 'dtagend', 'dtagendamentodescarga', 'dtcoleta'],
         contratado: ['contratado', 'transportadora', 'empresa'],
         motorista: ['motorista', 'motoristaviagem', 'nomemuotorista'],
         status: ['status', 'situacao'],
-        estab: ['estab']
+        estab: ['estab'],
+        sentido: ['sentido']
       };
       const firstRow = data[0];
       const actualColumns = {};
@@ -412,17 +427,24 @@ const ProgramacaoManagement = () => {
 
       const programacoesImport = data.map(row => {
         const estab = String(row[actualColumns.estab] || (city === 'itajai' ? 'LSC' : 'LAM')).trim().toUpperCase();
+        const sentido = String(row[actualColumns.sentido] || '').trim().toUpperCase();
+        const remetente = String(row[actualColumns.remetente] || '').trim();
+        const destinatario = String(row[actualColumns.destinatario] || '').trim();
+        const recebedorOriginal = String(row[actualColumns.recebedor] || '').trim();
         return {
           processoLog: String(row[actualColumns.processoLog] || '').trim(),
           processo: String(row[actualColumns.processo] || '').trim(),
-          recebedor: String(row[actualColumns.recebedor] || '').trim(),
+          recebedor: getClientePorSentido(sentido, remetente, destinatario, recebedorOriginal),
+          remetente,
+          destinatario,
           container: String(row[actualColumns.container] || '').trim(),
           dataAgendamento: parseDateString(String(row[actualColumns.dataAgendamento] || '').trim()),
           contratado: mapearContratado(String(row[actualColumns.contratado] || '').trim()),
           motorista: String(row[actualColumns.motorista] || '').trim(),
           status: String(row[actualColumns.status] || 'AGENDADO').trim(),
           origem: estab === 'LSC' ? 'ITAJAI' : 'MANAUS',
-          estab
+          estab,
+          sentido
         };
       });
 
@@ -445,7 +467,7 @@ const ProgramacaoManagement = () => {
 
   const downloadTemplate = () => {
     try {
-      const template = [{ 'Processo Log': '123456', 'Processo': 'CAB42196', [getRecebedorLabel(city)]: 'AMERICANA DIST. BEBIDAS', 'Container': 'ECMU4814297', 'Data Agendamento': '12/02/2026 10:00', 'Contratado': 'GEO', 'Motorista': 'JOAO SILVA', 'Status': 'AGENDADO', 'Observações': '' }];
+      const template = [{ 'Processo Log': '123456', 'Processo': 'CAB42196', 'Remetente': 'CLIENTE ORIGEM', 'Destinatario': 'CLIENTE DESTINO', [getRecebedorLabel(city)]: 'AMERICANA DIST. BEBIDAS', 'Container': 'ECMU4814297', 'Data Agendamento': '12/02/2026 10:00', 'Contratado': 'GEO', 'Motorista': 'JOAO SILVA', 'Status': 'AGENDADO', 'Observações': '' }];
       const ws = XLSX.utils.json_to_sheet(template);
       ws['!cols'] = [15,30,15,20,15,20,15,30].map(w => ({ wch: w }));
       const wb = XLSX.utils.book_new();
@@ -597,7 +619,7 @@ const ProgramacaoManagement = () => {
                 <input
                   type="text" value={filters.search}
                   onChange={e => setFilters({...filters, search: e.target.value})}
-                  placeholder={`Buscar processo, ${getRecebedorLabel(city).toLowerCase()}, motorista...`}
+                  placeholder="Buscar processo, remetente, recebedor, motorista..."
                   style={{ ...inputStyle(false), paddingLeft: 36 }}
                 />
               </div>
@@ -735,7 +757,9 @@ const ProgramacaoManagement = () => {
                     {[
                       { key: 'processoLog', label: 'Processo Log' },
                       { key: 'processo', label: 'Processo' },
-                      { key: 'recebedor', label: getRecebedorLabel(city) },
+                      { key: 'remetente', label: 'Remetente' },
+                      { key: 'destinatario', label: 'Recebedor' },
+                      { key: 'recebedor', label: 'Cliente' },
                       { key: 'container', label: 'Container' },
                       { key: 'dataAgendamento', label: 'Data / Hora' },
                       { key: 'contratado', label: 'Contratado' },
@@ -790,7 +814,13 @@ const ProgramacaoManagement = () => {
                           {prog.processo}
                         </td>
                         <td style={{ padding: '14px 16px', fontSize: 13, color: '#374151', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {prog.recebedor}
+                          {prog.remetente || <span style={{ color: '#d1d5db' }}>-</span>}
+                        </td>
+                        <td style={{ padding: '14px 16px', fontSize: 13, color: '#374151', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {prog.destinatario || <span style={{ color: '#d1d5db' }}>-</span>}
+                        </td>
+                        <td style={{ padding: '14px 16px', fontSize: 13, color: '#374151', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {prog.recebedor || <span style={{ color: '#d1d5db' }}>-</span>}
                         </td>
                         <td style={{ padding: '14px 16px', fontSize: 13, color: '#374151', fontFamily: 'monospace' }}>
                           {prog.container}
@@ -945,10 +975,25 @@ const ProgramacaoManagement = () => {
               </div>
 
               <div>
-                <label style={labelStyle}>{getRecebedorLabel(city)} <span style={{ color: '#ef4444' }}>*</span></label>
+                <label style={labelStyle}>Cliente operacional <span style={{ color: '#ef4444' }}>*</span></label>
                 <input type="text" disabled={false} value={formData.recebedor}
                   onChange={e => setFormData({...formData, recebedor: e.target.value})}
                   placeholder={getRecebedorPlaceholder(city)} style={inputStyle(isGeoMar())} />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <label style={labelStyle}>Remetente</label>
+                  <input type="text" disabled={false} value={formData.remetente}
+                    onChange={e => setFormData({...formData, remetente: e.target.value})}
+                    placeholder="Cliente de origem" style={inputStyle(isGeoMar())} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Recebedor</label>
+                  <input type="text" disabled={false} value={formData.destinatario}
+                    onChange={e => setFormData({...formData, destinatario: e.target.value})}
+                    placeholder="Cliente de destino" style={inputStyle(isGeoMar())} />
+                </div>
               </div>
 
               <div>

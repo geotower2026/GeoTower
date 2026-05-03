@@ -32,6 +32,15 @@ const KPIAnalytics = ({ onToggle }) => {
     status: ''
   });
 
+  const getClienteBySentido = useCallback((record) => {
+    const sentidoValue = String(record?.sentido || record?.SENTIDO || '').trim().toUpperCase();
+    const remetenteValue = String(record?.remetente || '').trim();
+    const destinatarioValue = String(record?.destinatario || record?.recebedor || '').trim();
+    if (sentidoValue === 'ORIGEM') return remetenteValue || destinatarioValue;
+    if (sentidoValue === 'DESTINO') return destinatarioValue || remetenteValue;
+    return destinatarioValue || remetenteValue;
+  }, []);
+
   const loadData = useCallback(async (silent = false, customFilters = null) => {
     if (!silent) setLoading(true);
     else setRefreshing(true);
@@ -59,7 +68,7 @@ const KPIAnalytics = ({ onToggle }) => {
         dataAgendamento: record.dtColeta || record.dtAgendamentoDescarga,
         remetente: record.remetente,
         destinatario: record.destinatario,
-        recebedor: record.remetente || record.destinatario,
+        recebedor: getClienteBySentido(record),
         container: record.container || record.placa,
         // Copiar outros campos do Icompany
         ...record
@@ -77,30 +86,16 @@ const KPIAnalytics = ({ onToggle }) => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [navigate]);
+  }, [navigate, getClienteBySentido]);
 
   // ═══ Helper Functions ═══
   const isCompletedStatus = (status) => {
     return ['Entregue', 'FINALIZADO', 'DOCUMENTOS ENTREGUES'].includes(status);
   };
 
-  // Busca remetente de múltiplos campos possíveis
+  // Busca cliente conforme SENTIDO: ORIGEM=remetente, DESTINO=destinatario.
   const getPartyName = (delivery) => {
-    const partyLabel = city === 'itajai' ? 'remetente' : 'destinatario';
-    
-    // Tenta buscar do campo direto (lowercase)
-    if (delivery[partyLabel]) return delivery[partyLabel];
-    
-    // Tenta buscar do campo em UPPERCASE
-    const upperLabel = partyLabel.toUpperCase();
-    if (delivery[upperLabel]) return delivery[upperLabel];
-    
-    // Tenta variações possíveis (com prefixo, etc)
-    if (city === 'itajai') {
-      return delivery.REMETENTE || delivery['Remetente'] || delivery.recebedor || 'Sem remetente';
-    } else {
-      return delivery.DESTINATARIO || delivery['Destinatário'] || delivery.destinatario || delivery.recebedor || 'Sem destinatário';
-    }
+    return getClienteBySentido(delivery) || delivery.REMETENTE || delivery['Remetente'] || delivery.DESTINATARIO || delivery['Destinatário'] || delivery.recebedor || 'Sem cliente';
   };
 
   // Busca número do processo (CAB...)
