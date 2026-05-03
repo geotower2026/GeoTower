@@ -124,8 +124,9 @@ const getProgress = (delivery) => {
 export const MemoizedProgressDots = memo(({ delivery, allModalDocsComplete }) => {
   let p = getProgress(delivery);
   const statusKey = normalizeKey(delivery.status);
-  if (statusKey === 'FINALIZADO') {
-    p = allModalDocsComplete(delivery) ? 100 : 90;
+  const docsComplete = allModalDocsComplete(delivery);
+  if (statusKey === 'FINALIZADO' || statusKey === 'SUBMITTED') {
+    p = docsComplete ? 100 : 90;
   } else if (statusKey === 'DOCUMENTOS ENTREGUES') {
     p = 100;
   }
@@ -154,7 +155,18 @@ export const MemoizedProgressDots = memo(({ delivery, allModalDocsComplete }) =>
       </div>
     </div>
   );
-}, (prev, next) => prev.delivery._id === next.delivery._id && prev.delivery.status === next.delivery.status);
+}, (prev, next) => {
+  const prevDocs = JSON.stringify(prev.delivery.documents || {});
+  const nextDocs = JSON.stringify(next.delivery.documents || {});
+  const prevMissing = JSON.stringify(prev.delivery.missingDocumentsAtSubmit || []);
+  const nextMissing = JSON.stringify(next.delivery.missingDocumentsAtSubmit || []);
+  return (
+    prev.delivery._id === next.delivery._id &&
+    prev.delivery.status === next.delivery.status &&
+    prevDocs === nextDocs &&
+    prevMissing === nextMissing
+  );
+});
 
 MemoizedProgressDots.displayName = 'MemoizedProgressDots';
 
@@ -198,12 +210,18 @@ MemoizedPunctualityCell.displayName = 'MemoizedPunctualityCell';
 
 // Status badge com checkmark
 export const MemoizedStatusCheckmark = memo(({ status, allModalDocsComplete, delivery }) => {
-  const isComplete = status.includes('COMPLETO') || (normalizeKey(delivery.status) === 'FINALIZADO' && allModalDocsComplete(delivery));
+  const statusKey = normalizeKey(delivery.status);
+  const isComplete = status.includes('COMPLETO') || ((statusKey === 'FINALIZADO' || statusKey === 'SUBMITTED') && allModalDocsComplete(delivery));
   return isComplete
     ? <FaCheckCircle className="text-emerald-400" title={status} size={15} />
     : <span className="text-red-400/70" title={status} size={15}>✗</span>;
 }, (prev, next) => {
-  return prev.status === next.status && prev.delivery._id === next.delivery._id;
+  return (
+    prev.status === next.status &&
+    prev.delivery._id === next.delivery._id &&
+    JSON.stringify(prev.delivery.documents || {}) === JSON.stringify(next.delivery.documents || {}) &&
+    JSON.stringify(prev.delivery.missingDocumentsAtSubmit || []) === JSON.stringify(next.delivery.missingDocumentsAtSubmit || [])
+  );
 });
 
 MemoizedStatusCheckmark.displayName = 'MemoizedStatusCheckmark';
