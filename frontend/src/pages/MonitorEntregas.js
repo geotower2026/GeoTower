@@ -2209,7 +2209,6 @@ const MonitorEntregas = () => {
 
   const activeFilterCount = [
     filters.status !== 'all',
-    filters.sentido !== 'all',
     !!filters.searchTerm,
     !!filters.startDate,
     !!filters.endDate
