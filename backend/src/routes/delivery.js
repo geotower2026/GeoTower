@@ -150,6 +150,52 @@ function deliveryMatchesProgramacaoContext(delivery, programacao) {
   return sameContainer && !!deliveryParty && !!programacaoParty && deliveryParty === programacaoParty;
 }
 
+function hasDocumentValue(value) {
+  if (Array.isArray(value)) return value.length > 0;
+  if (!value) return false;
+  if (typeof value === 'object') return Object.keys(value).length > 0;
+  return true;
+}
+
+function hasReturnProof(delivery) {
+  return hasDocumentValue(delivery?.documents?.devolucaoVazio) ||
+    hasDocumentValue(delivery?.documents?.devolucaoContainerVazio);
+}
+
+function hasReturnMarker(delivery) {
+  const observations = String(delivery?.observations || '');
+  return observations.includes('(CONTAINER_VAZIO_DEVOLVIDO)') ||
+    observations.includes('(Baixa_Container)');
+}
+
+function isReturnedDelivery(delivery) {
+  return !!delivery && (
+    delivery.containerReturned === true ||
+    !!delivery.horarioDevolucaoVazio ||
+    hasReturnProof(delivery) ||
+    hasReturnMarker(delivery)
+  );
+}
+
+function deliveryNumberMatchesProgramacao(delivery, programacao) {
+  const deliveryNumber = String(delivery?.deliveryNumber || '').trim().toUpperCase();
+  if (!deliveryNumber || !programacao) return false;
+  return [
+    programacao.processoLog,
+    programacao.processo,
+    programacao.container
+  ].some(value => deliveryNumber === String(value || '').trim().toUpperCase());
+}
+
+function returnedDeliveryMatchesProgramacao(delivery, programacao) {
+  if (deliveryMatchesProgramacaoContext(delivery, programacao)) return true;
+  if (!isReturnedDelivery(delivery) || !deliveryNumberMatchesProgramacao(delivery, programacao)) return false;
+
+  const deliveryParty = normalizePartyName(delivery.recebedor).toUpperCase();
+  const programacaoParty = normalizePartyName(programacao.recebedor).toUpperCase();
+  return !deliveryParty || !programacaoParty || deliveryParty === programacaoParty;
+}
+
 function safeStorageSegment(value) {
   return String(value || '')
     .normalize('NFD')
@@ -684,7 +730,11 @@ router.get('/programacoes/mine', auth, async (req, res) => {
       .map(conditions => ({ $or: conditions }));
     
     const unmatchedDeliveries = matchedNumbers.length > 0 
-      ? await Delivery.find({ $or: matchedNumbers }).lean()
+      ? await Delivery.find({
+        $or: matchedNumbers,
+        cityCode: city,
+        isCanceled: { $ne: true }
+      }).lean()
       : [];
     
     const deliveriesByNumber = new Map();
@@ -695,8 +745,7 @@ router.get('/programacoes/mine', auth, async (req, res) => {
       deliveriesByNumber.get(key).push(d);
     });
 
-    // Enriquecer programaÃ§Ãµes
-    const hasDocumentValue = (value) => Array.isArray(value) ? value.length > 0 : !!value;
+    // Enriquecer programaÃ§Ãµes e remover as que jÃ¡ tiveram devoluÃ§Ã£o confirmada
     const enrichedProgramacoes = (programacoes || []).map((p) => {
       const obj = { ...p };
       const deliveryMatchesProgramacao = (delivery) => deliveryMatchesProgramacaoContext(delivery, p);
@@ -704,7 +753,7 @@ router.get('/programacoes/mine', auth, async (req, res) => {
       // Tentar buscar entrega vinculada
       let matchedDelivery = deliveriesByProgramacaoId.get(String(p._id)) ||
         deliveriesByLinkedId.get(String(p.linkedDeliveryId));
-      if (matchedDelivery && !deliveryMatchesProgramacao(matchedDelivery)) {
+      if (matchedDelivery && !returnedDeliveryMatchesProgramacao(matchedDelivery, p)) {
         matchedDelivery = null;
       }
       
@@ -716,7 +765,7 @@ router.get('/programacoes/mine', auth, async (req, res) => {
           ...(deliveriesByNumber.get(logKey) || []),
           ...(deliveriesByNumber.get(procKey) || []),
           ...(deliveriesByNumber.get(contKey) || [])
-        ].filter(deliveryMatchesProgramacao);
+        ].filter(delivery => deliveryMatchesProgramacao(delivery) || returnedDeliveryMatchesProgramacao(delivery, p));
         matchedDelivery = candidates
           .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))[0];
       }
@@ -724,8 +773,7 @@ router.get('/programacoes/mine', auth, async (req, res) => {
       if (matchedDelivery) {
         obj.linkedDeliveryId = matchedDelivery._id;
         obj.missingDocumentsAtSubmit = matchedDelivery.missingDocumentsAtSubmit || [];
-        const hasReturnProof = hasDocumentValue(matchedDelivery.documents?.devolucaoVazio) || hasDocumentValue(matchedDelivery.documents?.devolucaoContainerVazio);
-        if (matchedDelivery.horarioDevolucaoVazio || hasReturnProof) {
+        if (isReturnedDelivery(matchedDelivery)) {
           obj.horarioDevolucaoVazio = matchedDelivery.horarioDevolucaoVazio;
           obj.containerReturned = true;
           obj.status = 'FINALIZADO';
@@ -733,7 +781,7 @@ router.get('/programacoes/mine', auth, async (req, res) => {
       }
       
       return obj;
-    });
+    }).filter(p => p.containerReturned !== true && !p.horarioDevolucaoVazio);
 
     return res.json({ success: true, programacoes: enrichedProgramacoes || [] });
   } catch (err) {
