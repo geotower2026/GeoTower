@@ -2352,31 +2352,29 @@ const MonitorEntregas = () => {
 
           <div className="h-7 w-px bg-white/10 mx-1" />
 
-          <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-2 py-1">
-            <span className="text-[10px] font-black uppercase tracking-[0.22em] text-gray-500">Sentido</span>
-            <Pill
-              active={filters.sentido === 'all'}
+          <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm">
+            <span className="uppercase tracking-[0.2em] text-gray-400">Sentido</span>
+            <button
+              type="button"
               onClick={() => setFilters({ ...filters, sentido: 'all' })}
-              color="gray"
+              className={`rounded-xl px-3 py-1 font-semibold transition ${filters.sentido === 'all' ? 'bg-purple-600 text-white' : 'bg-white/10 text-gray-200 hover:bg-white/20'}`}
             >
-              <FaFilter className="text-xs" /> <span>Todos</span>
-            </Pill>
-
-            <Pill
-              active={filters.sentido === 'ORIGEM'}
-              onClick={() => setFilters({ ...filters, sentido: filters.sentido === 'ORIGEM' ? 'all' : 'ORIGEM' })}
-              color="blue"
+              Todos
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilters({ ...filters, sentido: 'ORIGEM' })}
+              className={`rounded-xl px-3 py-1 font-semibold transition ${filters.sentido === 'ORIGEM' ? 'bg-purple-600 text-white' : 'bg-white/10 text-gray-200 hover:bg-white/20'}`}
             >
-              <span>Origem</span>
-            </Pill>
-
-            <Pill
-              active={filters.sentido === 'DESTINO'}
-              onClick={() => setFilters({ ...filters, sentido: filters.sentido === 'DESTINO' ? 'all' : 'DESTINO' })}
-              color="purple"
+              Origem
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilters({ ...filters, sentido: 'DESTINO' })}
+              className={`rounded-xl px-3 py-1 font-semibold transition ${filters.sentido === 'DESTINO' ? 'bg-purple-600 text-white' : 'bg-white/10 text-gray-200 hover:bg-white/20'}`}
             >
-              <span>Destino</span>
-            </Pill>
+              Destino
+            </button>
           </div>
 
           {activeFilterCount > 0 && (
