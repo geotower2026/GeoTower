@@ -280,6 +280,8 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
         dataAgendamento: prog ? prog.dataAgendamento : delivery.dataAgendamento || '',
         dtColeta: prog ? prog.dtColeta : delivery.dtColeta || '',  // Itajaí: data de coleta
         horarioChegada: delivery.arrivedAt || '',
+        horarioSaidaCliente: delivery.saidaClienteAt || '',
+        horarioChegadaPorto: delivery.chegadaPortoAt || '',
         horarioDevolucaoVazio: delivery.horarioDevolucaoVazio || '',
         horarioInicioDesova: delivery.desovaStartAt || '',
         horarioFimDesova: delivery.desovaEndAt || '',
@@ -1317,13 +1319,17 @@ router.put("/deliveries/:id", auth, onlyAdmin, async (req, res) => {
       dataAgendamento,
       horarioChegada,
       horarioDevolucaoVazio,
+      horarioSaidaCliente,
+      horarioChegadaPorto,
       horarioInicioDesova,
       horarioFimDesova,
       containerMontadoAt,
       status
     } = req.body;
 
-    console.log('📝 Recebido PUT /deliveries/:id', { id, deliveryNumber, userName, driverName, vehiclePlate, observations, horarioDevolucaoVazio, city, status });
+    console.log('📝 Recebido PUT /deliveries/:id', { id, deliveryNumber, userName, driverName, vehiclePlate, observations, horarioDevolucaoVazio,
+      horarioSaidaCliente,
+      horarioChegadaPorto, city, status });
 
     // Validar se motivo da edição foi fornecido
     if (!observations || observations.trim() === '') {
@@ -1359,6 +1365,8 @@ router.put("/deliveries/:id", auth, onlyAdmin, async (req, res) => {
     if (dataAgendamento !== undefined && dataAgendamento) updates.dataAgendamento = new Date(dataAgendamento);
     if (horarioChegada !== undefined && horarioChegada) updates.arrivedAt = new Date(horarioChegada);
     if (horarioDevolucaoVazio !== undefined && horarioDevolucaoVazio) updates.horarioDevolucaoVazio = new Date(horarioDevolucaoVazio);
+    if (horarioSaidaCliente !== undefined && horarioSaidaCliente) updates.saidaClienteAt = new Date(horarioSaidaCliente);
+    if (horarioChegadaPorto !== undefined && horarioChegadaPorto) updates.chegadaPortoAt = new Date(horarioChegadaPorto);
     if (horarioInicioDesova !== undefined && horarioInicioDesova) updates.desovaStartAt = new Date(horarioInicioDesova);
     if (horarioFimDesova !== undefined && horarioFimDesova) updates.desovaEndAt = new Date(horarioFimDesova);
     if (containerMontadoAt !== undefined && containerMontadoAt) updates.containerMontadoAt = new Date(containerMontadoAt);

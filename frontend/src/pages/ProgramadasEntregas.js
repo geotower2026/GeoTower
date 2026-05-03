@@ -1,4 +1,4 @@
-import { deliveryService, adminService, notificationService } from '../services/authService';
+import { deliveryService, adminService } from '../services/authService';
 import React, { useState, useEffect, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import imageCompression from 'browser-image-compression';
@@ -169,7 +169,9 @@ const getStepFromDeliveryStatus = (delivery) => {
     case 'AGUARDANDO_DESOVA': restoredStep = 'confirmDesova'; break;
     case 'EM_DESOVA': restoredStep = 'desovaProgress'; break;
     case 'AGUARDANDO_ANEXO': case 'ANEXANDO_DOCUMENTOS_FINAIS': restoredStep = 'finalDocs'; break;
-    case 'DESOVA_FINALIZADA': case 'AGUARDANDO_AGENDAMENTO_DEVOLUCAO': restoredStep = 'askSchedule'; break;
+    case 'DESOVA_FINALIZADA': case 'AGUARDANDO_AGENDAMENTO_DEVOLUCAO': restoredStep = 'finalDocs'; break;
+    case 'SAINDO_CLIENTE': restoredStep = delivery?.currentStep || 'leavingClient'; break;
+    case 'CHEGOU_PORTO': restoredStep = delivery?.currentStep || 'arrivingPort'; break;
     case 'ENTREGUE': case 'DEVOLVENDO_CONTAINER': case 'FINALIZADO': restoredStep = 'welcome'; break;
     default: restoredStep = 'welcome';
   }
@@ -211,6 +213,8 @@ const STATUS_CONFIG = {
   AGUARDANDO_ANEXO: { label: 'AGUARD. DOCUMENTOS', color: 'bg-violet-100 text-violet-700 border-violet-300', dot: 'bg-violet-500', icon: FaFileAlt },
   AGUARDANDO_AGENDAMENTO_DEVOLUCAO: { label: 'AGUARD. AGEND. DEVOLUÇÃO', color: 'bg-pink-100 text-pink-700 border-pink-300', dot: 'bg-pink-500', icon: FaCalendarAlt },
   ANEXANDO_DOCUMENTOS_FINAIS: { label: 'ANEXANDO DOCUMENTOS', color: 'bg-teal-100 text-teal-700 border-teal-300', dot: 'bg-teal-500', icon: FaFileAlt },
+  SAINDO_CLIENTE: { label: 'SAINDO DO CLIENTE', color: 'bg-cyan-100 text-cyan-700 border-cyan-300', dot: 'bg-cyan-500', icon: FaRoute },
+  CHEGOU_PORTO: { label: 'CHEGOU NO PORTO', color: 'bg-blue-100 text-blue-700 border-blue-300', dot: 'bg-blue-500', icon: FaMapMarkerAlt },
   ENTREGUE: { label: 'DEVOLVENDO CONTAINER', color: 'bg-yellow-100 text-yellow-700 border-yellow-300', dot: 'bg-yellow-500', icon: FaTruck },
   DEVOLVENDO_CONTAINER: { label: 'DEVOLVENDO CONTAINER', color: 'bg-yellow-100 text-yellow-700 border-yellow-300', dot: 'bg-yellow-500', icon: FaTruck },
   FINALIZADO: { label: 'FINALIZADO', color: 'bg-emerald-100 text-emerald-700 border-emerald-300', dot: 'bg-emerald-500', icon: FaCheckCircle },
@@ -248,8 +252,10 @@ const FLOW_STEPS_BASE = [
   { key: 'arrival',         labelKey: 'Chegada' },
   { key: 'confirmDesova',   labelKey: 'desova' }, // Dynamic label based on city
   { key: 'desovaProgress',  labelKey: 'Progresso' },
-  { key: 'askSchedule',     labelKey: 'Devolução' },
   { key: 'finalDocs',       labelKey: 'Docs' },
+  { key: 'leavingClient',   labelKey: 'Saida' },
+  { key: 'arrivingPort',    labelKey: 'Porto' },
+  { key: 'portReturn',      labelKey: 'Devolucao' },
 ];
 const STEP_INDEX = Object.fromEntries(FLOW_STEPS_BASE.map((s, i) => [s.key, i]));
 
@@ -394,8 +400,6 @@ const ProgramadasEntregas = () => {
   const [containerVazioProof, setContainerVazioProof] = useState(null);
   const [containerVazioSubmitting, setContainerVazioSubmitting] = useState(false);
   const containerVazioProofRef = useRef(null);
-
-  const [scheduleSubmitting, setScheduleSubmitting] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -982,58 +986,6 @@ const ProgramadasEntregas = () => {
       goToStep('confirmDesova');
     } catch (_) { setToast({ message: 'Erro ao enviar justificativa', type: 'error' }); }
   };
-
-  const handleScheduleDecision = async (shouldSchedule) => {
-    setScheduleSubmitting(true);
-    try {
-      if (shouldSchedule) {
-        try {
-          const fresh = await deliveryService.getDelivery(currentDelivery._id);
-          const existingObs = fresh.data.delivery.observations || '';
-          const timestamp = formatarData(new Date(), city);
-          const obs = `(SOLICITACAO_AGENDAMENTO) Motorista solicitou agendamento de devolução do container.`;
-          const obsUpdated = await deliveryService.updateDelivery(currentDelivery._id, { observations: `${existingObs ? existingObs + '\n' : ''}[${timestamp}] ${obs}` });
-          applyDeliveryUpdate(obsUpdated.data.delivery);
-          
-          // Criar notificação para gestores/administradores
-          try {
-            const containerNum = currentDelivery?.deliveryNumber || currentDelivery?.containerNumber || 'N/A';
-            const motoristaNome = currentDelivery?.driverName || user?.name || 'Desconhecido';
-            console.log('📬 [ProgramadasEntregas] Enviando notificação com:', { containerNum, motoristaNome, currentDelivery });
-            
-            await notificationService.createNotification({
-              title: 'Solicitação de Agendamento',
-              message: `Motorista ${motoristaNome} solicitou agendamento de devolução para o container ${containerNum}.`,
-              type: 'scheduling_request',
-              deliveryId: currentDelivery._id,
-              containerNumber: containerNum,
-              driverName: motoristaNome
-            });
-          } catch (notifError) {
-            console.warn('⚠️ [ProgramadasEntregas] Erro ao criar notificação:', notifError);
-            // Não falha a operação principal por causa da notificação
-          }
-          
-          setToast({ message: 'Solicitação enviada ao admin', type: 'success' });
-        } catch (_) { setToast({ message: 'Erro ao enviar solicitação', type: 'error' }); }
-      }
-      // Atualiza status para proxima etapa (documentos finais)
-      const updated = await deliveryService.updateDelivery(currentDelivery._id, { status: 'ANEXANDO_DOCUMENTOS_FINAIS', currentStep: 'finalDocs' });
-      console.log('✅ [ProgramadasEntregas] Status atualizado para ANEXANDO_DOCUMENTOS_FINAIS');
-      
-      applyDeliveryUpdate(updated.data.delivery);
-      
-      // Prossegue para próxima etapa
-      goToStep('finalDocs');
-      await loadProgramacoes({ silent: true });
-    } catch (err) {
-      console.error('❌ [ProgramadasEntregas] Erro em handleScheduleDecision:', err);
-      setToast({ message: 'Erro ao processar decisão', type: 'error' });
-    } finally {
-      setScheduleSubmitting(false);
-    }
-  };
-
   const handleFinalUploadAndSubmit = async () => {
     const requiredDocs = ['canhotCTE', 'diarioBordo', 'canhotNF'];
     // list missing so we can pass observation when forcing submit
@@ -1058,27 +1010,21 @@ const ProgramadasEntregas = () => {
       } else {
         await deliveryService.submitDelivery(currentDelivery._id, { force: true, observation: documentsJustification });
       }
-
-      // update delivery to finalizado (backend tracking), but keep programacao as ENTREGUE
-      const finalized = await deliveryService.updateDelivery(currentDelivery._id, { status: 'FINALIZADO' });
-      applyDeliveryUpdate(finalized.data.delivery);
-      try {
-        await adminService.updateProgramacao(currentProgramacao._id, { status: 'ENTREGUE' });
-        updateProgramacaoInList(currentProgramacao._id, { status: 'ENTREGUE' });
-      } catch (_) {}
-
       const fresh = await deliveryService.getDelivery(currentDelivery._id);
       const existingObs = fresh.data.delivery.observations || '';
       const timestamp = formatarData(new Date(), city);
       const docsObs = documentsJustification ? `(JUSTIFICATIVA_DOCS) ${documentsJustification}` : '';
       const newObs = `${existingObs ? existingObs + '\n' : ''}${docsObs ? `[${timestamp}] ${docsObs}` : ''}`;
-      // ensure observation stored as well
-      const obsSaved = await deliveryService.updateDelivery(currentDelivery._id, { observations: newObs });
-      applyDeliveryUpdate(obsSaved.data.delivery);
+      const advanced = await deliveryService.updateDelivery(currentDelivery._id, {
+        status: 'SAINDO_CLIENTE',
+        currentStep: 'leavingClient',
+        observations: newObs
+      });
+      applyDeliveryUpdate(advanced.data.delivery);
 
-      setToast({ message: 'Documentos enviados! Agora faça a Entrega CNTR Porto.', type: 'success' });
+      setToast({ message: 'Documentos enviados! Registre a saida do cliente.', type: 'success' });
       await loadProgramacoes({ silent: true });
-      closeModal();
+      goToStep('leavingClient');
     } catch (err) {
       setToast({ message: 'Erro ao enviar documentos', type: 'error' });
     } finally {
@@ -2134,64 +2080,14 @@ const ProgramadasEntregas = () => {
                   <StepTimer start={currentDelivery?.desovaStartAt || currentDelivery?.arrivedAt} label={`Tempo em ${city === 'itajai' ? 'ovação' : 'desova'}`} />
                   <p className="text-gray-500 text-sm">Registre com foto a finalização da {city === 'itajai' ? 'ovação' : 'desova'}</p>
                   <PhotoSection
-                    onConfirm={() => compressAndUpload('fimDesova', 'DESOVA_FINALIZADA', 'askSchedule', { desovaEndAt: new Date().toISOString() })}
+                    onConfirm={() => compressAndUpload('fimDesova', 'ANEXANDO_DOCUMENTOS_FINAIS', 'finalDocs', { desovaEndAt: new Date().toISOString() })}
                     onBack={() => goToStep('desovaProgress')}
                     buttonLabel={`✓ ${city === 'itajai' ? 'Ovação' : 'Desova'} concluída`}
                     buttonColor="bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700"
                   />
                 </div>
               )}
-
-              {/* ── STEP: askSchedule ── */}
-              {currentStep === 'askSchedule' && (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-8 h-8 rounded-xl bg-purple-100 flex items-center justify-center">
-                      <FaCalendarAlt className="text-purple-600" size={14} />
-                    </div>
-                    <h3 className="text-lg font-bold text-gray-900">Entrega Container no Porto</h3>
-                  </div>
-                  <StepTimer start={currentDelivery?.arrivedAt || currentDelivery?.createdAt} label="Tempo total" />
-                  <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4">
-                    <p className="text-purple-800 font-semibold text-sm mb-1">📅 Precisa agendar a devolução?</p>
-                    <p className="text-gray-600 text-sm">Se sim, o administrativo será notificado</p>
-                  </div>
-                  <div className="flex gap-3">
-                    <button onClick={() => handleScheduleDecision(true)}
-                      disabled={scheduleSubmitting}
-                      className="flex-1 py-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-2xl font-bold text-base shadow-md active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed">
-                      {scheduleSubmitting ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                          </svg>
-                          Solicitando...
-                        </span>
-                      ) : (
-                        '📅 Sim, agendar'
-                      )}
-                    </button>
-                    <button onClick={() => handleScheduleDecision(false)}
-                      disabled={scheduleSubmitting}
-                      className="flex-1 py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl font-bold text-base active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed">
-                      {scheduleSubmitting ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                          </svg>
-                          Processando...
-                        </span>
-                      ) : (
-                        'Não'
-                      )}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* ── STEP: finalDocs ── */}
+              {/* STEP: finalDocs ── */}
               {currentStep === 'finalDocs' && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-3 mb-2">
@@ -2309,7 +2205,7 @@ const ProgramadasEntregas = () => {
                         </span>
                       ) : '✓ Documentos enviados'}
                     </button>
-                    <button onClick={() => goToStep('askSchedule')} disabled={submitting}
+                    <button onClick={() => goToStep('desovaProgress')} disabled={submitting}
                       className="flex-1 py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl font-bold text-base active:scale-95 transition disabled:opacity-50">
                       Voltar
                     </button>
@@ -2318,6 +2214,66 @@ const ProgramadasEntregas = () => {
               )}
 
               {/* ── STEP: agradecimento ── */}
+
+              {/* STEP: leavingClient */}
+              {currentStep === 'leavingClient' && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-8 h-8 rounded-xl bg-cyan-100 flex items-center justify-center">
+                      <FaRoute className="text-cyan-600" size={14} />
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900">Estou saindo do cliente</h3>
+                  </div>
+                  <StepTimer start={currentDelivery?.arrivedAt || currentDelivery?.createdAt} label="Tempo no cliente" />
+                  <p className="text-gray-500 text-sm">Registre com foto a saida do cliente.</p>
+                  <PhotoSection
+                    onConfirm={() => compressAndUpload('saidaCliente', 'SAINDO_CLIENTE', 'arrivingPort', { saidaClienteAt: new Date().toISOString() })}
+                    onBack={() => goToStep('finalDocs')}
+                    buttonLabel="Confirmar saida do cliente"
+                    buttonColor="bg-gradient-to-r from-cyan-500 to-sky-600 hover:from-cyan-600 hover:to-sky-700"
+                  />
+                </div>
+              )}
+
+              {/* STEP: arrivingPort */}
+              {currentStep === 'arrivingPort' && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center">
+                      <FaMapMarkerAlt className="text-blue-600" size={14} />
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900">Cheguei no Porto</h3>
+                  </div>
+                  <StepTimer start={currentDelivery?.saidaClienteAt || currentDelivery?.arrivedAt || currentDelivery?.createdAt} label="Tempo ate o porto" />
+                  <p className="text-gray-500 text-sm">Registre com foto a chegada no porto.</p>
+                  <PhotoSection
+                    onConfirm={() => compressAndUpload('chegadaPorto', 'CHEGOU_PORTO', 'portReturn', { chegadaPortoAt: new Date().toISOString() })}
+                    onBack={() => goToStep('leavingClient')}
+                    buttonLabel="Confirmar chegada no porto"
+                    buttonColor="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700"
+                  />
+                </div>
+              )}
+
+              {/* STEP: portReturn */}
+              {currentStep === 'portReturn' && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center">
+                      <FaTruck className="text-emerald-600" size={14} />
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900">Devolucao CNTR Porto</h3>
+                  </div>
+                  <StepTimer start={currentDelivery?.chegadaPortoAt || currentDelivery?.saidaClienteAt || currentDelivery?.createdAt} label="Tempo no porto" />
+                  <p className="text-gray-500 text-sm">Anexe a foto/comprovante da devolucao do container no porto.</p>
+                  <PhotoSection
+                    onConfirm={() => compressAndUpload('devolucaoVazio', 'FINALIZADO', 'agradecimento', { horarioDevolucaoVazio: new Date().toISOString() })}
+                    onBack={() => goToStep('arrivingPort')}
+                    buttonLabel="Finalizar devolucao"
+                    buttonColor="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700"
+                  />
+                </div>
+              )}
               {currentStep === 'agradecimento' && (
                 <div className="space-y-6 text-center py-6">
                   <div className="text-7xl animate-bounce">🎉</div>

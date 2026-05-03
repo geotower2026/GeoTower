@@ -668,6 +668,8 @@ router.put("/:id", auth, async (req, res) => {
       if (req.body.documentsJustification !== undefined) statusUpdates.documentsJustification = req.body.documentsJustification;
       if (req.body.desovaStartAt !== undefined) statusUpdates.desovaStartAt = req.body.desovaStartAt;
       if (req.body.desovaEndAt !== undefined) statusUpdates.desovaEndAt = req.body.desovaEndAt;
+      if (req.body.saidaClienteAt !== undefined) statusUpdates.saidaClienteAt = req.body.saidaClienteAt;
+      if (req.body.chegadaPortoAt !== undefined) statusUpdates.chegadaPortoAt = req.body.chegadaPortoAt;
       if (req.body.recebedor !== undefined) statusUpdates.recebedor = req.body.recebedor;
       if (programacaoIdFromBody !== undefined) {
         statusUpdates.programacaoId = programacaoIdFromBody;
@@ -706,6 +708,8 @@ router.put("/:id", auth, async (req, res) => {
     if (req.body.documentsJustification !== undefined) updates.documentsJustification = req.body.documentsJustification;
     if (req.body.desovaStartAt !== undefined) updates.desovaStartAt = req.body.desovaStartAt;
     if (req.body.desovaEndAt !== undefined) updates.desovaEndAt = req.body.desovaEndAt;
+    if (req.body.saidaClienteAt !== undefined) updates.saidaClienteAt = req.body.saidaClienteAt;
+    if (req.body.chegadaPortoAt !== undefined) updates.chegadaPortoAt = req.body.chegadaPortoAt;
     if (req.body.recebedor !== undefined) updates.recebedor = req.body.recebedor;
 
     // Se programacaoId for fornecido, guardar (serÃ¡ usado para atualizar depois)
@@ -938,6 +942,8 @@ router.post("/:id/documents/:type", auth, upload.array("file"), async (req, res)
       chegadaCliente: "CHEGADA",
       inicioDesova: "INICIO_DESOVA",
       fimDesova: "FIM_DESOVA",
+      saidaCliente: "SAIDA_CLIENTE",
+      chegadaPorto: "CHEGADA_PORTO",
       ricAbastecimento: "RIC_AB",
       ricBaixa: "RIC_BAIXA",
       ricColeta: "RIC_COLETA",
@@ -1136,6 +1142,8 @@ router.post("/:id/upload-and-update", auth, upload.array("file"), async (req, re
         chegadaCliente: "CHEGADA",
         inicioDesova: "INICIO_DESOVA",
         fimDesova: "FIM_DESOVA",
+        saidaCliente: "SAIDA_CLIENTE",
+        chegadaPorto: "CHEGADA_PORTO",
         ricAbastecimento: "RIC_AB",
         ricBaixa: "RIC_BAIXA",
         ricColeta: "RIC_COLETA",
@@ -1220,13 +1228,15 @@ router.post("/:id/upload-and-update", auth, upload.array("file"), async (req, re
         "arrivedAt",
         "desovaStartAt",
         "desovaEndAt",
+        "saidaClienteAt",
+        "chegadaPortoAt",
         "recebedor",
         "horarioDevolucaoVazio",
         "containerMontadoAt"
       ];
 
       const safeUpdates = {};
-      const dateFields = ["arrivedAt", "desovaStartAt", "desovaEndAt", "horarioDevolucaoVazio", "containerMontadoAt"];
+      const dateFields = ["arrivedAt", "desovaStartAt", "desovaEndAt", "saidaClienteAt", "chegadaPortoAt", "horarioDevolucaoVazio", "containerMontadoAt"];
       
       for (const field of allowedFields) {
         if (req.body[field] !== undefined) {
@@ -1248,6 +1258,20 @@ router.post("/:id/upload-and-update", auth, upload.array("file"), async (req, re
           statusUpdates[field] = value;
         }
         const updated = await updateDeliveryStatus(delivery._id, status, statusUpdates);
+        if (updated.horarioDevolucaoVazio) {
+          const programacaoToUpdate = updated.programacaoId || updated.linkedProgramacaoId;
+          if (programacaoToUpdate) {
+            try {
+              const ProgramacaoEntrega = require("../models/ProgramacaoEntrega");
+              await ProgramacaoEntrega.findByIdAndUpdate(programacaoToUpdate, {
+                containerReturned: true,
+                status: 'FINALIZADO'
+              });
+            } catch (e) {
+              console.error('[CONTAINER_RETURN] Erro ao atualizar programaÃ§Ã£o no upload-and-update:', e.message);
+            }
+          }
+        }
         return res.json({ delivery: normalizeDeliveryForResponse(updated) });
       } else {
         // Sem mudanÃ§a de status, usar update atÃ´mico

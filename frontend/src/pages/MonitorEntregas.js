@@ -16,7 +16,7 @@ import {
   FaTrash, FaEdit, FaExclamationTriangle, FaShareAlt, FaCalendarAlt,
   FaClock, FaBox, FaTruck, FaCheckCircle, FaTimesCircle, FaFilePdf,
   FaUsers, FaDolly, FaSearch, FaExpand, FaPalette, FaCog, FaSlidersH,
-  FaPlus, FaMapMarkerAlt, FaShippingFast, FaUndo, FaChevronRight,
+  FaPlus, FaMapMarkerAlt, FaRoute, FaShippingFast, FaUndo, FaChevronRight,
   FaUser, FaBoxOpen, FaBuilding, FaLayerGroup, FaSort, FaSortUp, FaSortDown
 } from 'react-icons/fa';
 import { MdLocalShipping, MdDashboard } from 'react-icons/md';
@@ -102,6 +102,22 @@ const getStatusConfig = (city = 'manaus') => {
       badge: 'bg-pink-100 text-pink-800 border border-pink-300',
       icon: <FaFilePdf />, gradient: 'from-pink-500 to-pink-700',
       ring: 'ring-pink-400/30', dot: 'bg-pink-500', hex: '#ec4899'
+    },
+    'SAINDO CLIENTE': {
+      label: 'Saindo do Cliente',
+      bg: 'bg-cyan-600', light: 'bg-cyan-50', text: 'text-cyan-700',
+      border: 'border-cyan-300',
+      badge: 'bg-cyan-100 text-cyan-800 border border-cyan-300',
+      icon: <FaRoute />, gradient: 'from-cyan-500 to-sky-700',
+      ring: 'ring-cyan-400/30', dot: 'bg-cyan-500', hex: '#06b6d4'
+    },
+    'CHEGOU PORTO': {
+      label: 'Chegou no Porto',
+      bg: 'bg-blue-600', light: 'bg-blue-50', text: 'text-blue-700',
+      border: 'border-blue-300',
+      badge: 'bg-blue-100 text-blue-800 border border-blue-300',
+      icon: <FaMapMarkerAlt />, gradient: 'from-blue-500 to-indigo-700',
+      ring: 'ring-blue-400/30', dot: 'bg-blue-500', hex: '#3b82f6'
     },
     ENTREGUE: {
       label: 'Entregue',
@@ -604,6 +620,8 @@ const SettingsPanel = ({
                   <option value="EM_DESOVA" className="bg-gray-900">Em Desova/Ovação</option>
                   <option value="DESOVA_FINALIZADA" className="bg-gray-900">Desova/Ovação Finalizada</option>
                   <option value="ANEXANDO_DOCUMENTOS_FINAIS" className="bg-gray-900">Anexando Docs Finais</option>
+                  <option value="SAINDO_CLIENTE" className="bg-gray-900">Saindo do Cliente</option>
+                  <option value="CHEGOU_PORTO" className="bg-gray-900">Chegou no Porto</option>
                   <option value="CANCELADO" className="bg-gray-900">Cancelado</option>
                 </select>
               </div>
@@ -739,6 +757,8 @@ const getStatusEntryTime = (delivery, city) => {
   if (status === 'AGUARDANDO DESOVA') return delivery.arrivedAt || delivery.horarioChegada;
   if (status === 'EM DESOVA') return delivery.desovaStartedAt || delivery.horarioInicioDesova;
   if (status === 'ANEXANDO DOCUMENTOS FINAIS') return delivery.docsStartedAt || delivery.horarioFimDesova;
+  if (status === 'SAINDO CLIENTE') return delivery.horarioSaidaCliente || delivery.horarioFimDesova;
+  if (status === 'CHEGOU PORTO') return delivery.horarioChegadaPorto || delivery.horarioSaidaCliente;
   if (status === 'FINALIZADO' || status === 'ENTREGUE' || status === 'DOCUMENTOS ENTREGUES') return delivery.finalizedAt || delivery.horarioFimDesova || delivery.horarioChegada;
   if (status === 'CANCELADO') return delivery.cancelledAt || delivery.createdAt;
   return null;
@@ -764,6 +784,8 @@ const MonitorEntregas = () => {
     { value: "EM_DESOVA", label: `Em ${getDesovaStepLabel(currentCity)}` },
     { value: "DESOVA_FINALIZADA", label: getDesovaStatusLabel('DESOVA_FINALIZADA', currentCity) },
     { value: "ANEXANDO_DOCUMENTOS_FINAIS", label: "Anexando Docs Finais" },
+    { value: "SAINDO_CLIENTE", label: "Saindo do Cliente" },
+    { value: "CHEGOU_PORTO", label: "Chegou no Porto" },
     { value: "CANCELADO", label: "Cancelado" }
   ];
   const getEditStatusOptions = () => [
@@ -793,7 +815,8 @@ const MonitorEntregas = () => {
   const [editForm, setEditForm] = useState({
     deliveryNumber: '', userName: '', driverName: '', vehiclePlate: '',
     recebedor: '', status: '', dataAgendamento: '', horarioDevolucaoVazio: '',
-    horarioChegada: '', horarioInicioDesova: '', horarioFimDesova: '', observations: ''
+    horarioChegada: '', horarioInicioDesova: '', horarioFimDesova: '',
+    horarioSaidaCliente: '', horarioChegadaPorto: '', observations: ''
   });
   const [filters, setFilters] = useState({
     status: 'all', searchTerm: '', startDate: '', endDate: '',
@@ -857,6 +880,8 @@ const MonitorEntregas = () => {
     EM_DESOVA: ['EM_DESOVA'],
     DESOVA_FINALIZADA: ['DESOVA_FINALIZADA'],
     ANEXANDO_DOCUMENTOS_FINAIS: ['ANEXANDO_DOCUMENTOS_FINAIS'],
+    SAINDO_CLIENTE: ['SAINDO_CLIENTE'],
+    CHEGOU_PORTO: ['CHEGOU_PORTO'],
     AGENDADO: ['AGENDADO'],
     CANCELADO: ['CANCELADO']
   };
@@ -1147,6 +1172,9 @@ const MonitorEntregas = () => {
     if (d.horarioChegada) ev.push({ label: 'Chegada', date: d.horarioChegada });
     if (d.horarioInicioDesova) ev.push({ label: city === 'itajai' ? 'Inicio da ovação' : 'Início da desova', date: d.horarioInicioDesova });
     if (d.horarioFimDesova) ev.push({ label: city === 'itajai' ? 'Fim da ovação' : 'Fim da desova', date: d.horarioFimDesova });
+    if (d.horarioSaidaCliente) ev.push({ label: 'Saida do cliente', date: d.horarioSaidaCliente });
+    if (d.horarioChegadaPorto) ev.push({ label: 'Chegada no porto', date: d.horarioChegadaPorto });
+    if (d.horarioDevolucaoVazio) ev.push({ label: 'Devolucao CNTR Porto', date: d.horarioDevolucaoVazio });
     return ev.sort((a, b) => new Date(a.date) - new Date(b.date));
   };
 
@@ -1182,6 +1210,14 @@ const MonitorEntregas = () => {
   const allModalDocsComplete = (d) => {
     if (!d) return false;
     const keys = ['retiradaCheio', 'canhotCTE', 'diarioBordo', 'canhotNF', 'devolucaoVazio', 'chegadaCliente', 'inicioDesova', 'fimDesova'];
+    const newFlowStarted = !!(
+      d.horarioSaidaCliente ||
+      d.horarioChegadaPorto ||
+      getDocumentUrlsArray(d.documents?.saidaCliente).length ||
+      getDocumentUrlsArray(d.documents?.chegadaPorto).length ||
+      ['SAINDO_CLIENTE', 'CHEGOU_PORTO'].includes(String(d.status || '').toUpperCase())
+    );
+    if (newFlowStarted) keys.push('saidaCliente', 'chegadaPorto');
     return keys.every((k) => getDocumentUrlsArray(d.documents?.[k]).length > 0);
   };
 
@@ -1208,8 +1244,15 @@ const MonitorEntregas = () => {
     return `PENDENTE ${pending}`;
   };
 
-  const defaultDocumentLabels = manaConfig.documents || {
-    canhotNF: 'NF', canhotCTE: 'CTE', diarioBordo: 'Diário', devolucaoVazio: 'Vazio', retiradaCheio: 'Cheio'
+  const defaultDocumentLabels = {
+    ...(manaConfig.documents || {}),
+    canhotNF: (manaConfig.documents || {}).canhotNF || 'NF',
+    canhotCTE: (manaConfig.documents || {}).canhotCTE || 'CTE',
+    diarioBordo: (manaConfig.documents || {}).diarioBordo || 'Diário',
+    devolucaoVazio: (manaConfig.documents || {}).devolucaoVazio || 'Vazio',
+    retiradaCheio: (manaConfig.documents || {}).retiradaCheio || 'Cheio',
+    saidaCliente: 'Saida do Cliente',
+    chegadaPorto: 'Chegada no Porto'
   };
 
   const itajaiDocumentLabels = {
@@ -1219,7 +1262,9 @@ const MonitorEntregas = () => {
     canhotNF: 'TACOGRAFO/RIC ABASTECIMENTO',
     diarioBordo: 'Diario de Bordo',
     devolucaoVazio: 'Baixa no Porto',
-    chegadaCliente: 'Chegada no Cliente'
+    chegadaCliente: 'Chegada no Cliente',
+    saidaCliente: 'Saida do Cliente',
+    chegadaPorto: 'Chegada no Porto'
   };
 
   const controleProtocolosDocumentMap = {
@@ -1227,7 +1272,9 @@ const MonitorEntregas = () => {
     canhotCTE: 'COMPROVANTE DE DESOVA',
     diarioBordo: 'DIARIO DE BORDO',
     canhotNF: 'CANHOTO DE DANFE',
-    devolucaoVazio: 'RIC DEPOT DESTINO'
+    devolucaoVazio: 'RIC DEPOT DESTINO',
+    saidaCliente: 'SAIDA DO CLIENTE',
+    chegadaPorto: 'CHEGADA NO PORTO'
   };
 
   const isControleDocumentoPresent = (value) => {
@@ -1357,6 +1404,8 @@ const MonitorEntregas = () => {
       ['Chegada', formatDT(delivery.horarioChegada)],
       [`Início ${getDesovaStepLabel(city)}`, formatDT(delivery.horarioInicioDesova)],
       [`Fim ${getDesovaStepLabel(city)}`, formatDT(delivery.horarioFimDesova)],
+      ['Saida do Cliente', formatDT(delivery.horarioSaidaCliente)],
+      ['Chegada no Porto', formatDT(delivery.horarioChegadaPorto)],
       ['Entrega CNTR Porto', formatDT(delivery.horarioDevolucaoVazio)],
     ].forEach(([k, v]) => {
       doc.text(`${k}: ${v}`, pdfMargin, y);
@@ -1384,11 +1433,13 @@ const MonitorEntregas = () => {
 
     // Documents
     const labels = getLabelsForDelivery(delivery);
-    const docKeys = Object.keys(delivery.documents || {}).filter(k => !['chegadaCliente', 'inicioDesova', 'fimDesova'].includes(k));
+    const docKeys = Object.keys(delivery.documents || {}).filter(k => !['chegadaCliente', 'inicioDesova', 'fimDesova', 'saidaCliente', 'chegadaPorto'].includes(k));
     const fotoFields = [
       { key: 'chegadaCliente', label: 'Chegada no Cliente' },
       { key: 'inicioDesova', label: `Início da ${getDesovaStepLabel(city)}` },
-      { key: 'fimDesova', label: `Finalização da ${getDesovaStepLabel(city)}` }
+      { key: 'fimDesova', label: `Finalização da ${getDesovaStepLabel(city)}` },
+      { key: 'saidaCliente', label: 'Saida do Cliente' },
+      { key: 'chegadaPorto', label: 'Chegada no Porto' }
     ];
     const allDocKeys = [...docKeys, ...fotoFields.map(f => f.key)];
 
@@ -2159,6 +2210,8 @@ const MonitorEntregas = () => {
       horarioChegada: d.horarioChegada?.slice(0, 16) || '',
       horarioInicioDesova: d.horarioInicioDesova?.slice(0, 16) || '',
       horarioFimDesova: d.horarioFimDesova?.slice(0, 16) || '',
+      horarioSaidaCliente: d.horarioSaidaCliente?.slice(0, 16) || '',
+      horarioChegadaPorto: d.horarioChegadaPorto?.slice(0, 16) || '',
       observations: removeProgramacaoInfo(d.observations)
     });
   };
@@ -2901,6 +2954,8 @@ const MonitorEntregas = () => {
                   <option value="EM_DESOVA" className="bg-gray-900">Em Desova/Ovação</option>
                   <option value="DESOVA_FINALIZADA" className="bg-gray-900">Desova/Ovação Finalizada</option>
                   <option value="ANEXANDO_DOCUMENTOS_FINAIS" className="bg-gray-900">Anexando Docs Finais</option>
+                  <option value="SAINDO_CLIENTE" className="bg-gray-900">Saindo do Cliente</option>
+                  <option value="CHEGOU_PORTO" className="bg-gray-900">Chegou no Porto</option>
                   <option value="CANCELADO" className="bg-gray-900">Cancelado</option>
                 </select>
               </div>
@@ -2911,6 +2966,8 @@ const MonitorEntregas = () => {
                 ['Horário Chegada', 'horarioChegada'],
                 [`Horário Início ${getDesovaStepLabel(city)}`, 'horarioInicioDesova'],
                 [`Horário Fim ${getDesovaStepLabel(city)}`, 'horarioFimDesova'],
+                ['Saida do Cliente', 'horarioSaidaCliente'],
+                ['Chegada no Porto', 'horarioChegadaPorto'],
               ].map(([label, field]) => (
                 <div key={field}>
                   <label className="block text-xs font-semibold text-gray-400 uppercase mb-1.5">{label}</label>

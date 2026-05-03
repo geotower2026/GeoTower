@@ -12,6 +12,7 @@ const DeliverySchema = new mongoose.Schema(
       enum: [
         'pending', 'submitted', 'AGENDADO', 'CONTAINER_MONTADO', 'AGUARDANDO_DESOVA',
         'EM_DESOVA', 'DESOVA_FINALIZADA', 'AGUARDANDO_ANEXO', 'ANEXANDO_DOCUMENTOS_FINAIS',
+        'SAINDO_CLIENTE', 'CHEGOU_PORTO',
         'ENTREGUE', 'CANCELADO', 'A_CAMINHO_DO_CLIENTE', 'ENTREGUE_COM_PENDENCIA_CANHOTO',
         'FINALIZADO'
       ],
@@ -29,6 +30,8 @@ const DeliverySchema = new mongoose.Schema(
     desovaEndAt: { type: Date },
 
     // registrar quando o motorista confirmou a devolução do container vazio
+    saidaClienteAt: { type: Date },
+    chegadaPortoAt: { type: Date },
     horarioDevolucaoVazio: { type: Date },
 
     // Dados do recebedor
@@ -81,6 +84,8 @@ const DeliverySchema = new mongoose.Schema(
       chegadaCliente: { type: String, default: null }, // Fotos da chegada no cliente
       inicioDesova: { type: String, default: null },   // Fotos do início da desova
       fimDesova: { type: String, default: null },      // Fotos do fim da desova
+      saidaCliente: { type: String, default: null },
+      chegadaPorto: { type: String, default: null },
     },
 
     // Soft delete para cancelados

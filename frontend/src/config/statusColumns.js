@@ -111,9 +111,10 @@ export const getStatusColumns = (city = 'manaus') => [
     filter: (p) => {
       const s = normalizeKey(p.status);
       const isPendDevolucao = s === 'PEND. DEVOLUCAO' || s === 'PEND. DEVOLUÇÃO';
+      const isRetornoEmAndamento = s === 'SAINDO CLIENTE' || s === 'CHEGOU PORTO';
       const isFinalizado = s === 'FINALIZADO';
       const semDataDevolucao = !p.dtDevolucaoCNTR && !p.horarioDevolucaoVazio;
-      return (isPendDevolucao || isFinalizado) && semDataDevolucao;
+      return (isPendDevolucao || isRetornoEmAndamento || isFinalizado) && semDataDevolucao;
     },
   },
   {
