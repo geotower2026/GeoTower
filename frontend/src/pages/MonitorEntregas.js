@@ -1931,25 +1931,8 @@ const MonitorEntregas = () => {
     }
   }, [filteredDeliveries, sortConfig, city, statsPeriod, recentlyUpdated]);
 
-  // Agrupa entregas por container
   const displayList = useMemo(() => {
-    // Agrupamento por container
-    const grouped = {};
-    filteredDeliveries.forEach((d) => {
-      const key = `${d.city || 'unknown'}|${getDisplayContainer(d) || d.deliveryNumber}`;
-      if (!grouped[key]) grouped[key] = [];
-      grouped[key].push(d);
-    });
-
-    // Para cada grupo, pega a entrega principal (primeira) e adiciona os recebedores
-    const result = Object.values(grouped).map((group) => {
-      const main = group[0];
-      main.fracionadas = group;
-      return main;
-    });
-
-    // Apply custom sort if configured
-    let sorted = [...result];
+    let sorted = [...filteredDeliveries];
     if (sortConfig.column) {
       sorted = sorted.sort((a, b) => {
         let aVal, bVal;
