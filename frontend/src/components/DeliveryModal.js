@@ -149,6 +149,43 @@ const DeliveryModal = ({
     return value === true;
   };
 
+  const getIcompanyDocumentMap = (sentido = 'DESTINO') => {
+    const sentidoKey = String(sentido || '').trim().toUpperCase();
+    if (sentidoKey === 'ORIGEM') {
+      return {
+        retiradaCheio: ['ricPorto', 'RIC PORTO'],
+        diarioBordo: ['diarioBordo', 'DIARIO DE BORDO'],
+        devolucaoVazio: ['ricDepot', 'RIC DEPOT']
+      };
+    }
+
+    return {
+      retiradaCheio: ['ricPortoDestino', 'RIC PORTO DESTINO'],
+      devolucaoVazio: ['ricDepotDestino', 'RIC DEPOT DESTINO'],
+      canhotCTE: ['comprovanteDesova', 'COMPROVANTE DE DESOVA'],
+      diarioBordo: ['diarioBordo', 'DIARIO DE BORDO'],
+      canhotNF: ['canhotoDanfe', 'CANHOTO DE DANFE']
+    };
+  };
+
+  const isIcompanyDocumentPresent = (record, fields = []) => {
+    if (!record) return false;
+    return fields.some((field) => {
+      const value = record[field];
+      if (value === true) return true;
+      if (typeof value === 'number') return value > 0;
+      if (value instanceof Date) return true;
+      if (typeof value === 'string') {
+        const text = value.trim();
+        if (!text) return false;
+        const numeric = Number(text.replace(',', '.'));
+        if (!Number.isNaN(numeric)) return numeric > 0;
+        return !['NAO', 'NÃO', 'NO', 'FALSE', 'X', '0'].includes(text.toUpperCase());
+      }
+      return Boolean(value);
+    });
+  };
+
   const linkedIcompanyRecord = icompanyRemoteRecord || findIcompanyInCache(selectedDelivery) || null;
 
   const parseObservationSections = () => {
@@ -319,15 +356,14 @@ const DeliveryModal = ({
               const temInconsistenciaData = Object.values(comparisons || {}).some(comp => comp?.isInconsistent === true);
               
               const labels = getLabelsForDelivery(selectedDelivery);
+              const docMap = getIcompanyDocumentMap(selectedDelivery.sentido || selectedSentido);
               const temInconsistenciaDocumento = Object.keys(selectedDelivery.documents || {})
                 .filter((k) => !['chegadaCliente', 'inicioDesova', 'fimDesova'].includes(k))
                 .some((k) => {
                   const present = !!selectedDelivery.documents[k];
-                  const controleField = controleProtocolosDocumentMap[k];
-                  const controlePresent = controleField && controleProtocolosRecord && controleProtocolosRecord.documentos
-                    ? isControleDocumentoPresent(controleProtocolosRecord.documentos[controleField])
-                    : false;
-                  return present && controleField && !controlePresent;
+                  const icompanyFields = docMap[k] || [];
+                  const icompanyPresent = isIcompanyDocumentPresent(effectiveRecord, icompanyFields);
+                  return present && icompanyFields.length > 0 && !icompanyPresent;
                 });
 
               const temInconsistencias = temInconsistenciaData || temInconsistenciaDocumento;
@@ -586,17 +622,16 @@ const DeliveryModal = ({
 
               {(() => {
                 const labels = getLabelsForDelivery(selectedDelivery);
+                const docMap = getIcompanyDocumentMap(selectedDelivery.sentido || selectedSentido);
 
                 const docRows = Object.keys(selectedDelivery.documents || {})
                   .filter((k) => !['chegadaCliente', 'inicioDesova', 'fimDesova'].includes(k))
                   .map((k) => {
                     const present = !!selectedDelivery.documents[k];
                     const canRemoveThisDocument = present && canRemoveDocument;
-                    const controleField = controleProtocolosDocumentMap[k];
-                    const controlePresent = controleField && controleProtocolosRecord && controleProtocolosRecord.documentos
-                      ? isControleDocumentoPresent(controleProtocolosRecord.documentos[controleField])
-                      : false;
-                    const mismatch = present && controleField && !controlePresent;
+                    const icompanyFields = docMap[k] || [];
+                    const icompanyPresent = isIcompanyDocumentPresent(linkedIcompanyRecord, icompanyFields);
+                    const mismatch = present && icompanyFields.length > 0 && !icompanyPresent;
 
                     return (
                       <div

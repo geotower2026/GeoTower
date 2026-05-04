@@ -1624,13 +1624,30 @@ const MonitorEntregas = () => {
 
     const keys = ['geomaritima', 'processo', 'codigo', 'nrProcesso', 'numero', 'NUMERO', 'NÚMERO', 'container', 'containerNumero'];
 
-    return icompanyData.find((record) => {
+    const expectedParty = getClean(getPartyBySentido(delivery, delivery.sentido || filters.sentido));
+    const expectedSentido = getClean(delivery.sentido || filters.sentido);
+
+    const candidates = icompanyData.filter((record) => {
       return keys.some((k) => {
         const val = getClean(record[k]);
         return val && targets.includes(val);
       });
-    }) || null;
-  }, [icompanyData]);
+    });
+
+    if (!candidates.length) return null;
+    return candidates
+      .map((record) => {
+        let score = 0;
+        if (getClean(record.nrProcesso || record['Nr. do processo'] || record['Nr do processo']) && targets.includes(getClean(record.nrProcesso || record['Nr. do processo'] || record['Nr do processo']))) score += 40;
+        if (getClean(record.processo) && targets.includes(getClean(record.processo))) score += 25;
+        if (getClean(record.codigo) && targets.includes(getClean(record.codigo))) score += 20;
+        if (expectedSentido && getClean(record.sentido || record.SENTIDO) === expectedSentido) score += 20;
+        if (expectedParty && getClean(getPartyBySentido(record, expectedSentido || record.sentido || record.SENTIDO)) === expectedParty) score += 20;
+        if (getClean(record.numero || record.NUMERO || record['NÚMERO'] || record.containerNumero) && targets.includes(getClean(record.numero || record.NUMERO || record['NÚMERO'] || record.containerNumero))) score += 5;
+        return { record, score };
+      })
+      .sort((a, b) => b.score - a.score)[0].record;
+  }, [icompanyData, filters.sentido]);
 
   // Função para comparar dados do delivery com Icompany
   const compareWithIcompany = useCallback((delivery, icompanyMatch) => {
@@ -1650,27 +1667,28 @@ const MonitorEntregas = () => {
       return destinatarioValue || remetenteValue;
     };
 
-    // Mapeamento dos campos conforme o modelo Icompany (var nomes reais do banco)
-    // Cliente agora é definido pelo SENTIDO: ORIGEM=remetente, DESTINO=recebedor/destinatario.
-    const isItajai = city.toLowerCase() === 'itajai';
-    const partyLabel = getPartyLabelBySentido(filters.sentido);
-    const fieldMapping = isItajai ? {
+    const sentidoComparacao = String(delivery.sentido || recordToUse.sentido || recordToUse.SENTIDO || filters.sentido || 'DESTINO').trim().toUpperCase();
+    const partyLabel = getPartyLabelBySentido(sentidoComparacao);
+    const origemMapping = {
       'Contratado': { deliveryField: 'userName', icompanyField: 'contratado' },
-      'Entrega CNTR Porto': { deliveryField: 'horarioDevolucaoVazio', icompanyField: 'entradaDistrito' },
       'Agendamento': { deliveryField: 'dataAgendamento', icompanyField: 'dtColeta' },
       [partyLabel]: { deliveryField: 'recebedor', icompanyField: 'clientePorSentido' },
       'Montagem Container': { deliveryField: 'containerMontadoAt', icompanyField: 'dtRetiraPD' },
       'Chegada': { deliveryField: 'horarioChegada', icompanyField: 'dtChegadaPlanta' },
-      'Fim Desova': { deliveryField: 'horarioFimDesova', icompanyField: 'dtFimDescarga' }
-    } : {
+      'Saindo do Cliente': { deliveryField: 'horarioSaidaCliente', icompanyField: 'dtSaidaPlanta' },
+      [`Início ${getDesovaStepLabel(city)}`]: { deliveryField: 'horarioInicioDesova', icompanyField: 'dtInicioCarregamento' },
+      [`Fim ${getDesovaStepLabel(city)}`]: { deliveryField: 'horarioFimDesova', icompanyField: 'dtFimCarregamento' },
+      'Entrega CNTR Porto': { deliveryField: 'horarioDevolucaoVazio', icompanyField: 'dtFimAgendamento' }
+    };
+    const destinoMapping = {
       'Contratado': { deliveryField: 'userName', icompanyField: 'contratado' },
-      'Entrega CNTR Porto': { deliveryField: 'horarioDevolucaoVazio', icompanyField: 'dtDevolucaoCNTR' },
       'Agendamento': { deliveryField: 'dataAgendamento', icompanyField: 'dtAgendamentoDescarga' },
       [partyLabel]: { deliveryField: 'recebedor', icompanyField: 'clientePorSentido' },
       'Montagem Container': { deliveryField: 'containerMontadoAt', icompanyField: 'dtRetiraPD' },
       'Chegada': { deliveryField: 'horarioChegada', icompanyField: 'dtInicioDescarga' },
-      'Fim Desova': { deliveryField: 'horarioFimDesova', icompanyField: 'dtFimDescarga' }
+      'Saindo do Cliente': { deliveryField: 'horarioSaidaCliente', icompanyField: 'dtFimDescarga' }
     };
+    const fieldMapping = sentidoComparacao === 'ORIGEM' ? origemMapping : destinoMapping;
 
     // Procurar registro correspondente na Icompany
     const normalizeRecordKey = (value) => {
@@ -1690,7 +1708,7 @@ const MonitorEntregas = () => {
     ].map(normalizeRecordKey).filter(Boolean);
 
     const lookupKeys = ['geomaritima', 'processo', 'codigo', 'nrProcesso', 'numero', 'NUMERO', 'NÚMERO', 'container', 'containerNumero'];
-    const icompanyRecord = icompanyData.find((record) => {
+    const icompanyRecord = recordToUse || icompanyData.find((record) => {
       return lookupKeys.some((key) => {
         const v = normalizeRecordKey(record[key]);
         return v && processoKeys.includes(v);
@@ -1738,7 +1756,7 @@ const MonitorEntregas = () => {
 
     Object.entries(fieldMapping).forEach(([displayName, mapping]) => {
       const deliveryValue = mapping.icompanyField === 'clientePorSentido'
-        ? getPartyBySentido(delivery, filters.sentido)
+        ? getPartyBySentido(delivery, sentidoComparacao)
         : delivery[mapping.deliveryField];
       const icompanyValue = mapping.icompanyField === 'clientePorSentido'
         ? getClienteBySentido(icompanyRecord)

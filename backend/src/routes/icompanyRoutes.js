@@ -69,8 +69,16 @@ const FIELD_MAPPING = {
   'Dt. fim carregamento': 'dtFimCarregamento',
   'Dt. Fim Carregamento': 'dtFimCarregamento',
   'Dt. saída planta': 'dtSaidaPlanta',
-  'Dt. Saída Planta': 'dtSaidaPlanta',
-  'Dt. entrada planta': 'dtEntradaPlanta',
+  'Dt. Saída Planta': 'dtSaidaPlanta',  'Dt. saida planta': 'dtSaidaPlanta',
+  'Dt. Saida Planta': 'dtSaidaPlanta',
+  'Dt. fim agendamento': 'dtFimAgendamento',
+  'Dt. Fim Agendamento': 'dtFimAgendamento',
+
+  'Dt. entrada planta': 'dtEntradaPlanta',  'Dt. saida planta': 'dtSaidaPlanta',
+  'Dt. Saida Planta': 'dtSaidaPlanta',
+  'Dt. fim agendamento': 'dtFimAgendamento',
+  'Dt. Fim Agendamento': 'dtFimAgendamento',
+
   'Dt. Entrada Planta': 'dtEntradaPlanta',
   'Dt. devolução CNTR': 'dtDevolucaoCNTR',
   'Dt. Devolução CNTR': 'dtDevolucaoCNTR',
@@ -141,7 +149,20 @@ router.get('/', async (req, res) => {
       if (obj.dtRetiraPD && obj.dtRetiraPD instanceof Date) obj.dtRetiraPD = obj.dtRetiraPD.toISOString();
       if (obj.dtDevolucaoCNTR && obj.dtDevolucaoCNTR instanceof Date) obj.dtDevolucaoCNTR = obj.dtDevolucaoCNTR.toISOString();
       if (obj.arrivedAt && obj.arrivedAt instanceof Date) obj.arrivedAt = obj.arrivedAt.toISOString();
+      if (obj.dtInicioRota && obj.dtInicioRota instanceof Date) obj.dtInicioRota = obj.dtInicioRota.toISOString();
+      if (obj.dtInicioDescarga && obj.dtInicioDescarga instanceof Date) obj.dtInicioDescarga = obj.dtInicioDescarga.toISOString();
+      if (obj.dtFimDescarga && obj.dtFimDescarga instanceof Date) obj.dtFimDescarga = obj.dtFimDescarga.toISOString();
+      if (obj.dtRetiraPD && obj.dtRetiraPD instanceof Date) obj.dtRetiraPD = obj.dtRetiraPD.toISOString();
+      if (obj.dtDevolucaoCNTR && obj.dtDevolucaoCNTR instanceof Date) obj.dtDevolucaoCNTR = obj.dtDevolucaoCNTR.toISOString();
+      if (obj.arrivedAt && obj.arrivedAt instanceof Date) obj.arrivedAt = obj.arrivedAt.toISOString();
       if (obj.entradaDistrito && obj.entradaDistrito instanceof Date) obj.entradaDistrito = obj.entradaDistrito.toISOString();
+      if (obj.dtColeta && obj.dtColeta instanceof Date) obj.dtColeta = obj.dtColeta.toISOString();
+      if (obj.dtAgendamentoDescarga && obj.dtAgendamentoDescarga instanceof Date) obj.dtAgendamentoDescarga = obj.dtAgendamentoDescarga.toISOString();
+      if (obj.dtChegadaPlanta && obj.dtChegadaPlanta instanceof Date) obj.dtChegadaPlanta = obj.dtChegadaPlanta.toISOString();
+      if (obj.dtInicioCarregamento && obj.dtInicioCarregamento instanceof Date) obj.dtInicioCarregamento = obj.dtInicioCarregamento.toISOString();
+      if (obj.dtFimCarregamento && obj.dtFimCarregamento instanceof Date) obj.dtFimCarregamento = obj.dtFimCarregamento.toISOString();
+      if (obj.dtSaidaPlanta && obj.dtSaidaPlanta instanceof Date) obj.dtSaidaPlanta = obj.dtSaidaPlanta.toISOString();
+      if (obj.dtFimAgendamento && obj.dtFimAgendamento instanceof Date) obj.dtFimAgendamento = obj.dtFimAgendamento.toISOString();
       return obj;
     });
     res.json({ ok: true, success: true, collection: collectionUsed, count: serialized.length, data: serialized, city: city });
@@ -413,7 +434,20 @@ router.get('/search', async (req, res) => {
       if (obj.dtRetiraPD && obj.dtRetiraPD instanceof Date) obj.dtRetiraPD = obj.dtRetiraPD.toISOString();
       if (obj.dtDevolucaoCNTR && obj.dtDevolucaoCNTR instanceof Date) obj.dtDevolucaoCNTR = obj.dtDevolucaoCNTR.toISOString();
       if (obj.arrivedAt && obj.arrivedAt instanceof Date) obj.arrivedAt = obj.arrivedAt.toISOString();
+      if (obj.dtInicioRota && obj.dtInicioRota instanceof Date) obj.dtInicioRota = obj.dtInicioRota.toISOString();
+      if (obj.dtInicioDescarga && obj.dtInicioDescarga instanceof Date) obj.dtInicioDescarga = obj.dtInicioDescarga.toISOString();
+      if (obj.dtFimDescarga && obj.dtFimDescarga instanceof Date) obj.dtFimDescarga = obj.dtFimDescarga.toISOString();
+      if (obj.dtRetiraPD && obj.dtRetiraPD instanceof Date) obj.dtRetiraPD = obj.dtRetiraPD.toISOString();
+      if (obj.dtDevolucaoCNTR && obj.dtDevolucaoCNTR instanceof Date) obj.dtDevolucaoCNTR = obj.dtDevolucaoCNTR.toISOString();
+      if (obj.arrivedAt && obj.arrivedAt instanceof Date) obj.arrivedAt = obj.arrivedAt.toISOString();
       if (obj.entradaDistrito && obj.entradaDistrito instanceof Date) obj.entradaDistrito = obj.entradaDistrito.toISOString();
+      if (obj.dtColeta && obj.dtColeta instanceof Date) obj.dtColeta = obj.dtColeta.toISOString();
+      if (obj.dtAgendamentoDescarga && obj.dtAgendamentoDescarga instanceof Date) obj.dtAgendamentoDescarga = obj.dtAgendamentoDescarga.toISOString();
+      if (obj.dtChegadaPlanta && obj.dtChegadaPlanta instanceof Date) obj.dtChegadaPlanta = obj.dtChegadaPlanta.toISOString();
+      if (obj.dtInicioCarregamento && obj.dtInicioCarregamento instanceof Date) obj.dtInicioCarregamento = obj.dtInicioCarregamento.toISOString();
+      if (obj.dtFimCarregamento && obj.dtFimCarregamento instanceof Date) obj.dtFimCarregamento = obj.dtFimCarregamento.toISOString();
+      if (obj.dtSaidaPlanta && obj.dtSaidaPlanta instanceof Date) obj.dtSaidaPlanta = obj.dtSaidaPlanta.toISOString();
+      if (obj.dtFimAgendamento && obj.dtFimAgendamento instanceof Date) obj.dtFimAgendamento = obj.dtFimAgendamento.toISOString();
       return obj;
     });
     res.json({ ok: true, count: serialized.length, data: serialized, city: city });
@@ -503,7 +537,20 @@ router.get("/entregas", async (req, res) => {
       if (obj.dtRetiraPD && obj.dtRetiraPD instanceof Date) obj.dtRetiraPD = obj.dtRetiraPD.toISOString();
       if (obj.dtDevolucaoCNTR && obj.dtDevolucaoCNTR instanceof Date) obj.dtDevolucaoCNTR = obj.dtDevolucaoCNTR.toISOString();
       if (obj.arrivedAt && obj.arrivedAt instanceof Date) obj.arrivedAt = obj.arrivedAt.toISOString();
+      if (obj.dtInicioRota && obj.dtInicioRota instanceof Date) obj.dtInicioRota = obj.dtInicioRota.toISOString();
+      if (obj.dtInicioDescarga && obj.dtInicioDescarga instanceof Date) obj.dtInicioDescarga = obj.dtInicioDescarga.toISOString();
+      if (obj.dtFimDescarga && obj.dtFimDescarga instanceof Date) obj.dtFimDescarga = obj.dtFimDescarga.toISOString();
+      if (obj.dtRetiraPD && obj.dtRetiraPD instanceof Date) obj.dtRetiraPD = obj.dtRetiraPD.toISOString();
+      if (obj.dtDevolucaoCNTR && obj.dtDevolucaoCNTR instanceof Date) obj.dtDevolucaoCNTR = obj.dtDevolucaoCNTR.toISOString();
+      if (obj.arrivedAt && obj.arrivedAt instanceof Date) obj.arrivedAt = obj.arrivedAt.toISOString();
       if (obj.entradaDistrito && obj.entradaDistrito instanceof Date) obj.entradaDistrito = obj.entradaDistrito.toISOString();
+      if (obj.dtColeta && obj.dtColeta instanceof Date) obj.dtColeta = obj.dtColeta.toISOString();
+      if (obj.dtAgendamentoDescarga && obj.dtAgendamentoDescarga instanceof Date) obj.dtAgendamentoDescarga = obj.dtAgendamentoDescarga.toISOString();
+      if (obj.dtChegadaPlanta && obj.dtChegadaPlanta instanceof Date) obj.dtChegadaPlanta = obj.dtChegadaPlanta.toISOString();
+      if (obj.dtInicioCarregamento && obj.dtInicioCarregamento instanceof Date) obj.dtInicioCarregamento = obj.dtInicioCarregamento.toISOString();
+      if (obj.dtFimCarregamento && obj.dtFimCarregamento instanceof Date) obj.dtFimCarregamento = obj.dtFimCarregamento.toISOString();
+      if (obj.dtSaidaPlanta && obj.dtSaidaPlanta instanceof Date) obj.dtSaidaPlanta = obj.dtSaidaPlanta.toISOString();
+      if (obj.dtFimAgendamento && obj.dtFimAgendamento instanceof Date) obj.dtFimAgendamento = obj.dtFimAgendamento.toISOString();
       return obj;
     });
 
@@ -602,7 +649,20 @@ router.get("/relatorio-contratado", async (req, res) => {
       if (obj.dtRetiraPD && obj.dtRetiraPD instanceof Date) obj.dtRetiraPD = obj.dtRetiraPD.toISOString();
       if (obj.dtDevolucaoCNTR && obj.dtDevolucaoCNTR instanceof Date) obj.dtDevolucaoCNTR = obj.dtDevolucaoCNTR.toISOString();
       if (obj.arrivedAt && obj.arrivedAt instanceof Date) obj.arrivedAt = obj.arrivedAt.toISOString();
+      if (obj.dtInicioRota && obj.dtInicioRota instanceof Date) obj.dtInicioRota = obj.dtInicioRota.toISOString();
+      if (obj.dtInicioDescarga && obj.dtInicioDescarga instanceof Date) obj.dtInicioDescarga = obj.dtInicioDescarga.toISOString();
+      if (obj.dtFimDescarga && obj.dtFimDescarga instanceof Date) obj.dtFimDescarga = obj.dtFimDescarga.toISOString();
+      if (obj.dtRetiraPD && obj.dtRetiraPD instanceof Date) obj.dtRetiraPD = obj.dtRetiraPD.toISOString();
+      if (obj.dtDevolucaoCNTR && obj.dtDevolucaoCNTR instanceof Date) obj.dtDevolucaoCNTR = obj.dtDevolucaoCNTR.toISOString();
+      if (obj.arrivedAt && obj.arrivedAt instanceof Date) obj.arrivedAt = obj.arrivedAt.toISOString();
       if (obj.entradaDistrito && obj.entradaDistrito instanceof Date) obj.entradaDistrito = obj.entradaDistrito.toISOString();
+      if (obj.dtColeta && obj.dtColeta instanceof Date) obj.dtColeta = obj.dtColeta.toISOString();
+      if (obj.dtAgendamentoDescarga && obj.dtAgendamentoDescarga instanceof Date) obj.dtAgendamentoDescarga = obj.dtAgendamentoDescarga.toISOString();
+      if (obj.dtChegadaPlanta && obj.dtChegadaPlanta instanceof Date) obj.dtChegadaPlanta = obj.dtChegadaPlanta.toISOString();
+      if (obj.dtInicioCarregamento && obj.dtInicioCarregamento instanceof Date) obj.dtInicioCarregamento = obj.dtInicioCarregamento.toISOString();
+      if (obj.dtFimCarregamento && obj.dtFimCarregamento instanceof Date) obj.dtFimCarregamento = obj.dtFimCarregamento.toISOString();
+      if (obj.dtSaidaPlanta && obj.dtSaidaPlanta instanceof Date) obj.dtSaidaPlanta = obj.dtSaidaPlanta.toISOString();
+      if (obj.dtFimAgendamento && obj.dtFimAgendamento instanceof Date) obj.dtFimAgendamento = obj.dtFimAgendamento.toISOString();
       return obj;
     });
 

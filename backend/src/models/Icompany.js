@@ -61,6 +61,9 @@ const icompanySchema = new mongoose.Schema({
   dtFimCarregamento: {
     type: Date,
   },
+  dtFimAgendamento: {
+    type: Date,
+  },
   dtSaidaPlanta: {
     type: Date,
   },
@@ -192,6 +195,34 @@ const icompanySchema = new mongoose.Schema({
   },
 
   // Documentação
+  ricPortoDestino: {
+    type: Number,
+    default: 0,
+  },
+  comprovanteDesova: {
+    type: Number,
+    default: 0,
+  },
+  ricDepot: {
+    type: Number,
+    default: 0,
+  },
+  diarioBordo: {
+    type: Number,
+    default: 0,
+  },
+  ricPorto: {
+    type: Number,
+    default: 0,
+  },
+  canhotoDanfe: {
+    type: Number,
+    default: 0,
+  },
+  ricDepotDestino: {
+    type: Number,
+    default: 0,
+  },
   stabCTeNFSe: {
     type: String,
     trim: true,
