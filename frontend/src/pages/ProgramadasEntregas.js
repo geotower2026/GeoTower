@@ -117,7 +117,20 @@ const getProgramacaoLegacyDeliveryNumbers = (programacao) => [
 const getProgramacaoGroupKey = (programacao) => {
   const container = normalizeGroupValue(programacao?.container || programacao?.processo);
   const party = normalizeGroupValue(programacao?.recebedor);
-  return `${container || 'SEM_CONTAINER'}::${party || 'SEM_CLIENTE'}`;
+  const remetente = normalizeGroupValue(programacao?.remetente);
+  const destinatario = normalizeGroupValue(programacao?.destinatario);
+  const sentido = normalizeGroupValue(programacao?.sentido);
+  const motorista = normalizeGroupValue(programacao?.motorista);
+  const agenda = normalizeGroupValue(getProgramacaoDate(programacao, programacao?.cityCode || programacao?.city));
+  return [
+    container || 'SEM_CONTAINER',
+    party || 'SEM_CLIENTE',
+    remetente || 'SEM_REMETENTE',
+    destinatario || 'SEM_DESTINATARIO',
+    sentido || 'SEM_SENTIDO',
+    motorista || 'SEM_MOTORISTA',
+    agenda || 'SEM_AGENDA'
+  ].join('::');
 };
 
 const deliveryMatchesProgramacaoContext = (delivery, programacao) => {
@@ -1127,7 +1140,14 @@ const ProgramadasEntregas = () => {
     let result = programacoes;
     if (searchTerm.trim()) {
       const needle = searchTerm.toUpperCase();
-      result = result.filter(p => String(p.processo || '').toUpperCase().includes(needle) || String(p.container || '').toUpperCase().includes(needle) || String(p.recebedor || '').toUpperCase().includes(needle));
+      result = result.filter(p =>
+        String(p.processo || '').toUpperCase().includes(needle) ||
+        String(p.processoLog || '').toUpperCase().includes(needle) ||
+        String(p.container || '').toUpperCase().includes(needle) ||
+        String(p.recebedor || '').toUpperCase().includes(needle) ||
+        String(p.remetente || '').toUpperCase().includes(needle) ||
+        String(p.destinatario || '').toUpperCase().includes(needle)
+      );
     }
     if (statusFilter !== 'all') result = result.filter(p => (p.status || 'pending').toUpperCase() === statusFilter.toUpperCase());
     if (driverFilter !== 'all') result = result.filter(p => String(p.motorista || '').trim().toUpperCase() === driverFilter.toUpperCase());
