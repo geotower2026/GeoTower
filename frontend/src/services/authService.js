@@ -40,6 +40,8 @@ export const adminService = {
   getStatistics: (params) => api.get('/admin/statistics', { params }),
   getDeliveryDetails: (id) => api.get(`/admin/deliveries/${id}`),
   updateDelivery: (id, data) => api.put(`/admin/deliveries/${id}`, data),
+  getCanhotosPendentes: () => api.get('/admin/canhotos-pendentes'),
+  updateCanhotoRetornos: (id, data) => api.put(`/admin/canhotos-pendentes/${id}/retornos`, data),
   downloadDocument: (deliveryId, documentType, index) => {
     const params = index !== undefined ? { params: { index } } : {};
     // Some downloads can be large; allow more time for the server to respond

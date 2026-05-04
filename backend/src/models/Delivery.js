@@ -42,6 +42,10 @@ const DeliverySchema = new mongoose.Schema(
     submissionForce: { type: Boolean, default: false },
     missingDocumentsAtSubmit: { type: [String], default: [] },
     documentsJustification: { type: String, default: "" },
+    retornoGeoMar: { type: String, default: "" },
+    retornoGeoLog: { type: String, default: "" },
+    retornosPendenciaUpdatedAt: { type: Date },
+    retornosPendenciaUpdatedBy: { type: String, default: "" },
     documentCorrectionLog: {
       type: [
         {

@@ -38,6 +38,14 @@ function onlyAdmin(req, res, next) {
   next();
 }
 
+function onlyCanhotosPendentes(req, res, next) {
+  const role = req.user?.role || "operacao";
+  if (role !== "admin" && role !== "geomar") {
+    return res.status(403).json({ message: "Sem permissao" });
+  }
+  next();
+}
+
 const cleanLookupKey = (value) => {
   if (value === null || value === undefined) return '';
   return value.toString().replace(/^#/, '').trim().toUpperCase();
@@ -109,6 +117,96 @@ const applyIcompanyEstabFilter = (filter, city) => {
   return filter;
 };
 
+/**
+ * GET /api/admin/canhotos-pendentes
+ * Lista entregas finalizadas com documentos faltantes para acompanhamento GeoMar/Admin.
+ */
+router.get("/canhotos-pendentes", auth, onlyCanhotosPendentes, async (req, res) => {
+  try {
+    const city = req.city || 'manaus';
+    const Delivery = require('../models/Delivery');
+    const ProgramacaoEntrega = require('../models/ProgramacaoEntrega');
+
+    const deliveries = await Delivery.find({
+      cityCode: city,
+      isCanceled: { $ne: true },
+      status: { $in: ['FINALIZADO', 'ENTREGUE', 'submitted', 'ENTREGUE_COM_PENDENCIA_CANHOTO'] },
+      missingDocumentsAtSubmit: { $exists: true, $ne: [] }
+    }).sort({ updatedAt: -1, submittedAt: -1, createdAt: -1 }).lean();
+
+    const programacaoIds = deliveries
+      .flatMap(d => [d.programacaoId, d.linkedProgramacaoId])
+      .filter(Boolean)
+      .map(id => String(id));
+
+    const programacoesById = new Map();
+    if (programacaoIds.length > 0) {
+      const programacoes = await ProgramacaoEntrega.find({ _id: { $in: programacaoIds } })
+        .select('processo processoLog container recebedor remetente destinatario contratado motorista dataAgendamento dtColeta sentido origem estab')
+        .lean();
+      programacoes.forEach(p => programacoesById.set(String(p._id), p));
+    }
+
+    const items = deliveries.map((delivery) => {
+      const normalized = normalizeDeliveryForResponse(delivery);
+      const prog = programacoesById.get(String(delivery.programacaoId || '')) ||
+        programacoesById.get(String(delivery.linkedProgramacaoId || '')) || null;
+
+      return {
+        ...normalized,
+        processoCAB: prog?.processo || normalized.processoCAB || normalized.deliveryNumber,
+        processoLog: prog?.processoLog || normalized.processoLog || '',
+        container: prog?.container || normalized.container || normalized.deliveryNumber,
+        recebedor: prog?.recebedor || normalized.recebedor || '',
+        remetente: prog?.remetente || normalized.remetente || '',
+        destinatario: prog?.destinatario || normalized.destinatario || '',
+        userName: normalized.userName || prog?.contratado || '',
+        driverName: normalized.driverName || prog?.motorista || '',
+        dataAgendamento: prog?.dataAgendamento || normalized.dataAgendamento || '',
+        dtColeta: prog?.dtColeta || normalized.dtColeta || '',
+        sentido: prog?.sentido || normalized.sentido || '',
+        retornoGeoMar: normalized.retornoGeoMar || '',
+        retornoGeoLog: normalized.retornoGeoLog || '',
+        retornosPendenciaUpdatedAt: normalized.retornosPendenciaUpdatedAt || null,
+        retornosPendenciaUpdatedBy: normalized.retornosPendenciaUpdatedBy || ''
+      };
+    });
+
+    return res.json({ success: true, deliveries: items });
+  } catch (err) {
+    console.error('[CANHOTOS_PENDENTES] Erro ao listar:', err);
+    return res.status(500).json({ message: 'Erro ao listar canhotos pendentes' });
+  }
+});
+
+/**
+ * PUT /api/admin/canhotos-pendentes/:id/retornos
+ * Atualiza os retornos de acompanhamento da pendencia.
+ */
+router.put("/canhotos-pendentes/:id/retornos", auth, onlyCanhotosPendentes, async (req, res) => {
+  try {
+    const city = req.city || 'manaus';
+    const Delivery = require('../models/Delivery');
+    const { retornoGeoMar, retornoGeoLog } = req.body;
+
+    const delivery = await Delivery.findById(req.params.id);
+    if (!delivery) return res.status(404).json({ message: 'Entrega nao encontrada' });
+    if (delivery.cityCode !== city) {
+      return res.status(403).json({ message: 'Acesso negado - dados de outra cidade' });
+    }
+
+    delivery.retornoGeoMar = retornoGeoMar !== undefined ? String(retornoGeoMar || '') : delivery.retornoGeoMar;
+    delivery.retornoGeoLog = retornoGeoLog !== undefined ? String(retornoGeoLog || '') : delivery.retornoGeoLog;
+    delivery.retornosPendenciaUpdatedAt = new Date();
+    delivery.retornosPendenciaUpdatedBy = req.user?.name || req.user?.username || req.user?.email || 'unknown';
+    await delivery.save();
+
+    return res.json({ success: true, delivery: normalizeDeliveryForResponse(delivery.toObject()) });
+  } catch (err) {
+    console.error('[CANHOTOS_PENDENTES] Erro ao atualizar retornos:', err);
+    return res.status(500).json({ message: 'Erro ao atualizar retornos' });
+  }
+});
 /**
  * GET /api/admin/statistics
  * Retorna estatÃ­sticas gerais
@@ -2366,7 +2464,7 @@ router.put("/programacoes/:id", auth, managerOnly, async (req, res) => {
     }
     
     if (!userCanAccessProgramacaoCity(programacao, city)) {
-      return res.status(403).json({ message: 'Acesso negado - programação de outra cidade' });
+      return res.status(403).json({ message: 'Acesso negado - programaï¿½ï¿½o de outra cidade' });
     }
 
     // Atualizar apenas os campos fornecidos
@@ -2434,7 +2532,7 @@ router.delete("/programacoes/:id", auth, managerOnly, async (req, res) => {
     }
     
     if (!userCanAccessProgramacaoCity(programacao, city)) {
-      return res.status(403).json({ message: 'Acesso negado - programação de outra cidade' });
+      return res.status(403).json({ message: 'Acesso negado - programaï¿½ï¿½o de outra cidade' });
     }
 
     // CASCADE DELETE: Remove linked delivery if exists
@@ -2675,7 +2773,7 @@ router.get("/programacoes/sync/icompany", auth, managerOnly, async (req, res) =>
       const observacaoIcompany = String(y.observacao || y.observacoes || '').trim();
 
       const mappedData = {
-        processoLog: pickIcompanyValue(y, ['nrProcesso', 'Nr. do processo', 'Nr do processo', 'Nro. do processo', 'Numero do processo', 'Número do processo']),
+        processoLog: pickIcompanyValue(y, ['nrProcesso', 'Nr. do processo', 'Nr do processo', 'Nro. do processo', 'Numero do processo', 'Nï¿½mero do processo']),
         recebedor: recebedorValue,
         remetente: remetenteValue,
         destinatario: destinatarioValue,

@@ -942,7 +942,7 @@ const Home = () => {
               subtitle="Acesse as funcionalidades mais utilizadas"
               delay={80}
             />
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-14">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-14">
               <DriverCard
                 onClick={() => navigate(`/entregas-programadas?motorista=${encodeURIComponent(user?.name || user?.username || '')}`)}
                 accentColor={B.v}
@@ -962,16 +962,6 @@ const Home = () => {
                 description="Acompanhe todas as suas entregas em tempo real, histórico e status atualizado."
                 tag="Operacional"
                 delay={80}
-              />
-              <DriverCard
-                onClick={() => navigate('/entregas-canhotos-pendentes')}
-                accentColor="#EC4899"
-                accentDark="#BE185D"
-                icon={<FaFileAlt />}
-                title="Canhotos Pendentes"
-                description="Anexe os canhotos das entregas abertas para manter toda documentação em dia."
-                tag="Documentação"
-                delay={160}
               />
             </div>
           </>
@@ -1014,6 +1004,20 @@ const Home = () => {
                 viewOnly={false}
                 delay={120}
               />
+              {hasAccess(['admin','geomar']) && (
+                <MonitorCard
+                  onClick={() => navigate('/entregas-canhotos-pendentes')}
+                  disabled={false}
+                  accentColor="#D97706"
+                  accentDark="#92400E"
+                  icon={<FaFileAlt />}
+                  titleIcon={<FaClipboardList />}
+                  title="Canhotos Pendentes"
+                  description="Acompanhe entregas finalizadas com documentos faltantes e registre os retornos GeoMar e GeoLog."
+                  viewOnly={false}
+                  delay={180}
+                />
+              )}
               {hasAccess(['geomar']) && (
                 <MonitorCard
                   onClick={() => navigate('/base-dados-geral')}
