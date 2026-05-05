@@ -892,7 +892,29 @@ const BaseDadosGeral = () => {
               style={{ scrollbarWidth: 'thin' }}
               onScroll={updateScrollButtons}
             >
-              <table className="text-sm border-collapse" style={{ tableLayout: 'fixed', minWidth: isGeomar ? 2100 : 2200 }}>
+              <table
+                className="text-sm border-collapse"
+                style={{ tableLayout: 'fixed', width: isGeomar ? 3240 : 3320, minWidth: isGeomar ? 3240 : 3320 }}
+              >
+                <colgroup>
+                  {!isGeomar && <col style={{ width: 76 }} />}
+                  <col style={{ width: 120 }} />
+                  <col style={{ width: 340 }} />
+                  <col style={{ width: 150 }} />
+                  <col style={{ width: 170 }} />
+                  <col style={{ width: 280 }} />
+                  <col style={{ width: 280 }} />
+                  <col style={{ width: 190 }} />
+                  <col style={{ width: 165 }} />
+                  <col style={{ width: 165 }} />
+                  <col style={{ width: 165 }} />
+                  <col style={{ width: 165 }} />
+                  <col style={{ width: 165 }} />
+                  <col style={{ width: 165 }} />
+                  <col style={{ width: 170 }} />
+                  <col style={{ width: 260 }} />
+                  <col style={{ width: 360 }} />
+                </colgroup>
                 <thead>
                   <tr className="bg-gradient-to-r from-violet-700 to-violet-800 text-white">
                     {[
@@ -1043,8 +1065,8 @@ const BaseDadosGeral = () => {
                           {fmtDate(item._entrega?.horarioDevolucaoVazio || item._entrega?.dtDevolucaoCNTR)}
                         </td>
                         {/* Docs */}
-                        <td className="px-4 py-3 whitespace-nowrap text-center">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ring-1 ${
+                        <td className="px-4 py-3 whitespace-nowrap text-center overflow-hidden">
+                          <span className={`max-w-full inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ring-1 ${
                             docStatus.complete
                               ? 'bg-emerald-100 text-emerald-700 ring-emerald-300'
                               : 'bg-rose-100 text-rose-700 ring-rose-300'
@@ -1052,12 +1074,14 @@ const BaseDadosGeral = () => {
                             {docStatus.complete
                               ? <FaCheckCircle size={9} />
                               : <FaExclamationCircle size={9} />}
-                            {docStatus.label}
+                            <span className="truncate">{docStatus.label}</span>
                           </span>
                         </td>
                         {/* Obs */}
-                        <td className="px-4 py-3 text-xs text-gray-500" style={{ maxWidth: '350px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={item._entrega?.observations || '—'}>
-                          {item._entrega?.observations || '—'}
+                        <td className="px-4 py-3 text-xs text-gray-500 overflow-hidden" title={item._entrega?.observations || '—'}>
+                          <div className="truncate">
+                            {item._entrega?.observations || '—'}
+                          </div>
                         </td>
                       </tr>
                     );
