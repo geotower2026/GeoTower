@@ -250,6 +250,9 @@ const DeliveryModal = ({
     Boolean(selectedDelivery.documentsJustification) ||
     Boolean(selectedDelivery.submissionObservation) ||
     (selectedDelivery.documentCorrectionLog && selectedDelivery.documentCorrectionLog.length > 0);
+  const containerNumber = Array.isArray(selectedDelivery.containerNumero)
+    ? selectedDelivery.containerNumero.filter(Boolean).join(', ')
+    : selectedDelivery.containerNumero || selectedDelivery.container || selectedDelivery.cntr || selectedDelivery.numeroContainer || '';
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
@@ -257,7 +260,14 @@ const DeliveryModal = ({
         <div className="flex items-center justify-between px-5 sm:px-6 py-4 sm:py-5 bg-gradient-to-r from-purple-700/60 to-indigo-700/60 border-b border-white/10 flex-shrink-0">
           <div>
             <p className="text-xs text-purple-300 uppercase tracking-widest font-semibold mb-0.5">Entrega</p>
-            <h2 className="text-xl font-black text-white tracking-wide">#{selectedDelivery.deliveryNumber}</h2>
+            <h2 className="text-xl font-black text-white tracking-wide flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <span>#{selectedDelivery.deliveryNumber}</span>
+              {containerNumber && (
+                <span className="text-sm font-bold text-purple-100 tracking-normal">
+                  Container: {containerNumber}
+                </span>
+              )}
+            </h2>
             <p className="text-xs text-gray-300 mt-1">CAB: {selectedDelivery.processoCAB || selectedDelivery.processo || selectedDelivery.processNumber || selectedDelivery.codigo || '—'}</p>
             <p className="text-xs text-gray-300 mt-1">Código: {(linkedIcompanyRecord?.codigo || '—')}</p>
           </div>
