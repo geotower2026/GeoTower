@@ -81,6 +81,8 @@ const COLUMN_CONFIG = {
   'Chegada': { type: 'date', key: 'horarioChegada' },
   'Início Desova': { type: 'date', key: 'horarioInicioDesova' },
   'Fim Desova': { type: 'date', key: 'horarioFimDesova' },
+  'Saindo do Cliente': { type: 'date', key: 'horarioSaidaCliente' },
+  'Chegada no Porto': { type: 'date', key: 'horarioChegadaPorto' },
   'Entrega CNTR Porto': { type: 'date', key: 'horarioDevolucaoVazio' },
   'Documentos': { type: 'status', key: 'documentos' },
 };
@@ -180,6 +182,7 @@ const BaseDadosGeral = () => {
   const { city } = useCity();
   const { user } = useAuth();
   const tableRef = useRef(null);
+  const topScrollRef = useRef(null);
   const isGeomar = user?.role && user.role.toLowerCase() === 'geomar';
 
   const [dados, setDados] = useState([]);
@@ -190,6 +193,7 @@ const BaseDadosGeral = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const [tableScrollWidth, setTableScrollWidth] = useState(0);
 
   const [editForm, setEditForm] = useState({
     processo: '', recebedor: '', container: '',
@@ -197,6 +201,7 @@ const BaseDadosGeral = () => {
     status: 'A CAMINHO DO CLIENTE',
     containerMontadoAt: '', horarioChegada: '',
     horarioInicioDesova: '', horarioFimDesova: '',
+    horarioSaidaCliente: '', horarioChegadaPorto: '',
     horarioDevolucaoVazio: '', observations: '',
     submissionObservation: '', documentsJustification: '',
   });
@@ -216,6 +221,7 @@ const BaseDadosGeral = () => {
     if (!el) return;
     setCanScrollLeft(el.scrollLeft > 10);
     setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 10);
+    setTableScrollWidth(el.scrollWidth);
   }, []);
 
   useEffect(() => {
@@ -234,6 +240,20 @@ const BaseDadosGeral = () => {
     tableRef.current?.scrollBy({ left: dir * 320, behavior: 'smooth' });
   };
 
+  const syncHorizontalScroll = (source) => {
+    const top = topScrollRef.current;
+    const table = tableRef.current;
+    if (!top || !table) return;
+
+    if (source === 'top' && table.scrollLeft !== top.scrollLeft) {
+      table.scrollLeft = top.scrollLeft;
+    }
+    if (source === 'table' && top.scrollLeft !== table.scrollLeft) {
+      top.scrollLeft = table.scrollLeft;
+    }
+    updateScrollButtons();
+  };
+
   /* ── Helper functions ── */
   const getColumnValue = useCallback((item, colName) => {
     const desovaStepLabel = getDesovaStepLabel(city);
@@ -250,6 +270,8 @@ const BaseDadosGeral = () => {
     if (colName === 'Chegada') return item._entrega?.horarioChegada || item._entrega?.arrivedAt || null;
     if (colName === `Início ${desovaStepLabel}`) return item._entrega?.horarioInicioDesova || item._entrega?.desovaStartAt || null;
     if (colName === `Fim ${desovaStepLabel}`) return item._entrega?.horarioFimDesova || item._entrega?.desovaEndAt || null;
+    if (colName === 'Saindo do Cliente') return item._entrega?.horarioSaidaCliente || item._entrega?.saidaClienteAt || null;
+    if (colName === 'Chegada no Porto') return item._entrega?.horarioChegadaPorto || item._entrega?.chegadaPortoAt || null;
     if (colName === 'Entrega CNTR Porto') return item._entrega?.horarioDevolucaoVazio || item._entrega?.dtDevolucaoCNTR || null;
     if (colName === 'Documentos') return getDocumentsStatus(item._entrega).label || '';
     return '';
@@ -269,7 +291,7 @@ const BaseDadosGeral = () => {
 
   const compareValues = useCallback((a, b, colName) => {
     // Handle date columns
-    if (['Agendamento', 'Retirada Cheio', 'Chegada', 'Início Desova', 'Fim Desova', 'Entrega CNTR Porto'].includes(colName)) {
+    if (['Agendamento', 'Retirada Cheio', 'Chegada', 'Início Desova', 'Fim Desova', 'Saindo do Cliente', 'Chegada no Porto', 'Entrega CNTR Porto'].includes(colName)) {
       const dateA = new Date(a || 0).getTime();
       const dateB = new Date(b || 0).getTime();
       return dateA - dateB;
@@ -518,6 +540,8 @@ const BaseDadosGeral = () => {
       'Chegada',
       `Início ${desovaLabel}`,
       `Fim ${desovaLabel}`,
+      'Saindo do Cliente',
+      'Chegada no Porto',
       'Entrega CNTR Porto',
       'Documentos',
       'Observações',
@@ -538,6 +562,8 @@ const BaseDadosGeral = () => {
         Chegada: formatExcelDate(item._entrega?.horarioChegada || item._entrega?.arrivedAt),
         [`Início ${desovaLabel}`]: formatExcelDate(item._entrega?.horarioInicioDesova || item._entrega?.desovaStartAt),
         [`Fim ${desovaLabel}`]: formatExcelDate(item._entrega?.horarioFimDesova || item._entrega?.desovaEndAt),
+        'Saindo do Cliente': formatExcelDate(item._entrega?.horarioSaidaCliente || item._entrega?.saidaClienteAt),
+        'Chegada no Porto': formatExcelDate(item._entrega?.horarioChegadaPorto || item._entrega?.chegadaPortoAt),
         'Entrega CNTR Porto': formatExcelDate(item._entrega?.horarioDevolucaoVazio || item._entrega?.dtDevolucaoCNTR),
         Documentos: docStatus.label || '',
         Observações: item._entrega?.observations || '',
@@ -570,6 +596,8 @@ const BaseDadosGeral = () => {
       horarioChegada: toDatetimeLocal(item._entrega?.horarioChegada || item._entrega?.arrivedAt),
       horarioInicioDesova: toDatetimeLocal(item._entrega?.horarioInicioDesova || item._entrega?.desovaStartAt),
       horarioFimDesova: toDatetimeLocal(item._entrega?.horarioFimDesova || item._entrega?.desovaEndAt),
+      horarioSaidaCliente: toDatetimeLocal(item._entrega?.horarioSaidaCliente || item._entrega?.saidaClienteAt),
+      horarioChegadaPorto: toDatetimeLocal(item._entrega?.horarioChegadaPorto || item._entrega?.chegadaPortoAt),
       horarioDevolucaoVazio: toDatetimeLocal(item._entrega?.horarioDevolucaoVazio || item._entrega?.dtDevolucaoCNTR),
       observations: item._entrega?.observations || '',
       submissionObservation: item._entrega?.submissionObservation || '',
@@ -610,6 +638,10 @@ const BaseDadosGeral = () => {
         horarioChegada: toISO(editForm.horarioChegada),
         horarioInicioDesova: toISO(editForm.horarioInicioDesova),
         horarioFimDesova: toISO(editForm.horarioFimDesova),
+        horarioSaidaCliente: toISO(editForm.horarioSaidaCliente),
+        saidaClienteAt: toISO(editForm.horarioSaidaCliente),
+        horarioChegadaPorto: toISO(editForm.horarioChegadaPorto),
+        chegadaPortoAt: toISO(editForm.horarioChegadaPorto),
         horarioDevolucaoVazio: toISO(editForm.horarioDevolucaoVazio),
         observations: editForm.observations,
         submissionObservation: editForm.submissionObservation,
@@ -647,6 +679,10 @@ const BaseDadosGeral = () => {
               desovaStartAt: toISO(editForm.horarioInicioDesova),
               horarioFimDesova: toISO(editForm.horarioFimDesova),
               desovaEndAt: toISO(editForm.horarioFimDesova),
+              horarioSaidaCliente: toISO(editForm.horarioSaidaCliente),
+              saidaClienteAt: toISO(editForm.horarioSaidaCliente),
+              horarioChegadaPorto: toISO(editForm.horarioChegadaPorto),
+              chegadaPortoAt: toISO(editForm.horarioChegadaPorto),
               horarioDevolucaoVazio: toISO(editForm.horarioDevolucaoVazio),
               observations: editForm.observations,
               submissionObservation: editForm.submissionObservation,
@@ -867,12 +903,22 @@ const BaseDadosGeral = () => {
               <p className="font-medium">Nenhum registro encontrado</p>
             </div>
           ) : (
+            <>
+            <div
+              ref={topScrollRef}
+              className="overflow-x-auto overflow-y-hidden bg-gray-50 border-b border-gray-200 h-4 shrink-0"
+              style={{ scrollbarWidth: 'thin' }}
+              onScroll={() => syncHorizontalScroll('top')}
+            >
+              <div style={{ width: tableScrollWidth || 2200, height: 1 }} />
+            </div>
             <div
               ref={tableRef}
               className="overflow-x-auto overflow-y-auto flex-1 scroll-smooth"
               style={{ scrollbarWidth: 'thin' }}
+              onScroll={() => syncHorizontalScroll('table')}
             >
-              <table className="min-w-full text-sm border-collapse" style={{ tableLayout: 'fixed' }}>
+              <table className="text-sm border-collapse" style={{ tableLayout: 'fixed', minWidth: isGeomar ? 2100 : 2200 }}>
                 <thead>
                   <tr className="bg-gradient-to-r from-violet-700 to-violet-800 text-white">
                     {[
@@ -888,6 +934,8 @@ const BaseDadosGeral = () => {
                       'Chegada',
                       `Início ${getDesovaStepLabel(city)}`,
                       `Fim ${getDesovaStepLabel(city)}`,
+                      'Saindo do Cliente',
+                      'Chegada no Porto',
                       'Entrega CNTR Porto',
                       'Documentos',
                       'Observações',
@@ -1012,6 +1060,12 @@ const BaseDadosGeral = () => {
                         </td>
                         {/* Devolução */}
                         <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600">
+                          {fmtDate(item._entrega?.horarioSaidaCliente || item._entrega?.saidaClienteAt)}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600">
+                          {fmtDate(item._entrega?.horarioChegadaPorto || item._entrega?.chegadaPortoAt)}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600">
                           {fmtDate(item._entrega?.horarioDevolucaoVazio || item._entrega?.dtDevolucaoCNTR)}
                         </td>
                         {/* Docs */}
@@ -1037,6 +1091,7 @@ const BaseDadosGeral = () => {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </div>
       </div>
@@ -1142,6 +1197,14 @@ const BaseDadosGeral = () => {
                     <Field label={`Fim ${getDesovaStepLabel(city)}`}>
                       <input type="datetime-local" className={inputCls} value={editForm.horarioFimDesova}
                         onChange={(e) => setEditForm({ ...editForm, horarioFimDesova: e.target.value })} />
+                    </Field>
+                    <Field label="Saindo do Cliente">
+                      <input type="datetime-local" className={inputCls} value={editForm.horarioSaidaCliente}
+                        onChange={(e) => setEditForm({ ...editForm, horarioSaidaCliente: e.target.value })} />
+                    </Field>
+                    <Field label="Chegada no Porto">
+                      <input type="datetime-local" className={inputCls} value={editForm.horarioChegadaPorto}
+                        onChange={(e) => setEditForm({ ...editForm, horarioChegadaPorto: e.target.value })} />
                     </Field>
                     <Field label="Entrega CNTR Porto">
                       <input type="datetime-local" className={inputCls} value={editForm.horarioDevolucaoVazio}
