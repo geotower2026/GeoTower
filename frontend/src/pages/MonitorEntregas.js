@@ -25,6 +25,7 @@ import jsPDF from 'jspdf';
 import { getDesovaStatusLabel, getDesovaStepLabel } from '../utils/cityLabels';
 
 const DeliveryModal = lazy(() => import('../components/DeliveryModal'));
+const ENABLE_CONTROLE_PROTOCOLOS_LOOKUP = false;
 
 /* ─────────────────────────────────────────────────────────────
    KANBAN - MESMA LÓGICA DO MONITOR DE PROCESSOS
@@ -1929,6 +1930,13 @@ const MonitorEntregas = () => {
   }, [selectedDelivery, findIcompanyInCache, icompanyLookupStatus]);
 
   useEffect(() => {
+    if (!ENABLE_CONTROLE_PROTOCOLOS_LOOKUP) {
+      setControleProtocolosRecord(null);
+      setControleProtocolosLookupStatus('idle');
+      lastControleProtocolosQueryRef.current = '';
+      return;
+    }
+
     if (!selectedDelivery) {
       setControleProtocolosRecord(null);
       setControleProtocolosLookupStatus('idle');

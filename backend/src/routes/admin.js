@@ -14,6 +14,7 @@ const router = express.Router();
 const canhotoUpload = multer({ storage: multer.memoryStorage() });
 const shortCache = new Map();
 const SHORT_CACHE_MS = 30000;
+const ENABLE_CONTROLE_PROTOCOLOS_COMPARISON = false;
 
 const getCached = async (key, loader, ttl = SHORT_CACHE_MS) => {
   const cached = shortCache.get(key);
@@ -891,7 +892,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
         addLookupKey(controleKeys, delivery.container);
       });
 
-      if (controleKeys.size > 0) {
+      if (ENABLE_CONTROLE_PROTOCOLOS_COMPARISON && controleKeys.size > 0) {
         const keys = Array.from(controleKeys);
         controleProtocolosData = await mongoose.connection
           .collection("controle_protocolos")
