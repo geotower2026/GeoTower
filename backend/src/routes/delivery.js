@@ -27,6 +27,15 @@ const { updateDeliveryAtomic, updateDeliveryStatus } = require("../utils/deliver
 const { enqueueR2Retry } = require("../utils/r2RetryQueue");
 const { getUploadsBaseDir } = require("../utils/uploadPaths");
 
+const verificationListCache = new Map();
+const VERIFICATION_LIST_CACHE_MS = 25000;
+
+const clearVerificationListCache = (city) => {
+  for (const key of verificationListCache.keys()) {
+    if (key.startsWith(`${city}:`)) verificationListCache.delete(key);
+  }
+};
+
 // =======================
 // Upload config (disk by default, memory for S3)
 // =======================
@@ -1679,6 +1688,7 @@ router.post("/:id/verification", auth, async (req, res) => {
       },
       { upsert: true, new: true }
     );
+    clearVerificationListCache(city);
 
     console.log(`âœ… Entrega ${delivery.deliveryNumber} marcada como ${verified ? 'verificada' : 'nÃ£o verificada'} por ${userName}`);
 
@@ -1712,8 +1722,15 @@ router.get("/verifications/list", auth, async (req, res) => {
       filter.verified = verified === 'true';
     }
 
+    const cacheKey = `${city}:${verified ?? 'all'}`;
+    const cached = verificationListCache.get(cacheKey);
+    if (cached && Date.now() - cached.createdAt < VERIFICATION_LIST_CACHE_MS) {
+      res.set('Cache-Control', 'private, max-age=20');
+      return res.json(cached.payload);
+    }
+
     const verifications = await DeliveryVerification.find(filter)
-      .select('deliveryId deliveryNumber verified verifiedBy verifiedAt')
+      .select('deliveryId verified verifiedBy verifiedAt')
       .limit(10000)
       .lean();
 
@@ -1727,7 +1744,10 @@ router.get("/verifications/list", auth, async (req, res) => {
       };
     });
 
-    res.json({ success: true, data: verificationMap, count: verifications.length });
+    const payload = { success: true, data: verificationMap, count: verifications.length };
+    verificationListCache.set(cacheKey, { createdAt: Date.now(), payload });
+    res.set('Cache-Control', 'private, max-age=20');
+    res.json(payload);
   } catch (err) {
     console.error('âŒ Erro ao listar verificaÃ§Ãµes:', err);
     res.status(500).json({ success: false, message: 'Erro ao listar verificaÃ§Ãµes' });

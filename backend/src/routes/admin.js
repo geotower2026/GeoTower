@@ -12,6 +12,17 @@ const { normalizeDeliveryForResponse } = require("../utils/storageUtils");
 
 const router = express.Router();
 const canhotoUpload = multer({ storage: multer.memoryStorage() });
+const shortCache = new Map();
+const SHORT_CACHE_MS = 30000;
+
+const getCached = async (key, loader, ttl = SHORT_CACHE_MS) => {
+  const cached = shortCache.get(key);
+  if (cached && Date.now() - cached.createdAt < ttl) return cached.value;
+
+  const value = await loader();
+  shortCache.set(key, { createdAt: Date.now(), value });
+  return value;
+};
 
 // Helper to normalize db calls (sync mockdb or async mongo adapter)
 async function getDb(req) {
@@ -419,6 +430,12 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
   try {
     const { status, q, startDate, endDate, period, periodDate, processo, container, recebedor, sentido, pontualidade, horaStatusStart, horaStatusEnd, agendamentoStart, agendamentoEnd, tempoStatusMin, tempoStatusMax } = req.query;
     const city = req.city || 'manaus';
+    const responseCacheKey = `admin:deliveries:${city}:${req.user?.id || ''}:${req.user?.role || ''}:${req.user?.contratado || ''}:${JSON.stringify(req.query || {})}`;
+    const cachedResponse = shortCache.get(responseCacheKey);
+    if (cachedResponse && Date.now() - cachedResponse.createdAt < 10000) {
+      res.set('Cache-Control', 'private, max-age=8');
+      return res.json(cachedResponse.value);
+    }
     console.log('📋 GET /admin/deliveries recebido com filtros:', { status, q, processo, container, recebedor, pontualidade, horaStatusStart, horaStatusEnd, agendamentoStart, agendamentoEnd, tempoStatusMin, tempoStatusMax, sentido, startDate, endDate, period, periodDate, city });
     
     // Buscar programações filtradas por cidade
@@ -455,9 +472,9 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
 
     // antes de cruzar, carregar dados do Icompany para termos placas (tracao)
     const Icompany = require('../models/Icompany');
-    const icompanyRecords = await Icompany.find({})
+    const icompanyRecords = await getCached(`admin:icompany:${city}`, () => Icompany.find({})
       .select('geomaritima processo codigo numero NUMERO NÚMERO container containerNumero tracao contratado entradaDistrito dtColeta remetente dtChegadaPlanta dtDevolucaoCNTR dtAgendamentoDescarga destinatario dtRetiraPD dtInicioDescarga dtFimDescarga sentido SENTIDO')
-      .lean();
+      .lean());
     const ycByProcess = new Map();  // processo -> [array de registros yc]
     const ycByContainer = new Map(); // container -> [array de registros yc]
     icompanyRecords.forEach(y => {
@@ -1054,7 +1071,10 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
     });
 
     console.log(`📤 Retornando ${deliveriesWithComparisons.length} entregas`);
-    return res.json({ deliveries: deliveriesWithComparisons });
+    const payload = { deliveries: deliveriesWithComparisons };
+    shortCache.set(responseCacheKey, { createdAt: Date.now(), value: payload });
+    res.set('Cache-Control', 'private, max-age=8');
+    return res.json(payload);
   } catch (err) {
     console.error('❌ Erro em /admin/deliveries:', err);
     return res.status(500).json({ message: "Erro ao listar entregas (admin)", error: err.message });
