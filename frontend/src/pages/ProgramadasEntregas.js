@@ -2,6 +2,7 @@ import { deliveryService, adminService } from '../services/authService';
 import React, { useState, useEffect, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import imageCompression from 'browser-image-compression';
+import { Capacitor } from '@capacitor/core';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Toast from '../components/Toast';
 import {
@@ -1030,12 +1031,7 @@ const ProgramadasEntregas = () => {
 
     try {
       setProcessingPhoto(true);
-      const [{ Camera, CameraResultType, CameraSource }, { Capacitor }] = await Promise.all([
-        import('@capacitor/camera'),
-        import('@capacitor/core')
-      ]);
-
-      if (!Capacitor.isNativePlatform()) return false;
+      const { Camera, CameraResultType, CameraSource } = await import('@capacitor/camera');
 
       const image = await Camera.getPhoto({
         quality: 70,
@@ -1070,9 +1066,16 @@ const ProgramadasEntregas = () => {
   };
 
   const openCamera = async () => {
+    if (submittingRef.current || processingPhotoRef.current) return;
+
+    if (!Capacitor.isNativePlatform()) {
+      if (cameraInputRef.current) cameraInputRef.current.value = null;
+      cameraInputRef.current?.click();
+      return;
+    }
+
     const handledByNativeCamera = await openNativeCamera();
     if (handledByNativeCamera) return;
-    if (submitting || processingPhoto) return;
     if (cameraInputRef.current) cameraInputRef.current.value = null;
     cameraInputRef.current?.click();
   };
