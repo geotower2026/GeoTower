@@ -568,13 +568,15 @@ router.get("/", auth, async (req, res) => {
     const skip = (parseInt(page) - 1) * Math.min(parseInt(limit), 100);
     const take = Math.min(parseInt(limit), 100);
     
-    const total = await Delivery.countDocuments(filter);
-    const deliveries = await Delivery
-      .find(filter)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(take)
-      .lean();  // 60% mais rÃ¡pido
+    const [total, deliveries] = await Promise.all([
+      Delivery.countDocuments(filter),
+      Delivery
+        .find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(take)
+        .lean()
+    ]);
     
     console.log(`âœ“ Found ${deliveries.length} deliveries (total: ${total})`);
     

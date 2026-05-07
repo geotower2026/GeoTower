@@ -405,6 +405,7 @@ const ProgramadasEntregas = () => {
   const photosRef = useRef([]);
   const submittingRef = useRef(false);
   const processingPhotoRef = useRef(false);
+  const syncingProgramacoesRef = useRef(false);
   const [cameraInputKey, setCameraInputKey] = useState(0);
 
   const [showMontagemModal, setShowMontagemModal] = useState(false);
@@ -451,8 +452,12 @@ const ProgramadasEntregas = () => {
   useEffect(() => {
     const syncInterval = setInterval(() => {
       if (submittingRef.current || processingPhotoRef.current) return;
+      if (syncingProgramacoesRef.current) return;
+      syncingProgramacoesRef.current = true;
       console.log('🔄 [ProgramadasEntregas] Sincronizando programações...');
-      loadProgramacoes({ silent: true });
+      loadProgramacoes({ silent: true }).finally(() => {
+        syncingProgramacoesRef.current = false;
+      });
       // Se houver entrega aberta, sincroniza também
       if (currentDelivery && currentDelivery._id) {
         deliveryService.getDelivery(currentDelivery._id).then(res => {
@@ -477,7 +482,7 @@ const ProgramadasEntregas = () => {
           console.error('❌ [ProgramadasEntregas] Erro ao sincronizar:', err.message);
         });
       }
-    }, 10000);
+    }, 30000);
 
     return () => clearInterval(syncInterval);
   }, [currentDelivery]);
