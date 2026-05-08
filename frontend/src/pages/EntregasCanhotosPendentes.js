@@ -341,7 +341,7 @@ const EntregasCanhotosPendentes = () => {
   const [uploadingDoc, setUploadingDoc] = useState(null);
   const [toast, setToast] = useState(null);
   const [search, setSearch] = useState('');
-  const [ownerFilter, setOwnerFilter] = useState('all');
+  const [ownerFilter, setOwnerFilter] = useState(userPendenciaGroup || 'geolog');
 
   const loadPendencias = async () => {
     setLoading(true);
@@ -378,7 +378,7 @@ const EntregasCanhotosPendentes = () => {
   const filteredItems = useMemo(() => {
     const term = search.trim().toLowerCase();
     return items.filter((item) => {
-      if (ownerFilter !== 'all' && getPendenciaResponsavel(item) !== ownerFilter) {
+      if (getPendenciaResponsavel(item) !== ownerFilter) {
         return false;
       }
 
@@ -398,13 +398,9 @@ const EntregasCanhotosPendentes = () => {
     });
   }, [items, ownerFilter, search]);
 
-  const toggleOwnerFilter = (owner) => {
-    setOwnerFilter((current) => current === owner ? 'all' : owner);
-  };
-
-  const totalDocs = items.reduce((sum, item) => (
-    sum + (Array.isArray(item.missingDocumentsAtSubmit) ? item.missingDocumentsAtSubmit.length : 0)
-  ), 0);
+  useEffect(() => {
+    setOwnerFilter(userPendenciaGroup || 'geolog');
+  }, [userPendenciaGroup]);
 
   const totalComGeoMar = items.filter(
     (item) => getPendenciaResponsavel(item) === 'geomar'
@@ -665,28 +661,14 @@ const EntregasCanhotosPendentes = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mt-5">
-            <StatCard
-              label="Entregas"
-              value={items.length}
-              icon={FaClipboardList}
-              tone="slate"
-              active={ownerFilter === 'all'}
-              onClick={() => setOwnerFilter('all')}
-            />
-            <StatCard
-              label="Documentos pendentes"
-              value={totalDocs}
-              icon={FaFileUpload}
-              tone="amber"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
             <StatCard
               label="Com GeoMar"
               value={totalComGeoMar}
               icon={FaUser}
               tone="emerald"
               active={ownerFilter === 'geomar'}
-              onClick={() => toggleOwnerFilter('geomar')}
+              onClick={() => setOwnerFilter('geomar')}
             />
             <StatCard
               label="Com GeoLog"
@@ -694,7 +676,7 @@ const EntregasCanhotosPendentes = () => {
               icon={FaTruck}
               tone="blue"
               active={ownerFilter === 'geolog'}
-              onClick={() => toggleOwnerFilter('geolog')}
+              onClick={() => setOwnerFilter('geolog')}
             />
           </div>
         </div>
