@@ -8,6 +8,8 @@ const DB_NAME = process.env.MONGO_DB || "delivery-docs";
 // default collection should match a primary data source, but também admite vários como fallback
 const PRIMARY_COLLECTION = process.env.MONGO_COLLECTION || "icompany";
 const FALLBACK_COLLECTIONS = Array.from(new Set([PRIMARY_COLLECTION, 'icompany', 'basegeomars', 'ycompany']));
+const listCache = new Map();
+const LIST_CACHE_MS = 60000;
 
 let _client, _col;
 async function col() {
@@ -123,6 +125,12 @@ router.get('/', async (req, res) => {
 
     let filter = {};
     const city = req.city || 'manaus';
+    const cacheKey = `list:${city}`;
+    const cached = listCache.get(cacheKey);
+    if (cached && Date.now() - cached.createdAt < LIST_CACHE_MS) {
+      res.set('Cache-Control', 'private, max-age=45');
+      return res.json(cached.payload);
+    }
     applyEstabCityFilter(filter, city);
 
     let data = await c.find(filter)
@@ -165,7 +173,10 @@ router.get('/', async (req, res) => {
       if (obj.dtFimAgendamento && obj.dtFimAgendamento instanceof Date) obj.dtFimAgendamento = obj.dtFimAgendamento.toISOString();
       return obj;
     });
-    res.json({ ok: true, success: true, collection: collectionUsed, count: serialized.length, data: serialized, city: city });
+    const payload = { ok: true, success: true, collection: collectionUsed, count: serialized.length, data: serialized, city: city };
+    listCache.set(cacheKey, { createdAt: Date.now(), payload });
+    res.set('Cache-Control', 'private, max-age=45');
+    res.json(payload);
   } catch (e) {
     console.error('Icompany GET / error:', e);
     res.status(500).json({ ok: false, error: 'Erro ao buscar dados' });
@@ -575,6 +586,7 @@ router.patch("/entregas/:processo", async (req, res) => {
 
     await c.updateOne({ processo }, { $set: updates });
     const doc = await c.findOne({ processo });
+    listCache.clear();
 
     res.json({ ok: true, data: doc });
   } catch (e) {
@@ -610,6 +622,7 @@ router.patch("/entregas/:processo/atribuir-motorista", async (req, res) => {
     );
 
     const doc = await c.findOne({ processo });
+    listCache.clear();
     res.json({ ok: true, data: doc });
   } catch (e) {
     console.error("ICompany assign error:", e);

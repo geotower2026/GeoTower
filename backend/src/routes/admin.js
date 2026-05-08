@@ -433,8 +433,8 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
     const city = req.city || 'manaus';
     const responseCacheKey = `admin:deliveries:${city}:${req.user?.id || ''}:${req.user?.role || ''}:${req.user?.contratado || ''}:${JSON.stringify(req.query || {})}`;
     const cachedResponse = shortCache.get(responseCacheKey);
-    if (cachedResponse && Date.now() - cachedResponse.createdAt < 10000) {
-      res.set('Cache-Control', 'private, max-age=8');
+    if (cachedResponse && Date.now() - cachedResponse.createdAt < SHORT_CACHE_MS) {
+      res.set('Cache-Control', 'private, max-age=20');
       return res.json(cachedResponse.value);
     }
     console.log('📋 GET /admin/deliveries recebido com filtros:', { status, q, processo, container, recebedor, pontualidade, horaStatusStart, horaStatusEnd, agendamentoStart, agendamentoEnd, tempoStatusMin, tempoStatusMax, sentido, startDate, endDate, period, periodDate, city });
@@ -1074,7 +1074,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
     console.log(`📤 Retornando ${deliveriesWithComparisons.length} entregas`);
     const payload = { deliveries: deliveriesWithComparisons };
     shortCache.set(responseCacheKey, { createdAt: Date.now(), value: payload });
-    res.set('Cache-Control', 'private, max-age=8');
+    res.set('Cache-Control', 'private, max-age=20');
     return res.json(payload);
   } catch (err) {
     console.error('❌ Erro em /admin/deliveries:', err);
@@ -2389,6 +2389,12 @@ router.get("/programacoes", auth, async (req, res) => {
     
     let cityFilter = {};
     const city = req.city || 'manaus';
+    const responseCacheKey = `admin:programacoes:${city}:${req.user?.id || ''}:${req.user?.role || ''}:${JSON.stringify(req.query || {})}`;
+    const cachedResponse = shortCache.get(responseCacheKey);
+    if (cachedResponse && Date.now() - cachedResponse.createdAt < SHORT_CACHE_MS) {
+      res.set('Cache-Control', 'private, max-age=20');
+      return res.json(cachedResponse.value);
+    }
     applyProgramacaoCityFilter(cityFilter, city);
 
     // Calcular o filtro de data para aplicar no DB sempre que possível
@@ -2449,9 +2455,11 @@ router.get("/programacoes", auth, async (req, res) => {
     const pageNum = Math.max(parseInt(page, 10) || 1, 1);
 
     const programacoes = await ProgramacaoEntrega.find(dbFilter)
+      .select('processo processoLog recebedor remetente destinatario container dataAgendamento dtColeta contratado motorista linkedDeliveryId status containerReturned observacoes origem estab sentido ativo createdAt updatedAt')
       .sort({ dataAgendamento: -1 })
       .skip((pageNum - 1) * limitNum)
-      .limit(limitNum);
+      .limit(limitNum)
+      .lean();
 
     let filtered = programacoes;
 
@@ -2561,11 +2569,14 @@ router.get("/programacoes", auth, async (req, res) => {
 
     console.log('[PROGRAMACAO] ✅ Encontradas', enriched.length, 'programações');
 
-    return res.json({
+    const payload = {
       success: true,
       programacoes: enriched,
       city: city
-    });
+    };
+    shortCache.set(responseCacheKey, { createdAt: Date.now(), value: payload });
+    res.set('Cache-Control', 'private, max-age=20');
+    return res.json(payload);
   } catch (err) {
     console.error('[PROGRAMACAO] ❌ Erro ao listar:', err);
     return res.status(500).json({ message: "Erro ao listar programações", error: err.message });
