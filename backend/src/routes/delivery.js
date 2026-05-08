@@ -29,10 +29,18 @@ const { getUploadsBaseDir } = require("../utils/uploadPaths");
 
 const verificationListCache = new Map();
 const VERIFICATION_LIST_CACHE_MS = 25000;
+const programacoesMineCache = new Map();
+const PROGRAMACOES_MINE_CACHE_MS = 15000;
 
 const clearVerificationListCache = (city) => {
   for (const key of verificationListCache.keys()) {
     if (key.startsWith(`${city}:`)) verificationListCache.delete(key);
+  }
+};
+
+const clearProgramacoesMineCache = (city) => {
+  for (const key of programacoesMineCache.keys()) {
+    if (!city || key.includes(`:${city}:`)) programacoesMineCache.delete(key);
   }
 };
 
@@ -532,6 +540,7 @@ router.post("/", auth, async (req, res) => {
     //   console.warn('[DELIVERY] erro sync Icompany:', syncErr.message || syncErr);
     // }
 
+    clearProgramacoesMineCache(city);
     res.status(201).json({ delivery });
   } catch (err) {
     console.error(err);
@@ -792,6 +801,7 @@ router.put("/:id", auth, async (req, res) => {
       }
     }
 
+    clearProgramacoesMineCache(city);
     res.json({ delivery: normalizeDeliveryForResponse(updated) });
   } catch (err) {
     console.error('Error updating delivery', err);
@@ -828,6 +838,12 @@ router.get('/programacoes/mine', auth, async (req, res) => {
 
     const city = req.city || 'manaus';
     const regex = new RegExp(`^${contratado}$`, 'i');
+    const cacheKey = `${req.user.id}:${city}:${contratado.toUpperCase()}`;
+    const cached = programacoesMineCache.get(cacheKey);
+    if (cached && Date.now() - cached.createdAt < PROGRAMACOES_MINE_CACHE_MS) {
+      res.set('Cache-Control', 'private, max-age=10');
+      return res.json(cached.payload);
+    }
     
     let cityFilter = {};
     applyProgramacaoCityFilter(cityFilter, city);
@@ -836,8 +852,13 @@ router.get('/programacoes/mine', auth, async (req, res) => {
     const programacoes = await ProgramacaoEntrega.find({
       ...cityFilter,
       contratado: regex,
-      ativo: { $ne: false }
-    }).sort({ dataAgendamento: -1 }).lean();  // .lean() = 60% mais rÃ¡pido
+      ativo: { $ne: false },
+      status: { $ne: 'CANCELADO' },
+      containerReturned: { $ne: true }
+    })
+      .select('processo processoLog recebedor remetente destinatario container dataAgendamento dtColeta contratado motorista linkedDeliveryId status containerReturned observacoes origem estab sentido createdAt updatedAt')
+      .sort({ dataAgendamento: -1 })
+      .lean();  // .lean() = 60% mais rÃ¡pido
     
     console.log(`[PROGRAMACAO] âœ“ Encontradas ${programacoes.length} programaÃ§Ãµes para ${contratado}`);
 
@@ -853,8 +874,9 @@ router.get('/programacoes/mine', auth, async (req, res) => {
     
     const deliveriesByLinkedId = new Map();
     const deliveriesByProgramacaoId = new Map();
+    const deliverySelect = 'deliveryNumber status programacaoId linkedProgramacaoId linkedDeliveryId missingDocumentsAtSubmit horarioDevolucaoVazio containerReturned updatedAt createdAt recebedor userName driverName cityCode';
     if (linkedIds.length > 0) {
-      const linkedDeliveries = await Delivery.find({ _id: { $in: linkedIds } }).lean();
+      const linkedDeliveries = await Delivery.find({ _id: { $in: linkedIds } }).select(deliverySelect).lean();
       linkedDeliveries.forEach(d => {
         deliveriesByLinkedId.set(String(d._id), d);
       });
@@ -867,7 +889,7 @@ router.get('/programacoes/mine', auth, async (req, res) => {
           { linkedProgramacaoId: { $in: programacaoIds } }
         ],
         isCanceled: { $ne: true }
-      }).lean();
+      }).select(deliverySelect).lean();
 
       programacaoDeliveries.forEach(d => {
         [d.programacaoId, d.linkedProgramacaoId].filter(Boolean).forEach(id => {
@@ -883,21 +905,18 @@ router.get('/programacoes/mine', auth, async (req, res) => {
     // Buscar por nÃºmero/processo tambÃ©m para validar linkedDeliveryId legado.
     // Programacoes com mesmo container e clientes diferentes nao podem herdar o mesmo delivery.
     const toMatch = programacoes;
-    const matchedNumbers = toMatch
-      .map(p => [p.processoLog, p.processo, p.container]
+    const matchedNumbers = [...new Set(
+      toMatch.flatMap(p => [p.processoLog, p.processo, p.container])
         .map(value => String(value || '').trim())
         .filter(Boolean)
-        .map(value => ({ deliveryNumber: new RegExp(`^${escapeRegExp(value)}$`, 'i') }))
-      )
-      .filter(conditions => conditions.length > 0)
-      .map(conditions => ({ $or: conditions }));
+    )];
     
     const unmatchedDeliveries = matchedNumbers.length > 0 
       ? await Delivery.find({
-        $or: matchedNumbers,
+        deliveryNumber: { $in: matchedNumbers.map(value => new RegExp(`^${escapeRegExp(value)}$`, 'i')) },
         cityCode: city,
         isCanceled: { $ne: true }
-      }).lean()
+      }).select(deliverySelect).lean()
       : [];
     
     const deliveriesByNumber = new Map();
@@ -950,7 +969,10 @@ router.get('/programacoes/mine', auth, async (req, res) => {
       return hasPendingDocuments || (p.containerReturned !== true && !p.horarioDevolucaoVazio);
     });
 
-    return res.json({ success: true, programacoes: enrichedProgramacoes || [] });
+    const payload = { success: true, programacoes: enrichedProgramacoes || [] };
+    programacoesMineCache.set(cacheKey, { createdAt: Date.now(), payload });
+    res.set('Cache-Control', 'private, max-age=10');
+    return res.json(payload);
   } catch (err) {
     console.error('[PROGRAMACAO] Erro:', err.message);
     return res.status(500).json({ message: 'Erro ao listar programaÃ§Ãµes', error: err.message });

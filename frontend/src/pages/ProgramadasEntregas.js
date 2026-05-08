@@ -512,125 +512,13 @@ const ProgramadasEntregas = () => {
       const res = await deliveryService.getProgramacoesAssigned();
       const todas = res.data.programacoes || [];
       setAllProgramacoes(todas);
-      const filtradas = todas;
-      
-      const deliveriesRes = await deliveryService.getMyDeliveries({ includeCanceled: true });
-      const deliveries = deliveriesRes.data.deliveries || [];
-      const map = {};
-      const deliveriesByNumber = {};
-      const programacaoMap = {};
-      deliveries.forEach(d => {
-        const key = (d.deliveryNumber || '').toUpperCase();
-        if (!deliveriesByNumber[key]) deliveriesByNumber[key] = [];
-        deliveriesByNumber[key].push(d);
-        const existing = map[key];
-        if (!existing || getDeliveryTimestamp(d) >= getDeliveryTimestamp(existing)) {
-          map[key] = d;
-        }
-        [d.programacaoId, d.linkedProgramacaoId].filter(Boolean).forEach(id => {
-          const progKey = String(id);
-          const existingProg = programacaoMap[progKey];
-          if (!existingProg || getDeliveryTimestamp(d) >= getDeliveryTimestamp(existingProg)) {
-            programacaoMap[progKey] = d;
-          }
-        });
-      });
+      setDeliveriesMap({});
 
-      const resolveDeliveryForProgramacao = (p) => {
-        const byProgRaw = programacaoMap[String(p._id)];
-        const byProg = deliveryMatchesProgramacaoContext(byProgRaw, p) ? byProgRaw : null;
-        if (byProg) return byProg;
-
-        if (p.linkedDeliveryId) {
-          const linkedDelivery = deliveries.find(d => String(d._id) === String(p.linkedDeliveryId));
-          if (deliveryMatchesProgramacaoContext(linkedDelivery, p)) return linkedDelivery;
-        }
-
-        const key = normalizeGroupValue(getProgramacaoDeliveryNumber(p));
-        const legacyCandidates = getProgramacaoLegacyDeliveryNumbers(p)
-          .flatMap(number => deliveriesByNumber[normalizeGroupValue(number)] || []);
-        const candidates = [
-          ...(deliveriesByNumber[key] || []),
-          ...legacyCandidates
-        ];
-        if (candidates.length > 0) {
-          return selectDeliveryForProgramacao(candidates, p._id, p);
-        }
-        return null;
-      };
-
-      const groupDeliveryMap = {};
-      const programacoesByGroup = {};
-      filtradas.forEach((p) => {
-        const groupKey = getProgramacaoGroupKey(p);
-        if (!programacoesByGroup[groupKey]) programacoesByGroup[groupKey] = [];
-        programacoesByGroup[groupKey].push(p);
-      });
-      Object.entries(programacoesByGroup).forEach(([groupKey, group]) => {
-        const candidates = group.map(resolveDeliveryForProgramacao).filter(Boolean);
-        if (candidates.length > 0) {
-          groupDeliveryMap[groupKey] = candidates.reduce((best, next) =>
-            !best || getDeliveryTimestamp(next) > getDeliveryTimestamp(best) ? next : best,
-            null
-          );
-        }
-      });
-      setDeliveriesMap(map);
-      
-      // Remover apenas programações canceladas ou que já tiveram o container vazio devolvido
-      const visibleProgramacoes = filtradas.filter(p => {
+      const visibleProgramacoes = todas.filter((p) => {
         const status = String(p.status || '').toUpperCase();
-        if (['CANCELADO'].includes(status)) return false;
-
-        // Se marcada como containerReturned, não mostra
-        if (p.containerReturned === true) return false;
-        if (p.horarioDevolucaoVazio) return false;
-
-        // Se o delivery indexado por programacaoId já tem comprovante, não mostra
-        const byProgRaw = programacaoMap[String(p._id)];
-        const byProg = deliveryMatchesProgramacaoContext(byProgRaw, p) ? byProgRaw : null;
-        if (!groupDeliveryMap[getProgramacaoGroupKey(p)] && isReturnedDelivery(byProg)) {
-          return false;
-        }
-
-        // Tentar buscar o delivery por programacaoId primeiro, depois linkedDeliveryId, e só então por número
-        let matchedDelivery = groupDeliveryMap[getProgramacaoGroupKey(p)] || byProg || null;
-        if (!groupDeliveryMap[getProgramacaoGroupKey(p)] && !matchedDelivery && p.linkedDeliveryId) {
-          const linkedDelivery = deliveries.find(d => String(d._id) === String(p.linkedDeliveryId));
-          matchedDelivery = deliveryMatchesProgramacaoContext(linkedDelivery, p) ? linkedDelivery : null;
-          if (isReturnedDelivery(matchedDelivery)) {
-            return false;
-          }
-        }
-
-        // Fallback: buscar por container/processo
-        const key = normalizeGroupValue(getProgramacaoDeliveryNumber(p));
-        if (!groupDeliveryMap[getProgramacaoGroupKey(p)] && !matchedDelivery) {
-          const legacyCandidates = getProgramacaoLegacyDeliveryNumbers(p)
-            .flatMap(number => deliveriesByNumber[normalizeGroupValue(number)] || []);
-          const candidates = [
-            ...(deliveriesByNumber[key] || []),
-            ...legacyCandidates
-          ];
-          if (candidates.length > 0) {
-            matchedDelivery = selectDeliveryForProgramacao(candidates, p._id, p);
-          }
-        }
-        if (isReturnedDelivery(matchedDelivery)) {
-          return false;
-        }
-
-        // Se houver delivery associado, atualizar o status exibido na programação
-        if (matchedDelivery) {
-          p.status = normalizeStatus(matchedDelivery.status) || p.status;
-          p.linkedDeliveryId = matchedDelivery._id || p.linkedDeliveryId;
-          if (matchedDelivery.containerReturned !== undefined) {
-            p.containerReturned = matchedDelivery.containerReturned;
-          }
-        }
-
-        return true;
+        return status !== 'CANCELADO' && p.containerReturned !== true && !p.horarioDevolucaoVazio;
       });
+
       setProgramacoes(visibleProgramacoes);
       setToast(null);
     } catch (err) {
