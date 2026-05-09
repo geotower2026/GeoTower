@@ -176,11 +176,6 @@ textarea:focus {
   color: var(--app-text);
 }
 
-.app-header {
-  background: var(--app-header-gradient);
-  box-shadow: 0 4px 24px color-mix(in srgb, var(--app-accent) 28%, transparent);
-}
-
 .app-theme-surface {
   background: var(--app-surface);
   border-color: var(--app-border);

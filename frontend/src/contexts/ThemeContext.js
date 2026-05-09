@@ -2,18 +2,18 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 
 export const THEMES = {
   dark: {
-    name: 'Escuro',
-    bg: '#0b1020',
-    bgSecondary: '#121a2e',
-    surface: '#172033',
-    surfaceAlt: '#1d2940',
+    name: 'Noite',
+    bg: '#0f172a',
+    bgSecondary: '#111827',
+    surface: '#1e293b',
+    surfaceAlt: '#273449',
     text: '#ffffff',
     textSecondary: '#cbd5e1',
     muted: '#94a3b8',
     accent: '#8b5cf6',
     accentSoft: 'rgba(139, 92, 246, 0.16)',
-    headerGradient: 'linear-gradient(135deg, #4c1d95 0%, #4338ca 48%, #047857 100%)',
-    preview: 'linear-gradient(135deg, #0b1020 0%, #4c1d95 52%, #047857 100%)',
+    headerGradient: 'linear-gradient(135deg, #0f172a 0%, #312e81 52%, #0f766e 100%)',
+    preview: 'linear-gradient(135deg, #0f172a 0%, #312e81 52%, #0f766e 100%)',
     border: 'border-white/10',
     borderColor: 'rgba(255,255,255,0.12)',
     header: 'bg-[#0b1020]/90',
@@ -46,18 +46,18 @@ export const THEMES = {
     tableRowHover: 'hover:bg-white/[0.05]',
   },
   light: {
-    name: 'Claro',
-    bg: '#f4f7fb',
+    name: 'Neutro',
+    bg: '#f8fafc',
     bgSecondary: '#ffffff',
     surface: '#ffffff',
-    surfaceAlt: '#eef3f9',
+    surfaceAlt: '#f1f5f9',
     text: '#111827',
     textSecondary: '#334155',
     muted: '#64748b',
-    accent: '#2563eb',
-    accentSoft: 'rgba(37, 99, 235, 0.12)',
-    headerGradient: 'linear-gradient(135deg, #1d4ed8 0%, #4f46e5 48%, #059669 100%)',
-    preview: 'linear-gradient(135deg, #f4f7fb 0%, #bfdbfe 50%, #bbf7d0 100%)',
+    accent: '#0f766e',
+    accentSoft: 'rgba(15, 118, 110, 0.12)',
+    headerGradient: 'linear-gradient(135deg, #f8fafc 0%, #dbeafe 52%, #ccfbf1 100%)',
+    preview: 'linear-gradient(135deg, #f8fafc 0%, #dbeafe 52%, #ccfbf1 100%)',
     border: 'border-gray-300',
     borderColor: 'rgba(15,23,42,0.14)',
     header: 'bg-white/95',
@@ -68,7 +68,7 @@ export const THEMES = {
     tableRowHover: 'hover:bg-gray-300',
   },
   company: {
-    name: 'GeoTower',
+    name: 'Violeta',
     bg: '#f5f3ff',
     bgSecondary: '#ffffff',
     surface: '#ffffff',
@@ -133,6 +133,28 @@ export const THEMES = {
     tableRowAlt: 'bg-cyan-100',
     tableRowHover: 'hover:bg-cyan-200',
   },
+  slate: {
+    name: 'Grafite',
+    bg: '#f1f5f9',
+    bgSecondary: '#ffffff',
+    surface: '#ffffff',
+    surfaceAlt: '#e2e8f0',
+    text: '#0f172a',
+    textSecondary: '#334155',
+    muted: '#64748b',
+    accent: '#475569',
+    accentSoft: 'rgba(71, 85, 105, 0.12)',
+    headerGradient: 'linear-gradient(135deg, #334155 0%, #475569 52%, #64748b 100%)',
+    preview: 'linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 52%, #94a3b8 100%)',
+    border: 'border-slate-300',
+    borderColor: 'rgba(15,23,42,0.14)',
+    header: 'bg-slate-800',
+    card: 'bg-slate-50',
+    cardHover: 'hover:bg-slate-100',
+    tableRow: 'bg-slate-50',
+    tableRowAlt: 'bg-slate-100',
+    tableRowHover: 'hover:bg-slate-200',
+  },
 };
 
 const ThemeContext = createContext();
@@ -174,8 +196,6 @@ export const ThemeProvider = ({ children }) => {
     root.style.setProperty('--app-accent', themeConfig.accent);
     root.style.setProperty('--app-accent-soft', themeConfig.accentSoft);
     root.style.setProperty('--app-border', themeConfig.borderColor);
-    root.style.setProperty('--app-header-gradient', themeConfig.headerGradient);
-
     localStorage.setItem('appTheme', safeTheme);
     localStorage.setItem('torreControleTema', safeTheme);
   }, [safeTheme, themeConfig]);
