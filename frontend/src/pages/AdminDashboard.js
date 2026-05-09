@@ -267,23 +267,30 @@ const AdminDashboard = () => {
     normalizeProcessKey(
       record?.nrProcesso ||
       record?.nr_processo ||
+      record?.nrDoProcesso ||
+      record?.numeroDoProcesso ||
       record?.numeroProcesso ||
       record?.processoIcompany ||
       record?.processoLog ||
       record?.deliveryNumber ||
       record?.['Nr. do processo'] ||
       record?.['Nr do processo'] ||
+      record?.['Nr. Do Processo'] ||
+      record?.['Nr Do Processo'] ||
       record?.['Nr. Processo'] ||
       record?.['Nr Processo'] ||
       record?.['Nro Processo'] ||
       record?.['Nro. Processo'] ||
       record?.['Nº processo'] ||
+      record?.['Nº do processo'] ||
+      record?.['Nº Do Processo'] ||
       record?.['N° processo'] ||
+      record?.['N° do processo'] ||
+      record?.['N° Do Processo'] ||
       record?.['NR PROCESSO'] ||
+      record?.['NR DO PROCESSO'] ||
       record?.['nr processo'] ||
-      record?.processo ||
-      record?.codigo ||
-      record?.numero
+      record?.['nr do processo']
     );
 
   const getClienteBySentido = (record) => {
