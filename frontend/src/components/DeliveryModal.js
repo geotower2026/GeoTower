@@ -258,14 +258,14 @@ const DeliveryModal = ({
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
       <div className="bg-[#1a1a2e] rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden shadow-2xl border border-white/10 flex flex-col">
-        <div className="relative overflow-hidden px-5 sm:px-6 py-4 sm:py-5 bg-[radial-gradient(circle_at_top_left,rgba(168,85,247,0.36),transparent_34%),linear-gradient(135deg,rgba(88,28,135,0.95),rgba(49,46,129,0.92))] border-b border-white/10 flex-shrink-0">
+        <div className="relative overflow-hidden px-5 sm:px-6 py-3.5 bg-[radial-gradient(circle_at_top_left,rgba(168,85,247,0.32),transparent_34%),linear-gradient(135deg,rgba(88,28,135,0.95),rgba(49,46,129,0.92))] border-b border-white/10 flex-shrink-0">
           <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
           <div className="relative flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="min-w-0">
-                  <p className="text-[11px] text-purple-200/80 uppercase tracking-[0.22em] font-bold mb-1">Entrega</p>
-                  <h2 className="text-3xl sm:text-4xl font-black leading-none tracking-wide text-white">
+              <div className="flex flex-wrap items-end gap-x-3 gap-y-1.5">
+                <div className="min-w-0 flex items-end gap-2">
+                  <p className="pb-0.5 text-[10px] text-purple-200/80 uppercase tracking-[0.2em] font-bold">Entrega</p>
+                  <h2 className="text-2xl sm:text-[28px] font-black leading-none tracking-wide text-white">
                     #{selectedDelivery.deliveryNumber}
                   </h2>
                 </div>
@@ -275,29 +275,29 @@ const DeliveryModal = ({
                 />
               </div>
 
-              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {containerNumber && (
-                  <div className="min-w-0 rounded-xl border border-white/12 bg-white/[0.08] px-3 py-2.5 shadow-inner shadow-white/5">
+                  <div className="min-w-0 rounded-xl border border-white/20 bg-white/[0.075] px-3 py-2 shadow-inner shadow-white/5">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="w-8 h-8 rounded-lg bg-cyan-300/15 text-cyan-100 flex items-center justify-center border border-cyan-200/20 flex-shrink-0">
-                        <FaBoxOpen className="text-sm" />
+                      <span className="w-7 h-7 rounded-lg bg-cyan-300/15 text-cyan-100 flex items-center justify-center border border-cyan-200/20 flex-shrink-0">
+                        <FaBoxOpen className="text-xs" />
                       </span>
                       <div className="min-w-0">
-                        <p className="text-[10px] uppercase tracking-[0.18em] font-bold text-cyan-100/70">Container</p>
-                        <p className="text-sm sm:text-base font-black text-white truncate">{containerNumber}</p>
+                        <p className="text-[9px] uppercase tracking-[0.18em] font-bold text-cyan-100/70 leading-none mb-1">Container</p>
+                        <p className="text-sm font-black text-white truncate leading-tight">{containerNumber}</p>
                       </div>
                     </div>
                   </div>
                 )}
                 {armador && (
-                  <div className="min-w-0 rounded-xl border border-white/12 bg-white/[0.08] px-3 py-2.5 shadow-inner shadow-white/5">
+                  <div className="min-w-0 rounded-xl border border-white/20 bg-white/[0.075] px-3 py-2 shadow-inner shadow-white/5">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="w-8 h-8 rounded-lg bg-amber-300/15 text-amber-100 flex items-center justify-center border border-amber-200/20 flex-shrink-0">
-                        <FaBuilding className="text-sm" />
+                      <span className="w-7 h-7 rounded-lg bg-amber-300/15 text-amber-100 flex items-center justify-center border border-amber-200/20 flex-shrink-0">
+                        <FaBuilding className="text-xs" />
                       </span>
                       <div className="min-w-0">
-                        <p className="text-[10px] uppercase tracking-[0.18em] font-bold text-amber-100/70">Armador</p>
-                        <p className="text-sm sm:text-base font-black text-white truncate">{armador}</p>
+                        <p className="text-[9px] uppercase tracking-[0.18em] font-bold text-amber-100/70 leading-none mb-1">Armador</p>
+                        <p className="text-sm font-black text-white truncate leading-tight">{armador}</p>
                       </div>
                     </div>
                   </div>
@@ -313,7 +313,7 @@ const DeliveryModal = ({
             <button
               onClick={onClose}
               aria-label="Fechar modal"
-              className="w-10 h-10 rounded-2xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition border border-white/10 flex-shrink-0"
+              className="w-9 h-9 rounded-2xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition border border-white/10 flex-shrink-0"
             >
               <FaTimes />
             </button>

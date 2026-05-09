@@ -564,7 +564,7 @@ const SettingsPanel = ({
                 >
                   <span
                     className={`w-6 h-6 rounded-full border-2 flex-shrink-0 ${theme === key ? 'border-purple-400' : 'border-gray-600'}`}
-                    style={{ background: t.bg }}
+                    style={{ background: t.preview || t.headerGradient || t.bg }}
                   />
                   {t.name}
                   {theme === key && <FaCheckCircle className="ml-auto text-purple-400 text-xs" />}
@@ -1031,103 +1031,6 @@ const MonitorEntregas = () => {
     document.head.appendChild(el);
     return () => document.head.removeChild(el);
   }, []);
-
-    useEffect(() => {
-    const el = document.createElement('style');
-    el.id = 'theme-overrides';
-    el.textContent = `
-      .theme-light { background-color:#f5f7fa!important; color:#1a1a1a!important; }
-      .theme-light * { color:#1a1a1a!important; }
-      .theme-light .bg-white\/5{background-color:rgba(245,247,250,0.95)!important}
-      .theme-light .border-white\/10{border-color:rgba(75,85,99,0.2)!important}
-      .theme-light select,.theme-light input,.theme-light textarea{background-color:#ffffff!important;color:#1a1a1a!important;border-color:#d1d5db!important}
-
-      .theme-company { background-color:#f3e5f5!important; color:#1a0033!important; }
-      .theme-company * { color:#1a0033!important; }
-      .theme-company .bg-white\/5{background-color:rgba(243,229,245,0.95)!important}
-      .theme-company .border-white\/10{border-color:rgba(107,33,168,0.3)!important}
-      .theme-company select,.theme-company input,.theme-company textarea{background-color:#fff6ff!important;color:#1a0033!important;border-color:#b78ada!important}
-
-      .theme-sunset { background-color:#fff5f7!important; color:#4b1e3b!important; }
-      .theme-sunset * { color:#4b1e3b!important; }
-      .theme-sunset .bg-white\/5{background-color:rgba(255,245,247,0.95)!important}
-      .theme-sunset .border-white\/10{border-color:rgba(159,42,102,0.3)!important}
-      .theme-sunset select,.theme-sunset input,.theme-sunset textarea{background-color:#fff7f9!important;color:#4b1e3b!important;border-color:#f9acc6!important}
-
-      .theme-ocean { background-color:#e0f7fa!important; color:#00363a!important; }
-      .theme-ocean * { color:#00363a!important; }
-      .theme-ocean .bg-white\/5{background-color:rgba(224,247,250,0.95)!important}
-      .theme-ocean .border-white\/10{border-color:rgba(0,118,132,0.3)!important}
-      .theme-ocean select,.theme-ocean input,.theme-ocean textarea{background-color:#ecfdff!important;color:#00363a!important;border-color:#70d8e4!important}
-
-      .theme-dark { background-color:#0f0f1a!important;color:#ffffff!important; }
-      .theme-dark * { color:#ffffff!important; }
-      .theme-dark .text-gray-300{color:#d1d5db!important}
-      .theme-dark .text-gray-400{color:#cbd5e1!important}
-
-      .theme-black, .theme-black * { color: inherit !important; background: inherit !important; }
-    `;
-    document.head.appendChild(el);
-    return () => document.head.removeChild(el);
-  }, []);
-
-  // light theme row tweaks
-  useEffect(() => {
-    const el2 = document.createElement('style');
-    el2.id = 'theme-row-overrides';
-    el2.textContent = `
-      .theme-light .bg-white\/[0\.015]{background-color:rgba(0,0,0,0.02)!important}
-      .theme-light .hover\:bg-white\/[0\.04]:hover{background-color:rgba(0,0,0,0.025)!important}
-    `;
-    document.head.appendChild(el2);
-    return () => document.head.removeChild(el2);
-  }, []);
-
-  // dynamic overrides for gray text utilities based on theme
-  useEffect(() => {
-    const el3 = document.createElement('style');
-    el3.id = 'theme-text-overrides';
-    const primary = themeConfig.text || '#000';
-    const secondary = themeConfig.textSecondary || primary;
-    el3.textContent = `
-      .theme-light .text-gray-300, .theme-dark .text-gray-300, .theme-company .text-gray-300, .theme-sunset .text-gray-300, .theme-ocean .text-gray-300,
-      .theme-light .text-gray-400, .theme-dark .text-gray-400, .theme-company .text-gray-400, .theme-sunset .text-gray-400, .theme-ocean .text-gray-400,
-      .theme-light .text-gray-500, .theme-dark .text-gray-500, .theme-company .text-gray-500, .theme-sunset .text-gray-500, .theme-ocean .text-gray-500,
-      .theme-light .text-gray-600, .theme-dark .text-gray-600, .theme-company .text-gray-600, .theme-sunset .text-gray-600, .theme-ocean .text-gray-600 {
-        color: ${secondary}!important;
-      }
-    `;
-    document.head.appendChild(el3);
-    return () => document.head.removeChild(el3);
-  }, [themeConfig]);
-
-  useEffect(() => {
-    const el4 = document.createElement('style');
-    el4.id = 'theme-color-overrides';
-    el4.textContent = `
-      .theme-light, .theme-light * { color: #1a1a1a !important; }
-      .theme-company, .theme-company * { color: #1a0033 !important; }
-      .theme-sunset, .theme-sunset * { color: #4b1e3b !important; }
-      .theme-ocean, .theme-ocean * { color: #00363a !important; }
-      .theme-dark, .theme-dark * { color: #ffffff !important; }
-
-      .theme-light { background-color: #eaf2ff !important; }
-      .theme-company { background-color: #e3ebff !important; }
-      .theme-sunset { background-color: #f8f3ff !important; }
-      .theme-ocean { background-color: #def4ff !important; }
-      .theme-dark { background-color: #0a0d1d !important; }
-
-      /* preserve pure black theme behavior */
-      .theme-black, .theme-black * { color: inherit !important; background: inherit !important; }
-
-      .theme-light body, .theme-company body, .theme-sunset body, .theme-ocean body, .theme-dark body { font-family: 'Inter', sans-serif !important; }
-
-      .theme-light .monitor-modal, .theme-company .monitor-modal, .theme-sunset .monitor-modal, .theme-ocean .monitor-modal { color: inherit !important; }
-    `;
-    document.head.appendChild(el4);
-    return () => document.head.removeChild(el4);
-  }, [theme]);
-
   // Sincronizar verificações com o servidor ao carregar
   useEffect(() => {
     const syncVerificationsFromServer = async () => {
@@ -2356,7 +2259,7 @@ const MonitorEntregas = () => {
   return (
     <div
       style={{ backgroundColor: themeConfig.bg, color: themeConfig.text }}
-      className={`min-h-screen font-sans transition-colors duration-300 ${theme === 'light' ? 'theme-light' : ''}`}
+      className={`min-h-screen font-sans transition-colors duration-300 theme-${theme}`}
     >
       <SettingsPanel
         open={settingsOpen}

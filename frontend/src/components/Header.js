@@ -4,6 +4,7 @@ import { useAuth } from '../services/authContext';
 import { notificationService } from '../services/authService';
 import NotificationBell from './NotificationBell';
 import NotificationPanel from './NotificationPanel';
+import { useTheme } from '../contexts/ThemeContext';
 import {
   FaSignOutAlt, FaUser, FaBars, FaHome,
   FaTimes, FaTruck, FaChevronRight, FaCircle,
@@ -294,6 +295,7 @@ const Header = () => {
   const navigate  = useNavigate();
   const location  = useLocation();
   const { user, logout } = useAuth();
+  const { themeConfig } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
   const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
@@ -339,9 +341,10 @@ const Header = () => {
 
   return (
     <>
-      <header className="sticky top-0 z-50 text-white
-        bg-gradient-to-r from-purple-800 via-violet-700 to-emerald-700
-        shadow-[0_4px_24px_rgba(109,40,217,0.35)]">
+      <header
+        className="app-header sticky top-0 z-50 text-white"
+        style={{ background: themeConfig.headerGradient }}
+      >
 
         {/* linha decorativa superior */}
         <div className="h-[2px] w-full

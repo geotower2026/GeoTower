@@ -17,8 +17,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  background: #f7f7fb;
-  color: #111827;
+  background: var(--app-bg, #f7f7fb);
+  color: var(--app-text, #111827);
 }
 
 code {
@@ -91,7 +91,7 @@ textarea {
    Focus styles (pro)
 ========================= */
 :focus-visible {
-  outline: 2px solid rgba(16, 185, 129, 0.6);
+  outline: 2px solid color-mix(in srgb, var(--app-accent, #10b981) 68%, transparent);
   outline-offset: 2px;
 }
 
@@ -123,7 +123,10 @@ textarea:focus {
   }
 
   .ui-card {
-    @apply bg-white border border-gray-200 rounded-2xl shadow-sm;
+    @apply rounded-2xl shadow-sm;
+    background: var(--app-surface);
+    border: 1px solid var(--app-border);
+    color: var(--app-text);
   }
 
   .ui-card-hover {
@@ -131,24 +134,97 @@ textarea:focus {
   }
 
   .ui-section-title {
-    @apply text-lg sm:text-xl font-extrabold tracking-tight text-gray-900;
+    @apply text-lg sm:text-xl font-extrabold tracking-tight;
+    color: var(--app-text);
   }
 
   .ui-muted {
-    @apply text-sm text-gray-600;
+    @apply text-sm;
+    color: var(--app-muted);
   }
 
   .ui-btn-primary {
-    @apply rounded-xl px-4 py-3 font-semibold text-white shadow-sm transition active:scale-95 bg-emerald-600 hover:bg-emerald-700;
+    @apply rounded-xl px-4 py-3 font-semibold text-white shadow-sm transition active:scale-95;
+    background: var(--app-accent);
   }
 
   .ui-btn-ghost {
-    @apply rounded-xl px-4 py-3 font-semibold border border-gray-200 bg-white hover:bg-gray-50 transition active:scale-95;
+    @apply rounded-xl px-4 py-3 font-semibold transition active:scale-95;
+    background: var(--app-surface);
+    border: 1px solid var(--app-border);
+    color: var(--app-text);
   }
 
   .ui-input {
-    @apply w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200;
+    @apply w-full rounded-xl px-4 py-3 text-sm shadow-sm focus:ring-2;
+    background: var(--app-surface);
+    border: 1px solid var(--app-border);
+    color: var(--app-text);
+    --tw-ring-color: var(--app-accent-soft);
   }
+}
+
+.app-shell {
+  background:
+    radial-gradient(circle at top left, var(--app-accent-soft), transparent 32rem),
+    var(--app-bg);
+  color: var(--app-text);
+}
+
+.app-main {
+  background: transparent;
+  color: var(--app-text);
+}
+
+.app-header {
+  background: var(--app-header-gradient);
+  box-shadow: 0 4px 24px color-mix(in srgb, var(--app-accent) 28%, transparent);
+}
+
+.app-theme-surface {
+  background: var(--app-surface);
+  border-color: var(--app-border);
+  color: var(--app-text);
+}
+
+.app-theme-muted {
+  color: var(--app-muted);
+}
+
+.theme-light .text-gray-300,
+.theme-light .text-gray-400,
+.theme-light .text-gray-500,
+.theme-light .text-gray-600,
+.theme-company .text-gray-300,
+.theme-company .text-gray-400,
+.theme-company .text-gray-500,
+.theme-company .text-gray-600,
+.theme-sunset .text-gray-300,
+.theme-sunset .text-gray-400,
+.theme-sunset .text-gray-500,
+.theme-sunset .text-gray-600,
+.theme-ocean .text-gray-300,
+.theme-ocean .text-gray-400,
+.theme-ocean .text-gray-500,
+.theme-ocean .text-gray-600 {
+  color: var(--app-muted) !important;
+}
+
+.theme-light input,
+.theme-light select,
+.theme-light textarea,
+.theme-company input,
+.theme-company select,
+.theme-company textarea,
+.theme-sunset input,
+.theme-sunset select,
+.theme-sunset textarea,
+.theme-ocean input,
+.theme-ocean select,
+.theme-ocean textarea {
+  background-color: var(--app-surface) !important;
+  color: var(--app-text) !important;
+  border-color: var(--app-border) !important;
 }
 
 /* ===== iOS: remove bounce do body em todas as telas ===== */
