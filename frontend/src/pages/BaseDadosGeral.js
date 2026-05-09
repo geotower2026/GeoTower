@@ -894,25 +894,25 @@ const BaseDadosGeral = () => {
             >
               <table
                 className="text-sm border-collapse"
-                style={{ tableLayout: 'fixed', width: isGeomar ? 3240 : 3320, minWidth: isGeomar ? 3240 : 3320 }}
+                style={{ tableLayout: 'fixed', width: isGeomar ? 4130 : 4218, minWidth: isGeomar ? 4130 : 4218 }}
               >
                 <colgroup>
-                  {!isGeomar && <col style={{ width: 76 }} />}
-                  <col style={{ width: 120 }} />
-                  <col style={{ width: 340 }} />
-                  <col style={{ width: 150 }} />
-                  <col style={{ width: 170 }} />
-                  <col style={{ width: 280 }} />
-                  <col style={{ width: 280 }} />
+                  {!isGeomar && <col style={{ width: 88 }} />}
+                  <col style={{ width: 160 }} />
+                  <col style={{ width: 420 }} />
                   <col style={{ width: 190 }} />
-                  <col style={{ width: 165 }} />
-                  <col style={{ width: 165 }} />
-                  <col style={{ width: 165 }} />
-                  <col style={{ width: 165 }} />
-                  <col style={{ width: 165 }} />
-                  <col style={{ width: 165 }} />
-                  <col style={{ width: 170 }} />
-                  <col style={{ width: 260 }} />
+                  <col style={{ width: 210 }} />
+                  <col style={{ width: 340 }} />
+                  <col style={{ width: 340 }} />
+                  <col style={{ width: 240 }} />
+                  <col style={{ width: 220 }} />
+                  <col style={{ width: 200 }} />
+                  <col style={{ width: 220 }} />
+                  <col style={{ width: 210 }} />
+                  <col style={{ width: 230 }} />
+                  <col style={{ width: 230 }} />
+                  <col style={{ width: 240 }} />
+                  <col style={{ width: 320 }} />
                   <col style={{ width: 360 }} />
                 </colgroup>
                 <thead>
@@ -943,7 +943,7 @@ const BaseDadosGeral = () => {
                       return (
                         <th
                           key={col}
-                          className={`px-4 py-3 text-xs font-bold uppercase tracking-wider whitespace-nowrap border-b border-violet-600 ${
+                          className={`px-5 py-3 text-xs font-bold uppercase tracking-wider whitespace-nowrap border-b border-violet-600 ${
                             col === 'Ações'
                               ? 'text-center pl-4'
                               : 'text-left' + (idx === 1 ? ' pl-6' : '')
@@ -1011,37 +1011,37 @@ const BaseDadosGeral = () => {
                           </td>
                         )}
                         {/* Processo */}
-                        <td className="px-4 py-3 first:pl-6 whitespace-nowrap">
+                        <td className="px-5 py-3 first:pl-6 whitespace-nowrap">
                           <span className="font-semibold text-violet-700 text-xs">{item.processo}</span>
                         </td>
                         {/* Recebedor */}
-                        <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-700">{item.recebedor}</td>
+                        <td className="px-5 py-3 whitespace-nowrap text-xs text-gray-700">{item.recebedor}</td>
                         {/* Container */}
                         <td className="px-4 py-3 whitespace-nowrap text-xs font-mono text-gray-600">{item.container || '—'}</td>
                         {/* Data Agendamento */}
-                        <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600">
+                        <td className="px-5 py-3 whitespace-nowrap text-xs text-gray-600">
                           <span className="flex items-center gap-1">
                             <FaCalendarAlt size={10} className="text-violet-400" />
                             {getProgramacaoDate(item, city) ? fmtDate(getProgramacaoDate(item, city)) : '—'}
                           </span>
                         </td>
                         {/* Contratado */}
-                        <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-700">{item.contratado}</td>
+                        <td className="px-5 py-3 whitespace-nowrap text-xs text-gray-700">{item.contratado}</td>
                         {/* Motorista */}
-                        <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-700">
+                        <td className="px-5 py-3 whitespace-nowrap text-xs text-gray-700">
                           <span className="flex items-center gap-1">
                             <FaTruck size={10} className="text-gray-400" />
                             {item.motorista || item._entrega?.driverName || '—'}
                           </span>
                         </td>
                         {/* Status */}
-                        <td className="px-4 py-3 whitespace-nowrap">
+                        <td className="px-5 py-3 whitespace-nowrap">
                           <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ring-1 ${statusBadge(rawStatus)}`}>
                             {formatStatus(rawStatus)}
                           </span>
                         </td>
                         {/* Retirada */}
-                        <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600">{fmtDate(item._entrega?.containerMontadoAt)}</td>
+                        <td className="px-5 py-3 whitespace-nowrap text-xs text-gray-600">{fmtDate(item._entrega?.containerMontadoAt)}</td>
                         {/* Chegada */}
                         <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600">
                           {fmtDate(item._entrega?.horarioChegada || item._entrega?.arrivedAt)}
@@ -1065,7 +1065,7 @@ const BaseDadosGeral = () => {
                           {fmtDate(item._entrega?.horarioDevolucaoVazio || item._entrega?.dtDevolucaoCNTR)}
                         </td>
                         {/* Docs */}
-                        <td className="px-4 py-3 whitespace-nowrap text-center overflow-hidden">
+                        <td className="px-5 py-3 whitespace-nowrap text-center overflow-hidden">
                           <span className={`max-w-full inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ring-1 ${
                             docStatus.complete
                               ? 'bg-emerald-100 text-emerald-700 ring-emerald-300'
