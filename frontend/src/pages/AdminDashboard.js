@@ -165,6 +165,20 @@ const getCurrentMonthFilters = () => {
   };
 };
 
+const filterDateBRToISO = (value) => {
+  if (!value || typeof value !== 'string') return '';
+  const [d, m, y] = value.split('/');
+  if (!d || !m || !y) return '';
+  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+};
+
+const filterDateISOToBR = (value) => {
+  if (!value || typeof value !== 'string') return '';
+  const [y, m, d] = value.split('-');
+  if (!d || !m || !y) return '';
+  return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y}`;
+};
+
 /* ════════════════════════════════════════
    COMPONENTE PRINCIPAL
 ════════════════════════════════════════ */
@@ -249,7 +263,16 @@ const AdminDashboard = () => {
     .toUpperCase();
 
   const getIcompanyProcessNumber = (record) =>
-    normalizeProcessKey(record?.nrProcesso || record?.['Nr. do processo'] || record?.['Nr do processo']);
+    normalizeProcessKey(
+      record?.nrProcesso ||
+      record?.processoLog ||
+      record?.deliveryNumber ||
+      record?.['Nr. do processo'] ||
+      record?.['Nr do processo'] ||
+      record?.processo ||
+      record?.codigo ||
+      record?.numero
+    );
 
   const getClienteBySentido = (record) => {
     const sentidoValue = String(record?.sentido || record?.SENTIDO || '').trim().toUpperCase();
@@ -346,7 +369,7 @@ const AdminDashboard = () => {
   }, []);
 
   const filteredDeliveries = React.useMemo(
-    () => filterDeliveriesByDate(deliveries),
+    () => dedupeByNrProcesso(filterDeliveriesByDate(deliveries)),
     [deliveries, filterDeliveriesByDate]
   );
 
@@ -928,39 +951,23 @@ const AdminDashboard = () => {
                   <div>
                     <label className="block text-xs font-semibold text-gray-400 mb-1">Data Inicial</label>
                     <input
-                      type="text"
-                      placeholder="DD/MM/YYYY"
-                      value={filters.startDate}
+                      type="date"
+                      value={filterDateBRToISO(filters.startDate)}
                       onChange={e => {
-                        const val = e.target.value.replace(/\D/g, '');
-                        let formatted = val;
-                        if (val.length > 0) {
-                          if (val.length <= 2) formatted = val;
-                          else if (val.length <= 4) formatted = `${val.slice(0, 2)}/${val.slice(2)}`;
-                          else formatted = `${val.slice(0, 2)}/${val.slice(2, 4)}/${val.slice(4, 8)}`;
-                        }
-                        setFilters(f => ({ ...f, startDate: formatted }));
+                        setFilters(f => ({ ...f, startDate: filterDateISOToBR(e.target.value) }));
                       }}
-                      className="bg-slate-800 border border-white/10 rounded-lg px-2 py-1 text-xs text-white w-28"
+                      className="bg-slate-800 border border-white/10 rounded-lg px-2 py-1 text-xs text-white w-32"
                     />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-gray-400 mb-1">Data Final</label>
                     <input
-                      type="text"
-                      placeholder="DD/MM/YYYY"
-                      value={filters.endDate}
+                      type="date"
+                      value={filterDateBRToISO(filters.endDate)}
                       onChange={e => {
-                        const val = e.target.value.replace(/\D/g, '');
-                        let formatted = val;
-                        if (val.length > 0) {
-                          if (val.length <= 2) formatted = val;
-                          else if (val.length <= 4) formatted = `${val.slice(0, 2)}/${val.slice(2)}`;
-                          else formatted = `${val.slice(0, 2)}/${val.slice(2, 4)}/${val.slice(4, 8)}`;
-                        }
-                        setFilters(f => ({ ...f, endDate: formatted }));
+                        setFilters(f => ({ ...f, endDate: filterDateISOToBR(e.target.value) }));
                       }}
-                      className="bg-slate-800 border border-white/10 rounded-lg px-2 py-1 text-xs text-white w-28"
+                      className="bg-slate-800 border border-white/10 rounded-lg px-2 py-1 text-xs text-white w-32"
                     />
                   </div>
                   <button
