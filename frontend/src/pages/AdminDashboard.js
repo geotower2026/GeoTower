@@ -259,16 +259,28 @@ const AdminDashboard = () => {
 
   const normalizeProcessKey = (value) => String(value || '')
     .replace(/^#/, '')
+    .replace(/\s+/g, ' ')
     .trim()
     .toUpperCase();
 
   const getIcompanyProcessNumber = (record) =>
     normalizeProcessKey(
       record?.nrProcesso ||
+      record?.nr_processo ||
+      record?.numeroProcesso ||
+      record?.processoIcompany ||
       record?.processoLog ||
       record?.deliveryNumber ||
       record?.['Nr. do processo'] ||
       record?.['Nr do processo'] ||
+      record?.['Nr. Processo'] ||
+      record?.['Nr Processo'] ||
+      record?.['Nro Processo'] ||
+      record?.['Nro. Processo'] ||
+      record?.['Nº processo'] ||
+      record?.['N° processo'] ||
+      record?.['NR PROCESSO'] ||
+      record?.['nr processo'] ||
       record?.processo ||
       record?.codigo ||
       record?.numero
@@ -283,15 +295,41 @@ const AdminDashboard = () => {
     return destinatarioValue || remetenteValue;
   };
 
-  const dedupeByNrProcesso = (items) => {
-    const seen = new Set();
-    return (items || []).filter((item) => {
+  const groupByNrProcesso = (items) => {
+    const grouped = new Map();
+    const withoutProcess = [];
+
+    (items || []).forEach((item) => {
       const key = getIcompanyProcessNumber(item);
-      if (!key) return true;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
+      if (!key) {
+        withoutProcess.push(item);
+        return;
+      }
+
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          ...item,
+          nrProcesso: item.nrProcesso || key,
+          processoLog: item.processoLog || key,
+          deliveryNumber: item.deliveryNumber || key
+        });
+        return;
+      }
+
+      const first = grouped.get(key);
+      grouped.set(key, {
+        ...first,
+        recebedor: first.recebedor || item.recebedor,
+        destinatario: first.destinatario || item.destinatario,
+        remetente: first.remetente || item.remetente,
+        contratado: first.contratado || item.contratado,
+        userName: first.userName || item.userName,
+        driverName: first.driverName || item.driverName,
+        container: first.container || item.container
+      });
     });
+
+    return [...grouped.values(), ...withoutProcess];
   };
 
   const loadData = useCallback(async (silent = false, customFilters = null) => {
@@ -300,7 +338,7 @@ const AdminDashboard = () => {
     try {
       // Carregar dados do Icompany em vez de deliveries
       const icompanyRes = await adminService.getIcompanyData();
-      const icompanyData = dedupeByNrProcesso(icompanyRes.data?.data || []);
+      const icompanyData = groupByNrProcesso(icompanyRes.data?.data || []);
       
       // Mapear dados do Icompany para formato esperado pelo dashboard
       const mappedDeliveries = icompanyData.map(record => {
@@ -369,7 +407,7 @@ const AdminDashboard = () => {
   }, []);
 
   const filteredDeliveries = React.useMemo(
-    () => dedupeByNrProcesso(filterDeliveriesByDate(deliveries)),
+    () => groupByNrProcesso(filterDeliveriesByDate(deliveries)),
     [deliveries, filterDeliveriesByDate]
   );
 
@@ -458,7 +496,7 @@ const AdminDashboard = () => {
     }
 
     const counts = {};
-    const source = programacoes.length ? filterDeliveriesByDate(programacoes) : filteredDeliveries;
+    const source = programacoes.length ? groupByNrProcesso(filterDeliveriesByDate(programacoes)) : filteredDeliveries;
 
     source.forEach(item => {
       let key = null;
@@ -745,7 +783,7 @@ const AdminDashboard = () => {
         }
       }
       
-      const numero = delivery.nrProcesso || delivery.processoLog || delivery.deliveryNumber;
+      const numero = getIcompanyProcessNumber(delivery);
       
       if (!date || !numero) return;
       
