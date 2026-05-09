@@ -297,12 +297,10 @@ const AdminDashboard = () => {
 
   const groupByNrProcesso = (items) => {
     const grouped = new Map();
-    const withoutProcess = [];
 
     (items || []).forEach((item) => {
       const key = getIcompanyProcessNumber(item);
       if (!key) {
-        withoutProcess.push(item);
         return;
       }
 
@@ -329,7 +327,7 @@ const AdminDashboard = () => {
       });
     });
 
-    return [...grouped.values(), ...withoutProcess];
+    return [...grouped.values()];
   };
 
   const loadData = useCallback(async (silent = false, customFilters = null) => {
