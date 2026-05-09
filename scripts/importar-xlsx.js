@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const XLSX = require("xlsx");
 
-const URI = "MONGODB_URI_REMOVED";
+const URI = process.env.MONGODB_URI || process.env.MONGO_URI;
 
 async function rodar() {
   await mongoose.connect(URI);

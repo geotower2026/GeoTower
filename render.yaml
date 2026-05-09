@@ -15,9 +15,9 @@ services:
       - key: PORT
         value: "5000"
       - key: JWT_SECRET
-        value: "REPLACE_WITH_A_SECURE_SECRET"
+        sync: false
       - key: MONGODB_URI
-        value: "MONGODB_URI_REMOVED"
+        sync: false
       - key: USE_MONGODB
         value: "true"
       - key: MONGO_COLLECTION

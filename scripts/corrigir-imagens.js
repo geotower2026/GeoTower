@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const MONGO_URI = 'MONGODB_URI_REMOVED';
+const MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
 
 async function corrigirCampos() {
   try {

@@ -13,11 +13,11 @@ const { deleteDeliveryFiles } = require('../src/utils/storageUtils');
 
 async function main() {
   // Fallbacks to avoid shell quoting issues when running locally from PowerShell/cmd
-  process.env.MONGO_URI = process.env.MONGO_URI || 'MONGODB_URI_REMOVED';
+  process.env.MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI;
   process.env.BACKEND_UPLOADS_DIR = process.env.BACKEND_UPLOADS_DIR || (require('path').join(__dirname, '..', 'persistent_uploads'));
 
-  if (!process.env.MONGO_URI) {
-    console.error('MONGO_URI not set. Set it and re-run the script.');
+  if (!process.env.MONGODB_URI) {
+    console.error('MONGODB_URI not set. Set it and re-run the script.');
     process.exit(1);
   }
 

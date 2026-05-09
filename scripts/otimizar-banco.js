@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 async function rodar() {
   try {
-    await mongoose.connect("MONGODB_URI_REMOVED");
+    await mongoose.connect(process.env.MONGODB_URI || process.env.MONGO_URI);
     console.log("✅ Conectado");
 
     const db = mongoose.connection.db;

@@ -18,7 +18,14 @@ yarn-error.log*
 # Environment / local configs
 .env
 .env.local
+*.env
+*.env.*
+backend/.env
+backend/.env.*
+frontend/.env
 frontend/.env.local
+frontend/.env.*.local
+frontend/.env.production
 
 # Build artifacts
 frontend/build/

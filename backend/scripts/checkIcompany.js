@@ -6,7 +6,12 @@ require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
 const Icompany = require('../src/models/Icompany');
 
-const uri = process.env.MONGODB_URI || 'MONGODB_URI_REMOVED';
+const uri = process.env.MONGODB_URI;
+
+if (!uri) {
+  console.error('MONGODB_URI not defined. Add it to backend/.env before running this script.');
+  process.exit(1);
+}
 
 mongoose
   .connect(uri, { useNewUrlParser: true, useUnifiedTopology: true })
