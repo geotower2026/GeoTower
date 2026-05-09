@@ -345,6 +345,20 @@ const AdminDashboard = () => {
     return [...grouped.values()];
   };
 
+  const getDashboardDayKey = (delivery) => {
+    const dateValue = delivery?.agendamentoDescarga || delivery?.dataAgendamento || getDashboardDateValue(delivery);
+    if (!dateValue) return '';
+    const parsed = new Date(dateValue);
+    if (isNaN(parsed)) return '';
+    return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`;
+  };
+
+  const getDashboardUniqueKey = (delivery) => {
+    const processKey = getIcompanyProcessNumber(delivery);
+    if (processKey) return processKey;
+    return '';
+  };
+
   const loadData = useCallback(async (silent = false, customFilters = null) => {
     if (!silent) setLoading(true);
     else setRefreshing(true);
@@ -420,9 +434,30 @@ const AdminDashboard = () => {
   }, []);
 
   const filteredDeliveries = React.useMemo(
-    () => groupByNrProcesso(filterDeliveriesByDate(deliveries)),
+    () => filterDeliveriesByDate(deliveries),
     [deliveries, filterDeliveriesByDate]
   );
+
+  const dashboardDeliveries = React.useMemo(() => {
+    const grouped = new Map();
+
+    filteredDeliveries.forEach((delivery) => {
+      const key = getDashboardUniqueKey(delivery);
+      if (!key) return;
+
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          ...delivery,
+          nrProcesso: delivery.nrProcesso || key,
+          processoLog: delivery.processoLog || key,
+          deliveryNumber: delivery.deliveryNumber || key,
+          _dashboardUniqueKey: key
+        });
+      }
+    });
+
+    return [...grouped.values()];
+  }, [filteredDeliveries]);
 
   const getCliMinutes = (d) => {
     const start = getProductivityStartTime(d);
@@ -460,7 +495,7 @@ const AdminDashboard = () => {
   const dailyDeliveriesData = React.useMemo(() => {
     // Base principal: mesmo que os outros gráficos (data de programação)
     const grouped = {};
-    filteredDeliveries.forEach(d => {
+    dashboardDeliveries.forEach(d => {
       const dateValue = getProgramacaoDate(d, city);
       if (!dateValue) return;
 
@@ -486,11 +521,11 @@ const AdminDashboard = () => {
 
     // Fallback para dados do backend se filteredDeliveries estiver vazio
     return statistics?.dailyDeliveries || [];
-  }, [statistics, filteredDeliveries, city]);
+  }, [statistics, dashboardDeliveries, city]);
 
   const topRecebedores = React.useMemo(() => {
     const counts = {};
-    filteredDeliveries.forEach(d => {
+    dashboardDeliveries.forEach(d => {
       const key = d.recebedor || '-';
       counts[key] = (counts[key] || 0) + 1;
     });
@@ -498,7 +533,7 @@ const AdminDashboard = () => {
       .map(([recebedor, count]) => ({ recebedor, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
-  }, [filteredDeliveries]);
+  }, [dashboardDeliveries]);
 
   const topContratados = React.useMemo(() => {
     if (!filters.startDate && !filters.endDate && statistics?.deliveriesByDriver && statistics.deliveriesByDriver.length > 0) {
@@ -509,7 +544,7 @@ const AdminDashboard = () => {
     }
 
     const counts = {};
-    const source = programacoes.length ? groupByNrProcesso(filterDeliveriesByDate(programacoes)) : filteredDeliveries;
+    const source = programacoes.length ? groupByNrProcesso(filterDeliveriesByDate(programacoes)) : dashboardDeliveries;
 
     source.forEach(item => {
       let key = null;
@@ -536,11 +571,11 @@ const AdminDashboard = () => {
       .map(([contratado, count]) => ({ _id: contratado, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
-  }, [filteredDeliveries, filterDeliveriesByDate, filters.startDate, filters.endDate, programacoes, statistics]);
+  }, [dashboardDeliveries, filterDeliveriesByDate, filters.startDate, filters.endDate, programacoes, statistics]);
 
   const avgCliByRecebedor = React.useMemo(() => {
     const sums = {}, cnts = {};
-    filteredDeliveries.forEach(d => {
+    dashboardDeliveries.forEach(d => {
       const key = d.recebedor || '-';
       const mins = getCliMinutes(d);
       if (mins != null) {
@@ -551,7 +586,7 @@ const AdminDashboard = () => {
     const res = {};
     Object.keys(sums).forEach(k => { res[k] = sums[k] / cnts[k]; });
     return res;
-  }, [filteredDeliveries]);
+  }, [dashboardDeliveries]);
 
   const recebedorCountData = React.useMemo(
     () => topRecebedores.map(r => ({ name: r.recebedor, count: r.count })),
@@ -572,9 +607,9 @@ const AdminDashboard = () => {
   );
 
   const avgCliOverall = React.useMemo(() => {
-    const vals = filteredDeliveries.map(d => getCliMinutes(d)).filter(v => v != null);
+    const vals = dashboardDeliveries.map(d => getCliMinutes(d)).filter(v => v != null);
     return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
-  }, [filteredDeliveries]);
+  }, [dashboardDeliveries]);
 
   // Dados para gráfico de Pareto - Concentração de Transportadores
   const paretoTransportadores = React.useMemo(() => {
@@ -610,7 +645,7 @@ const AdminDashboard = () => {
   const otdMetrics = React.useMemo(() => {
     let onTime = 0, late = 0, total = 0;
 
-    filteredDeliveries.forEach(d => {
+    dashboardDeliveries.forEach(d => {
       if (!d.dataAgendamento || !d.horarioChegada) return;
       
       const scheduled = new Date(d.dataAgendamento).getTime();
@@ -646,7 +681,7 @@ const AdminDashboard = () => {
     const dotColor = otdPercentage >= 90 ? '#10b981' : otdPercentage >= 75 ? '#eab308' : '#ef4444';
 
     return { onTime, late, total, otdPercentage, classification, color, bgColor, borderColor, dotColor };
-  }, [filteredDeliveries]);
+  }, [dashboardDeliveries]);
 
   // Produtividade por Faixa de Horas
   const productivityByHours = React.useMemo(() => {
@@ -659,7 +694,7 @@ const AdminDashboard = () => {
 
     let validDeliveries = 0;
 
-    filteredDeliveries.forEach(d => {
+    dashboardDeliveries.forEach(d => {
       if (!d.horarioChegada || !d.horarioFimDesova) return;
 
       const chegada = getProductivityStartTime(d);
@@ -686,13 +721,13 @@ const AdminDashboard = () => {
     }));
 
     return { data, total: validDeliveries };
-  }, [filteredDeliveries]);
+  }, [dashboardDeliveries]);
 
   // Clientes por Tempo Médio de Operação
   const clientesByAvgTime = React.useMemo(() => {
     const clienteData = {};
 
-    filteredDeliveries.forEach(d => {
+    dashboardDeliveries.forEach(d => {
       if (!d.horarioChegada || !d.horarioFimDesova || !d.recebedor) return;
 
       const chegada = getProductivityStartTime(d);
@@ -748,7 +783,7 @@ const AdminDashboard = () => {
     });
 
     return { data, summary };
-  }, [filteredDeliveries]);
+  }, [dashboardDeliveries]);
 
   // Clientes com Maior Impacto Operacional (ordenado por impacto)
   const clientesByImpact = React.useMemo(() => {
@@ -782,21 +817,10 @@ const AdminDashboard = () => {
   // Volume de Entregas Diárias (agrupado por Número único)
   const dailyVolume = React.useMemo(() => {
     const grouped = {};
-    filteredDeliveries.forEach(delivery => {
+    dashboardDeliveries.forEach(delivery => {
       // Usar dtAgendamentoDescarga como data de referência para volume diário
-      const dateValue = delivery.agendamentoDescarga || delivery.dataAgendamento;
-      let date = null;
-      
-      if (dateValue) {
-        // Parseio como Date para converter UTC para hora local
-        const parsed = new Date(dateValue);
-        if (!isNaN(parsed)) {
-          // Extrair data em hora local (não UTC)
-          date = `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`;
-        }
-      }
-      
-      const numero = getIcompanyProcessNumber(delivery);
+      const date = getDashboardDayKey(delivery);
+      const numero = getDashboardUniqueKey(delivery);
       
       if (!date || !numero) return;
       
@@ -826,15 +850,15 @@ const AdminDashboard = () => {
       totalDeliveries,
       avgDeliveries: parseFloat(avgDeliveries.toFixed(1))
     };
-  }, [filteredDeliveries]);
+  }, [dashboardDeliveries]);
 
   const exportPayload = () => ({
-    statistics, deliveries: filteredDeliveries, topRecebedores, avgCliByRecebedor,
+    statistics, deliveries: dashboardDeliveries, topRecebedores, avgCliByRecebedor,
     recebedorCountData, recebedorAvgData, fmtMin,
     period: filters.startDate || filters.endDate ? `${filters.startDate || '...'} a ${filters.endDate || '...'}` : 'all',
   });
 
-  const getFilteredDeliveries = () => filteredDeliveries;
+  const getFilteredDeliveries = () => dashboardDeliveries;
 
   const getDeliveryDateLabel = (value) => {
     if (!value) return '-';
@@ -1081,16 +1105,16 @@ const AdminDashboard = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
               <KpiCard
                 title="Total de Entregas"
-                value={filteredDeliveries.length}
+                value={dashboardDeliveries.length}
                 subtitle="Total no período filtrado"
                 icon={FiPackage}
                 color="indigo"
                 sparkData={dailyDeliveriesData}
-                badge={`${filteredDeliveries.length} registros`}
+                badge={`${dashboardDeliveries.length} registros`}
               />
               <KpiCard
                 title="Contratados Ativos"
-                value={filteredDeliveries.filter((d, i, arr) => arr.findIndex(x => x.userName === d.userName) === i).length}
+                value={dashboardDeliveries.filter((d, i, arr) => arr.findIndex(x => x.userName === d.userName) === i).length}
                 subtitle="Transportadores com entregas"
                 icon={FiTruck}
                 color="cyan"
