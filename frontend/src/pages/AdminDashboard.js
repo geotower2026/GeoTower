@@ -149,6 +149,22 @@ const ExportButton = ({ onClick, loading, icon: Icon, label, colorClass, disable
   </button>
 );
 
+const formatFilterDateBR = (date) => {
+  if (!date) return '';
+  const d = String(date.getDate()).padStart(2, '0');
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const y = date.getFullYear();
+  return `${d}/${m}/${y}`;
+};
+
+const getCurrentMonthFilters = () => {
+  const now = new Date();
+  return {
+    startDate: formatFilterDateBR(new Date(now.getFullYear(), now.getMonth(), 1)),
+    endDate: formatFilterDateBR(new Date(now.getFullYear(), now.getMonth() + 1, 0))
+  };
+};
+
 /* ════════════════════════════════════════
    COMPONENTE PRINCIPAL
 ════════════════════════════════════════ */
@@ -166,52 +182,59 @@ const AdminDashboard = () => {
   const [viewMode,    setViewMode]    = useState('dashboard'); // 'dashboard' ou 'kpi'
   const [detailModal, setDetailModal] = useState(null);
   // Filtros de data
-  const [filters, setFilters] = useState({ startDate: '', endDate: '' });
+  const [filters, setFilters] = useState(() => getCurrentMonthFilters());
 
   // Helpers para conversão de data DD/MM/YYYY ←→ ISO
-  const parseDDMMYYYY = (str) => {
+  const parseDDMMYYYY = (str, endOfDay = false) => {
     if (!str || typeof str !== 'string') return null;
     const [d, m, y] = str.split('/');
     if (!d || !m || !y) return null;
-    const date = new Date(y, m - 1, d);
+    const date = new Date(
+      Number(y),
+      Number(m) - 1,
+      Number(d),
+      endOfDay ? 23 : 0,
+      endOfDay ? 59 : 0,
+      endOfDay ? 59 : 0,
+      endOfDay ? 999 : 0
+    );
     return isNaN(date.getTime()) ? null : date;
   };
 
-  const formatDDMMYYYY = (date) => {
-    if (!date) return '';
-    const d = String(date.getDate()).padStart(2, '0');
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const y = date.getFullYear();
-    return `${d}/${m}/${y}`;
-  };
+  const getDashboardDateValue = useCallback((delivery) => (
+    getProgramacaoDate(delivery, city) ||
+    delivery?.agendamentoDescarga ||
+    delivery?.dataAgendamento ||
+    delivery?.dtAgendamentoDescarga ||
+    delivery?.dtColeta ||
+    delivery?.createdAt
+  ), [city]);
 
-  // Função para filtrar entregas por data (agendamentoDescarga)
-  const filterDeliveriesByDate = (deliveries) => {
-    if (!filters.startDate && !filters.endDate) return deliveries;
-    
+  // Função para filtrar entregas por data de referência do dashboard
+  const filterDeliveriesByDate = useCallback((items = []) => {
+    if (!filters.startDate && !filters.endDate) return items || [];
+
     const startFilter = filters.startDate ? parseDDMMYYYY(filters.startDate) : null;
-    const endFilter = filters.endDate ? parseDDMMYYYY(filters.endDate) : null;
-    
-    return deliveries.filter(d => {
-      const dateValue = d.agendamentoDescarga || d.dataAgendamento;
+    const endFilter = filters.endDate ? parseDDMMYYYY(filters.endDate, true) : null;
+
+    return (items || []).filter(d => {
+      const dateValue = getDashboardDateValue(d);
       if (!dateValue) return !startFilter && !endFilter;
       
       const deliveryDate = new Date(dateValue);
       if (isNaN(deliveryDate.getTime())) return false;
       
       if (startFilter) {
-        startFilter.setHours(0, 0, 0, 0);
         if (deliveryDate < startFilter) return false;
       }
       
       if (endFilter) {
-        endFilter.setHours(23, 59, 59, 999);
         if (deliveryDate > endFilter) return false;
       }
       
       return true;
     });
-  };
+  }, [filters.startDate, filters.endDate, getDashboardDateValue]);
 
   const chartRefs = {
     area:        useRef(null),
@@ -322,7 +345,11 @@ const AdminDashboard = () => {
     loadData(false, {}); 
   }, []);
 
-  // Dados já vêm filtrados do backend, não precisa mais de useMemo
+  const filteredDeliveries = React.useMemo(
+    () => filterDeliveriesByDate(deliveries),
+    [deliveries, filterDeliveriesByDate]
+  );
+
   const getCliMinutes = (d) => {
     const start = getProductivityStartTime(d);
     if (!start) return null;
@@ -357,9 +384,6 @@ const AdminDashboard = () => {
   };
 
   const dailyDeliveriesData = React.useMemo(() => {
-    // Aplicar filtro de data primeiro
-    const filteredDeliveries = filterDeliveriesByDate(deliveries);
-    
     // Base principal: mesmo que os outros gráficos (data de programação)
     const grouped = {};
     filteredDeliveries.forEach(d => {
@@ -388,12 +412,9 @@ const AdminDashboard = () => {
 
     // Fallback para dados do backend se filteredDeliveries estiver vazio
     return statistics?.dailyDeliveries || [];
-  }, [statistics, deliveries, filters, city]);
+  }, [statistics, filteredDeliveries, city]);
 
   const topRecebedores = React.useMemo(() => {
-    // Aplicar filtro de data
-    const filteredDeliveries = filterDeliveriesByDate(deliveries);
-    
     const counts = {};
     filteredDeliveries.forEach(d => {
       const key = d.recebedor || '-';
@@ -403,10 +424,10 @@ const AdminDashboard = () => {
       .map(([recebedor, count]) => ({ recebedor, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
-  }, [deliveries, filters]);
+  }, [filteredDeliveries]);
 
   const topContratados = React.useMemo(() => {
-    if (statistics?.deliveriesByDriver && statistics.deliveriesByDriver.length > 0) {
+    if (!filters.startDate && !filters.endDate && statistics?.deliveriesByDriver && statistics.deliveriesByDriver.length > 0) {
       return statistics.deliveriesByDriver
         .map(item => ({ _id: item._id || 'SEM CONTRATADO', count: item.count || 0 }))
         .sort((a, b) => b.count - a.count)
@@ -414,7 +435,7 @@ const AdminDashboard = () => {
     }
 
     const counts = {};
-    const source = programacoes.length ? programacoes : deliveries;
+    const source = programacoes.length ? filterDeliveriesByDate(programacoes) : filteredDeliveries;
 
     source.forEach(item => {
       let key = null;
@@ -441,10 +462,9 @@ const AdminDashboard = () => {
       .map(([contratado, count]) => ({ _id: contratado, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
-  }, [deliveries, programacoes, statistics]);
+  }, [filteredDeliveries, filterDeliveriesByDate, filters.startDate, filters.endDate, programacoes, statistics]);
 
   const avgCliByRecebedor = React.useMemo(() => {
-    const filteredDeliveries = filterDeliveriesByDate(deliveries);
     const sums = {}, cnts = {};
     filteredDeliveries.forEach(d => {
       const key = d.recebedor || '-';
@@ -457,7 +477,7 @@ const AdminDashboard = () => {
     const res = {};
     Object.keys(sums).forEach(k => { res[k] = sums[k] / cnts[k]; });
     return res;
-  }, [deliveries, filters]);
+  }, [filteredDeliveries]);
 
   const recebedorCountData = React.useMemo(
     () => topRecebedores.map(r => ({ name: r.recebedor, count: r.count })),
@@ -478,10 +498,9 @@ const AdminDashboard = () => {
   );
 
   const avgCliOverall = React.useMemo(() => {
-    const filteredDeliveries = filterDeliveriesByDate(deliveries);
     const vals = filteredDeliveries.map(d => getCliMinutes(d)).filter(v => v != null);
     return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
-  }, [deliveries, filters]);
+  }, [filteredDeliveries]);
 
   // Dados para gráfico de Pareto - Concentração de Transportadores
   const paretoTransportadores = React.useMemo(() => {
@@ -515,7 +534,6 @@ const AdminDashboard = () => {
 
   // Indicador de OTD (On-Time Delivery)
   const otdMetrics = React.useMemo(() => {
-    const filteredDeliveries = filterDeliveriesByDate(deliveries);
     let onTime = 0, late = 0, total = 0;
 
     filteredDeliveries.forEach(d => {
@@ -554,11 +572,10 @@ const AdminDashboard = () => {
     const dotColor = otdPercentage >= 90 ? '#10b981' : otdPercentage >= 75 ? '#eab308' : '#ef4444';
 
     return { onTime, late, total, otdPercentage, classification, color, bgColor, borderColor, dotColor };
-  }, [deliveries, filters]);
+  }, [filteredDeliveries]);
 
   // Produtividade por Faixa de Horas
   const productivityByHours = React.useMemo(() => {
-    const filteredDeliveries = filterDeliveriesByDate(deliveries);
     const faixas = {
       'Até 5h': { count: 0, color: '#10b981', min: 0, max: 5 },
       '5-8h': { count: 0, color: '#3b82f6', min: 5, max: 8 },
@@ -595,11 +612,10 @@ const AdminDashboard = () => {
     }));
 
     return { data, total: validDeliveries };
-  }, [deliveries, filters]);
+  }, [filteredDeliveries]);
 
   // Clientes por Tempo Médio de Operação
   const clientesByAvgTime = React.useMemo(() => {
-    const filteredDeliveries = filterDeliveriesByDate(deliveries);
     const clienteData = {};
 
     filteredDeliveries.forEach(d => {
@@ -658,7 +674,7 @@ const AdminDashboard = () => {
     });
 
     return { data, summary };
-  }, [deliveries, filters]);
+  }, [filteredDeliveries]);
 
   // Clientes com Maior Impacto Operacional (ordenado por impacto)
   const clientesByImpact = React.useMemo(() => {
@@ -692,7 +708,7 @@ const AdminDashboard = () => {
   // Volume de Entregas Diárias (agrupado por Número único)
   const dailyVolume = React.useMemo(() => {
     const grouped = {};
-    filterDeliveriesByDate(deliveries).forEach(delivery => {
+    filteredDeliveries.forEach(delivery => {
       // Usar dtAgendamentoDescarga como data de referência para volume diário
       const dateValue = delivery.agendamentoDescarga || delivery.dataAgendamento;
       let date = null;
@@ -736,15 +752,15 @@ const AdminDashboard = () => {
       totalDeliveries,
       avgDeliveries: parseFloat(avgDeliveries.toFixed(1))
     };
-  }, [deliveries, filters]);
+  }, [filteredDeliveries]);
 
   const exportPayload = () => ({
-    statistics, deliveries, topRecebedores, avgCliByRecebedor,
+    statistics, deliveries: filteredDeliveries, topRecebedores, avgCliByRecebedor,
     recebedorCountData, recebedorAvgData, fmtMin,
-    period: filters.startDate || filters.endDate ? 'custom' : 'all',
+    period: filters.startDate || filters.endDate ? `${filters.startDate || '...'} a ${filters.endDate || '...'}` : 'all',
   });
 
-  const getFilteredDeliveries = () => filterDeliveriesByDate(deliveries);
+  const getFilteredDeliveries = () => filteredDeliveries;
 
   const getDeliveryDateLabel = (value) => {
     if (!value) return '-';
@@ -1007,16 +1023,16 @@ const AdminDashboard = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
               <KpiCard
                 title="Total de Entregas"
-                value={deliveries.length}
+                value={filteredDeliveries.length}
                 subtitle="Total no período filtrado"
                 icon={FiPackage}
                 color="indigo"
                 sparkData={dailyDeliveriesData}
-                badge={`${deliveries.length} registros`}
+                badge={`${filteredDeliveries.length} registros`}
               />
               <KpiCard
                 title="Contratados Ativos"
-                value={deliveries.filter((d, i, arr) => arr.findIndex(x => x.userName === d.userName) === i).length}
+                value={filteredDeliveries.filter((d, i, arr) => arr.findIndex(x => x.userName === d.userName) === i).length}
                 subtitle="Transportadores com entregas"
                 icon={FiTruck}
                 color="cyan"
