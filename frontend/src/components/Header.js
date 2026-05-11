@@ -19,7 +19,31 @@ const getInitials = (name = '') =>
 const routeLabel = {
   '/home': 'Início',
   '/profile': 'Perfil',
-  '/dashboard': 'Dashboard',
+  '/nova-entrega': 'Nova Entrega',
+  '/minhas-entregas': 'Minhas Entregas',
+  '/entregas-programadas': 'Entregas Programadas',
+  '/entregas-canhotos-pendentes': 'Canhotos Pendentes',
+  '/entregas-em-andamento': 'Entregas em Andamento',
+  '/admin': 'Dashboard',
+  '/monitor-entregas': 'Torre de Controle',
+  '/usuarios': 'Usuários',
+  '/motoristas': 'Motoristas',
+  '/programacoes': 'Programações',
+  '/reconciliacao': 'Reconciliação',
+  '/politica-privacidade': 'Política de Privacidade',
+  '/termos-uso': 'Termos de Uso',
+  '/suporte': 'Suporte',
+  '/base-dados-geral': 'Base de Dados Geral',
+  '/icompany': 'Icompany',
+  '/relatorio-contratado': 'Relatório Contratado',
+  '/controle-protocolos': 'Controle de Protocolos',
+};
+
+const getRouteLabel = (pathname) => {
+  if (routeLabel[pathname]) return routeLabel[pathname];
+  if (pathname.startsWith('/nova-entrega/')) return 'Editar Entrega';
+  if (pathname.startsWith('/entrega/')) return 'Entrega em Rota';
+  return null;
 };
 
 /* ─── helpers ─── */
@@ -78,10 +102,10 @@ const UserPill = ({ name }) => (
 
 /** Breadcrumb sutil */
 const Breadcrumb = ({ pathname }) => {
-  const label = routeLabel[pathname];
+  const label = getRouteLabel(pathname);
   if (!label) return null;
   return (
-    <div className="hidden lg:flex items-center gap-1.5 text-xs text-white/50 ml-1 mt-0.5">
+    <div className="hidden sm:flex items-center gap-1.5 text-xs text-white/50 ml-1 mt-0.5">
       <FaTruck className="text-[9px]" />
       <span>GeoTower</span>
       <FaChevronRight className="text-[8px]" />
