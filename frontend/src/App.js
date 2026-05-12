@@ -274,7 +274,7 @@ function AppContent() {
       <Route
         path="/icompany"
         element={
-          <PrivateRoute allowedRoles={['admin', 'manager', 'geomar']}>
+          <PrivateRoute allowedRoles={['manager']}>
             <AppLayout>
               <Icompany />
             </AppLayout>
@@ -296,7 +296,7 @@ function AppContent() {
       <Route
         path="/controle-protocolos"
         element={
-          <PrivateRoute allowedRoles={['admin', 'manager', 'geomar']}>
+          <PrivateRoute allowedRoles={['manager']}>
             <AppLayout>
               <ControleProtocolos />
             </AppLayout>

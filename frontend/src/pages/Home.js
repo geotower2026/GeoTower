@@ -1158,7 +1158,7 @@ const Home = () => {
                       delay={240}
                     />
                   )}
-                  {hasAccess(['manager','admin']) && (
+                  {hasAccess(['manager']) && (
                     <ManageCard
                       onClick={() => navigate('/icompany')}
                       accentColor="#DC2626"
@@ -1182,7 +1182,7 @@ const Home = () => {
                       delay={400}
                     />
                   )}
-                  {hasAccess(['manager','admin']) && (
+                  {hasAccess(['manager']) && (
                     <ManageCard
                       onClick={() => navigate('/controle-protocolos')}
                       accentColor="#8B5CF6"
