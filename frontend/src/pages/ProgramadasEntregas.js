@@ -212,6 +212,8 @@ const getStepFromDeliveryStatus = (delivery) => {
   switch ((delivery?.status || '').toUpperCase()) {
     case 'AGUARDANDO_DESOVA': restoredStep = 'confirmDesova'; break;
     case 'EM_DESOVA': restoredStep = 'desovaProgress'; break;
+    case 'DESATRELADO': restoredStep = 'desovaProgress'; break;
+    case 'RECUSADO_CLIENTE': restoredStep = 'agradecimento'; break;
     case 'AGUARDANDO_ANEXO': case 'ANEXANDO_DOCUMENTOS_FINAIS': restoredStep = 'finalDocs'; break;
     case 'DESOVA_FINALIZADA': case 'AGUARDANDO_AGENDAMENTO_DEVOLUCAO': restoredStep = 'finalDocs'; break;
     case 'SAINDO_CLIENTE': restoredStep = ['leavingClient', 'leavingClientPhoto'].includes(delivery?.currentStep) ? delivery.currentStep : 'leavingClient'; break;
@@ -256,6 +258,7 @@ const STATUS_CONFIG = {
   A_CAMINHO_DO_CLIENTE: { label: 'A CAMINHO', color: 'bg-purple-100 text-purple-700 border-purple-300', dot: 'bg-purple-500', icon: FaTruck },
   AGUARDANDO_DESOVA: { label: 'AGUARD. DESOVA', color: 'bg-amber-100 text-amber-700 border-amber-300', dot: 'bg-amber-500', icon: FaWarehouse },
   EM_DESOVA: { label: 'EM DESOVA', color: 'bg-orange-100 text-orange-700 border-orange-300', dot: 'bg-orange-500', icon: FaWarehouse },
+  DESATRELADO: { label: 'DESATRELADO', color: 'bg-blue-100 text-blue-700 border-blue-300', dot: 'bg-blue-500', icon: FaWarehouse },
   AGUARDANDO_ANEXO: { label: 'AGUARD. DOCUMENTOS', color: 'bg-violet-100 text-violet-700 border-violet-300', dot: 'bg-violet-500', icon: FaFileAlt },
   AGUARDANDO_AGENDAMENTO_DEVOLUCAO: { label: 'AGUARD. AGEND. DEVOLUÇÃO', color: 'bg-pink-100 text-pink-700 border-pink-300', dot: 'bg-pink-500', icon: FaCalendarAlt },
   ANEXANDO_DOCUMENTOS_FINAIS: { label: 'ANEXANDO DOCUMENTOS', color: 'bg-teal-100 text-teal-700 border-teal-300', dot: 'bg-teal-500', icon: FaFileAlt },
@@ -265,6 +268,7 @@ const STATUS_CONFIG = {
   ENTREGUE: { label: 'DEVOLVENDO CONTAINER', color: 'bg-yellow-100 text-yellow-700 border-yellow-300', dot: 'bg-yellow-500', icon: FaTruck },
   DEVOLVENDO_CONTAINER: { label: 'DEVOLVENDO CONTAINER', color: 'bg-yellow-100 text-yellow-700 border-yellow-300', dot: 'bg-yellow-500', icon: FaTruck },
   FINALIZADO: { label: 'FINALIZADO', color: 'bg-emerald-100 text-emerald-700 border-emerald-300', dot: 'bg-emerald-500', icon: FaCheckCircle },
+  RECUSADO_CLIENTE: { label: 'RECUSADO CLIENTE', color: 'bg-red-100 text-red-700 border-red-300', dot: 'bg-red-500', icon: FaExclamationTriangle },
   CANCELADO: { label: 'CANCELADO', color: 'bg-gray-200 text-gray-600 border-gray-300', dot: 'bg-gray-400', icon: FaTimes },
 };
 
@@ -566,7 +570,7 @@ const ProgramadasEntregas = () => {
 
       const visibleProgramacoes = todas.filter((p) => {
         const status = String(p.status || '').toUpperCase();
-        return status !== 'CANCELADO' && p.containerReturned !== true && !p.horarioDevolucaoVazio;
+        return status !== 'CANCELADO' && status !== 'RECUSADO_CLIENTE' && p.containerReturned !== true && !p.horarioDevolucaoVazio;
       });
 
       setProgramacoes(visibleProgramacoes);
@@ -1206,6 +1210,65 @@ const ProgramadasEntregas = () => {
       goToStep('confirmDesova');
     } catch (_) { setToast({ message: 'Erro ao enviar justificativa', type: 'error' }); }
   };
+
+  const handleClientRefusalSubmit = async () => {
+    if (!justification.trim()) { setToast({ message: 'Informe a justificativa da recusa', type: 'error' }); return; }
+    if (!currentDelivery?._id) { setToast({ message: 'Entrega nao encontrada', type: 'error' }); return; }
+    setSubmitting(true);
+    try {
+      const fresh = await deliveryService.getDelivery(currentDelivery._id);
+      const existingObs = fresh.data.delivery.observations || '';
+      const timestamp = formatarData(new Date(), city);
+      const occurredAt = new Date().toISOString();
+      const note = `[${timestamp}] (RECUSADO_CLIENTE) Carga recusada pelo cliente: ${justification.trim()}`;
+      const updated = await deliveryService.updateDelivery(currentDelivery._id, {
+        status: 'RECUSADO_CLIENTE',
+        currentStep: 'agradecimento',
+        recusadoClienteAt: occurredAt,
+        observations: `${existingObs ? existingObs + '\n' : ''}${note}`,
+        programacaoId: currentProgramacao?._id || currentDelivery.programacaoId || currentDelivery.linkedProgramacaoId || '',
+        linkedProgramacaoId: currentProgramacao?._id || currentDelivery.linkedProgramacaoId || currentDelivery.programacaoId || ''
+      });
+      applyDeliveryUpdate(updated.data.delivery);
+      setToast({ message: 'Recusa registrada. Entrega concluida para o motorista.', type: 'success' });
+      await loadProgramacoes({ silent: true });
+      closeModal();
+    } catch (err) {
+      setToast({ message: err.response?.data?.message || 'Erro ao registrar recusa', type: 'error' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleUncoupledSubmit = async () => {
+    if (!justification.trim()) { setToast({ message: 'Informe a justificativa do desatrelamento', type: 'error' }); return; }
+    if (!currentDelivery?._id) { setToast({ message: 'Entrega nao encontrada', type: 'error' }); return; }
+    setSubmitting(true);
+    try {
+      const fresh = await deliveryService.getDelivery(currentDelivery._id);
+      const existingObs = fresh.data.delivery.observations || '';
+      const timestamp = formatarData(new Date(), city);
+      const occurredAt = new Date().toISOString();
+      const note = `[${timestamp}] (DESATRELADO) Container desatrelado no cliente: ${justification.trim()}`;
+      const updated = await deliveryService.updateDelivery(currentDelivery._id, {
+        status: 'DESATRELADO',
+        currentStep: 'desovaProgress',
+        desatreladoAt: occurredAt,
+        observations: `${existingObs ? existingObs + '\n' : ''}${note}`,
+        programacaoId: currentProgramacao?._id || currentDelivery.programacaoId || currentDelivery.linkedProgramacaoId || '',
+        linkedProgramacaoId: currentProgramacao?._id || currentDelivery.linkedProgramacaoId || currentDelivery.programacaoId || ''
+      });
+      applyDeliveryUpdate(updated.data.delivery);
+      setToast({ message: 'Container desatrelado registrado. Retome esta entrega quando voltar.', type: 'success' });
+      await loadProgramacoes({ silent: true });
+      closeModal();
+    } catch (err) {
+      setToast({ message: err.response?.data?.message || 'Erro ao registrar desatrelamento', type: 'error' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleFinalUploadAndSubmit = async () => {
     const requiredDocs = finalRequiredDocs;
     // list missing so we can pass observation when forcing submit
@@ -1357,9 +1420,11 @@ const ProgramadasEntregas = () => {
       obs: 'welcome',
       arrival: 'welcome',
       confirmDesova: 'welcome',
+      clientRefusal: 'confirmDesova',
       desovaJustify: 'confirmDesova',
       desovaStart: 'confirmDesova',
       desovaProgress: 'confirmDesova',
+      containerUncoupled: 'desovaProgress',
       desovaNotYet: 'desovaProgress',
       desovaNotYetObs: 'desovaProgress',
       desovaNotYetMsg: 'desovaProgress',
@@ -1468,6 +1533,7 @@ const ProgramadasEntregas = () => {
       'ANEXANDO_DOCUMENTOS_FINAIS',
       'AGUARDANDO_AGENDAMENTO_DEVOLUCAO',
       'DESOVA_FINALIZADA',
+      'DESATRELADO',
       'EM_DESOVA',
       'AGUARDANDO_DESOVA',
       'A_CAMINHO_DO_CLIENTE',
@@ -1531,7 +1597,7 @@ const ProgramadasEntregas = () => {
         </button>
       );
     }
-    if (p.status && !['AGENDADO', 'NO_PORTO_AGUARDANDO_MONTAGEM', 'CONTAINER_MONTADO', 'ENTREGUE', 'DEVOLVENDO_CONTAINER', 'CANCELADO', 'FINALIZADO', 'pending'].includes(s)) {
+    if (p.status && !['AGENDADO', 'NO_PORTO_AGUARDANDO_MONTAGEM', 'CONTAINER_MONTADO', 'ENTREGUE', 'DEVOLVENDO_CONTAINER', 'CANCELADO', 'FINALIZADO', 'RECUSADO_CLIENTE', 'pending'].includes(s)) {
       return (
         <button onClick={() => handleStartDelivery(p)}
           className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl shadow-md hover:shadow-lg active:scale-95 transition font-bold text-sm"
@@ -1739,6 +1805,7 @@ const ProgramadasEntregas = () => {
               <option value="NO_PORTO_AGUARDANDO_MONTAGEM" className="bg-gray-900">No porto aguardando montagem</option>
               <option value="CONTAINER_MONTADO" className="bg-gray-900">Container Montado</option>
               <option value="A_CAMINHO_DO_CLIENTE" className="bg-gray-900">A Caminho</option>
+              <option value="DESATRELADO" className="bg-gray-900">Desatrelado</option>
               <option value="ENTREGUE" className="bg-gray-900">Entregue</option>
               <option value="DEVOLVENDO_CONTAINER" className="bg-gray-900">Devolvendo Container</option>
               <option value="FINALIZADO" className="bg-gray-900">Pendente Devolução</option>
@@ -1802,6 +1869,7 @@ const ProgramadasEntregas = () => {
                   p.status === 'AGUARDANDO_DESOVA' ? 'bg-gradient-to-r from-amber-400 to-orange-500' :
                   p.status === 'DESOVA_FINALIZADA' ? 'bg-gradient-to-r from-orange-400 to-red-500' :
                   p.status === 'EM_DESOVA' ? 'bg-gradient-to-r from-orange-400 to-red-500' :
+                  p.status === 'DESATRELADO' ? 'bg-gradient-to-r from-slate-500 to-blue-600' :
                   p.status === 'AGUARDANDO_ANEXO' ? 'bg-gradient-to-r from-violet-400 to-fuchsia-500' :
                   p.status === 'ANEXANDO_DOCUMENTOS_FINAIS' ? 'bg-gradient-to-r from-teal-400 to-emerald-500' :
                   p.status === 'ENTREGUE' ? 'bg-gradient-to-r from-yellow-400 to-amber-500' :
@@ -2455,6 +2523,49 @@ const ProgramadasEntregas = () => {
                 </div>
               )}
 
+              {currentStep === 'confirmDesova' && currentSentido === 'DESTINO' && (
+                <div className="-mt-2">
+                  <button
+                    onClick={() => { setJustification(''); goToStep('clientRefusal'); }}
+                    className="w-full py-3.5 bg-gradient-to-r from-red-600 to-rose-700 text-white rounded-2xl font-bold text-sm shadow-md active:scale-95 transition"
+                  >
+                    Carga recusada
+                  </button>
+                </div>
+              )}
+
+              {currentStep === 'clientRefusal' && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-8 h-8 rounded-xl bg-red-100 flex items-center justify-center">
+                      <FaExclamationTriangle className="text-red-600" size={14} />
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900">Carga recusada</h3>
+                  </div>
+                  <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+                    <p className="text-red-800 text-sm font-medium">Descreva o motivo da recusa pelo cliente.</p>
+                  </div>
+                  <textarea
+                    value={justification}
+                    onChange={e => setJustification(e.target.value)}
+                    className="w-full border-2 border-gray-200 rounded-2xl p-4 focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent resize-none text-gray-800 placeholder-gray-400"
+                    rows={5}
+                    placeholder="Ex.: Cliente recusou a carga por divergencia, avaria, agenda..."
+                    disabled={submitting}
+                  />
+                  <div className="flex gap-3">
+                    <button onClick={handleClientRefusalSubmit} disabled={submitting || !justification.trim()}
+                      className="flex-1 py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-base active:scale-95 transition disabled:opacity-50">
+                      Registrar recusa
+                    </button>
+                    <button onClick={() => goToStep('confirmDesova')} disabled={submitting}
+                      className="flex-1 py-3.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold text-base active:scale-95 transition disabled:opacity-50">
+                      Voltar
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* ── STEP: desovaJustify ── */}
               {currentStep === 'desovaJustify' && (
                 <div className="space-y-4">
@@ -2530,6 +2641,49 @@ const ProgramadasEntregas = () => {
                     <button onClick={() => goToStep('desovaNotYet')}
                       className="flex-1 py-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl font-bold text-base active:scale-95 transition">
                       Ainda não
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {currentStep === 'desovaProgress' && (
+                <div className="-mt-2">
+                  <button
+                    onClick={() => { setJustification(''); goToStep('containerUncoupled'); }}
+                    className="w-full py-3.5 bg-gradient-to-r from-slate-600 to-blue-700 text-white rounded-2xl font-bold text-sm shadow-md active:scale-95 transition"
+                  >
+                    Container desatrelado
+                  </button>
+                </div>
+              )}
+
+              {currentStep === 'containerUncoupled' && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center">
+                      <FaWarehouse className="text-blue-600" size={14} />
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900">Container desatrelado</h3>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+                    <p className="text-blue-800 text-sm font-medium">Informe por que o container ficou desatrelado no cliente.</p>
+                  </div>
+                  <textarea
+                    value={justification}
+                    onChange={e => setJustification(e.target.value)}
+                    className="w-full border-2 border-gray-200 rounded-2xl p-4 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent resize-none text-gray-800 placeholder-gray-400"
+                    rows={5}
+                    placeholder="Ex.: Cliente vai finalizar a desova amanha; cavalo retornara para retirar o vazio..."
+                    disabled={submitting}
+                  />
+                  <div className="flex gap-3">
+                    <button onClick={handleUncoupledSubmit} disabled={submitting || !justification.trim()}
+                      className="flex-1 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-base active:scale-95 transition disabled:opacity-50">
+                      Registrar desatrelado
+                    </button>
+                    <button onClick={() => goToStep('desovaProgress')} disabled={submitting}
+                      className="flex-1 py-3.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold text-base active:scale-95 transition disabled:opacity-50">
+                      Voltar
                     </button>
                   </div>
                 </div>

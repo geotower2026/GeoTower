@@ -88,7 +88,10 @@ export const getStatusColumns = (city = 'manaus') => [
     border: 'border-rose-200',
     text: 'text-rose-700',
     badge: 'bg-rose-100 text-rose-700',
-    filter: (p) => normalizeKey(p.status) === 'EM DESOVA',
+    filter: (p) => {
+      const s = normalizeKey(p.status);
+      return s === 'EM DESOVA' || s === 'DESATRELADO';
+    },
   },
   {
     key: 'OPERACAO_FINALIZADA',
@@ -136,6 +139,7 @@ export const getStatusColumns = (city = 'manaus') => [
     badge: 'bg-green-100 text-green-700',
     filter: (p) => {
       return (
+        normalizeKey(p.status) === 'RECUSADO CLIENTE' ||
         !!p.horarioDevolucaoVazio || !!p.dtDevolucaoCNTR || p.containerReturned === true
       );
     },

@@ -82,6 +82,8 @@ const programacaoEntregaSchema = new mongoose.Schema({
         'ENTREGUE',
         'FINALIZADO',
         'ENTREGUE_COM_PENDENCIA_CANHOTO',
+        'RECUSADO_CLIENTE',
+        'DESATRELADO',
         'CANCELADO'
       ],
       message: 'Status deve ser um dos valores válidos'

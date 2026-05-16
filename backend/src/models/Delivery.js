@@ -14,7 +14,7 @@ const DeliverySchema = new mongoose.Schema(
         'EM_DESOVA', 'DESOVA_FINALIZADA', 'AGUARDANDO_ANEXO', 'ANEXANDO_DOCUMENTOS_FINAIS',
         'SAINDO_CLIENTE', 'RETORNANDO_PORTO', 'CHEGOU_PORTO',
         'ENTREGUE', 'CANCELADO', 'A_CAMINHO_DO_CLIENTE', 'ENTREGUE_COM_PENDENCIA_CANHOTO',
-        'FINALIZADO'
+        'FINALIZADO', 'RECUSADO_CLIENTE', 'DESATRELADO'
       ],
       default: 'pending' 
     },
@@ -29,6 +29,9 @@ const DeliverySchema = new mongoose.Schema(
     // registrar quando o motorista iniciou e finalizou a desova
     desovaStartAt: { type: Date },
     desovaEndAt: { type: Date },
+    desatreladoAt: { type: Date },
+    recusadoClienteAt: { type: Date },
+    currentStep: { type: String, default: "welcome" },
 
     // registrar quando o motorista confirmou a devolução do container vazio
     saidaClienteAt: { type: Date },

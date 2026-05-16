@@ -18,7 +18,7 @@ import {
   FaClock, FaBox, FaTruck, FaCheckCircle, FaTimesCircle, FaFilePdf,
   FaUsers, FaDolly, FaSearch, FaExpand, FaPalette, FaCog, FaSlidersH,
   FaPlus, FaMapMarkerAlt, FaRoute, FaShippingFast, FaUndo, FaChevronRight,
-  FaUser, FaBoxOpen, FaBuilding, FaLayerGroup, FaSort, FaSortUp, FaSortDown
+  FaUser, FaBoxOpen, FaBuilding, FaLayerGroup, FaSort, FaSortUp, FaSortDown, FaWarehouse
 } from 'react-icons/fa';
 import { MdLocalShipping, MdDashboard } from 'react-icons/md';
 import jsPDF from 'jspdf';
@@ -95,6 +95,14 @@ const getStatusConfig = (city = 'manaus') => {
       icon: <FaDolly />, gradient: 'from-violet-500 to-violet-700',
       ring: 'ring-violet-400/30', dot: 'bg-violet-500', hex: '#8b5cf6'
     },
+    DESATRELADO: {
+      label: 'Desatrelado',
+      bg: 'bg-blue-700', light: 'bg-blue-50', text: 'text-blue-700',
+      border: 'border-blue-300',
+      badge: 'bg-blue-100 text-blue-800 border border-blue-300',
+      icon: <FaWarehouse />, gradient: 'from-blue-600 to-slate-700',
+      ring: 'ring-blue-400/30', dot: 'bg-blue-500', hex: '#2563eb'
+    },
     'DESOVA_FINALIZADA': {
       label: getDesovaStatusLabel('DESOVA_FINALIZADA', city),
       bg: 'bg-purple-600', light: 'bg-purple-50', text: 'text-purple-700',
@@ -142,6 +150,14 @@ const getStatusConfig = (city = 'manaus') => {
       badge: 'bg-emerald-100 text-emerald-800 border border-emerald-300',
       icon: <FaCheckCircle />, gradient: 'from-emerald-500 to-emerald-700',
       ring: 'ring-emerald-400/30', dot: 'bg-emerald-500', hex: '#10b981'
+    },
+    'RECUSADO CLIENTE': {
+      label: 'Recusado Cliente',
+      bg: 'bg-red-600', light: 'bg-red-50', text: 'text-red-700',
+      border: 'border-red-300',
+      badge: 'bg-red-100 text-red-800 border border-red-300',
+      icon: <FaExclamationTriangle />, gradient: 'from-red-500 to-rose-700',
+      ring: 'ring-red-400/30', dot: 'bg-red-500', hex: '#dc2626'
     },
     CANCELADO: {
       label: 'Cancelado',
@@ -451,7 +467,7 @@ const DeliveryKanbanColumn = ({ column, deliveries, onOpen, currentTime, city = 
 ───────────────────────────────────────────────────────────── */
 const progressStatuses = [
   'AGENDADO', 'NO PORTO AGUARDANDO MONTAGEM', 'CONTAINER MONTADO', 'A CAMINHO DO CLIENTE',
-  'AGUARDANDO DESOVA', 'EM DESOVA', 'ANEXANDO DOCUMENTOS FINAIS', 'ENTREGUE'
+  'AGUARDANDO DESOVA', 'EM DESOVA', 'DESATRELADO', 'ANEXANDO DOCUMENTOS FINAIS', 'ENTREGUE'
 ];
 
 const getProgress = (delivery) => {
@@ -496,6 +512,8 @@ const SettingsPanel = ({
     { value: "NO_PORTO_AGUARDANDO_MONTAGEM", label: "No porto aguardando montagem" },
     { value: "AGUARDANDO_DESOVA", label: "Aguardando Desova/Ovação" },
     { value: "EM_DESOVA", label: "Em Desova/Ovação" },
+    { value: "DESATRELADO", label: "Desatrelado" },
+    { value: "RECUSADO_CLIENTE", label: "Recusado Cliente" },
     { value: "DESOVA_FINALIZADA", label: "Desova/Ovação Finalizada" },
     { value: "ANEXANDO_DOCUMENTOS_FINAIS", label: "Anexando Docs Finais" },
     { value: "SAINDO_CLIENTE", label: "Saindo do Cliente" },
@@ -814,10 +832,12 @@ const getStatusEntryTime = (delivery, city) => {
   if (status === 'A CAMINHO DO CLIENTE' || status === 'PENDING') return delivery.tripStartedAt || delivery.createdAt; // fallback para createdAt se tripStartedAt não existir
   if (status === 'AGUARDANDO DESOVA') return delivery.arrivedAt || delivery.horarioChegada;
   if (status === 'EM DESOVA') return delivery.desovaStartedAt || delivery.horarioInicioDesova;
+  if (status === 'DESATRELADO') return delivery.desatreladoAt || delivery.desovaStartAt || delivery.horarioInicioDesova;
   if (status === 'ANEXANDO DOCUMENTOS FINAIS') return delivery.docsStartedAt || delivery.horarioFimDesova;
   if (status === 'SAINDO CLIENTE') return delivery.horarioSaidaCliente || delivery.horarioFimDesova;
   if (status === 'RETORNANDO PORTO') return delivery.horarioSaidaCliente || delivery.horarioFimDesova;
   if (status === 'CHEGOU PORTO') return delivery.horarioChegadaPorto || delivery.horarioSaidaCliente;
+  if (status === 'RECUSADO CLIENTE') return delivery.recusadoClienteAt || delivery.horarioChegada;
   if (status === 'FINALIZADO' || status === 'ENTREGUE' || status === 'DOCUMENTOS ENTREGUES') return delivery.finalizedAt || delivery.horarioFimDesova || delivery.horarioChegada;
   if (status === 'CANCELADO') return delivery.cancelledAt || delivery.createdAt;
   return null;
@@ -842,6 +862,8 @@ const MonitorEntregas = () => {
     { value: "NO_PORTO_AGUARDANDO_MONTAGEM", label: "No porto aguardando montagem" },
     { value: "AGUARDANDO_DESOVA", label: `Aguardando ${getDesovaStepLabel(currentCity)}` },
     { value: "EM_DESOVA", label: `Em ${getDesovaStepLabel(currentCity)}` },
+    { value: "DESATRELADO", label: "Desatrelado" },
+    { value: "RECUSADO_CLIENTE", label: "Recusado Cliente" },
     { value: "DESOVA_FINALIZADA", label: getDesovaStatusLabel('DESOVA_FINALIZADA', currentCity) },
     { value: "ANEXANDO_DOCUMENTOS_FINAIS", label: "Anexando Docs Finais" },
     { value: "SAINDO_CLIENTE", label: "Saindo do Cliente" },
@@ -856,6 +878,7 @@ const MonitorEntregas = () => {
     { value: "pending", label: "A Caminho do Cliente" },
     { value: "AGUARDANDO_DESOVA", label: `Aguardando ${getDesovaStepLabel(currentCity)}` },
     { value: "EM_DESOVA", label: `Em ${getDesovaStepLabel(currentCity)}` },
+    { value: "DESATRELADO", label: "Desatrelado" },
     { value: "DESOVA_FINALIZADA", label: getDesovaStatusLabel('DESOVA_FINALIZADA', currentCity) },
     { value: "ANEXANDO_DOCUMENTOS_FINAIS", label: "Anexando Docs Finais" },
     { value: "SAINDO_CLIENTE", label: "Saindo do Cliente" },
@@ -942,6 +965,8 @@ const MonitorEntregas = () => {
     FINALIZADO: ['FINALIZADO'],
     AGUARDANDO_DESOVA: ['AGUARDANDO_DESOVA'],
     EM_DESOVA: ['EM_DESOVA'],
+    DESATRELADO: ['DESATRELADO'],
+    RECUSADO_CLIENTE: ['RECUSADO_CLIENTE'],
     DESOVA_FINALIZADA: ['DESOVA_FINALIZADA'],
     ANEXANDO_DOCUMENTOS_FINAIS: ['ANEXANDO_DOCUMENTOS_FINAIS'],
     SAINDO_CLIENTE: ['SAINDO_CLIENTE'],
@@ -1157,11 +1182,14 @@ const MonitorEntregas = () => {
 
   const getFlowHistory = (d) => {
     const ev = [];
+    const desovaLabel = getDesovaLabelBySentido(d?.sentido || filters.sentido).toLowerCase();
     if (d.chegadaMontagemAt) ev.push({ label: 'Chegada no porto para montagem', date: d.chegadaMontagemAt });
     if (d.containerMontadoAt) ev.push({ label: 'Montagem do container', date: d.containerMontadoAt });
     if (d.horarioChegada) ev.push({ label: 'Chegada', date: d.horarioChegada });
-    if (d.horarioInicioDesova) ev.push({ label: city === 'itajai' ? 'Inicio da ovação' : 'Início da desova', date: d.horarioInicioDesova });
-    if (d.horarioFimDesova) ev.push({ label: city === 'itajai' ? 'Fim da ovação' : 'Fim da desova', date: d.horarioFimDesova });
+    if (d.horarioInicioDesova) ev.push({ label: `Início da ${desovaLabel}`, date: d.horarioInicioDesova });
+    if (d.desatreladoAt) ev.push({ label: 'Container desatrelado', date: d.desatreladoAt });
+    if (d.recusadoClienteAt) ev.push({ label: 'Carga recusada pelo cliente', date: d.recusadoClienteAt });
+    if (d.horarioFimDesova) ev.push({ label: `Fim da ${desovaLabel}`, date: d.horarioFimDesova });
     if (d.horarioSaidaCliente) ev.push({ label: 'Saida do cliente', date: d.horarioSaidaCliente });
     if (d.horarioChegadaPorto) ev.push({ label: 'Chegada no porto', date: d.horarioChegadaPorto });
     if (d.horarioDevolucaoVazio) ev.push({ label: 'Devolucao CNTR Porto', date: d.horarioDevolucaoVazio });
@@ -1237,6 +1265,8 @@ const MonitorEntregas = () => {
       if (allModalDocsComplete(delivery)) return 'DOCUMENTOS ENTREGUES';
       return 'FINALIZADO';
     }
+    if (s === 'RECUSADO_CLIENTE') return 'RECUSADO CLIENTE';
+    if (s === 'DESATRELADO') return 'DESATRELADO';
     if (s === 'ENTREGUE' || s === 'submitted') return 'OPERAÇÃO FINALIZADA';
     if (s === 'pending' || s === 'PENDING') return 'A CAMINHO DO CLIENTE';
     return String(s).replace(/_/g, ' ');
@@ -2993,6 +3023,8 @@ const MonitorEntregas = () => {
                   <option value="pending" className="bg-gray-900">A Caminho do Cliente</option>
                   <option value="AGUARDANDO_DESOVA" className="bg-gray-900">Aguardando Desova/Ovação</option>
                   <option value="EM_DESOVA" className="bg-gray-900">Em Desova/Ovação</option>
+                  <option value="DESATRELADO" className="bg-gray-900">Desatrelado</option>
+                  <option value="RECUSADO_CLIENTE" className="bg-gray-900">Recusado Cliente</option>
                   <option value="DESOVA_FINALIZADA" className="bg-gray-900">Desova/Ovação Finalizada</option>
                   <option value="ANEXANDO_DOCUMENTOS_FINAIS" className="bg-gray-900">Anexando Docs Finais</option>
                   <option value="SAINDO_CLIENTE" className="bg-gray-900">Saindo do Cliente</option>

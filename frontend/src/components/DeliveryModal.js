@@ -51,6 +51,10 @@ const Badge = ({ status, city = 'manaus' }) => {
         label: `Em ${desovaLabel}`,
         badge: 'bg-violet-100 text-violet-800 border border-violet-300',
       },
+      DESATRELADO: {
+        label: 'Desatrelado',
+        badge: 'bg-blue-100 text-blue-800 border border-blue-300',
+      },
       'ANEXANDO DOCUMENTOS FINAIS': {
         label: 'Anexando Docs',
         badge: 'bg-pink-100 text-pink-800 border border-pink-300',
@@ -58,6 +62,10 @@ const Badge = ({ status, city = 'manaus' }) => {
       ENTREGUE: {
         label: 'Entregue',
         badge: 'bg-emerald-100 text-emerald-800 border border-emerald-300',
+      },
+      'RECUSADO CLIENTE': {
+        label: 'Recusado Cliente',
+        badge: 'bg-red-100 text-red-800 border border-red-300',
       },
       CANCELADO: {
         label: 'Cancelado',
@@ -549,7 +557,7 @@ const DeliveryModal = ({
                       duration = h > 0 ? `${h}h ${m}m` : `${m}m`;
                     }
                   } else {
-                    const isFinished = normalizeKey(selectedDelivery.status) === 'FINALIZADO' || selectedDelivery.status === 'ENTREGUE' || selectedDelivery.status === 'submitted' || selectedDelivery.status === 'DOCUMENTOS ENTREGUES';
+                    const isFinished = normalizeKey(selectedDelivery.status) === 'FINALIZADO' || normalizeKey(selectedDelivery.status) === 'RECUSADO CLIENTE' || selectedDelivery.status === 'ENTREGUE' || selectedDelivery.status === 'submitted' || selectedDelivery.status === 'DOCUMENTOS ENTREGUES';
                     if (!isFinished) {
                       const currentDate = new Date(ev.date);
                       const now = currentTime;

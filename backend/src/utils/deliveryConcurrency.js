@@ -12,6 +12,7 @@ const STATUS_ORDER = {
   'A_CAMINHO_DO_CLIENTE': 4,
   'AGUARDANDO_DESOVA': 5,
   'EM_DESOVA': 6,
+  'DESATRELADO': 6,
   'DESOVA_FINALIZADA': 7,
   'AGUARDANDO_ANEXO': 8,
   'ANEXANDO_DOCUMENTOS_FINAIS': 9,
@@ -21,6 +22,7 @@ const STATUS_ORDER = {
   'ENTREGUE': 13,
   'ENTREGUE_COM_PENDENCIA_CANHOTO': 13, // Mesmo nivel que ENTREGUE
   'FINALIZADO': 14,
+  'RECUSADO_CLIENTE': 14,
   'CANCELADO': 15 // Cancelado pode ser aplicado a qualquer status
 };
 
@@ -35,6 +37,7 @@ const FIELDS_TO_CLEAR_ON_REGRESSION = {
   'A_CAMINHO_DO_CLIENTE': ['containerMontadoAt'],
   'AGUARDANDO_DESOVA': ['arrivedAt', 'horarioChegada'],
   'EM_DESOVA': ['arrivedAt', 'horarioChegada', 'horarioInicioDesova', 'desovaStartAt', 'desovaStartedAt'],
+  'DESATRELADO': ['arrivedAt', 'horarioChegada', 'horarioInicioDesova', 'desovaStartAt', 'desovaStartedAt', 'desatreladoAt'],
   'DESOVA_FINALIZADA': ['arrivedAt', 'horarioChegada', 'horarioInicioDesova', 'desovaStartAt', 'desovaStartedAt', 'horarioFimDesova', 'desovaEndAt', 'desovaEndedAt'],
   'AGUARDANDO_ANEXO': ['arrivedAt', 'horarioChegada', 'horarioInicioDesova', 'desovaStartAt', 'desovaStartedAt', 'horarioFimDesova', 'desovaEndAt', 'desovaEndedAt'],
   'ANEXANDO_DOCUMENTOS_FINAIS': ['arrivedAt', 'horarioChegada', 'horarioInicioDesova', 'desovaStartAt', 'desovaStartedAt', 'horarioFimDesova', 'desovaEndAt', 'desovaEndedAt', 'docsStartedAt'],
@@ -43,7 +46,8 @@ const FIELDS_TO_CLEAR_ON_REGRESSION = {
   'CHEGOU_PORTO': ['arrivedAt', 'horarioChegada', 'horarioInicioDesova', 'desovaStartAt', 'desovaStartedAt', 'horarioFimDesova', 'desovaEndAt', 'desovaEndedAt', 'docsStartedAt', 'documentosFinaisAt', 'saidaClienteAt', 'chegadaPortoAt'],
   'ENTREGUE': ['arrivedAt', 'horarioChegada', 'horarioInicioDesova', 'desovaStartAt', 'desovaStartedAt', 'horarioFimDesova', 'desovaEndAt', 'desovaEndedAt', 'docsStartedAt', 'documentosFinaisAt', 'saidaClienteAt', 'chegadaPortoAt', 'horarioDevolucaoVazio'],
   'ENTREGUE_COM_PENDENCIA_CANHOTO': ['arrivedAt', 'horarioChegada', 'horarioInicioDesova', 'desovaStartAt', 'desovaStartedAt', 'horarioFimDesova', 'desovaEndAt', 'desovaEndedAt', 'docsStartedAt', 'documentosFinaisAt', 'saidaClienteAt', 'chegadaPortoAt', 'horarioDevolucaoVazio'],
-  'FINALIZADO': ['arrivedAt', 'horarioChegada', 'horarioInicioDesova', 'desovaStartAt', 'desovaStartedAt', 'horarioFimDesova', 'desovaEndAt', 'desovaEndedAt', 'docsStartedAt', 'documentosFinaisAt', 'saidaClienteAt', 'chegadaPortoAt', 'horarioDevolucaoVazio']
+  'FINALIZADO': ['arrivedAt', 'horarioChegada', 'horarioInicioDesova', 'desovaStartAt', 'desovaStartedAt', 'horarioFimDesova', 'desovaEndAt', 'desovaEndedAt', 'docsStartedAt', 'documentosFinaisAt', 'saidaClienteAt', 'chegadaPortoAt', 'horarioDevolucaoVazio'],
+  'RECUSADO_CLIENTE': ['arrivedAt', 'horarioChegada', 'recusadoClienteAt']
 };
 
 /**
@@ -57,6 +61,7 @@ const DOCUMENTS_TO_CLEAR_ON_REGRESSION = {
   'A_CAMINHO_DO_CLIENTE': [],
   'AGUARDANDO_DESOVA': ['chegadaCliente'],
   'EM_DESOVA': ['chegadaCliente', 'inicioDesova'],
+  'DESATRELADO': ['chegadaCliente', 'inicioDesova'],
   'DESOVA_FINALIZADA': ['chegadaCliente', 'inicioDesova', 'fimDesova'],
   'AGUARDANDO_ANEXO': ['chegadaCliente', 'inicioDesova', 'fimDesova'],
   'ANEXANDO_DOCUMENTOS_FINAIS': ['chegadaCliente', 'inicioDesova', 'fimDesova'],
@@ -65,7 +70,8 @@ const DOCUMENTS_TO_CLEAR_ON_REGRESSION = {
   'CHEGOU_PORTO': ['chegadaCliente', 'inicioDesova', 'fimDesova', 'cnhotoNF', 'cnhotoCTE', 'diarioBordo', 'saidaCliente', 'chegadaPorto'],
   'ENTREGUE': ['chegadaCliente', 'inicioDesova', 'fimDesova', 'cnhotoNF', 'cnhotoCTE', 'diarioBordo', 'saidaCliente', 'chegadaPorto'],
   'ENTREGUE_COM_PENDENCIA_CANHOTO': ['chegadaCliente', 'inicioDesova', 'fimDesova', 'cnhotoNF', 'cnhotoCTE', 'diarioBordo', 'saidaCliente', 'chegadaPorto'],
-  'FINALIZADO': ['chegadaCliente', 'inicioDesova', 'fimDesova', 'cnhotoNF', 'cnhotoCTE', 'diarioBordo', 'saidaCliente', 'chegadaPorto', 'devolucaoVazio']
+  'FINALIZADO': ['chegadaCliente', 'inicioDesova', 'fimDesova', 'cnhotoNF', 'cnhotoCTE', 'diarioBordo', 'saidaCliente', 'chegadaPorto', 'devolucaoVazio'],
+  'RECUSADO_CLIENTE': ['chegadaCliente']
 };
 
 /**

@@ -744,6 +744,8 @@ router.put("/:id", auth, async (req, res) => {
       if (req.body.documentsJustification !== undefined) statusUpdates.documentsJustification = req.body.documentsJustification;
       if (req.body.desovaStartAt !== undefined) statusUpdates.desovaStartAt = req.body.desovaStartAt;
       if (req.body.desovaEndAt !== undefined) statusUpdates.desovaEndAt = req.body.desovaEndAt;
+      if (req.body.desatreladoAt !== undefined) statusUpdates.desatreladoAt = req.body.desatreladoAt;
+      if (req.body.recusadoClienteAt !== undefined) statusUpdates.recusadoClienteAt = req.body.recusadoClienteAt;
       if (req.body.saidaClienteAt !== undefined) statusUpdates.saidaClienteAt = req.body.saidaClienteAt;
       if (req.body.chegadaPortoAt !== undefined) statusUpdates.chegadaPortoAt = req.body.chegadaPortoAt;
       if (req.body.recebedor !== undefined) statusUpdates.recebedor = req.body.recebedor;
@@ -770,6 +772,18 @@ router.put("/:id", auth, async (req, res) => {
           await ProgramacaoEntrega.findByIdAndUpdate(programacaoToUpdate, programacaoUpdates);
         } catch (e) {
           console.error('[PROGRAMACAO] Erro ao sincronizar status de montagem:', e.message);
+        }
+      }
+
+      if (programacaoToUpdate && ['RECUSADO_CLIENTE', 'DESATRELADO'].includes(req.body.status)) {
+        try {
+          const ProgramacaoEntrega = require("../models/ProgramacaoEntrega");
+          await ProgramacaoEntrega.findByIdAndUpdate(programacaoToUpdate, {
+            status: req.body.status,
+            linkedDeliveryId: updated._id
+          });
+        } catch (e) {
+          console.error('[PROGRAMACAO] Erro ao sincronizar ocorrência:', e.message);
         }
       }
 
@@ -802,6 +816,8 @@ router.put("/:id", auth, async (req, res) => {
     if (req.body.documentsJustification !== undefined) updates.documentsJustification = req.body.documentsJustification;
     if (req.body.desovaStartAt !== undefined) updates.desovaStartAt = req.body.desovaStartAt;
     if (req.body.desovaEndAt !== undefined) updates.desovaEndAt = req.body.desovaEndAt;
+    if (req.body.desatreladoAt !== undefined) updates.desatreladoAt = req.body.desatreladoAt;
+    if (req.body.recusadoClienteAt !== undefined) updates.recusadoClienteAt = req.body.recusadoClienteAt;
     if (req.body.saidaClienteAt !== undefined) updates.saidaClienteAt = req.body.saidaClienteAt;
     if (req.body.chegadaPortoAt !== undefined) updates.chegadaPortoAt = req.body.chegadaPortoAt;
     if (req.body.recebedor !== undefined) updates.recebedor = req.body.recebedor;
@@ -913,7 +929,7 @@ router.get('/programacoes/mine', auth, async (req, res) => {
     
     const deliveriesByLinkedId = new Map();
     const deliveriesByProgramacaoId = new Map();
-    const deliverySelect = 'deliveryNumber status programacaoId linkedProgramacaoId linkedDeliveryId missingDocumentsAtSubmit chegadaMontagemAt horarioDevolucaoVazio containerReturned updatedAt createdAt recebedor userName driverName cityCode';
+    const deliverySelect = 'deliveryNumber status programacaoId linkedProgramacaoId linkedDeliveryId missingDocumentsAtSubmit chegadaMontagemAt horarioDevolucaoVazio containerReturned desatreladoAt recusadoClienteAt currentStep updatedAt createdAt recebedor userName driverName cityCode';
     if (linkedIds.length > 0) {
       const linkedDeliveries = await Delivery.find({ _id: { $in: linkedIds } }).select(deliverySelect).lean();
       linkedDeliveries.forEach(d => {
@@ -1331,6 +1347,8 @@ router.post("/:id/upload-and-update", auth, upload.array("file"), async (req, re
         "arrivedAt",
         "desovaStartAt",
         "desovaEndAt",
+        "desatreladoAt",
+        "recusadoClienteAt",
         "saidaClienteAt",
         "chegadaPortoAt",
         "recebedor",
