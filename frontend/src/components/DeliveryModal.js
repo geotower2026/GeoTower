@@ -675,30 +675,26 @@ const DeliveryModal = ({
           )}
 
           <div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-3 border-b border-white/10 bg-white/[0.03]">
-              <div>
-                <p className="text-[10px] text-emerald-300 uppercase tracking-widest font-black">Documentos e Fotos</p>
-                <p className="text-xs text-gray-500 mt-0.5">Arquivos anexados no fluxo da entrega</p>
-              </div>
-              <div className="flex flex-wrap gap-2">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Documentos e Fotos</p>
+              <div className="flex gap-2">
                 <button
                   onClick={handleShareDelivery}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 hover:text-emerald-100 text-xs font-black rounded-xl transition border border-emerald-400/20"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 hover:text-emerald-200 text-xs font-semibold rounded-lg transition border border-emerald-500/20"
                 >
                   <FaShareAlt /> <span className="hidden sm:inline">Gerar Comprovante de Entrega</span>
                 </button>
 
                 <button
                   onClick={() => handleDownloadAll(selectedDelivery._id)}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 hover:text-blue-100 text-xs font-black rounded-xl transition border border-blue-400/20"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 hover:text-blue-200 text-xs font-semibold rounded-lg transition border border-blue-500/20"
                 >
                   <FaDownload /> <span className="hidden sm:inline">Baixar Tudo</span>
                 </button>
               </div>
             </div>
 
-            <div className="p-4 space-y-4">
+            <div className="space-y-2">
               {controleProtocolosLookupStatus === 'searching' && (
                 <div className="rounded-xl p-3 bg-blue-900/20 border border-blue-700/50 text-blue-200 text-xs font-semibold">
                   🔍 Buscando protocolo no Controle de Protocolos por processo/código...
@@ -735,35 +731,27 @@ const DeliveryModal = ({
                     return (
                       <div
                         key={k}
-                        className={`group flex items-center justify-between gap-3 px-3 sm:px-4 py-3 rounded-xl border transition ${mismatch ? 'bg-rose-500/10 border-rose-400/30' : present ? 'bg-slate-900/50 border-white/10 hover:border-emerald-400/20 hover:bg-white/[0.06]' : 'bg-slate-950/30 border-white/5 opacity-60'}`}
+                        className={`flex items-center justify-between px-3 sm:px-4 py-3 rounded-xl border ${mismatch ? 'bg-rose-900/10 border-rose-500/40' : present ? 'bg-white/5 border-white/10' : 'bg-white/[0.02] border-white/5 opacity-50'}`}
                       >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <span className={`w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center border ${present ? 'bg-emerald-400/10 border-emerald-400/20 text-emerald-300' : 'bg-white/5 border-white/10 text-gray-500'}`}>
-                            <FaFileAlt size={13} />
-                          </span>
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className={`text-sm font-black truncate ${mismatch ? 'text-rose-300' : 'text-gray-200'}`}>{labels[k] || k}</span>
+                        <div className="flex items-center gap-3">
+                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${present ? 'bg-emerald-400' : 'bg-gray-600'}`} />
+                          <span className={`text-sm font-semibold ${mismatch ? 'text-rose-300' : 'text-gray-300'}`}>{labels[k] || k}</span>
                           {!present && <span className="text-xs text-gray-600">Não anexado</span>}
                           {mismatch && <span className="text-xs text-rose-200">Presente no GeoTower, ausente no Icompany</span>}
-                            </div>
-                          </div>
                         </div>
 
                         {present && (
-                          <div className="flex gap-1.5 flex-shrink-0">
+                          <div className="flex gap-2">
                             <button
                               onClick={() => setViewingDocument({ label: labels[k] || k, urls: getDocumentUrlsArray(selectedDelivery.documents[k]) })}
-                              className="w-8 h-8 rounded-xl bg-violet-500/15 hover:bg-violet-500/30 text-violet-300 flex items-center justify-center transition"
-                              title="Visualizar"
+                              className="w-7 h-7 rounded-lg bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 flex items-center justify-center transition"
                             >
                               <FaEye size={11} />
                             </button>
 
                             <button
                               onClick={() => handleDownload(selectedDelivery._id, k, labels[k] || k)}
-                              className="w-8 h-8 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-300 flex items-center justify-center transition"
-                              title="Baixar"
+                              className="w-7 h-7 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 flex items-center justify-center transition"
                             >
                               <FaDownload size={11} />
                             </button>
@@ -771,7 +759,7 @@ const DeliveryModal = ({
                             {canRemoveThisDocument && (
                               <button
                                 onClick={() => onRemoveDocument(selectedDelivery._id, k)}
-                                className="w-8 h-8 rounded-xl bg-rose-500/15 hover:bg-rose-500/30 text-rose-300 flex items-center justify-center transition"
+                                className="w-7 h-7 rounded-lg bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 flex items-center justify-center transition"
                                 title="Remover documento inválido e marcar pendência"
                               >
                                 <FaTrash size={11} />
@@ -797,23 +785,20 @@ const DeliveryModal = ({
                   return (
                     <div
                       key={f.key}
-                      className={`group flex items-center justify-between gap-3 px-3 sm:px-4 py-3 rounded-xl border transition ${present ? 'bg-slate-900/50 border-white/10 hover:border-sky-400/20 hover:bg-white/[0.06]' : 'bg-slate-950/30 border-white/5 opacity-60'}`}
+                      className={`flex items-center justify-between px-3 sm:px-4 py-3 rounded-xl border ${present ? 'bg-white/5 border-white/10' : 'bg-white/[0.02] border-white/5 opacity-50'}`}
                     >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className={`w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center border ${present ? 'bg-sky-400/10 border-sky-400/20 text-sky-300' : 'bg-white/5 border-white/10 text-gray-500'}`}>
-                          <FaBoxOpen size={13} />
-                        </span>
-                        <span className="text-sm text-gray-200 font-black">{f.label}</span>
-                        {present && <span className="text-[10px] uppercase tracking-wide font-black text-sky-300 bg-sky-400/10 border border-sky-400/20 rounded-full px-2 py-0.5">{files.length} foto(s)</span>}
+                      <div className="flex items-center gap-3">
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${present ? 'bg-sky-400' : 'bg-gray-600'}`} />
+                        <span className="text-sm text-gray-300 font-semibold">{f.label}</span>
+                        {present && <span className="text-xs text-gray-500">{files.length} foto(s)</span>}
                         {!present && <span className="text-xs text-gray-600">Não anexado</span>}
                       </div>
 
                       {present && (
-                        <div className="flex gap-1.5 flex-shrink-0">
+                        <div className="flex gap-2">
                           <button
                             onClick={() => setModalFotos({ label: f.label, files })}
-                            className="w-8 h-8 rounded-xl bg-violet-500/15 hover:bg-violet-500/30 text-violet-300 flex items-center justify-center transition"
-                            title="Visualizar fotos"
+                            className="w-7 h-7 rounded-lg bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 flex items-center justify-center transition"
                           >
                             <FaEye size={11} />
                           </button>
@@ -827,8 +812,7 @@ const DeliveryModal = ({
                               a.click();
                               document.body.removeChild(a);
                             })}
-                            className="w-8 h-8 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-300 flex items-center justify-center transition"
-                            title="Baixar fotos"
+                            className="w-7 h-7 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 flex items-center justify-center transition"
                           >
                             <FaDownload size={11} />
                           </button>
@@ -838,46 +822,12 @@ const DeliveryModal = ({
                   );
                 });
 
-                const docCount = docRows.length;
-                const photoCount = fotosRows.length;
-
-                return (
-                  <>
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2">
-                        <span className="w-8 h-8 rounded-xl bg-emerald-400/10 border border-emerald-400/20 text-emerald-300 flex items-center justify-center">
-                          <FaFileAlt size={13} />
-                        </span>
-                        <div>
-                          <p className="text-sm font-black text-gray-100">Documentos</p>
-                          <p className="text-xs text-gray-500">Comprovantes e anexos finais</p>
-                        </div>
-                      </div>
-                      <span className="text-[10px] uppercase tracking-wide font-black text-gray-400 bg-white/5 border border-white/10 rounded-full px-2 py-1">{docCount} item(ns)</span>
-                    </div>
-                    <div className="space-y-2">{docRows}</div>
-
-                    <div className="flex items-center justify-between gap-3 pt-2">
-                      <div className="flex items-center gap-2">
-                        <span className="w-8 h-8 rounded-xl bg-sky-400/10 border border-sky-400/20 text-sky-300 flex items-center justify-center">
-                          <FaBoxOpen size={13} />
-                        </span>
-                        <div>
-                          <p className="text-sm font-black text-gray-100">Fotos do fluxo</p>
-                          <p className="text-xs text-gray-500">Registros por etapa da entrega</p>
-                        </div>
-                      </div>
-                      <span className="text-[10px] uppercase tracking-wide font-black text-gray-400 bg-white/5 border border-white/10 rounded-full px-2 py-1">{photoCount} etapa(s)</span>
-                    </div>
-                    <div className="space-y-2">{fotosRows}</div>
-                  </>
-                );
+                return [...docRows, ...fotosRows];
               })()}
             </div>
 
             </div>
         </div>
-      </div>
       </div>
     </div>
   );

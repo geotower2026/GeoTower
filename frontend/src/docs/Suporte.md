@@ -15,7 +15,7 @@ https://wa.me/5592992938603
 Número: (92) 99293-8603
 
 📧 **E-mail de Suporte Técnico**
-[suportegeolog@outlook.com](mailto:suportegeolog@outlook.com)
+[geotower@geotransportes.com.br](mailto:geotower@geotransportes.com.br)
 
 ---
 
