@@ -15,7 +15,7 @@ const Login = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const { city, setCity } = useCity();
 
-  // Carregar login salvo ao montar o componente. A senha nunca e gravada.
+  // Carregar credenciais salvas ao montar o componente.
   useEffect(() => {
     const queryUsername = new URLSearchParams(window.location.search).get('username') || '';
     const savedCredentials = localStorage.getItem('loginCredentials');
@@ -27,11 +27,8 @@ const Login = () => {
         setFormData((current) => ({
           ...current,
           username: credentials.username || '',
-          password: ''
+          password: credentials.password || ''
         }));
-        if (credentials.password) {
-          localStorage.setItem('loginCredentials', JSON.stringify({ username: credentials.username || '' }));
-        }
         setRememberMe(true);
       } catch (e) {
         // Se houver erro ao parsear, limpa
@@ -62,10 +59,11 @@ const Login = () => {
         setCity(currentCity);
       }
 
-      // Salvar login se a opcao estiver marcada. Nunca salvar a senha.
+      // Salvar credenciais se "Manter conectado" estiver marcado.
       if (rememberMe) {
         localStorage.setItem('loginCredentials', JSON.stringify({
-          username: formData.username
+          username: formData.username,
+          password: formData.password
         }));
         localStorage.setItem('rememberMe', 'true');
       } else {
@@ -251,7 +249,7 @@ const Login = () => {
                   className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 focus:ring-2"
                 />
                 <label htmlFor="rememberMe" className="ml-2 text-sm font-medium text-gray-700">
-                  Salvar login
+                  Manter conectado
                 </label>
               </div>
 
