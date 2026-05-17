@@ -1,0 +1,4 @@
+Contact: mailto:geotower@geotransportes.com.br
+Preferred-Languages: pt-BR, en
+Canonical: https://entregascomgeotransportes.onrender.com/.well-known/security.txt
+

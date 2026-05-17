@@ -42,6 +42,22 @@ ${process.env.MONGODB_URI ? '' : `║                                           
 
 const app = express();
 
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'self'",
+  "form-action 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "img-src 'self' data: blob: https:",
+  "connect-src 'self' https://grupogeobackend.onrender.com https://entregascomgeotransportes.onrender.com",
+  "media-src 'self' blob: https:",
+  "worker-src 'self' blob:",
+  "manifest-src 'self'"
+].join('; ');
+
 // Global error handlers to help diagnose crashes
 process.on('uncaughtException', (err) => {
   console.error('UNCAUGHT EXCEPTION:', err && err.stack ? err.stack : err);
@@ -51,7 +67,16 @@ process.on('unhandledRejection', (reason, p) => {
 });
 
 // Middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false,
+  referrerPolicy: false,
+}));
+
+app.use((req, res, next) => {
+  res.setHeader('Content-Security-Policy', contentSecurityPolicy);
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
 
 // ✅ CORS permissivo (permite qualquer origem)
 app.use(
@@ -146,6 +171,15 @@ app.use("/api/controle-protocolos", require("./routes/controleProtocolos"));
 // Health check
 app.get("/api/health", (req, res) => {
   res.json({ success: true, message: "Server is running" });
+});
+
+app.get(["/.well-known/security.txt", "/security.txt"], (req, res) => {
+  res.type("text/plain").send([
+    "Contact: mailto:geotower@geotransportes.com.br",
+    "Preferred-Languages: pt-BR, en",
+    "Canonical: https://entregascomgeotransportes.onrender.com/.well-known/security.txt",
+    ""
+  ].join("\n"));
 });
 
 // Servir frontend estático (React build)
