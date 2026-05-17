@@ -1200,6 +1200,7 @@ const MonitorEntregas = () => {
     const desovaLabel = getDesovaLabelBySentido(d?.sentido || filters.sentido).toLowerCase();
     if (d.chegadaMontagemAt) ev.push({ label: 'Chegada no porto para montagem', date: d.chegadaMontagemAt });
     if (d.containerMontadoAt) ev.push({ label: 'Montagem do container', date: d.containerMontadoAt });
+    if (d.tripStartedAt) ev.push({ label: 'Início da entrega', date: d.tripStartedAt });
     if (d.horarioChegada) ev.push({ label: 'Chegada', date: d.horarioChegada });
     if (d.horarioInicioDesova) ev.push({ label: `Início da ${desovaLabel}`, date: d.horarioInicioDesova });
     if (d.desatreladoAt) ev.push({ label: 'Container desatrelado', date: d.desatreladoAt });

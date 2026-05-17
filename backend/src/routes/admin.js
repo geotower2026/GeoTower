@@ -767,6 +767,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
         dataAgendamento: prog ? prog.dataAgendamento : delivery.dataAgendamento || '',
         dtColeta: prog ? prog.dtColeta : delivery.dtColeta || '',  // Itajaí: data de coleta
         chegadaMontagemAt: delivery.chegadaMontagemAt || prog?.chegadaMontagemAt || '',
+        tripStartedAt: delivery.tripStartedAt || '',
         horarioChegada: delivery.arrivedAt || '',
         horarioSaidaCliente: delivery.saidaClienteAt || '',
         horarioChegadaPorto: delivery.chegadaPortoAt || '',

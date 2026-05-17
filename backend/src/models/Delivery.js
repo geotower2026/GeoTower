@@ -22,6 +22,9 @@ const DeliverySchema = new mongoose.Schema(
     // registrar quando o motorista marcou chegada no cliente
     arrivedAt: { type: Date },
 
+    // registrar quando o motorista iniciou a rota de entrega
+    tripStartedAt: { type: Date },
+
     // registrar quando o container foi montado
     chegadaMontagemAt: { type: Date },
     containerMontadoAt: { type: Date },

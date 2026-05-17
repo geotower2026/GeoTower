@@ -87,12 +87,22 @@ const COLUMN_CONFIG = {
   'Documentos': { type: 'status', key: 'documentos' },
 };
 
-const formatStatus = (status) => {
+const getSentido = (itemOrDelivery) =>
+  String(itemOrDelivery?._entrega?.sentido || itemOrDelivery?.sentido || 'DESTINO').trim().toUpperCase();
+
+const getDesovaLabelBySentido = (sentido = 'DESTINO') =>
+  String(sentido || '').trim().toUpperCase() === 'ORIGEM' ? 'Ovação' : 'Desova';
+
+const formatStatus = (status, sentido = 'DESTINO') => {
   if (!status) return '—';
   if (status === 'ENTREGUE_COM_PENDENCIA_CANHOTO') status = 'FINALIZADO';
   if (status === 'FINALIZADO') return 'FINALIZADO';
   if (status === 'ENTREGUE' || status === 'submitted') return 'OPERAÇÃO FINALIZADA';
   if (status === 'pending' || status === 'PENDING') return 'A CAMINHO DO CLIENTE';
+  const desovaLabel = getDesovaLabelBySentido(sentido).toUpperCase();
+  if (status === 'AGUARDANDO_DESOVA') return `AGUARDANDO ${desovaLabel}`;
+  if (status === 'EM_DESOVA') return `EM ${desovaLabel}`;
+  if (status === 'DESOVA_FINALIZADA') return `${desovaLabel} FINALIZADA`;
   return status.replace(/_/g, ' ');
 };
 
@@ -103,12 +113,15 @@ const STATUS_COLOR = {
   'AGUARDANDO DESOVA': 'bg-orange-100 text-orange-800 ring-orange-300',
   'EM DESOVA': 'bg-violet-100 text-violet-800 ring-violet-300',
   'DESOVA FINALIZADA': 'bg-teal-100 text-teal-800 ring-teal-300',
+  'AGUARDANDO OVAÇÃO': 'bg-orange-100 text-orange-800 ring-orange-300',
+  'EM OVAÇÃO': 'bg-violet-100 text-violet-800 ring-violet-300',
+  'OVAÇÃO FINALIZADA': 'bg-teal-100 text-teal-800 ring-teal-300',
   'CANCELADO': 'bg-red-100 text-red-800 ring-red-300',
   'CONTAINER MONTADO': 'bg-cyan-100 text-cyan-800 ring-cyan-300',
   'ANEXANDO DOCUMENTOS FINAIS': 'bg-indigo-100 text-indigo-800 ring-indigo-300',
 };
-const statusBadge = (raw) => {
-  const label = formatStatus(raw);
+const statusBadge = (raw, sentido = 'DESTINO') => {
+  const label = formatStatus(raw, sentido);
   return STATUS_COLOR[label] ?? 'bg-gray-100 text-gray-700 ring-gray-300';
 };
 
@@ -248,7 +261,7 @@ const BaseDadosGeral = () => {
     if (colName === 'Agendamento') return getProgramacaoDate(item, city) || null;
     if (colName === 'Contratado') return item.contratado || '';
     if (colName === 'Motorista') return (item.motorista || item._entrega?.driverName || '').toLowerCase();
-    if (colName === 'Status') return formatStatus(item._entrega?.status || item.status);
+    if (colName === 'Status') return formatStatus(item._entrega?.status || item.status, getSentido(item));
     if (colName === 'Retirada Cheio') return item._entrega?.containerMontadoAt || null;
     if (colName === 'Chegada') return item._entrega?.horarioChegada || item._entrega?.arrivedAt || null;
     if (colName === `Início ${desovaStepLabel}`) return item._entrega?.horarioInicioDesova || item._entrega?.desovaStartAt || null;
@@ -540,7 +553,7 @@ const BaseDadosGeral = () => {
         Agendamento: formatExcelDate(getProgramacaoDate(item, cityName)),
         Contratado: item.contratado || '',
         Motorista: item.motorista || item._entrega?.driverName || '',
-        Status: formatStatus(rawStatus),
+        Status: formatStatus(rawStatus, getSentido(item)),
         'Retirada Cheio': formatExcelDate(item._entrega?.containerMontadoAt),
         Chegada: formatExcelDate(item._entrega?.horarioChegada || item._entrega?.arrivedAt),
         [`Início ${desovaLabel}`]: formatExcelDate(item._entrega?.horarioInicioDesova || item._entrega?.desovaStartAt),
@@ -982,6 +995,7 @@ const BaseDadosGeral = () => {
                   {filteredData.map((item, idx) => {
                     const docStatus = getDocumentsStatus(item._entrega);
                     const rawStatus = item._entrega?.status || item.status;
+                    const sentido = getSentido(item);
                     return (
                       <tr
                         key={item._id}
@@ -1036,8 +1050,8 @@ const BaseDadosGeral = () => {
                         </td>
                         {/* Status */}
                         <td className="px-5 py-3 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ring-1 ${statusBadge(rawStatus)}`}>
-                            {formatStatus(rawStatus)}
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ring-1 ${statusBadge(rawStatus, sentido)}`}>
+                            {formatStatus(rawStatus, sentido)}
                           </span>
                         </td>
                         {/* Retirada */}

@@ -406,7 +406,7 @@ router.post("/", auth, async (req, res) => {
   try {
     const db = await getDb(req);
     const city = req.city || 'manaus';
-    const { deliveryNumber, vehiclePlate, observations, driverName, chegadaMontagemAt, containerMontadoAt, status, programacaoId, linkedProgramacaoId, recebedor } = req.body;
+    const { deliveryNumber, vehiclePlate, observations, driverName, chegadaMontagemAt, containerMontadoAt, tripStartedAt, status, programacaoId, linkedProgramacaoId, recebedor } = req.body;
 
     console.log('ðŸ“¦ Recebido no backend:', { deliveryNumber, vehiclePlate, observations, driverName, containerMontadoAt, status, programacaoId, linkedProgramacaoId, city });
 
@@ -438,6 +438,7 @@ router.post("/", auth, async (req, res) => {
       armador: String(linkedProgramacao?.armador || req.body?.armador || '').trim(),
       chegadaMontagemAt: chegadaMontagemAt ? new Date(chegadaMontagemAt) : null,
       containerMontadoAt: containerMontadoAt ? new Date(containerMontadoAt) : null,
+      tripStartedAt: tripStartedAt ? new Date(tripStartedAt) : null,
       userId: req.user.id,
       userName: driver?.fullName || driver?.name || driver?.username || "Unknown",
       status: status || "pending",
@@ -491,6 +492,7 @@ router.post("/", auth, async (req, res) => {
               linkedProgramacaoId: existing.linkedProgramacaoId || programacaoKey,
               programacaoId: existing.programacaoId || programacaoKey,
               armador: existing.armador || String(linkedProgramacao?.armador || req.body?.armador || '').trim(),
+              ...(tripStartedAt && !existing.tripStartedAt ? { tripStartedAt: new Date(tripStartedAt) } : {}),
               ...(partyName ? { recebedor: partyName } : {})
             }
           },
@@ -520,7 +522,7 @@ router.post("/", auth, async (req, res) => {
       if (existing) {
         delivery = await Delivery.findByIdAndUpdate(
           existing._id,
-          { $set: { updatedAt: new Date(), ...(partyName ? { recebedor: partyName } : {}) } },
+          { $set: { updatedAt: new Date(), ...(tripStartedAt && !existing.tripStartedAt ? { tripStartedAt: new Date(tripStartedAt) } : {}), ...(partyName ? { recebedor: partyName } : {}) } },
           { new: true }
         ).lean();
       } else {
@@ -737,6 +739,7 @@ router.put("/:id", auth, async (req, res) => {
       if (req.body.arrivedAt !== undefined) statusUpdates.arrivedAt = req.body.arrivedAt;
       if (req.body.chegadaMontagemAt !== undefined) statusUpdates.chegadaMontagemAt = req.body.chegadaMontagemAt ? new Date(req.body.chegadaMontagemAt) : null;
       if (req.body.containerMontadoAt !== undefined) statusUpdates.containerMontadoAt = req.body.containerMontadoAt ? new Date(req.body.containerMontadoAt) : null;
+      if (req.body.tripStartedAt !== undefined) statusUpdates.tripStartedAt = req.body.tripStartedAt ? new Date(req.body.tripStartedAt) : null;
       if (req.body.currentStep !== undefined) statusUpdates.currentStep = req.body.currentStep;
       if (req.body.observations !== undefined) {
         statusUpdates.observations = preserveIcompanyObservation(delivery.observations, req.body.observations);

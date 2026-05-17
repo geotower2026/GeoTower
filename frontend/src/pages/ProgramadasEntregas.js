@@ -115,6 +115,69 @@ const getProgramacaoLegacyDeliveryNumbers = (programacao) => [
   .map(value => String(value || '').trim())
   .filter(Boolean);
 
+const ARRIVAL_DELAY_REASONS = [
+  {
+    value: 'FALTA_CONTAINER',
+    label: 'Falta de container',
+    description: 'Container nao disponibilizado para atender a demanda solicitada.'
+  },
+  {
+    value: 'FALTA_GATE_TERMINAL',
+    label: 'Falta de gate no terminal',
+    description: 'Sem janela no terminal portuario para retirar ou entregar o container.'
+  },
+  {
+    value: 'ERRO_BOOKING',
+    label: 'Erro de booking',
+    description: 'Divergencia de booking, quantidade, equipamento, porto ou armador.'
+  },
+  {
+    value: 'QUEBRA_PNEU',
+    label: 'Pneu furado',
+    description: 'Atraso causado por troca ou reparo de pneu.'
+  },
+  {
+    value: 'QUEBRA_MECANICA',
+    label: 'Quebra mecanica',
+    description: 'Falha mecanica do caminhao durante a operacao.'
+  },
+  {
+    value: 'QUEBRA_ACIDENTE',
+    label: 'Acidente',
+    description: 'Acidente envolvendo o caminhao ou impedindo o deslocamento.'
+  },
+  {
+    value: 'TRANSITO',
+    label: 'Transito congestionado',
+    description: 'Congestionamento ou bloqueio no trajeto.'
+  },
+  {
+    value: 'NAVIO_EM_OPERACAO',
+    label: 'Navio em operacao',
+    description: 'Navio ainda em operacao, impedindo a retirada do cheio.'
+  },
+  {
+    value: 'NAO_DESCARREGADO',
+    label: 'Container nao descarregado',
+    description: 'Container cheio ainda nao estava disponivel para retirada.'
+  },
+  {
+    value: 'LIBERACAO_SEFAZ',
+    label: 'Liberacao SEFAZ',
+    description: 'Container cheio sem liberacao junto a SEFAZ.'
+  },
+  {
+    value: 'LIBERACAO_FINANCEIRA',
+    label: 'Liberacao financeira',
+    description: 'Freetime extrapolado ou pendencia de liberacao financeira.'
+  },
+  {
+    value: 'OUTROS',
+    label: 'Outros',
+    description: 'Outro motivo. Descreva no comentario.'
+  }
+];
+
 const getProgramacaoGroupKey = (programacao) => {
   const container = normalizeGroupValue(programacao?.container || programacao?.processo);
   const party = normalizeGroupValue(programacao?.recebedor);
@@ -434,6 +497,7 @@ const ProgramadasEntregas = () => {
   const [documentsUpload, setDocumentsUpload] = useState({});
   const [documentsJustification, setDocumentsJustification] = useState('');
   const [arrivalDelayReason, setArrivalDelayReason] = useState('');
+  const [arrivalDelayComment, setArrivalDelayComment] = useState('');
   const [arrivalDelayError, setArrivalDelayError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [processingPhoto, setProcessingPhoto] = useState(false);
@@ -653,6 +717,7 @@ const ProgramadasEntregas = () => {
     const group = Array.isArray(p.fracionadas) && p.fracionadas.length > 0 ? p.fracionadas : [p];
     const groupLinkedDeliveryId = group.find(item => item.linkedDeliveryId)?.linkedDeliveryId || p.linkedDeliveryId;
     const deliveryNumber = getProgramacaoDeliveryNumber(p);
+    const tripStartedAt = new Date().toISOString();
     if (!deliveryNumber) { setToast({ message: 'Sem Processo Log/container/processo', type: 'error' }); return; }
     try {
       setSubmitting(true);
@@ -695,7 +760,7 @@ const ProgramadasEntregas = () => {
           _id: existing._id
         });
         if (existing.status === 'CONTAINER_MONTADO') {
-          const updated = await deliveryService.updateDelivery(existing._id, { status: 'A_CAMINHO_DO_CLIENTE' });
+          const updated = await deliveryService.updateDelivery(existing._id, { status: 'A_CAMINHO_DO_CLIENTE', tripStartedAt: existing.tripStartedAt || tripStartedAt });
           existing = updated.data.delivery;
           applyDeliveryUpdate(existing, p._id);
         }
@@ -709,6 +774,7 @@ const ProgramadasEntregas = () => {
           deliveryNumber: deliveryNumber.toUpperCase(),
           vehiclePlate: '',
           observations: buildInitialDeliveryObservation(p, `Criada a partir da Programação ${p.processo || ''}`),
+          tripStartedAt,
           programacaoId: p._id,
           recebedor: p.recebedor || '',
           driverName: p.motorista || user?.fullName || user?.name || ''
@@ -740,6 +806,9 @@ const ProgramadasEntregas = () => {
     setJustification(''); 
     setDocumentsUpload({}); 
     setDocumentsJustification('');
+    setArrivalDelayReason('');
+    setArrivalDelayComment('');
+    setArrivalDelayError('');
     loadProgramacoes({ silent: true });
     // Não recarrega lista - polling automático já sincroniza a cada 30s
   };
@@ -950,6 +1019,7 @@ const ProgramadasEntregas = () => {
     clearPhotos();
     if (step === 'arrival') {
       setArrivalDelayReason('');
+      setArrivalDelayComment('');
       setArrivalDelayError('');
     }
     setCurrentStep(step);
@@ -967,8 +1037,14 @@ const ProgramadasEntregas = () => {
   const handleArrivalConfirm = async () => {
     const scheduled = currentProgramacao ? getProgramacaoDate(currentProgramacao, city) : null;
     const isLate = scheduled ? Date.now() > new Date(scheduled).getTime() : false;
-    if (isLate && !arrivalDelayReason.trim()) {
-      setArrivalDelayError('Informe o motivo do atraso para prosseguir');
+    const selectedDelayReason = ARRIVAL_DELAY_REASONS.find(reason => reason.value === arrivalDelayReason);
+    const needsDelayComment = arrivalDelayReason === 'OUTROS';
+    if (isLate && !selectedDelayReason) {
+      setArrivalDelayError('Selecione o motivo do atraso para prosseguir');
+      return;
+    }
+    if (isLate && needsDelayComment && !arrivalDelayComment.trim()) {
+      setArrivalDelayError('Descreva o motivo do atraso para prosseguir');
       return;
     }
 
@@ -976,7 +1052,11 @@ const ProgramadasEntregas = () => {
     if (isLate) {
       const existingObs = currentDelivery?.observations || '';
       const timestamp = formatarData(new Date(), city);
-      const delayNote = `[${timestamp}] Motivo do atraso na chegada: ${arrivalDelayReason.trim()}`;
+      const commentText = arrivalDelayComment.trim();
+      const reasonText = selectedDelayReason
+        ? `${selectedDelayReason.label}: ${selectedDelayReason.description}${commentText ? ` Comentario: ${commentText}` : ''}`
+        : commentText;
+      const delayNote = `[${timestamp}] Motivo do atraso na chegada: ${reasonText}`;
       observationsToUpdate = existingObs ? `${existingObs}\n${delayNote}` : delayNote;
     }
 
@@ -2532,18 +2612,53 @@ const ProgramadasEntregas = () => {
                         <div>
                           <p className="text-sm font-semibold text-red-800">Chegada atrasada</p>
                           <p className="text-sm text-red-700">Você está {delayMinutes} minuto{delayMinutes === 1 ? '' : 's'} atrasado em relação ao horário agendado.</p>
-                          <p className="text-sm text-red-600">Informe o motivo do atraso para confirmar a chegada.</p>
+                          <p className="text-sm text-red-600">Selecione o motivo do atraso para confirmar a chegada.</p>
                         </div>
-                        <textarea
-                          value={arrivalDelayReason}
-                          onChange={(e) => {
-                            setArrivalDelayReason(e.target.value);
-                            if (arrivalDelayError) setArrivalDelayError('');
-                          }}
-                          className="w-full rounded-2xl border border-red-200 bg-white p-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-400"
-                          rows={4}
-                          placeholder="Explique o motivo do atraso..."
-                        />
+                        <div className="grid grid-cols-1 gap-2 max-h-72 overflow-y-auto pr-1">
+                          {ARRIVAL_DELAY_REASONS.map(reason => {
+                            const selected = arrivalDelayReason === reason.value;
+                            return (
+                              <button
+                                key={reason.value}
+                                type="button"
+                                onClick={() => {
+                                  if (arrivalDelayReason !== reason.value) setArrivalDelayComment('');
+                                  setArrivalDelayReason(reason.value);
+                                  if (arrivalDelayError) setArrivalDelayError('');
+                                }}
+                                className={`w-full text-left rounded-xl border p-3 transition active:scale-[0.99] ${
+                                  selected
+                                    ? 'bg-white border-red-400 shadow-sm ring-2 ring-red-100'
+                                    : 'bg-white/80 border-red-100 hover:border-red-300'
+                                }`}
+                              >
+                                <div className="flex items-start gap-3">
+                                  <span className={`mt-0.5 h-5 w-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                                    selected ? 'border-red-500 bg-red-500' : 'border-red-200 bg-white'
+                                  }`}>
+                                    {selected && <span className="h-2 w-2 rounded-full bg-white" />}
+                                  </span>
+                                  <span className="min-w-0">
+                                    <span className="block text-sm font-bold text-gray-900">{reason.label}</span>
+                                    <span className="block text-xs text-gray-600 leading-snug mt-0.5">{reason.description}</span>
+                                  </span>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {arrivalDelayReason && (
+                          <textarea
+                            value={arrivalDelayComment}
+                            onChange={(e) => {
+                              setArrivalDelayComment(e.target.value);
+                              if (arrivalDelayError) setArrivalDelayError('');
+                            }}
+                            className="w-full rounded-2xl border border-red-200 bg-white p-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-400"
+                            rows={3}
+                            placeholder={arrivalDelayReason === 'OUTROS' ? 'Descreva o motivo do atraso...' : 'Comentario complementar (opcional)'}
+                          />
+                        )}
                         {arrivalDelayError && <p className="text-sm text-red-600">{arrivalDelayError}</p>}
                       </div>
                     ) : null;
@@ -2553,7 +2668,7 @@ const ProgramadasEntregas = () => {
                     onBack={() => goToStep('welcome')}
                     buttonLabel="✓ Confirmar chegada"
                     buttonColor="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700"
-                    confirmDisabled={currentProgramacao && getProgramacaoDate(currentProgramacao, city) ? Date.now() > new Date(getProgramacaoDate(currentProgramacao, city)).getTime() && !arrivalDelayReason.trim() : false}
+                    confirmDisabled={currentProgramacao && getProgramacaoDate(currentProgramacao, city) ? Date.now() > new Date(getProgramacaoDate(currentProgramacao, city)).getTime() && (!arrivalDelayReason || (arrivalDelayReason === 'OUTROS' && !arrivalDelayComment.trim())) : false}
                   />
                 </div>
               )}
@@ -2589,7 +2704,7 @@ const ProgramadasEntregas = () => {
                 <div className="pt-1">
                   <button
                     onClick={() => { setJustification(''); goToStep('clientRefusal'); }}
-                    className="w-full py-3.5 bg-gradient-to-r from-red-600 to-rose-700 text-white rounded-2xl font-bold text-sm shadow-md active:scale-95 transition"
+                    className="w-full py-3.5 bg-amber-50 border-2 border-amber-300 text-amber-800 rounded-2xl font-bold text-sm shadow-sm hover:bg-amber-100 active:scale-95 transition"
                   >
                     Carga recusada
                   </button>
@@ -2599,25 +2714,25 @@ const ProgramadasEntregas = () => {
               {currentStep === 'clientRefusal' && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-3 mb-2">
-                    <div className="w-8 h-8 rounded-xl bg-red-100 flex items-center justify-center">
-                      <FaExclamationTriangle className="text-red-600" size={14} />
+                    <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center">
+                      <FaExclamationTriangle className="text-amber-600" size={14} />
                     </div>
                     <h3 className="text-lg font-bold text-gray-900">Carga recusada</h3>
                   </div>
-                  <div className="bg-red-50 border border-red-200 rounded-xl p-3">
-                    <p className="text-red-800 text-sm font-medium">Descreva o motivo da recusa pelo cliente.</p>
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                    <p className="text-amber-800 text-sm font-medium">Descreva o motivo da recusa pelo cliente.</p>
                   </div>
                   <textarea
                     value={justification}
                     onChange={e => setJustification(e.target.value)}
-                    className="w-full border-2 border-gray-200 rounded-2xl p-4 focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent resize-none text-gray-800 placeholder-gray-400"
+                    className="w-full border-2 border-gray-200 rounded-2xl p-4 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent resize-none text-gray-800 placeholder-gray-400"
                     rows={5}
                     placeholder="Ex.: Cliente recusou a carga por divergencia, avaria, agenda..."
                     disabled={submitting}
                   />
                   <div className="flex gap-3">
                     <button onClick={handleClientRefusalSubmit} disabled={submitting || !justification.trim()}
-                      className="flex-1 py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-base active:scale-95 transition disabled:opacity-50">
+                      className="flex-1 py-3.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-base active:scale-95 transition disabled:opacity-50">
                       Registrar recusa
                     </button>
                     <button onClick={() => goToStep('confirmDesova')} disabled={submitting}
@@ -2712,7 +2827,7 @@ const ProgramadasEntregas = () => {
                 <div className="pt-1">
                   <button
                     onClick={() => { setJustification(''); goToStep('containerUncoupled'); }}
-                    className="w-full py-3.5 bg-gradient-to-r from-slate-600 to-blue-700 text-white rounded-2xl font-bold text-sm shadow-md active:scale-95 transition"
+                    className="w-full py-3.5 bg-blue-50 border-2 border-blue-300 text-blue-700 rounded-2xl font-bold text-sm shadow-sm hover:bg-blue-100 active:scale-95 transition"
                   >
                     Container desatrelado
                   </button>
