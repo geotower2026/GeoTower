@@ -17,7 +17,6 @@ import ControleProtocolos from './pages/ControleProtocolos';
 
 // Pages
 import Login from './pages/Login';
-import Register from './pages/Register';
 import Home from './pages/Home';
 import NovaEntrega from './pages/NovaEntrega';
 import MinhasEntregas from './pages/MinhasEntregas';
@@ -82,7 +81,7 @@ function AppContent() {
   return (
     <Routes>
       <Route path="/login" element={isAuthenticated ? <Navigate to="/home" /> : <Login />} />
-      <Route path="/register" element={isAuthenticated ? <Navigate to="/home" /> : <Register />} />
+      <Route path="/register" element={<Navigate to={isAuthenticated ? "/home" : "/login"} replace />} />
 
       <Route
         path="/home"

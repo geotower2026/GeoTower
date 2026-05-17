@@ -275,7 +275,7 @@ const Login = () => {
             </form>
 
             {/* Rodapé do card */}
-            <div className="mt-6 pt-5 border-t border-gray-100 text-center">
+            <div className="hidden">
               <p className="text-gray-500 text-sm mb-2">Ainda não tem cadastro?</p>
               <button
                 onClick={() => navigate('/register')}

@@ -1,5 +1,6 @@
 import React, { useEffect, useId, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import * as XLSX from 'xlsx';
 import {
   FaArrowLeft,
   FaCheckCircle,
@@ -16,6 +17,7 @@ import {
   FaBuilding,
   FaRegCommentDots,
   FaExchangeAlt,
+  FaFileExcel,
   FaHistory,
   FaList,
   FaLock,
@@ -179,6 +181,16 @@ const formatDeliveryStatus = (value) => {
   if (key === 'pending' || key === 'PENDING') return 'A CAMINHO DO CLIENTE';
   return key.replace(/_/g, ' ');
 };
+
+const buildExcelColumnWidths = (headers, rows) =>
+  headers.map((header) => {
+    const maxCellLength = rows.reduce((max, row) => {
+      const value = row[header];
+      const length = value ? String(value).length : 0;
+      return Math.max(max, length);
+    }, header.length);
+    return { wch: Math.min(Math.max(maxCellLength + 2, 14), 48) };
+  });
 
 const RESPONSAVEL_CONFIG = {
   geolog: {
@@ -442,6 +454,54 @@ const EntregasCanhotosPendentes = () => {
   const totalComGeoLog = items.filter(
     (item) => getPendenciaResponsavel(item) === 'geolog'
   ).length;
+
+  const exportListToExcel = () => {
+    const headers = [
+      'Processo principal',
+      'Processo Log',
+      'Container',
+      'Recebedor',
+      'Agendamento',
+      'Contratado',
+      'Motorista',
+      'Responsável',
+      'Justificativa e último retorno',
+    ];
+
+    const rows = visibleItems.map((item) => {
+      const scheduleInfo = getScheduleInfo(item, city);
+      const currentOwner = getPendenciaResponsavel(item);
+      const currentConfig = RESPONSAVEL_CONFIG[currentOwner];
+      const history = Array.isArray(item.pendenciaHistorico)
+        ? item.pendenciaHistorico
+        : [];
+      const lastHistory = history[history.length - 1];
+      const partyValue = item.recebedor || item.destinatario || item.remetente;
+      const containerValue = Array.isArray(item.containerNumero)
+        ? item.containerNumero.join(', ')
+        : item.container || item.deliveryNumber;
+      const justification = item.submissionObservation || item.documentsJustification || '';
+      const lastReturn = lastHistory?.message ? `Último retorno: ${lastHistory.message}` : '';
+
+      return {
+        'Processo principal': item.processoCAB || item.deliveryNumber || '',
+        'Processo Log': item.processoLog || '',
+        Container: containerValue || '',
+        Recebedor: partyValue || '',
+        Agendamento: scheduleInfo.value || '',
+        Contratado: item.userName || '',
+        Motorista: item.driverName || '',
+        Responsável: currentConfig.label,
+        'Justificativa e último retorno': [justification, lastReturn].filter(Boolean).join('\n\n'),
+      };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows, { header: headers, defval: '' });
+    ws['!cols'] = buildExcelColumnWidths(headers, rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Documentos Pendentes');
+    XLSX.writeFile(wb, 'documentos-pendentes.xlsx');
+  };
 
   const updateDraft = (id, field, value) => {
     setDrafts((prev) => ({
@@ -785,6 +845,14 @@ const EntregasCanhotosPendentes = () => {
                   Inclui pendências com GeoMar e GeoLog.
                 </p>
               </div>
+              <button
+                type="button"
+                onClick={exportListToExcel}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2.5 text-sm font-black text-white shadow-sm transition hover:bg-emerald-700"
+              >
+                <FaFileExcel size={13} />
+                Baixar Excel
+              </button>
             </div>
 
             <div className="overflow-x-auto">
@@ -1200,7 +1268,11 @@ const EntregasCanhotosPendentes = () => {
                                       <div key={`${entry.createdAt || index}-${index}`} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
                                         <div className="flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em]">
                                           <span className={titleColor}>{titleText}</span>
-                                          {entry.createdAt && <span>{formatarData(entry.createdAt, city)}</span>}
+                                          {entry.createdAt && (
+                                            <span className="text-slate-600 bg-white/80 border border-slate-200 rounded-md px-1.5 py-0.5">
+                                              {formatarData(entry.createdAt, city)}
+                                            </span>
+                                          )}
                                         </div>
                                         <p className="mt-1 text-sm font-semibold text-slate-700 whitespace-pre-wrap leading-relaxed">
                                           {entry.message || '-'}
