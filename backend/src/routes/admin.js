@@ -783,20 +783,27 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
     const addDeliveryAndFilter = (clause) => {
       deliveryFilter.$and = [...(deliveryFilter.$and || []), clause];
     };
+    const matchedProgramacaoIds = programacoes.map((prog) => prog._id).filter(Boolean);
+    const matchedLinkedDeliveryIds = programacoes.map((prog) => prog.linkedDeliveryId).filter(Boolean);
+    const matchedProgramacaoDeliveryNumbers = [
+      ...new Set(programacoes.flatMap((prog) => [
+        prog.container,
+        prog.processo,
+        prog.processoLog
+      ]).map(cleanLookupKey).filter(Boolean))
+    ];
+    const getMatchedProgramacaoDeliveryClauses = () => [
+      ...(matchedLinkedDeliveryIds.length ? [{ _id: { $in: matchedLinkedDeliveryIds } }] : []),
+      ...(matchedProgramacaoIds.length ? [
+        { linkedProgramacaoId: { $in: matchedProgramacaoIds } },
+        { programacaoId: { $in: matchedProgramacaoIds } }
+      ] : []),
+      ...(matchedProgramacaoDeliveryNumbers.length ? [{ deliveryNumber: { $in: matchedProgramacaoDeliveryNumbers } }] : [])
+    ];
     if (effectiveDateRegexes.length) {
-      const programacaoIds = programacoes.map((prog) => prog._id).filter(Boolean);
-      const programacaoDeliveryNumbers = [
-        ...new Set(programacoes.flatMap((prog) => [
-          prog.container,
-          prog.processo,
-          prog.processoLog
-        ]).map(cleanLookupKey).filter(Boolean))
-      ];
       addDeliveryAndFilter({
         $or: [
-          { linkedProgramacaoId: { $in: programacaoIds } },
-          { programacaoId: { $in: programacaoIds } },
-          { deliveryNumber: { $in: programacaoDeliveryNumbers } },
+          ...getMatchedProgramacaoDeliveryClauses(),
           { dataAgendamento: { $in: effectiveDateRegexes } },
           { dtColeta: { $in: effectiveDateRegexes } }
         ]
@@ -805,6 +812,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
     if (exactContainerFilter) {
       addDeliveryAndFilter({
         $or: [
+          ...getMatchedProgramacaoDeliveryClauses(),
           { deliveryNumber: exactContainerFilter },
           { container: exactContainerFilter },
           { containerNumero: exactContainerFilter }
@@ -814,6 +822,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
     if (exactProcessFilter) {
       addDeliveryAndFilter({
         $or: [
+          ...getMatchedProgramacaoDeliveryClauses(),
           { processoCAB: exactProcessFilter },
           { processo: exactProcessFilter },
           { processNumber: exactProcessFilter },
@@ -824,6 +833,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
     if (searchFilter) {
       addDeliveryAndFilter({
         $or: [
+          ...getMatchedProgramacaoDeliveryClauses(),
           { deliveryNumber: searchFilter },
           { vehiclePlate: searchFilter },
           { userName: searchFilter },
