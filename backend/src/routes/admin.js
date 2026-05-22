@@ -657,6 +657,38 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
     
     // Buscar programações filtradas por cidade
     const ProgramacaoEntrega = require('../models/ProgramacaoEntrega');
+    let effectiveDate = '';
+    if (periodDate && String(periodDate).trim()) {
+      effectiveDate = String(periodDate).trim();
+      console.log('Usando periodDate do cliente:', effectiveDate);
+    } else if (period && period !== 'general') {
+      console.log('Aplicando filtro de periodo:', period);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (period === 'yesterday') today.setDate(today.getDate() - 1);
+      if (period === 'tomorrow') today.setDate(today.getDate() + 1);
+      effectiveDate = today.toLocaleDateString('pt-BR');
+      console.log('   convertido para data efetiva:', effectiveDate);
+    }
+
+    const getDateRegexes = (value) => {
+      const raw = String(value || '').trim();
+      if (!raw) return [];
+      const regexes = [new RegExp(`^${escapeRegex(raw)}`)];
+      const brMatch = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (brMatch) {
+        const [, day, month, year] = brMatch;
+        regexes.push(new RegExp(`^${year}-${month}-${day}`));
+      }
+      const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (isoMatch) {
+        const [, year, month, day] = isoMatch;
+        regexes.push(new RegExp(`^${day}/${month}/${year}`));
+      }
+      return regexes;
+    };
+    const effectiveDateRegexes = getDateRegexes(effectiveDate);
+
     let progFilter = {};
     applyProgramacaoCityFilter(progFilter, city);
     if (req.user?.role === 'gestor_contratado' && req.user.contratado) {
@@ -674,30 +706,23 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
         { $or: [{ processo: exactProcessFilter }, { processoLog: exactProcessFilter }] }
       ];
     }
+    if (effectiveDateRegexes.length) {
+      const dateClause = city === 'itajai'
+        ? {
+            $or: [
+              { dtColeta: { $in: effectiveDateRegexes } },
+              { dtColeta: { $in: [null, ''] }, dataAgendamento: { $in: effectiveDateRegexes } }
+            ]
+          }
+        : { dataAgendamento: { $in: effectiveDateRegexes } };
+      progFilter.$and = [...(progFilter.$and || []), dateClause];
+    }
     const programacoes = await ProgramacaoEntrega.find(progFilter)
       .select('processo processoLog recebedor remetente destinatario container armador dataAgendamento dtColeta contratado motorista linkedDeliveryId chegadaMontagemAt status createdAt observacoes origem estab sentido')
       .lean();
     console.log('  ℹ️  Total de programações (' + city + '):', programacoes ? programacoes.length : 0);
 
     markPerf('programacoes-query', { count: programacoes ? programacoes.length : 0 });
-
-    // Calcula effectiveDate se period/periodDate fornecidos
-    let effectiveDate = '';
-    if (periodDate && String(periodDate).trim()) {
-      effectiveDate = String(periodDate).trim();
-      console.log('🗓️  Usando periodDate do cliente:', effectiveDate);
-    } else if (period && period !== 'general') {
-      console.log('🗓️  Aplicando filtro de período:', period);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (period === 'yesterday') {
-        today.setDate(today.getDate() - 1);
-      } else if (period === 'tomorrow') {
-        today.setDate(today.getDate() + 1);
-      }
-      effectiveDate = today.toLocaleDateString('pt-BR');
-      console.log('   convertido para data efetiva:', effectiveDate);
-    }
 
     // *** UNIFIED LOGIC BELOW ***
     // buscamos entregas iniciadas e também levamos em conta programações não iniciadas
@@ -742,6 +767,25 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
     const addDeliveryAndFilter = (clause) => {
       deliveryFilter.$and = [...(deliveryFilter.$and || []), clause];
     };
+    if (effectiveDateRegexes.length) {
+      const programacaoIds = programacoes.map((prog) => prog._id).filter(Boolean);
+      const programacaoDeliveryNumbers = [
+        ...new Set(programacoes.flatMap((prog) => [
+          prog.container,
+          prog.processo,
+          prog.processoLog
+        ]).map(cleanLookupKey).filter(Boolean))
+      ];
+      addDeliveryAndFilter({
+        $or: [
+          { linkedProgramacaoId: { $in: programacaoIds } },
+          { programacaoId: { $in: programacaoIds } },
+          { deliveryNumber: { $in: programacaoDeliveryNumbers } },
+          { dataAgendamento: { $in: effectiveDateRegexes } },
+          { dtColeta: { $in: effectiveDateRegexes } }
+        ]
+      });
+    }
     if (exactContainerFilter) {
       addDeliveryAndFilter({
         $or: [
