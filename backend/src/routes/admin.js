@@ -629,10 +629,27 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
   try {
     const { status, q, startDate, endDate, period, periodDate, processo, container, recebedor, sentido, pontualidade, horaStatusStart, horaStatusEnd, agendamentoStart, agendamentoEnd, tempoStatusMin, tempoStatusMax } = req.query;
     const city = req.city || 'manaus';
+    const perfId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+    const perfStartedAt = Date.now();
+    let perfLastAt = perfStartedAt;
+    const perfSteps = [];
+    const markPerf = (step, extra = {}) => {
+      const now = Date.now();
+      perfSteps.push({ step, ms: now - perfLastAt, totalMs: now - perfStartedAt, ...extra });
+      perfLastAt = now;
+    };
+    const logPerf = (source, count = 0) => {
+      const totalMs = Date.now() - perfStartedAt;
+      const payload = { id: perfId, source, totalMs, city, count, query: req.query, steps: perfSteps };
+      const logger = totalMs >= 2000 ? console.warn : console.log;
+      logger('[PERF] admin/deliveries', payload);
+    };
     const responseCacheKey = `admin:deliveries:${city}:${req.user?.id || ''}:${req.user?.role || ''}:${req.user?.contratado || ''}:${JSON.stringify(req.query || {})}`;
     const cachedResponse = shortCache.get(responseCacheKey);
     if (cachedResponse && Date.now() - cachedResponse.createdAt < ADMIN_DELIVERIES_CACHE_MS) {
       res.set('Cache-Control', 'private, max-age=60');
+      markPerf('cache-hit', { ageMs: Date.now() - cachedResponse.createdAt });
+      logPerf('cache', cachedResponse.value?.deliveries?.length || 0);
       return res.json(cachedResponse.value);
     }
     console.log('📋 GET /admin/deliveries recebido com filtros:', { status, q, processo, container, recebedor, pontualidade, horaStatusStart, horaStatusEnd, agendamentoStart, agendamentoEnd, tempoStatusMin, tempoStatusMax, sentido, startDate, endDate, period, periodDate, city });
@@ -649,6 +666,8 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
       .select('processo processoLog recebedor remetente destinatario container armador dataAgendamento dtColeta contratado motorista linkedDeliveryId chegadaMontagemAt status createdAt observacoes origem estab sentido')
       .lean();
     console.log('  ℹ️  Total de programações (' + city + '):', programacoes ? programacoes.length : 0);
+
+    markPerf('programacoes-query', { count: programacoes ? programacoes.length : 0 });
 
     // Calcula effectiveDate se period/periodDate fornecidos
     let effectiveDate = '';
@@ -677,6 +696,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
     const icompanyRecords = await getCached(`admin:icompany:${city}`, () => Icompany.find({})
       .select('geomaritima processo codigo numero NUMERO NÚMERO container containerNumero armador tracao contratado entradaDistrito dtColeta remetente dtChegadaPlanta dtDevolucaoCNTR dtAgendamentoDescarga destinatario dtRetiraPD dtInicioDescarga dtFimDescarga sentido SENTIDO')
       .lean());
+    markPerf('icompany-query', { count: icompanyRecords ? icompanyRecords.length : 0 });
     const ycByProcess = new Map();  // processo -> [array de registros yc]
     const ycByContainer = new Map(); // container -> [array de registros yc]
     icompanyRecords.forEach(y => {
@@ -694,6 +714,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
     });
 
     // Cruzar dados de programação (por container) e construir lista combinada
+    markPerf('icompany-index', { processKeys: ycByProcess.size, containerKeys: ycByContainer.size });
     const deliveryFilter = { cityCode: city };
     if (status && status !== 'all') {
       if (status === 'CANCELADO') {
@@ -707,6 +728,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
     }
 
     const allDeliveries = await db.find("deliveries", deliveryFilter);
+    markPerf('deliveries-query', { count: allDeliveries ? allDeliveries.length : 0 });
     console.log('  ℹ️  Total de entregas na DB (' + city + '):', allDeliveries ? allDeliveries.length : 0);
 
     // Normaliza documentos para resposta
@@ -827,6 +849,8 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
 
     console.log(`  ✓ Combinação total após incluir agendadas: ${deliveriesWithProgramacao.length}`);
 
+    markPerf('combine-programacoes', { count: deliveriesWithProgramacao.length });
+
     // HELPER: Parse data string para objeto {day, month, year}
     const parseStringDate = (dateStr) => {
       if (!dateStr) return null;
@@ -944,6 +968,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
     }
 
     // começa a trabalhar com o array já filtrado (ou não)
+    markPerf('period-filter', { count: deliveriesWithProgramacao.length });
     let filtered = deliveriesWithProgramacao;
 
     if (status && status !== "all") {
@@ -1073,6 +1098,8 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
       });
     }
 
+    markPerf('filters', { count: filtered.length });
+
     const deliveriesWithFiles = filtered.map(delivery => {
       const uploadedFiles = Object.entries(delivery.documents || {})
         .filter(([, value]) => {
@@ -1089,6 +1116,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
     });
 
     // NOVO: Carregar dados de controle de protocolos para comparações
+    markPerf('files-map', { count: deliveriesWithFiles.length });
     let controleProtocolosData = [];
     try {
       const mongoose = require('mongoose');
@@ -1121,6 +1149,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
     }
 
     // HELPER FUNCTIONS para comparações
+    markPerf('controle-protocolos', { count: controleProtocolosData.length });
     const controleProtocolosDocumentMap = {
       retiradaCheio: 'RIC PORTO DESTINO',
       canhotCTE: 'COMPROVANTE DE DESOVA',
@@ -1280,9 +1309,11 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
     });
 
     console.log(`📤 Retornando ${deliveriesWithComparisons.length} entregas`);
+    markPerf('comparisons', { count: deliveriesWithComparisons.length });
     const payload = { deliveries: deliveriesWithComparisons };
     shortCache.set(responseCacheKey, { createdAt: Date.now(), value: payload });
     res.set('Cache-Control', 'private, max-age=60');
+    logPerf('fresh', deliveriesWithComparisons.length);
     return res.json(payload);
   } catch (err) {
     console.error('❌ Erro em /admin/deliveries:', err);
@@ -2668,7 +2699,6 @@ router.get("/programacoes", auth, async (req, res) => {
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum)
       .lean();
-
     let filtered = programacoes;
 
     // Fallback de refinamento em memória para formatos de data não padronizados
