@@ -697,6 +697,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
     if (sentido && sentido !== 'all') progFilter.sentido = String(sentido || '').trim().toUpperCase();
     const exactContainerFilter = container && container.trim() ? new RegExp(escapeRegex(container.trim()), 'i') : null;
     const exactProcessFilter = processo && processo.trim() ? new RegExp(escapeRegex(processo.trim()), 'i') : null;
+    const searchFilter = q && q.trim() ? new RegExp(escapeRegex(q.trim()), 'i') : null;
     if (exactContainerFilter) {
       progFilter.container = exactContainerFilter;
     }
@@ -704,6 +705,21 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
       progFilter.$and = [
         ...(progFilter.$and || []),
         { $or: [{ processo: exactProcessFilter }, { processoLog: exactProcessFilter }] }
+      ];
+    }
+    if (searchFilter) {
+      progFilter.$and = [
+        ...(progFilter.$and || []),
+        {
+          $or: [
+            { processo: searchFilter },
+            { processoLog: searchFilter },
+            { container: searchFilter },
+            { recebedor: searchFilter },
+            { contratado: searchFilter },
+            { motorista: searchFilter }
+          ]
+        }
       ];
     }
     if (effectiveDateRegexes.length) {
@@ -802,6 +818,22 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
           { processo: exactProcessFilter },
           { processNumber: exactProcessFilter },
           { deliveryNumber: exactProcessFilter }
+        ]
+      });
+    }
+    if (searchFilter) {
+      addDeliveryAndFilter({
+        $or: [
+          { deliveryNumber: searchFilter },
+          { vehiclePlate: searchFilter },
+          { userName: searchFilter },
+          { driverName: searchFilter },
+          { recebedor: searchFilter },
+          { processoCAB: searchFilter },
+          { processo: searchFilter },
+          { processNumber: searchFilter },
+          { container: searchFilter },
+          { containerNumero: searchFilter }
         ]
       });
     }
