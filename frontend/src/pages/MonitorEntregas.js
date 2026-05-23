@@ -1596,8 +1596,22 @@ const MonitorEntregas = () => {
         backendFilters.limit = GENERAL_PAGE_SIZE;
       }
       const selectedStatuses = getSelectedStatuses();
-      if (selectedStatuses.length === 1 && selectedStatuses[0] === 'CANCELADO') {
-        backendFilters.status = 'CANCELADO';
+      const backendDirectStatuses = new Set([
+        'AGENDADO',
+        'NO_PORTO_AGUARDANDO_MONTAGEM',
+        'AGUARDANDO_DESOVA',
+        'EM_DESOVA',
+        'DESATRELADO',
+        'RECUSADO_CLIENTE',
+        'DESOVA_FINALIZADA',
+        'ANEXANDO_DOCUMENTOS_FINAIS',
+        'SAINDO_CLIENTE',
+        'RETORNANDO_PORTO',
+        'CHEGOU_PORTO',
+        'CANCELADO'
+      ]);
+      if (selectedStatuses.length === 1 && backendDirectStatuses.has(selectedStatuses[0])) {
+        backendFilters.status = selectedStatuses[0];
       } else {
         delete backendFilters.status;
       }

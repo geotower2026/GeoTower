@@ -805,6 +805,18 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
       ] : []),
       ...(matchedProgramacaoDeliveryNumbers.length ? [{ deliveryNumber: { $in: matchedProgramacaoDeliveryNumbers } }] : [])
     ];
+    if (sentido && sentido !== 'all') {
+      const sentidoFilterValue = String(sentido || '').trim().toUpperCase();
+      const sentidoClauses = getMatchedProgramacaoDeliveryClauses();
+      if (sentidoClauses.length) {
+        addDeliveryAndFilter({
+          $or: [
+            ...sentidoClauses,
+            { sentido: sentidoFilterValue }
+          ]
+        });
+      }
+    }
     if (effectiveDateRegexes.length) {
       addDeliveryAndFilter({
         $or: [
@@ -1242,6 +1254,11 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
     markPerf('filters', { count: filtered.length });
     const filteredTotal = filtered.length;
     if (shouldPaginate) {
+      filtered = [...filtered].sort((a, b) => {
+        const aTime = parseDateTime(getStatusEntryTime(a, city));
+        const bTime = parseDateTime(getStatusEntryTime(b, city));
+        return (bTime?.getTime() || 0) - (aTime?.getTime() || 0);
+      });
       filtered = filtered.slice((pageNum - 1) * limitNum, pageNum * limitNum);
       markPerf('pagination', { count: filtered.length, total: filteredTotal, page: pageNum, limit: limitNum });
     }

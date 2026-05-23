@@ -1,6 +1,31 @@
 const mongoose = require('mongoose');
 
 let connected = false;
+let indexesEnsured = false;
+
+function ensureCriticalIndexes() {
+  if (indexesEnsured) return;
+  indexesEnsured = true;
+
+  try {
+    const Delivery = require('../models/Delivery');
+    const indexOptions = { background: true };
+    const indexes = [
+      { cityCode: 1, isCanceled: 1 },
+      { cityCode: 1, isCanceled: 1, updatedAt: -1 },
+      { cityCode: 1, isCanceled: 1, createdAt: -1 },
+      { cityCode: 1, deliveryNumber: 1 },
+      { cityCode: 1, linkedProgramacaoId: 1 },
+      { cityCode: 1, programacaoId: 1 }
+    ];
+
+    Promise.all(indexes.map((index) => Delivery.collection.createIndex(index, indexOptions)))
+      .then(() => console.log('[MONGO] indices criticos conferidos'))
+      .catch((err) => console.warn('[MONGO] falha ao conferir indices criticos:', err && err.message));
+  } catch (e) {
+    console.warn('[MONGO] falha ao preparar indices criticos:', e && e.message);
+  }
+}
 
 async function connectIfNeeded() {
   if (connected) return mongoose;
@@ -25,6 +50,7 @@ async function connectIfNeeded() {
 
   connected = true;
   console.log('✓ Connected to MongoDB');
+  ensureCriticalIndexes();
   return mongoose;
 }
 

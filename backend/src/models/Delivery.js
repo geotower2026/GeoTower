@@ -158,6 +158,7 @@ DeliverySchema.index({ deliveryNumber: 'text', recebedor: 'text' });
 DeliverySchema.index({ cityCode: 1, deliveryNumber: 1 });
 DeliverySchema.index({ cityCode: 1, status: 1 });
 DeliverySchema.index({ cityCode: 1, linkedProgramacaoId: 1 });
+DeliverySchema.index({ cityCode: 1, programacaoId: 1 });
 DeliverySchema.index({ userId: 1, cityCode: 1, createdAt: -1 });
 DeliverySchema.index({ userId: 1, cityCode: 1, isCanceled: 1, createdAt: -1 });
 DeliverySchema.index({ userId: 1, cityCode: 1, status: 1, isCanceled: 1, createdAt: -1 });
