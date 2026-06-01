@@ -218,6 +218,14 @@ const getPendenciaResponsavel = (item) =>
     ? String(item.pendenciaResponsavel).toLowerCase()
     : 'geolog';
 
+const isOpenPendencia = (item) => {
+  const status = String(item?.pendenciaStatus || '').trim().toUpperCase();
+  const missingDocs = Array.isArray(item?.missingDocumentsAtSubmit)
+    ? item.missingDocumentsAtSubmit
+    : [];
+  return missingDocs.length > 0 || status === 'AGUARDANDO_GEOLOG' || status === 'AGUARDANDO_GEOMAR';
+};
+
 const getUserPendenciaGroup = (role) => {
   if (role === 'geomar') return 'geomar';
   if (role === 'admin') return 'geolog';
@@ -369,6 +377,38 @@ const ListCell = ({ label, value }) => (
   </div>
 );
 
+const getLastHistoryEntry = (item) => {
+  const history = Array.isArray(item?.pendenciaHistorico)
+    ? item.pendenciaHistorico
+    : [];
+  return history[history.length - 1] || null;
+};
+
+const getListRowValues = (item, city) => {
+  const scheduleInfo = getScheduleInfo(item, city);
+  const currentOwner = getPendenciaResponsavel(item);
+  const currentConfig = RESPONSAVEL_CONFIG[currentOwner];
+  const lastHistory = getLastHistoryEntry(item);
+  const partyValue = item.recebedor || item.destinatario || item.remetente;
+  const containerValue = Array.isArray(item.containerNumero)
+    ? item.containerNumero.join(', ')
+    : item.container || item.deliveryNumber;
+
+  return {
+    processoPrincipal: item.processoCAB || item.deliveryNumber || '',
+    processoLog: item.processoLog || '',
+    container: containerValue || '',
+    recebedor: partyValue || '',
+    agendamento: scheduleInfo.value || '',
+    contratado: item.userName || '',
+    responsavel: isOpenPendencia(item) ? currentConfig.label : 'Resolvido',
+    justificativa: item.submissionObservation || item.documentsJustification || '',
+    retornoGeoMar: item.retornoGeoMar || '',
+    acao: lastHistory?.message || '',
+    dataColeta: formatScheduleValue(item.dtColeta, city),
+  };
+};
+
 const EntregasCanhotosPendentes = () => {
   const navigate = useNavigate();
   const { city } = useCity();
@@ -389,7 +429,7 @@ const EntregasCanhotosPendentes = () => {
   const loadPendencias = async () => {
     setLoading(true);
     try {
-      const res = await adminService.getCanhotosPendentes();
+      const res = await adminService.getCanhotosPendentes({ includeResolved: true });
       const deliveries = res.data?.deliveries || [];
 
       setItems(deliveries);
@@ -437,9 +477,16 @@ const EntregasCanhotosPendentes = () => {
     });
   }, [items, search]);
 
+  const openItems = useMemo(() => items.filter(isOpenPendencia), [items]);
+
+  const searchedOpenItems = useMemo(() => {
+    const openIds = new Set(openItems.map((item) => item._id));
+    return searchedItems.filter((item) => openIds.has(item._id));
+  }, [openItems, searchedItems]);
+
   const filteredItems = useMemo(() => {
-    return searchedItems.filter((item) => getPendenciaResponsavel(item) === ownerFilter);
-  }, [ownerFilter, searchedItems]);
+    return searchedOpenItems.filter((item) => getPendenciaResponsavel(item) === ownerFilter);
+  }, [ownerFilter, searchedOpenItems]);
 
   const visibleItems = viewMode === 'list' ? searchedItems : filteredItems;
 
@@ -447,11 +494,11 @@ const EntregasCanhotosPendentes = () => {
     setOwnerFilter(userPendenciaGroup || 'geomar');
   }, [userPendenciaGroup]);
 
-  const totalComGeoMar = items.filter(
+  const totalComGeoMar = openItems.filter(
     (item) => getPendenciaResponsavel(item) === 'geomar'
   ).length;
 
-  const totalComGeoLog = items.filter(
+  const totalComGeoLog = openItems.filter(
     (item) => getPendenciaResponsavel(item) === 'geolog'
   ).length;
 
@@ -463,36 +510,28 @@ const EntregasCanhotosPendentes = () => {
       'Recebedor',
       'Agendamento',
       'Contratado',
-      'Motorista',
-      'Responsável',
-      'Justificativa e último retorno',
+      'Responsavel',
+      'Justificativa',
+      'Retorno GeoMar',
+      'acao',
+      'Data da coleta',
     ];
 
     const rows = visibleItems.map((item) => {
-      const scheduleInfo = getScheduleInfo(item, city);
-      const currentOwner = getPendenciaResponsavel(item);
-      const currentConfig = RESPONSAVEL_CONFIG[currentOwner];
-      const history = Array.isArray(item.pendenciaHistorico)
-        ? item.pendenciaHistorico
-        : [];
-      const lastHistory = history[history.length - 1];
-      const partyValue = item.recebedor || item.destinatario || item.remetente;
-      const containerValue = Array.isArray(item.containerNumero)
-        ? item.containerNumero.join(', ')
-        : item.container || item.deliveryNumber;
-      const justification = item.submissionObservation || item.documentsJustification || '';
-      const lastReturn = lastHistory?.message ? `Último retorno: ${lastHistory.message}` : '';
+      const row = getListRowValues(item, city);
 
       return {
-        'Processo principal': item.processoCAB || item.deliveryNumber || '',
-        'Processo Log': item.processoLog || '',
-        Container: containerValue || '',
-        Recebedor: partyValue || '',
-        Agendamento: scheduleInfo.value || '',
-        Contratado: item.userName || '',
-        Motorista: item.driverName || '',
-        Responsável: currentConfig.label,
-        'Justificativa e último retorno': [justification, lastReturn].filter(Boolean).join('\n\n'),
+        'Processo principal': row.processoPrincipal,
+        'Processo Log': row.processoLog,
+        Container: row.container,
+        Recebedor: row.recebedor,
+        Agendamento: row.agendamento,
+        Contratado: row.contratado,
+        Responsavel: row.responsavel,
+        Justificativa: row.justificativa,
+        'Retorno GeoMar': row.retornoGeoMar,
+        acao: row.acao,
+        'Data da coleta': row.dataColeta,
       };
     });
 
@@ -856,7 +895,7 @@ const EntregasCanhotosPendentes = () => {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="min-w-[1180px] w-full border-collapse text-left">
+              <table className="min-w-[1480px] w-full border-collapse text-left">
                 <thead>
                   <tr className="bg-slate-100 border-b border-slate-200">
                     {[
@@ -866,9 +905,11 @@ const EntregasCanhotosPendentes = () => {
                       'Recebedor',
                       'Agendamento',
                       'Contratado',
-                      'Motorista',
-                      'Responsável',
-                      'Justificativa e último retorno',
+                      'Responsavel',
+                      'Justificativa',
+                      'Retorno GeoMar',
+                      'acao',
+                      'Data da coleta',
                     ].map((column) => (
                       <th
                         key={column}
@@ -881,60 +922,54 @@ const EntregasCanhotosPendentes = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {visibleItems.map((item) => {
-                    const scheduleInfo = getScheduleInfo(item, city);
+                    const row = getListRowValues(item, city);
                     const currentOwner = getPendenciaResponsavel(item);
                     const currentConfig = RESPONSAVEL_CONFIG[currentOwner];
-                    const history = Array.isArray(item.pendenciaHistorico)
-                      ? item.pendenciaHistorico
-                      : [];
-                    const lastHistory = history[history.length - 1];
-                    const partyValue = item.recebedor || item.destinatario || item.remetente;
-                    const containerValue = Array.isArray(item.containerNumero)
-                      ? item.containerNumero.join(', ')
-                      : item.container || item.deliveryNumber;
-                    const justification = item.submissionObservation || item.documentsJustification || '';
-                    const lastReturn = lastHistory?.message || '';
-
                     return (
                       <tr key={item._id} className="odd:bg-white even:bg-slate-50/70 hover:bg-amber-50/60 transition">
                         <td className="px-4 py-3 text-sm font-black text-slate-900 border-r border-slate-100 align-top">
-                          {item.processoCAB || item.deliveryNumber || '-'}
+                          {row.processoPrincipal || '-'}
                         </td>
                         <td className="px-4 py-3 text-sm font-semibold text-slate-700 border-r border-slate-100 align-top">
-                          {item.processoLog || '-'}
+                          {row.processoLog || '-'}
                         </td>
                         <td className="px-4 py-3 text-sm font-mono text-slate-700 border-r border-slate-100 align-top">
-                          {containerValue || '-'}
+                          {row.container || '-'}
                         </td>
                         <td className="px-4 py-3 text-sm font-semibold text-slate-700 border-r border-slate-100 align-top">
-                          {partyValue || '-'}
+                          {row.recebedor || '-'}
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-700 border-r border-slate-100 align-top">
-                          {scheduleInfo.value || '-'}
+                          {row.agendamento || '-'}
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-700 border-r border-slate-100 align-top">
-                          {item.userName || '-'}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-slate-700 border-r border-slate-100 align-top">
-                          {item.driverName || '-'}
+                          {row.contratado || '-'}
                         </td>
                         <td className="px-4 py-3 text-sm border-r border-slate-100 align-top">
                           <span className={cn(
                             'inline-flex rounded-full px-3 py-1 text-xs font-black border',
-                            currentConfig.badge
+                            isOpenPendencia(item) ? currentConfig.badge : 'bg-emerald-100 text-emerald-700 border-emerald-200'
                           )}>
-                            {currentConfig.label}
+                            {row.responsavel}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-700 align-top min-w-[280px] max-w-[420px]">
+                        <td className="px-4 py-3 text-sm text-slate-700 border-r border-slate-100 align-top min-w-[260px] max-w-[360px]">
                           <div className="whitespace-pre-wrap leading-relaxed">
-                            {justification || 'Sem justificativa registrada.'}
-                            {lastReturn && (
-                              <div className="mt-2 text-xs text-slate-500">
-                                <span className="font-black text-slate-700">Último retorno:</span> {lastReturn}
-                              </div>
-                            )}
+                            {row.justificativa || '-'}
                           </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-700 border-r border-slate-100 align-top min-w-[260px] max-w-[360px]">
+                          <div className="whitespace-pre-wrap leading-relaxed">
+                            {row.retornoGeoMar || '-'}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-700 border-r border-slate-100 align-top min-w-[220px] max-w-[320px]">
+                          <div className="whitespace-pre-wrap leading-relaxed">
+                            {row.acao || '-'}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-700 align-top">
+                          {row.dataColeta || '-'}
                         </td>
                       </tr>
                     );

@@ -40,7 +40,7 @@ export const adminService = {
   getStatistics: (params) => api.get('/admin/statistics', { params }),
   getDeliveryDetails: (id) => api.get(`/admin/deliveries/${id}`),
   updateDelivery: (id, data) => api.put(`/admin/deliveries/${id}`, data),
-  getCanhotosPendentes: () => api.get('/admin/canhotos-pendentes'),
+  getCanhotosPendentes: (params = {}) => api.get('/admin/canhotos-pendentes', { params }),
   updateCanhotoRetornos: (id, data) => api.put(`/admin/canhotos-pendentes/${id}/retornos`, data),
   concluirCanhotoPendencia: (id, data) => api.put(`/admin/canhotos-pendentes/${id}/concluir`, data),
   uploadCanhotoDocumento: (id, documentType, files) => {

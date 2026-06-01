@@ -191,6 +191,7 @@ const applyIcompanyEstabFilter = (filter, city) => {
 router.get("/canhotos-pendentes", auth, onlyCanhotosPendentes, async (req, res) => {
   try {
     const city = req.city || 'manaus';
+    const includeResolved = String(req.query.includeResolved || '').toLowerCase() === 'true';
     const Delivery = require('../models/Delivery');
     const ProgramacaoEntrega = require('../models/ProgramacaoEntrega');
 
@@ -198,6 +199,14 @@ router.get("/canhotos-pendentes", auth, onlyCanhotosPendentes, async (req, res) 
       $or: [
         { missingDocumentsAtSubmit: { $exists: true, $ne: [] } },
         { pendenciaStatus: { $in: ['AGUARDANDO_GEOLOG', 'AGUARDANDO_GEOMAR'] } }
+      ]
+    };
+    const historicalPendenciaFilter = {
+      $or: [
+        ...openPendenciaFilter.$or,
+        { pendenciaHistorico: { $exists: true, $ne: [] } },
+        { retornoGeoMar: { $exists: true, $nin: ['', null] } },
+        { retornoGeoLog: { $exists: true, $nin: ['', null] } }
       ]
     };
 
@@ -216,7 +225,7 @@ router.get("/canhotos-pendentes", auth, onlyCanhotosPendentes, async (req, res) 
           'ENTREGUE_COM_PENDENCIA_CANHOTO'
         ]
       },
-      ...openPendenciaFilter
+      ...(includeResolved ? historicalPendenciaFilter : openPendenciaFilter)
     }).sort({ updatedAt: -1, submittedAt: -1, createdAt: -1 }).lean();
 
     const normalizedDeliveries = deliveries.map((delivery) => normalizeDeliveryForResponse(delivery));
