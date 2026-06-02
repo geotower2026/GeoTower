@@ -131,6 +131,54 @@ const getClienteBySentido = (record) => {
   if (sentidoValue === 'DESTINO') return destinatarioValue || remetenteValue;
   return destinatarioValue || remetenteValue;
 };
+
+const normalizeContextValue = (value) =>
+  String(value || '').trim().replace(/\s+/g, ' ').toUpperCase();
+
+const getProgramacaoScheduleValue = (record) =>
+  normalizeContextValue(record?.dataAgendamento || record?.dtColeta);
+
+const deliveryBelongsToProgramacao = (delivery, programacaoId) =>
+  !!programacaoId && (
+    String(delivery?.programacaoId || '') === String(programacaoId) ||
+    String(delivery?.linkedProgramacaoId || '') === String(programacaoId)
+  );
+
+const deliveryMatchesProgramacaoContext = (delivery, programacao) => {
+  if (!delivery || !programacao) return false;
+  if (deliveryBelongsToProgramacao(delivery, programacao._id)) return true;
+
+  const deliveryNumbers = [
+    delivery.deliveryNumber,
+    delivery.processoCAB,
+    delivery.processoLog,
+    delivery.processNumber,
+    delivery.processo,
+    delivery.container
+  ].map(cleanLookupKey).filter(Boolean);
+  const programacaoNumbers = [
+    programacao.processoLog,
+    programacao.processo,
+    programacao.container
+  ].map(cleanLookupKey).filter(Boolean);
+  const sameNumber = deliveryNumbers.some((value) => programacaoNumbers.includes(value));
+  if (!sameNumber) return false;
+
+  const deliveryParty = normalizeContextValue(delivery.recebedor || delivery.destinatario || delivery.remetente);
+  const programacaoParty = normalizeContextValue(getClienteBySentido(programacao) || programacao.recebedor);
+  if (deliveryParty && programacaoParty && deliveryParty !== programacaoParty) return false;
+
+  const deliverySchedule = getProgramacaoScheduleValue(delivery);
+  const programacaoSchedule = getProgramacaoScheduleValue(programacao);
+  if (deliverySchedule && programacaoSchedule && deliverySchedule !== programacaoSchedule) return false;
+
+  const deliveryDriver = normalizeContextValue(delivery.driverName || delivery.motorista);
+  const programacaoDriver = normalizeContextValue(programacao.motorista);
+  if (deliveryDriver && programacaoDriver && deliveryDriver !== programacaoDriver) return false;
+
+  return !!(deliveryParty && programacaoParty) || !!(deliverySchedule && programacaoSchedule) || !!(deliveryDriver && programacaoDriver);
+};
+
 const addRecordToLookupMap = (map, key, record) => {
   const cleanKey = cleanLookupKey(key);
   if (!cleanKey) return;
@@ -910,7 +958,9 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
     const programacoesById = new Map();
     const addProgramacaoLookup = (prog, value) => {
       const key = cleanLookupKey(value);
-      if (key && !programacoesByLookup.has(key)) programacoesByLookup.set(key, prog);
+      if (!key) return;
+      if (!programacoesByLookup.has(key)) programacoesByLookup.set(key, []);
+      programacoesByLookup.get(key).push(prog);
     };
     programacoes.forEach((prog) => {
       if (prog._id) programacoesById.set(String(prog._id), prog);
@@ -922,11 +972,20 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
     const findProgramacaoForDelivery = (delivery) => {
       const linkedId = delivery.programacaoId || delivery.linkedProgramacaoId;
       if (linkedId && programacoesById.has(String(linkedId))) return programacoesById.get(String(linkedId));
-      return programacoesByLookup.get(cleanLookupKey(delivery.deliveryNumber)) || null;
+      const lookupKeys = [
+        delivery.deliveryNumber,
+        delivery.processoCAB,
+        delivery.processoLog,
+        delivery.processNumber,
+        delivery.processo,
+        delivery.container
+      ].map(cleanLookupKey).filter(Boolean);
+      const candidates = [...new Set(lookupKeys.flatMap((key) => programacoesByLookup.get(key) || []))];
+      return candidates.find((prog) => deliveryMatchesProgramacaoContext(delivery, prog)) || null;
     };
 
-    const deliveryNumbers = new Set();
-    normalizedDeliveries.forEach((delivery) => addLookupKey(deliveryNumbers, delivery.deliveryNumber));
+    const hasDeliveryForProgramacao = (prog) =>
+      normalizedDeliveries.some((delivery) => deliveryMatchesProgramacaoContext(delivery, prog));
 
     let deliveriesWithProgramacao = normalizedDeliveries.map(delivery => {
       const prog = findProgramacaoForDelivery(delivery);
@@ -973,9 +1032,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
 
     // adicionar programações que não têm entrega correspondente
     programacoes.forEach(prog => {
-      const programacaoKeys = [prog.processoLog, prog.processo, prog.container].map(cleanLookupKey).filter(Boolean);
-      const exists = programacaoKeys.some(key => deliveryNumbers.has(key));
-      if (!exists) {
+      if (!hasDeliveryForProgramacao(prog)) {
         // também incluir placaIcompany se existir
         const yrecArray2 = getIcompanyRecordsByNrProcesso(prog.processoLog, prog.processo);
         const yrec2 = Array.isArray(yrecArray2) ? yrecArray2[0] : yrecArray2;
