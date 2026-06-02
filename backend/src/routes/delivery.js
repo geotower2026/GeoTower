@@ -93,6 +93,43 @@ function buildProgramacaoLookupFilter(deliveryNumber, city, programacaoId) {
   return { $and: [baseFilter, cityFilter] };
 }
 
+async function syncMountStatusAcrossSameContainer({
+  ProgramacaoEntrega,
+  programacaoId,
+  city,
+  status,
+  chegadaMontagemAt
+}) {
+  if (!ProgramacaoEntrega || !programacaoId || !['NO_PORTO_AGUARDANDO_MONTAGEM', 'CONTAINER_MONTADO'].includes(status)) {
+    return;
+  }
+
+  const source = await ProgramacaoEntrega.findById(programacaoId).lean();
+  const container = String(source?.container || '').trim();
+  if (!source || !container || container === '-') return;
+
+  const cityFilter = {};
+  applyProgramacaoCityFilter(cityFilter, city);
+  const filter = {
+    ...cityFilter,
+    _id: { $ne: source._id },
+    container: new RegExp(`^${escapeRegExp(container)}$`, 'i'),
+    ativo: { $ne: false },
+    status: { $ne: 'CANCELADO' },
+    containerReturned: { $ne: true }
+  };
+  if (source.contratado) {
+    filter.contratado = new RegExp(`^${escapeRegExp(source.contratado)}$`, 'i');
+  }
+
+  const updates = { status };
+  if (status === 'NO_PORTO_AGUARDANDO_MONTAGEM') {
+    updates.chegadaMontagemAt = chegadaMontagemAt || new Date();
+  }
+
+  await ProgramacaoEntrega.updateMany(filter, { $set: updates });
+}
+
 function getSentidoKey(value) {
   return String(value || 'DESTINO').trim().toUpperCase();
 }
@@ -547,6 +584,15 @@ router.post("/", auth, async (req, res) => {
         // gravar referÃªncia para futuras consultas
         prog.linkedDeliveryId = delivery._id;
         await prog.save();
+        if (status === 'NO_PORTO_AGUARDANDO_MONTAGEM' || status === 'CONTAINER_MONTADO') {
+          await syncMountStatusAcrossSameContainer({
+            ProgramacaoEntrega,
+            programacaoId: prog._id,
+            city,
+            status,
+            chegadaMontagemAt: prog.chegadaMontagemAt || chegadaMontagemAt || new Date()
+          });
+        }
         console.log('[DELIVERY] Programacao', prog._id, 'status atualizado para', prog.status);
       }
     } catch (syncErr) {
@@ -773,6 +819,13 @@ router.put("/:id", auth, async (req, res) => {
             programacaoUpdates.chegadaMontagemAt = updated.chegadaMontagemAt || req.body.chegadaMontagemAt || new Date();
           }
           await ProgramacaoEntrega.findByIdAndUpdate(programacaoToUpdate, programacaoUpdates);
+          await syncMountStatusAcrossSameContainer({
+            ProgramacaoEntrega,
+            programacaoId: programacaoToUpdate,
+            city,
+            status: req.body.status,
+            chegadaMontagemAt: programacaoUpdates.chegadaMontagemAt
+          });
         } catch (e) {
           console.error('[PROGRAMACAO] Erro ao sincronizar status de montagem:', e.message);
         }

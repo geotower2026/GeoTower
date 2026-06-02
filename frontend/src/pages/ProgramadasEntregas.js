@@ -197,6 +197,9 @@ const getProgramacaoGroupKey = (programacao) => {
   ].join('::');
 };
 
+const getProgramacaoContainerKey = (programacao) =>
+  normalizeGroupValue(programacao?.container || programacao?.processo);
+
 const deliveryMatchesProgramacaoContext = (delivery, programacao) => {
   if (!delivery || !programacao) return false;
   if (deliveryBelongsToProgramacao(delivery, programacao._id)) return true;
@@ -672,6 +675,20 @@ const ProgramadasEntregas = () => {
     );
   };
 
+  const updateProgramacaoContainerInList = (programacao, updates) => {
+    if (!programacao) return;
+    const containerKey = getProgramacaoContainerKey(programacao);
+    if (!containerKey) return;
+    const applyUpdates = (items) => items.map(item =>
+      getProgramacaoContainerKey(item) === containerKey ? { ...item, ...updates } : item
+    );
+    setProgramacoes(applyUpdates);
+    setAllProgramacoes(applyUpdates);
+    setCurrentProgramacao(prev =>
+      prev && getProgramacaoContainerKey(prev) === containerKey ? { ...prev, ...updates } : prev
+    );
+  };
+
   const applyDeliveryUpdate = (delivery, programacaoId = currentProgramacao?._id) => {
     if (!delivery) return;
     setCurrentDelivery(delivery);
@@ -879,7 +896,8 @@ const ProgramadasEntregas = () => {
 
       const proofFile = await compressUploadFile(chegadaMontagemProof);
       await deliveryService.uploadDocument(delivery._id, 'chegadaMontagem', proofFile);
-      updateProgramacaoGroupInList(programacao, { status: 'NO_PORTO_AGUARDANDO_MONTAGEM', linkedDeliveryId: delivery._id });
+      updateProgramacaoContainerInList(programacao, { status: 'NO_PORTO_AGUARDANDO_MONTAGEM', chegadaMontagemAt: now });
+      updateProgramacaoInList(programacao._id, { linkedDeliveryId: delivery._id });
       setToast({ message: 'Chegada no porto registrada. Agora pode iniciar a montagem.', type: 'success' });
       closeChegadaMontagemModal();
       setMontagemProgramacao({ ...programacao, status: 'NO_PORTO_AGUARDANDO_MONTAGEM', linkedDeliveryId: delivery._id });
@@ -1000,6 +1018,8 @@ const ProgramadasEntregas = () => {
         compressedComprovas.push(await compressUploadFile(file));
       }
       await deliveryService.uploadDocument(delivery._id, 'retiradaCheio', compressedComprovas);
+      updateProgramacaoContainerInList(montagemProgramacao, { status: 'CONTAINER_MONTADO' });
+      updateProgramacaoInList(montagemProgramacao._id, { linkedDeliveryId: delivery._id });
       setToast({ message: 'Container montado com sucesso!', type: 'success' });
       await loadProgramacoes({ silent: true });
       setShowMontagemModal(false); 
