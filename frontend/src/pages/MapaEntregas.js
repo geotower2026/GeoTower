@@ -2,12 +2,12 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FaArrowLeft,
-  FaCrosshairs,
   FaExternalLinkAlt,
   FaMapMarkerAlt,
   FaSatelliteDish,
   FaSync,
   FaTruck,
+  FaUser,
 } from 'react-icons/fa';
 import { adminService } from '../services/authService';
 import { useCity } from '../contexts/CityContext';
@@ -15,6 +15,8 @@ import { getProgramacaoDate } from '../utils/programacaoDate';
 import { formatarAgendamento } from '../utils/date';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
+const LIVE_MS = 2 * 60 * 1000;
+const RECENT_MS = 10 * 60 * 1000;
 
 const formatCoordinate = (value) =>
   typeof value === 'number' ? value.toFixed(6) : '-';
@@ -30,9 +32,44 @@ const getContainerValue = (item) => {
   return item.container || item.containerNumero || item.deliveryNumber || '-';
 };
 
-const getMapSrc = (position) => {
-  if (!position) return '';
-  const { latitude, longitude } = position;
+const getLocation = (item) => {
+  const loc = item?.lastLocation;
+  const latitude = Number(loc?.latitude);
+  const longitude = Number(loc?.longitude);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  return {
+    latitude,
+    longitude,
+    accuracy: Number(loc?.accuracy),
+    updatedAt: loc?.updatedAt || loc?.capturedAt || item?.updatedAt,
+  };
+};
+
+const getLocationAge = (loc) => {
+  const time = new Date(loc?.updatedAt || 0).getTime();
+  if (!Number.isFinite(time) || time <= 0) return Infinity;
+  return Date.now() - time;
+};
+
+const getLocationState = (loc) => {
+  const age = getLocationAge(loc);
+  if (age <= LIVE_MS) return 'live';
+  if (age <= RECENT_MS) return 'recent';
+  return 'stale';
+};
+
+const formatLocationAge = (loc) => {
+  const age = getLocationAge(loc);
+  if (!Number.isFinite(age)) return 'sem horario';
+  const minutes = Math.max(0, Math.floor(age / 60000));
+  if (minutes <= 0) return 'agora';
+  if (minutes === 1) return 'ha 1 min';
+  return `ha ${minutes} min`;
+};
+
+const getMapSrc = (location) => {
+  if (!location) return '';
+  const { latitude, longitude } = location;
   const delta = 0.018;
   const bbox = [
     longitude - delta,
@@ -46,75 +83,69 @@ const getMapSrc = (position) => {
 const MapaEntregas = () => {
   const navigate = useNavigate();
   const { city } = useCity();
-  const [position, setPosition] = useState(null);
-  const [locationStatus, setLocationStatus] = useState('idle');
-  const [locationError, setLocationError] = useState('');
   const [items, setItems] = useState([]);
   const [loadingItems, setLoadingItems] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [selectedId, setSelectedId] = useState('');
+  const [lastRefresh, setLastRefresh] = useState(null);
 
-  const mapSrc = useMemo(() => getMapSrc(position), [position]);
-  const mapsLink = position
-    ? `https://www.google.com/maps/search/?api=1&query=${position.latitude},${position.longitude}`
-    : '';
-
-  const requestLocation = useCallback(() => {
-    if (!navigator.geolocation) {
-      setLocationStatus('error');
-      setLocationError('Este navegador não permite leitura de localização.');
-      return undefined;
-    }
-
-    setLocationStatus('loading');
-    setLocationError('');
-
-    const watcher = navigator.geolocation.watchPosition(
-      (geo) => {
-        setPosition({
-          latitude: geo.coords.latitude,
-          longitude: geo.coords.longitude,
-          accuracy: geo.coords.accuracy,
-          updatedAt: new Date().toISOString(),
-        });
-        setLocationStatus('ready');
-      },
-      (error) => {
-        setLocationStatus('error');
-        setLocationError(error?.message || 'Não foi possível obter a localização.');
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 15000,
-        timeout: 15000,
-      }
-    );
-
-    return watcher;
-  }, []);
-
-  useEffect(() => {
-    const watcher = requestLocation();
-    return () => {
-      if (watcher !== undefined && navigator.geolocation) {
-        navigator.geolocation.clearWatch(watcher);
-      }
-    };
-  }, [requestLocation]);
-
-  const loadItems = useCallback(async () => {
-    setLoadingItems(true);
+  const loadItems = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoadingItems(true);
+    setRefreshing(true);
     try {
-      const res = await adminService.getDeliveries({}, 'today');
+      const res = await adminService.getDeliveries({ _refresh: Date.now() }, 'today');
       setItems(res.data?.deliveries || []);
+      setLastRefresh(new Date().toISOString());
     } catch (_) {
       setItems([]);
     } finally {
-      setLoadingItems(false);
+      if (!silent) setLoadingItems(false);
+      setRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
     loadItems();
+    const interval = setInterval(() => loadItems({ silent: true }), 15000);
+    return () => clearInterval(interval);
   }, [loadItems, city]);
+
+  const sortedItems = useMemo(() => {
+    return [...items].sort((a, b) => {
+      const locA = getLocation(a);
+      const locB = getLocation(b);
+      const timeA = new Date(locA?.updatedAt || 0).getTime();
+      const timeB = new Date(locB?.updatedAt || 0).getTime();
+      if (!!locA !== !!locB) return locA ? -1 : 1;
+      return timeB - timeA;
+    });
+  }, [items]);
+
+  const itemsWithLocation = useMemo(
+    () => sortedItems.filter((item) => !!getLocation(item)),
+    [sortedItems]
+  );
+
+  useEffect(() => {
+    if (itemsWithLocation.length === 0) {
+      setSelectedId('');
+      return;
+    }
+    if (!selectedId || !itemsWithLocation.some((item) => String(item._id) === String(selectedId))) {
+      setSelectedId(String(itemsWithLocation[0]._id));
+    }
+  }, [itemsWithLocation, selectedId]);
+
+  const selectedItem = useMemo(
+    () => itemsWithLocation.find((item) => String(item._id) === String(selectedId)) || itemsWithLocation[0] || null,
+    [itemsWithLocation, selectedId]
+  );
+  const selectedLocation = getLocation(selectedItem);
+  const mapSrc = useMemo(() => getMapSrc(selectedLocation), [selectedLocation]);
+  const mapsLink = selectedLocation
+    ? `https://www.google.com/maps/search/?api=1&query=${selectedLocation.latitude},${selectedLocation.longitude}`
+    : '';
+  const selectedLocationState = getLocationState(selectedLocation);
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
@@ -138,60 +169,61 @@ const MapaEntregas = () => {
                 Mapa das Entregas
               </h1>
               <p className="mt-1 max-w-2xl text-sm leading-6 text-cyan-50/80">
-                Acompanhe sua posição real e use a lista lateral para orientar as entregas em andamento.
+                Acompanhe em tempo real o ultimo GPS compartilhado pelos motoristas em rota.
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            {lastRefresh && (
+              <span className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-bold text-cyan-50/80">
+                Atualizado {formatLocationAge({ updatedAt: lastRefresh })}
+              </span>
+            )}
             <button
               type="button"
-              onClick={requestLocation}
-              className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-black text-slate-950 transition hover:bg-cyan-50"
-            >
-              <FaCrosshairs />
-              Atualizar posição
-            </button>
-            <button
-              type="button"
-              onClick={loadItems}
+              onClick={() => loadItems()}
               className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-black text-white transition hover:bg-white/20"
             >
-              <FaSync />
-              Atualizar entregas
+              <FaSync className={refreshing ? 'animate-spin' : ''} />
+              Atualizar
             </button>
           </div>
         </div>
       </div>
 
-      <div className="mx-auto grid max-w-7xl gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[1fr_380px]">
+      <div className="mx-auto grid max-w-7xl gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[1fr_400px]">
         <section className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900 shadow-2xl">
-          <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+          <div className="flex items-center justify-between gap-4 border-b border-white/10 px-4 py-3">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">
-                Localização atual
+                Motorista selecionado
               </p>
               <p className="mt-1 text-sm font-semibold text-slate-200">
-                {position
-                  ? `${formatCoordinate(position.latitude)}, ${formatCoordinate(position.longitude)}`
-                  : 'Aguardando permissão do navegador'}
+                {selectedItem
+                  ? `${selectedItem.driverName || selectedItem.userName || 'Motorista'} - ${selectedItem.processoCAB || selectedItem.processo || selectedItem.deliveryNumber || '-'}`
+                  : 'Nenhum GPS ativo no momento'}
               </p>
+              {selectedLocation && (
+                <p className="mt-1 text-xs text-slate-400">
+                  {formatCoordinate(selectedLocation.latitude)}, {formatCoordinate(selectedLocation.longitude)}
+                </p>
+              )}
             </div>
             <span className={cn(
               'rounded-full px-3 py-1 text-xs font-black',
-              locationStatus === 'ready' && 'bg-emerald-400/15 text-emerald-200',
-              locationStatus === 'loading' && 'bg-amber-400/15 text-amber-200',
-              locationStatus === 'error' && 'bg-red-400/15 text-red-200',
-              locationStatus === 'idle' && 'bg-slate-700 text-slate-200'
+              selectedLocationState === 'live' && 'bg-emerald-400/15 text-emerald-200',
+              selectedLocationState === 'recent' && 'bg-amber-400/15 text-amber-200',
+              selectedLocationState === 'stale' && 'bg-slate-700 text-slate-200'
             )}>
-              {locationStatus === 'ready' ? 'AO VIVO' : locationStatus === 'loading' ? 'BUSCANDO' : locationStatus === 'error' ? 'ERRO' : 'PARADO'}
+              {selectedLocation ? formatLocationAge(selectedLocation) : 'SEM GPS'}
             </span>
           </div>
 
           <div className="relative h-[62vh] min-h-[420px] bg-slate-800">
             {mapSrc ? (
               <iframe
-                title="Mapa da localização atual"
+                title="Mapa da localizacao do motorista"
                 src={mapSrc}
                 className="h-full w-full border-0"
                 loading="lazy"
@@ -201,20 +233,17 @@ const MapaEntregas = () => {
                 <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 text-cyan-200">
                   <FaMapMarkerAlt size={24} />
                 </div>
-                <h2 className="text-lg font-black">Permita sua localização</h2>
+                <h2 className="text-lg font-black">Aguardando GPS dos motoristas</h2>
                 <p className="mt-2 max-w-md text-sm leading-6 text-slate-300">
-                  O mapa usa a localização real do usuário somente enquanto esta página estiver aberta.
+                  Quando o motorista abrir uma entrega e permitir localizacao no navegador, o ponto aparece aqui.
                 </p>
-                {locationError && (
-                  <p className="mt-3 text-sm font-semibold text-red-200">{locationError}</p>
-                )}
               </div>
             )}
           </div>
 
           <div className="flex flex-col gap-3 border-t border-white/10 px-4 py-3 text-xs text-slate-300 sm:flex-row sm:items-center sm:justify-between">
             <span>
-              Precisão: {position?.accuracy ? `${Math.round(position.accuracy)} m` : '-'}
+              Precisao: {selectedLocation?.accuracy ? `${Math.round(selectedLocation.accuracy)} m` : '-'}
             </span>
             {mapsLink && (
               <a
@@ -233,26 +262,37 @@ const MapaEntregas = () => {
         <aside className="rounded-2xl border border-white/10 bg-slate-900 shadow-2xl">
           <div className="border-b border-white/10 px-4 py-4">
             <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">
-              Entregas
+              Entregas rastreadas
             </p>
             <h2 className="mt-1 text-lg font-black">
-              {loadingItems ? 'Carregando...' : `${items.length} registro${items.length === 1 ? '' : 's'}`}
+              {loadingItems ? 'Carregando...' : `${itemsWithLocation.length} com GPS / ${items.length} entregas`}
             </h2>
           </div>
 
           <div className="max-h-[68vh] overflow-y-auto p-3">
-            {items.length === 0 && !loadingItems ? (
+            {sortedItems.length === 0 && !loadingItems ? (
               <div className="rounded-xl border border-dashed border-white/15 px-4 py-10 text-center text-sm text-slate-400">
-                Nenhuma entrega encontrada para o seu perfil.
+                Nenhuma entrega encontrada para hoje.
               </div>
             ) : (
               <div className="space-y-3">
-                {items.slice(0, 80).map((item) => {
+                {sortedItems.slice(0, 100).map((item) => {
                   const schedule = getProgramacaoDate(item, city);
+                  const loc = getLocation(item);
+                  const locState = getLocationState(loc);
+                  const hasLocation = !!loc;
+                  const selected = hasLocation && String(item._id) === String(selectedItem?._id);
                   return (
-                    <div
+                    <button
                       key={item._id || item.deliveryNumber || item.processo}
-                      className="rounded-xl border border-white/10 bg-white/[0.04] p-3 transition hover:bg-white/[0.07]"
+                      type="button"
+                      disabled={!hasLocation}
+                      onClick={() => setSelectedId(String(item._id))}
+                      className={cn(
+                        'w-full rounded-xl border p-3 text-left transition',
+                        selected ? 'border-cyan-300 bg-cyan-300/10' : 'border-white/10 bg-white/[0.04]',
+                        hasLocation ? 'hover:bg-white/[0.07]' : 'cursor-not-allowed opacity-55'
+                      )}
                     >
                       <div className="mb-2 flex items-start justify-between gap-3">
                         <div>
@@ -263,11 +303,21 @@ const MapaEntregas = () => {
                             {item.processoCAB || item.processo || item.deliveryNumber || '-'}
                           </p>
                         </div>
-                        <span className="rounded-full bg-cyan-400/15 px-2.5 py-1 text-[10px] font-black text-cyan-200">
-                          {getStatusLabel(item.status)}
+                        <span className={cn(
+                          'rounded-full px-2.5 py-1 text-[10px] font-black',
+                          !hasLocation && 'bg-slate-700 text-slate-300',
+                          hasLocation && locState === 'live' && 'bg-emerald-400/15 text-emerald-200',
+                          hasLocation && locState === 'recent' && 'bg-amber-400/15 text-amber-200',
+                          hasLocation && locState === 'stale' && 'bg-slate-700 text-slate-200'
+                        )}>
+                          {hasLocation ? formatLocationAge(loc) : 'SEM GPS'}
                         </span>
                       </div>
                       <div className="space-y-1 text-xs leading-5 text-slate-300">
+                        <p className="flex items-center gap-2">
+                          <FaUser className="text-cyan-300" />
+                          {item.driverName || item.userName || 'Motorista nao informado'}
+                        </p>
                         <p className="flex items-center gap-2">
                           <FaTruck className="text-emerald-300" />
                           {getContainerValue(item)}
@@ -276,11 +326,12 @@ const MapaEntregas = () => {
                           <FaMapMarkerAlt className="text-violet-300" />
                           {getPartyName(item)}
                         </p>
-                        <p className="text-slate-400">
-                          {schedule ? formatarAgendamento(schedule) : 'Sem agendamento'}
-                        </p>
+                        <div className="flex items-center justify-between gap-3 pt-1 text-slate-400">
+                          <span>{schedule ? formatarAgendamento(schedule) : 'Sem agendamento'}</span>
+                          <span className="font-black text-cyan-200">{getStatusLabel(item.status)}</span>
+                        </div>
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>

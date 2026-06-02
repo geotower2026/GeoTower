@@ -494,6 +494,9 @@ const ProgramadasEntregas = () => {
   const [fromPendingNav, setFromPendingNav] = useState(false);
   const [currentDelivery, setCurrentDelivery] = useState(null);
   const [currentProgramacao, setCurrentProgramacao] = useState(null);
+  const [trackingStatus, setTrackingStatus] = useState('idle');
+  const [trackingError, setTrackingError] = useState('');
+  const [lastTrackingAt, setLastTrackingAt] = useState(null);
   const [photos, setPhotos] = useState([]);
   const [observations, setObservations] = useState('');
   const [justification, setJustification] = useState('');
@@ -510,6 +513,7 @@ const ProgramadasEntregas = () => {
   const submittingRef = useRef(false);
   const processingPhotoRef = useRef(false);
   const syncingProgramacoesRef = useRef(false);
+  const locationSendRef = useRef(0);
   const [cameraInputKey, setCameraInputKey] = useState(0);
 
   const [showMontagemModal, setShowMontagemModal] = useState(false);
@@ -558,6 +562,69 @@ const ProgramadasEntregas = () => {
   useEffect(() => {
     processingPhotoRef.current = processingPhoto;
   }, [processingPhoto]);
+
+  useEffect(() => {
+    if (!showModal || !currentDelivery?._id) {
+      setTrackingStatus('idle');
+      setTrackingError('');
+      return undefined;
+    }
+
+    if (!navigator.geolocation) {
+      setTrackingStatus('error');
+      setTrackingError('GPS indisponivel neste navegador');
+      return undefined;
+    }
+
+    let active = true;
+    locationSendRef.current = 0;
+    setTrackingStatus('loading');
+    setTrackingError('');
+
+    const sendLocation = async (geo, force = false) => {
+      const now = Date.now();
+      if (!force && now - locationSendRef.current < 10000) return;
+      locationSendRef.current = now;
+
+      try {
+        await deliveryService.updateLocation(currentDelivery._id, {
+          latitude: geo.coords.latitude,
+          longitude: geo.coords.longitude,
+          accuracy: geo.coords.accuracy,
+          heading: geo.coords.heading,
+          speed: geo.coords.speed,
+          capturedAt: new Date(geo.timestamp || Date.now()).toISOString(),
+          currentStep
+        });
+        if (!active) return;
+        setTrackingStatus('live');
+        setLastTrackingAt(new Date().toISOString());
+      } catch (err) {
+        if (!active) return;
+        setTrackingStatus('error');
+        setTrackingError(err.response?.data?.message || 'Falha ao enviar GPS');
+      }
+    };
+
+    const watcher = navigator.geolocation.watchPosition(
+      (geo) => sendLocation(geo, locationSendRef.current === 0),
+      (error) => {
+        if (!active) return;
+        setTrackingStatus('error');
+        setTrackingError(error?.message || 'Permita o compartilhamento de localizacao');
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 10000,
+        timeout: 15000
+      }
+    );
+
+    return () => {
+      active = false;
+      if (watcher !== undefined) navigator.geolocation.clearWatch(watcher);
+    };
+  }, [showModal, currentDelivery?._id, currentStep]);
 
   useEffect(() => () => {
     revokePhotoPreviews(photosRef.current);
@@ -826,6 +893,9 @@ const ProgramadasEntregas = () => {
     setArrivalDelayReason('');
     setArrivalDelayComment('');
     setArrivalDelayError('');
+    setTrackingStatus('idle');
+    setTrackingError('');
+    setLastTrackingAt(null);
     loadProgramacoes({ silent: true });
     // Não recarrega lista - polling automático já sincroniza a cada 30s
   };
@@ -2505,6 +2575,23 @@ const ProgramadasEntregas = () => {
                 </button>
               </div>
               <FlowStepBar currentStep={currentStep} sentido={currentSentido} />
+              <div className={`mt-3 rounded-xl px-3 py-2 text-xs font-bold ${
+                trackingStatus === 'live' ? 'bg-emerald-400/20 text-emerald-50 border border-emerald-300/30' :
+                trackingStatus === 'loading' ? 'bg-amber-400/20 text-amber-50 border border-amber-300/30' :
+                trackingStatus === 'error' ? 'bg-red-400/20 text-red-50 border border-red-300/30' :
+                'bg-white/10 text-white/70 border border-white/10'
+              }`}>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="inline-flex items-center gap-2">
+                    <FaMapMarkerAlt size={12} />
+                    {trackingStatus === 'live' ? 'GPS compartilhado' : trackingStatus === 'loading' ? 'Buscando GPS' : trackingStatus === 'error' ? 'GPS nao compartilhado' : 'GPS parado'}
+                  </span>
+                  {lastTrackingAt && trackingStatus === 'live' && (
+                    <span className="text-[10px] text-white/70">{formatarHora(lastTrackingAt)}</span>
+                  )}
+                </div>
+                {trackingError && <p className="mt-1 text-[11px] text-white/80">{trackingError}</p>}
+              </div>
             </div>
 
             {/* Modal body */}

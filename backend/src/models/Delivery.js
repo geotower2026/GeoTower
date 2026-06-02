@@ -25,6 +25,17 @@ const DeliverySchema = new mongoose.Schema(
     // registrar quando o motorista iniciou a rota de entrega
     tripStartedAt: { type: Date },
 
+    lastLocation: {
+      latitude: { type: Number },
+      longitude: { type: Number },
+      accuracy: { type: Number },
+      heading: { type: Number },
+      speed: { type: Number },
+      capturedAt: { type: Date },
+      updatedAt: { type: Date },
+      source: { type: String, default: "browser" }
+    },
+
     // registrar quando o container foi montado
     chegadaMontagemAt: { type: Date },
     containerMontadoAt: { type: Date },
@@ -162,5 +173,6 @@ DeliverySchema.index({ cityCode: 1, programacaoId: 1 });
 DeliverySchema.index({ userId: 1, cityCode: 1, createdAt: -1 });
 DeliverySchema.index({ userId: 1, cityCode: 1, isCanceled: 1, createdAt: -1 });
 DeliverySchema.index({ userId: 1, cityCode: 1, status: 1, isCanceled: 1, createdAt: -1 });
+DeliverySchema.index({ cityCode: 1, "lastLocation.updatedAt": -1 });
 
 module.exports = mongoose.model("Delivery", DeliverySchema);

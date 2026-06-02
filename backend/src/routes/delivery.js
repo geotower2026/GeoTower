@@ -277,6 +277,29 @@ function isReturnedDelivery(delivery) {
   );
 }
 
+function normalizeLocationPayload(payload = {}) {
+  const latitude = Number(payload.latitude);
+  const longitude = Number(payload.longitude);
+  if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) return null;
+  if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) return null;
+
+  const accuracy = Number(payload.accuracy);
+  const heading = Number(payload.heading);
+  const speed = Number(payload.speed);
+  const capturedAt = payload.capturedAt ? new Date(payload.capturedAt) : new Date();
+
+  return {
+    latitude,
+    longitude,
+    accuracy: Number.isFinite(accuracy) ? accuracy : undefined,
+    heading: Number.isFinite(heading) ? heading : undefined,
+    speed: Number.isFinite(speed) ? speed : undefined,
+    capturedAt: Number.isNaN(capturedAt.getTime()) ? new Date() : capturedAt,
+    updatedAt: new Date(),
+    source: 'browser'
+  };
+}
+
 function deliveryNumberMatchesProgramacao(delivery, programacao) {
   const deliveryNumber = String(delivery?.deliveryNumber || '').trim().toUpperCase();
   if (!deliveryNumber || !programacao) return false;
@@ -698,6 +721,49 @@ router.get("/:id", auth, async (req, res) => {
   } catch (err) {
     console.error('Error fetching delivery', err);
     res.status(500).json({ message: 'Erro ao buscar entrega' });
+  }
+});
+
+// =======================
+// Atualizar localizacao em tempo real da entrega
+// POST /api/deliveries/:id/location
+// =======================
+router.post("/:id/location", auth, async (req, res) => {
+  try {
+    const db = await getDb(req);
+    const city = req.city || 'manaus';
+    const { id } = req.params;
+    const delivery = await db.findById("deliveries", id);
+
+    if (!delivery) return res.status(404).json({ message: "Entrega nao encontrada" });
+    if (delivery.cityCode !== city) {
+      return res.status(403).json({ message: 'Acesso negado - dados de outra cidade' });
+    }
+    if (!(await canAccessDelivery(req, delivery, db))) {
+      return res.status(403).json({ message: 'Acesso negado' });
+    }
+
+    const lastLocation = normalizeLocationPayload(req.body);
+    if (!lastLocation) {
+      return res.status(400).json({ message: 'Localizacao invalida' });
+    }
+
+    const updates = { lastLocation };
+    if (req.body.currentStep !== undefined) updates.currentStep = req.body.currentStep;
+    const updated = await updateDeliveryAtomic(delivery._id, updates);
+    clearProgramacoesMineCache(city);
+
+    try {
+      const adminRoute = require('./admin');
+      if (typeof adminRoute.clearAdminDeliveriesCache === 'function') {
+        adminRoute.clearAdminDeliveriesCache(city);
+      }
+    } catch (_) {}
+
+    res.json({ success: true, lastLocation: updated.lastLocation });
+  } catch (err) {
+    console.error('Error updating delivery location', err);
+    res.status(500).json({ message: 'Erro ao atualizar localizacao' });
   }
 });
 

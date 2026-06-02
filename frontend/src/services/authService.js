@@ -168,7 +168,8 @@ export const deliveryService = {
     api.delete(`/deliveries/${deliveryId}/documents/${documentType}/${index}`),
   submitDelivery: (id, data = {}) => api.post(`/deliveries/${id}/submit`, data),
   deleteDelivery: (id) => api.delete(`/deliveries/${id}`),
-  updateDelivery: (id, data) => api.put(`/deliveries/${id}`, data)
+  updateDelivery: (id, data) => api.put(`/deliveries/${id}`, data),
+  updateLocation: (id, data) => api.post(`/deliveries/${id}/location`, data)
 };
 
 // Serviço de notificações

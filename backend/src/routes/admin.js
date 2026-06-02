@@ -24,6 +24,11 @@ const clearShortCacheByPrefix = (prefix) => {
   }
 };
 
+const clearAdminDeliveriesCache = (city) => {
+  const prefix = city ? `admin:deliveries:${city}:` : 'admin:deliveries:';
+  clearShortCacheByPrefix(prefix);
+};
+
 const getCached = async (key, loader, ttl = SHORT_CACHE_MS) => {
   const cached = shortCache.get(key);
   if (cached && Date.now() - cached.createdAt < ttl) return cached.value;
@@ -930,6 +935,7 @@ router.get("/deliveries", auth, onlyAdmin, async (req, res) => {
       'arrivedAt', 'tripStartedAt', 'chegadaMontagemAt', 'containerMontadoAt',
       'desovaStartAt', 'desovaEndAt', 'desovaStartedAt', 'docsStartedAt',
       'saidaClienteAt', 'chegadaPortoAt', 'horarioDevolucaoVazio',
+      'lastLocation',
       'recebedor', 'armador', 'userId', 'userName', 'userEmail', 'deliveryDate',
       'cityCode', 'linkedProgramacaoId', 'programacaoId', 'documents',
       'isCanceled', 'canceledAt', 'createdAt', 'updatedAt',
@@ -3068,7 +3074,7 @@ router.get("/programacoes", auth, async (req, res) => {
       isCanceled: { $ne: true },
       $or: deliveryOr
     })
-      .select('_id deliveryNumber vehiclePlate observations driverName status arrivedAt tripStartedAt chegadaMontagemAt containerMontadoAt desovaStartAt desovaEndAt saidaClienteAt chegadaPortoAt horarioDevolucaoVazio recebedor armador userId userName userEmail deliveryDate cityCode linkedProgramacaoId programacaoId documents isCanceled canceledAt createdAt updatedAt processoCAB processoLog processo processNumber container dataAgendamento dtColeta missingDocumentsAtSubmit containerReturned')
+      .select('_id deliveryNumber vehiclePlate observations driverName status arrivedAt tripStartedAt chegadaMontagemAt containerMontadoAt desovaStartAt desovaEndAt saidaClienteAt chegadaPortoAt horarioDevolucaoVazio lastLocation recebedor armador userId userName userEmail deliveryDate cityCode linkedProgramacaoId programacaoId documents isCanceled canceledAt createdAt updatedAt processoCAB processoLog processo processNumber container dataAgendamento dtColeta missingDocumentsAtSubmit containerReturned')
       .lean() : [];
 
     // Cria mapas de entregas para lookup O(1)
@@ -3628,6 +3634,8 @@ router.get("/programacoes/sync/icompany", auth, managerOnly, async (req, res) =>
     });
   }
 });
+
+router.clearAdminDeliveriesCache = clearAdminDeliveriesCache;
 
 module.exports = router;
 
