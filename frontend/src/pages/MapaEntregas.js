@@ -67,17 +67,89 @@ const formatLocationAge = (loc) => {
   return `ha ${minutes} min`;
 };
 
-const getMapSrc = (location) => {
-  if (!location) return '';
-  const { latitude, longitude } = location;
-  const delta = 0.018;
-  const bbox = [
-    longitude - delta,
-    latitude - delta,
-    longitude + delta,
-    latitude + delta,
-  ].join(',');
-  return `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bbox)}&layer=mapnik&marker=${latitude},${longitude}`;
+const lngLatToTile = (latitude, longitude, zoom) => {
+  const latRad = latitude * Math.PI / 180;
+  const scale = 2 ** zoom;
+  return {
+    x: (longitude + 180) / 360 * scale,
+    y: (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * scale,
+  };
+};
+
+const clampTile = (value, zoom) => {
+  const max = (2 ** zoom) - 1;
+  return Math.max(0, Math.min(max, value));
+};
+
+const DriverTileMap = ({ location, item }) => {
+  if (!location) return null;
+
+  const zoom = 15;
+  const tile = lngLatToTile(location.latitude, location.longitude, zoom);
+  const centerX = Math.floor(tile.x);
+  const centerY = Math.floor(tile.y);
+  const offsetX = (tile.x - centerX) * 256;
+  const offsetY = (tile.y - centerY) * 256;
+
+  return (
+    <div className="relative h-full w-full overflow-hidden bg-slate-800">
+      <div
+        className="absolute left-1/2 top-1/2 h-[768px] w-[768px]"
+        style={{
+          transform: `translate(calc(-50% - ${offsetX}px), calc(-50% - ${offsetY}px))`,
+        }}
+      >
+        {[-1, 0, 1].flatMap((dy) =>
+          [-1, 0, 1].map((dx) => {
+            const x = clampTile(centerX + dx, zoom);
+            const y = clampTile(centerY + dy, zoom);
+            return (
+              <img
+                key={`${x}-${y}`}
+                src={`https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`}
+                alt=""
+                className="absolute h-64 w-64 select-none"
+                style={{ left: `${(dx + 1) * 256}px`, top: `${(dy + 1) * 256}px` }}
+                draggable={false}
+              />
+            );
+          })
+        )}
+      </div>
+
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-slate-950/20 pointer-events-none" />
+
+      <div className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-full">
+        <div className="relative flex flex-col items-center">
+          <div className="rounded-2xl border border-cyan-200/60 bg-slate-950/95 px-3 py-2 text-center shadow-2xl">
+            <p className="max-w-[220px] truncate text-xs font-black text-white">
+              {item?.driverName || item?.userName || 'Motorista'}
+            </p>
+            <p className="text-[10px] font-bold text-cyan-200">
+              {item?.processoCAB || item?.processo || item?.deliveryNumber || '-'}
+            </p>
+          </div>
+          <div className="h-5 w-5 rotate-45 rounded-sm border-b border-r border-cyan-200/60 bg-slate-950/95 -mt-2" />
+          <div className="mt-[-2px] h-4 w-4 rounded-full border-2 border-white bg-cyan-400 shadow-[0_0_0_8px_rgba(34,211,238,0.25)]" />
+        </div>
+      </div>
+
+      {Number.isFinite(location.accuracy) && location.accuracy > 0 && (
+        <div className="absolute bottom-3 left-3 rounded-xl border border-white/15 bg-slate-950/85 px-3 py-2 text-xs font-bold text-slate-100">
+          Precisao aproximada: {Math.round(location.accuracy)} m
+        </div>
+      )}
+
+      <a
+        href="https://www.openstreetmap.org/copyright"
+        target="_blank"
+        rel="noreferrer"
+        className="absolute bottom-3 right-3 rounded-lg bg-white/90 px-2 py-1 text-[10px] font-bold text-slate-700"
+      >
+        OpenStreetMap
+      </a>
+    </div>
+  );
 };
 
 const MapaEntregas = () => {
@@ -141,7 +213,6 @@ const MapaEntregas = () => {
     [itemsWithLocation, selectedId]
   );
   const selectedLocation = getLocation(selectedItem);
-  const mapSrc = useMemo(() => getMapSrc(selectedLocation), [selectedLocation]);
   const mapsLink = selectedLocation
     ? `https://www.google.com/maps/search/?api=1&query=${selectedLocation.latitude},${selectedLocation.longitude}`
     : '';
@@ -221,13 +292,8 @@ const MapaEntregas = () => {
           </div>
 
           <div className="relative h-[62vh] min-h-[420px] bg-slate-800">
-            {mapSrc ? (
-              <iframe
-                title="Mapa da localizacao do motorista"
-                src={mapSrc}
-                className="h-full w-full border-0"
-                loading="lazy"
-              />
+            {selectedLocation ? (
+              <DriverTileMap location={selectedLocation} item={selectedItem} />
             ) : (
               <div className="flex h-full flex-col items-center justify-center px-6 text-center">
                 <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 text-cyan-200">
