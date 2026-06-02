@@ -30,6 +30,7 @@ import EntregasCanhotosPendentes from './pages/EntregasCanhotosPendentes';
 import Reconciliation from './pages/Reconciliation';
 import Profile from './pages/Profile';
 import EntregaEmRota from './pages/EntregaEmRota';
+import MapaEntregas from './pages/MapaEntregas';
 
 function AppContent() {
   const { isAuthenticated } = useAuth();
@@ -177,6 +178,17 @@ function AppContent() {
           <PrivateRoute>
             <AppLayout>
               <EntregasEmAndamento />
+            </AppLayout>
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/mapa-entregas"
+        element={
+          <PrivateRoute allowedRoles={['admin', 'manager']}>
+            <AppLayout>
+              <MapaEntregas />
             </AppLayout>
           </PrivateRoute>
         }

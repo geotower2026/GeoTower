@@ -1068,6 +1068,20 @@ const Home = () => {
                 viewOnly={false}
                 delay={120}
               />
+              {hasAccess(['admin','manager']) && (
+                <MonitorCard
+                  onClick={() => navigate('/mapa-entregas')}
+                  disabled={false}
+                  accentColor="#0891B2"
+                  accentDark="#0E7490"
+                  icon={<FaMapMarkerAlt />}
+                  titleIcon={<FaSatelliteDish />}
+                  title="Mapa das Entregas"
+                  description="Visualize a posição real do usuário no mapa e consulte as entregas do dia em uma visão operacional."
+                  viewOnly={false}
+                  delay={150}
+                />
+              )}
               {hasAccess(['admin','geomar','manager']) && (
                 <MonitorCard
                   onClick={openCanhotosPendentes}

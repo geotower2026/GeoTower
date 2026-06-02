@@ -24,6 +24,7 @@ const routeLabel = {
   '/entregas-programadas': 'Entregas Programadas',
   '/entregas-canhotos-pendentes': 'Documentos Pendentes',
   '/entregas-em-andamento': 'Entregas em Andamento',
+  '/mapa-entregas': 'Mapa das Entregas',
   '/admin': 'Dashboard',
   '/monitor-entregas': 'Torre de Controle',
   '/usuarios': 'Usuários',
