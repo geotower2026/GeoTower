@@ -2030,6 +2030,12 @@ const MonitorEntregas = () => {
       r = r.filter((delivery) => matchesStatusFilter(delivery, selectedStatuses));
     }
 
+    if (filters.pontualidade && filters.pontualidade !== 'all') {
+      r = r.filter((delivery) =>
+        getPunctualityStatus(delivery, currentTime, city).type === filters.pontualidade
+      );
+    }
+
     // Busca adicional por campos que o backend não filtra
     if (filters.searchTerm.trim()) {
       const q = filters.searchTerm.toLowerCase();
@@ -2046,7 +2052,7 @@ const MonitorEntregas = () => {
     }
 
     setFilteredDeliveries(r);
-  }, [deliveries, filters, statsPeriod]);
+  }, [deliveries, filters, statsPeriod, currentTime, city]);
 
   useEffect(() => {
     if (filteredDeliveries.length === 0) return;
