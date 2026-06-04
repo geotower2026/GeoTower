@@ -770,6 +770,7 @@ const ProgramadasEntregas = () => {
   function clearPhotos() {
     setPhotos(prev => {
       revokePhotoPreviews(prev);
+      photosRef.current = [];
       return [];
     });
     setProcessingPhoto(false);
@@ -1158,7 +1159,9 @@ const ProgramadasEntregas = () => {
   const removePhoto = (id) => setPhotos(prev => {
     const removed = prev.find(photo => photo.id === id);
     if (removed?.preview) URL.revokeObjectURL(removed.preview);
-    return prev.filter(photo => photo.id !== id);
+    const next = prev.filter(photo => photo.id !== id);
+    photosRef.current = next;
+    return next;
   });
 
   const isLikelyImageFile = (file) => {
@@ -1210,6 +1213,7 @@ const ProgramadasEntregas = () => {
             message: `Maximo de ${maxPhotos} fotos permitidas. Remova uma para adicionar outra.`,
             type: 'warning'
           });
+          photosRef.current = prev;
           return prev;
         }
         const available = maxPhotos - prev.length;
@@ -1223,7 +1227,9 @@ const ProgramadasEntregas = () => {
             type: 'info'
           });
         }
-        return [...prev, ...accepted];
+        const next = [...prev, ...accepted];
+        photosRef.current = next;
+        return next;
       });
     });
     return addedCount;
@@ -1263,22 +1269,16 @@ const ProgramadasEntregas = () => {
       const image = await Camera.getPhoto({
         quality: 70,
         allowEditing: false,
-        resultType: CameraResultType.Uri,
+        resultType: CameraResultType.DataUrl,
         source: CameraSource.Camera,
         correctOrientation: true,
         saveToGallery: false
       });
 
-      if (!image?.webPath) return true;
-
-      const response = await fetch(image.webPath);
-      const blob = await response.blob();
-      if (!blob || blob.size === 0) throw new Error('Foto capturada sem dados');
+      if (!image?.dataUrl) return true;
 
       const extension = image.format ? `.${image.format}` : '.jpg';
-      const file = new File([blob], `foto_${Date.now()}${extension}`, {
-        type: blob.type || `image/${image.format || 'jpeg'}`
-      });
+      const file = dataURLtoFile(image.dataUrl, `foto_${Date.now()}${extension}`);
 
       const added = addPhotoFiles([file], { trustCamera: true });
       if (added > 0) {
