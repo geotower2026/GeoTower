@@ -729,19 +729,6 @@ const ProgramadasEntregas = () => {
     );
   };
 
-  const updateProgramacaoGroupInList = (programacao, updates) => {
-    if (!programacao) return;
-    const groupKey = getProgramacaoGroupKey(programacao);
-    const applyUpdates = (items) => items.map(item =>
-      getProgramacaoGroupKey(item) === groupKey ? { ...item, ...updates } : item
-    );
-    setProgramacoes(applyUpdates);
-    setAllProgramacoes(applyUpdates);
-    setCurrentProgramacao(prev =>
-      prev && getProgramacaoGroupKey(prev) === groupKey ? { ...prev, ...updates } : prev
-    );
-  };
-
   const updateProgramacaoContainerInList = (programacao, updates) => {
     if (!programacao) return;
     const containerKey = getProgramacaoContainerKey(programacao);
@@ -767,13 +754,6 @@ const ProgramadasEntregas = () => {
     }
     if (programacaoId) {
       updateProgramacaoInList(programacaoId, {
-        linkedDeliveryId: delivery._id,
-        status: normalizeStatus(delivery.status),
-        containerReturned: !!delivery.horarioDevolucaoVazio
-      });
-    }
-    if (currentProgramacao) {
-      updateProgramacaoGroupInList(currentProgramacao, {
         linkedDeliveryId: delivery._id,
         status: normalizeStatus(delivery.status),
         containerReturned: !!delivery.horarioDevolucaoVazio
@@ -806,11 +786,15 @@ const ProgramadasEntregas = () => {
     try {
       setSubmitting(true);
       let existing = null;
+      let sourceMountDeliveryId = '';
       if (groupLinkedDeliveryId) {
         try {
           const linked = await deliveryService.getDelivery(groupLinkedDeliveryId);
           const linkedDelivery = linked.data.delivery;
           existing = group.some(item => deliveryMatchesProgramacaoContext(linkedDelivery, item)) ? linkedDelivery : null;
+          if (!existing && (linkedDelivery?.containerMontadoAt || linkedDelivery?.documents?.retiradaCheio)) {
+            sourceMountDeliveryId = linkedDelivery._id;
+          }
         } catch (_) {}
       }
       try {
@@ -826,10 +810,17 @@ const ProgramadasEntregas = () => {
             const groupMatches = exactMatches.filter(delivery =>
               group.some(item => deliveryMatchesProgramacaoContext(delivery, item))
             );
-            existing = (groupMatches.length > 0 ? groupMatches : exactMatches).reduce((best, next) =>
+            existing = groupMatches.reduce((best, next) =>
               !best || getDeliveryTimestamp(next) > getDeliveryTimestamp(best) ? next : best,
               null
             );
+            if (!existing && !sourceMountDeliveryId) {
+              const mountDelivery = exactMatches.find(delivery =>
+                delivery?.containerMontadoAt || delivery?.documents?.retiradaCheio ||
+                ['NO_PORTO_AGUARDANDO_MONTAGEM', 'CONTAINER_MONTADO'].includes(String(delivery?.status || '').toUpperCase())
+              );
+              if (mountDelivery) sourceMountDeliveryId = mountDelivery._id;
+            }
           }
         }
       } catch (_) {}
@@ -860,6 +851,9 @@ const ProgramadasEntregas = () => {
           observations: buildInitialDeliveryObservation(p, `Criada a partir da Programação ${p.processo || ''}`),
           tripStartedAt,
           programacaoId: p._id,
+          linkedProgramacaoId: p._id,
+          status: 'A_CAMINHO_DO_CLIENTE',
+          sourceMountDeliveryId,
           recebedor: p.recebedor || '',
           driverName: p.motorista || user?.fullName || user?.name || ''
         };

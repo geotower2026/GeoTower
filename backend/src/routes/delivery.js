@@ -98,7 +98,8 @@ async function syncMountStatusAcrossSameContainer({
   programacaoId,
   city,
   status,
-  chegadaMontagemAt
+  chegadaMontagemAt,
+  linkedDeliveryId
 }) {
   if (!ProgramacaoEntrega || !programacaoId || !['NO_PORTO_AGUARDANDO_MONTAGEM', 'CONTAINER_MONTADO'].includes(status)) {
     return;
@@ -123,6 +124,9 @@ async function syncMountStatusAcrossSameContainer({
   }
 
   const updates = { status };
+  if (linkedDeliveryId) {
+    updates.linkedDeliveryId = linkedDeliveryId;
+  }
   if (status === 'NO_PORTO_AGUARDANDO_MONTAGEM') {
     updates.chegadaMontagemAt = chegadaMontagemAt || new Date();
   }
@@ -466,7 +470,7 @@ router.post("/", auth, async (req, res) => {
   try {
     const db = await getDb(req);
     const city = req.city || 'manaus';
-    const { deliveryNumber, vehiclePlate, observations, driverName, chegadaMontagemAt, containerMontadoAt, tripStartedAt, status, programacaoId, linkedProgramacaoId, recebedor } = req.body;
+    const { deliveryNumber, vehiclePlate, observations, driverName, chegadaMontagemAt, containerMontadoAt, tripStartedAt, status, programacaoId, linkedProgramacaoId, recebedor, sourceMountDeliveryId } = req.body;
 
     console.log('ðŸ“¦ Recebido no backend:', { deliveryNumber, vehiclePlate, observations, driverName, containerMontadoAt, status, programacaoId, linkedProgramacaoId, city });
 
@@ -489,6 +493,15 @@ router.post("/", auth, async (req, res) => {
     const Delivery = require('../models/Delivery');
     const normalizedDeliveryNumber = String(deliveryNumber || '').trim().toUpperCase();
     const partyName = normalizePartyName(recebedor || linkedProgramacao?.recebedor);
+    let sourceMountDelivery = null;
+    if (sourceMountDeliveryId) {
+      sourceMountDelivery = await Delivery.findOne({
+        _id: sourceMountDeliveryId,
+        cityCode: city,
+        isCanceled: { $ne: true },
+        deliveryNumber: normalizedDeliveryNumber
+      }).select('documents chegadaMontagemAt containerMontadoAt').lean();
+    }
     const baseDeliveryPayload = {
       deliveryNumber: normalizedDeliveryNumber,
       vehiclePlate,
@@ -496,14 +509,17 @@ router.post("/", auth, async (req, res) => {
       driverName: driverName || "",
       recebedor: partyName,
       armador: String(linkedProgramacao?.armador || req.body?.armador || '').trim(),
-      chegadaMontagemAt: chegadaMontagemAt ? new Date(chegadaMontagemAt) : null,
-      containerMontadoAt: containerMontadoAt ? new Date(containerMontadoAt) : null,
+      chegadaMontagemAt: chegadaMontagemAt ? new Date(chegadaMontagemAt) : (sourceMountDelivery?.chegadaMontagemAt || null),
+      containerMontadoAt: containerMontadoAt ? new Date(containerMontadoAt) : (sourceMountDelivery?.containerMontadoAt || null),
       tripStartedAt: tripStartedAt ? new Date(tripStartedAt) : null,
       userId: req.user.id,
       userName: driver?.fullName || driver?.name || driver?.username || "Unknown",
       status: status || "pending",
       currentStep: 'welcome',
-      documents: {},
+      documents: sourceMountDelivery?.documents ? {
+        chegadaMontagem: sourceMountDelivery.documents.chegadaMontagem || null,
+        retiradaCheio: sourceMountDelivery.documents.retiradaCheio || null
+      } : {},
       linkedProgramacaoId: programacaoKey,
       programacaoId: programacaoKey,
       city,
@@ -603,6 +619,8 @@ router.post("/", auth, async (req, res) => {
           if (status === 'NO_PORTO_AGUARDANDO_MONTAGEM' && chegadaMontagemAt) {
             prog.chegadaMontagemAt = new Date(chegadaMontagemAt);
           }
+        } else if (status) {
+          prog.status = status;
         }
         // gravar referÃªncia para futuras consultas
         prog.linkedDeliveryId = delivery._id;
@@ -613,7 +631,8 @@ router.post("/", auth, async (req, res) => {
             programacaoId: prog._id,
             city,
             status,
-            chegadaMontagemAt: prog.chegadaMontagemAt || chegadaMontagemAt || new Date()
+            chegadaMontagemAt: prog.chegadaMontagemAt || chegadaMontagemAt || new Date(),
+            linkedDeliveryId: delivery._id
           });
         }
         console.log('[DELIVERY] Programacao', prog._id, 'status atualizado para', prog.status);
@@ -890,7 +909,8 @@ router.put("/:id", auth, async (req, res) => {
             programacaoId: programacaoToUpdate,
             city,
             status: req.body.status,
-            chegadaMontagemAt: programacaoUpdates.chegadaMontagemAt
+            chegadaMontagemAt: programacaoUpdates.chegadaMontagemAt,
+            linkedDeliveryId: updated._id
           });
         } catch (e) {
           console.error('[PROGRAMACAO] Erro ao sincronizar status de montagem:', e.message);
@@ -906,6 +926,16 @@ router.put("/:id", auth, async (req, res) => {
           });
         } catch (e) {
           console.error('[PROGRAMACAO] Erro ao sincronizar ocorrência:', e.message);
+        }
+      } else if (programacaoToUpdate && !['NO_PORTO_AGUARDANDO_MONTAGEM', 'CONTAINER_MONTADO'].includes(req.body.status)) {
+        try {
+          const ProgramacaoEntrega = require("../models/ProgramacaoEntrega");
+          await ProgramacaoEntrega.findByIdAndUpdate(programacaoToUpdate, {
+            status: req.body.status,
+            linkedDeliveryId: updated._id
+          });
+        } catch (e) {
+          console.error('[PROGRAMACAO] Erro ao sincronizar status individual:', e.message);
         }
       }
 
@@ -1525,6 +1555,19 @@ router.post("/:id/upload-and-update", auth, upload.array("file"), async (req, re
               });
             } catch (e) {
               console.error('[CONTAINER_RETURN] Erro ao atualizar programaÃ§Ã£o no upload-and-update:', e.message);
+            }
+          }
+        } else if (status) {
+          const programacaoToUpdate = programacaoIdFromBody || updated.programacaoId || updated.linkedProgramacaoId;
+          if (programacaoToUpdate) {
+            try {
+              const ProgramacaoEntrega = require("../models/ProgramacaoEntrega");
+              await ProgramacaoEntrega.findByIdAndUpdate(programacaoToUpdate, {
+                status,
+                linkedDeliveryId: updated._id
+              });
+            } catch (e) {
+              console.error('[PROGRAMACAO] Erro ao sincronizar status individual no upload-and-update:', e.message);
             }
           }
         }
