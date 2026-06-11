@@ -68,6 +68,38 @@ const getDelayReasonCategory = (delivery) => {
   return /\bATRAS/.test(normalized) ? 'OUTROS' : null;
 };
 
+const getDelayObservationExcerpt = (delivery) => {
+  const raw = getDelayObservation(delivery);
+  const reason = delivery?._delayReason || getDelayReasonCategory(delivery);
+  if (!raw || !reason) return raw || '';
+
+  const category = DELAY_REASON_CATEGORIES.find((item) => item.label === reason);
+  const aliases = category ? [category.label, ...category.aliases] : [reason];
+  const normalizedParts = [];
+  const originalIndexByNormalizedChar = [];
+
+  Array.from(raw).forEach((char, originalIndex) => {
+    const normalizedChar = normalizeDelayText(char);
+    Array.from(normalizedChar).forEach((part) => {
+      normalizedParts.push(part);
+      originalIndexByNormalizedChar.push(originalIndex);
+    });
+  });
+
+  const normalizedRaw = normalizedParts.join('');
+  const bestIndex = aliases
+    .map((alias) => normalizedRaw.indexOf(normalizeDelayText(alias)))
+    .filter((index) => index >= 0)
+    .sort((a, b) => a - b)[0];
+
+  if (bestIndex === undefined) return raw;
+
+  return raw
+    .slice(originalIndexByNormalizedChar[bestIndex])
+    .replace(/^[\s,;.-]+/, '')
+    .trim();
+};
+
 /* ─── Tooltip customizado ─── */
 const CustomTooltip = ({ active, payload, label, formatter, labelFormatter }) => {
   if (!active || !payload?.length) return null;
@@ -1047,7 +1079,7 @@ const AdminDashboard = () => {
     delivery?._delayReason || getDelayReasonCategory(delivery) || '-';
 
   const getDetailDelayObservation = (delivery) =>
-    getDelayObservation(delivery) || getDetailDelayReason(delivery);
+    getDelayObservationExcerpt(delivery) || getDetailDelayReason(delivery);
 
   const handleExportPDF = async () => {
     if (!statistics) return;
