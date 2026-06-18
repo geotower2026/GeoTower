@@ -137,6 +137,18 @@ export const offlineDriverStore = {
     return result?.delivery || null;
   }),
 
+  linkDeliveryToProgramacao: (programacaoId, delivery) => safeRun(async () => {
+    if (!programacaoId || !delivery?._id) return;
+    const { db, tx, store } = await txStore(STORE_DELIVERIES, 'readwrite');
+    store.put({
+      id: `programacao:${String(programacaoId)}`,
+      delivery,
+      cachedAt: new Date().toISOString()
+    });
+    await completeTx(tx);
+    db.close();
+  }),
+
   updateCachedProgramacao: (programacaoId, updates) => safeRun(async () => {
     if (!programacaoId) return;
     const { db, tx, store } = await txStore(STORE_PROGRAMACOES, 'readwrite');

@@ -823,6 +823,27 @@ const ProgramadasEntregas = () => {
     }
   };
 
+  const persistDeliveryOfflineLink = async (delivery, programacao) => {
+    if (!delivery || !programacao) return;
+    await offlineDriverStore.cacheDelivery(delivery);
+
+    const group = Array.isArray(programacao.fracionadas) && programacao.fracionadas.length > 0
+      ? programacao.fracionadas
+      : [programacao];
+
+    const ids = [...new Set(group.map(item => item?._id).filter(Boolean))];
+    if (programacao._id) ids.push(programacao._id);
+
+    await Promise.all([...new Set(ids)].map(async (programacaoId) => {
+      await offlineDriverStore.linkDeliveryToProgramacao(programacaoId, delivery);
+      await offlineDriverStore.updateCachedProgramacao(programacaoId, {
+        linkedDeliveryId: delivery._id,
+        status: normalizeStatus(delivery.status),
+        containerReturned: !!delivery.horarioDevolucaoVazio
+      });
+    }));
+  };
+
   function revokePhotoPreviews(photoList) {
     (photoList || []).forEach(photo => {
       if (photo?.preview) URL.revokeObjectURL(photo.preview);
@@ -855,6 +876,12 @@ const ProgramadasEntregas = () => {
       }
       if (!navigator.onLine && !existing) {
         existing = await offlineDriverStore.getCachedDeliveryByProgramacao(p._id);
+      }
+      if (!navigator.onLine && !existing) {
+        for (const item of group) {
+          existing = await offlineDriverStore.getCachedDeliveryByProgramacao(item?._id);
+          if (existing) break;
+        }
       }
       if (groupLinkedDeliveryId) {
         try {
@@ -895,6 +922,7 @@ const ProgramadasEntregas = () => {
       } catch (_) {}
 
       if (existing) {
+        await persistDeliveryOfflineLink(existing, p);
         applyDeliveryUpdate(existing, p._id);
         setCurrentProgramacao(p);
         console.log('🔍 [ProgramadasEntregas] Entrega restaurada:', {
@@ -904,8 +932,24 @@ const ProgramadasEntregas = () => {
           _id: existing._id
         });
         if (existing.status === 'CONTAINER_MONTADO') {
-          const updated = await deliveryService.updateDelivery(existing._id, { status: 'A_CAMINHO_DO_CLIENTE', tripStartedAt: existing.tripStartedAt || tripStartedAt });
-          existing = updated.data.delivery;
+          const statusUpdate = { status: 'A_CAMINHO_DO_CLIENTE', tripStartedAt: existing.tripStartedAt || tripStartedAt };
+          if (navigator.onLine) {
+            const updated = await deliveryService.updateDelivery(existing._id, statusUpdate);
+            existing = updated.data.delivery;
+          } else {
+            await offlineDriverStore.queueAction({
+              type: 'updateDelivery',
+              deliveryId: existing._id,
+              data: statusUpdate
+            });
+            existing = {
+              ...existing,
+              ...statusUpdate,
+              offlinePending: true,
+              updatedAt: new Date().toISOString()
+            };
+          }
+          await persistDeliveryOfflineLink(existing, p);
           applyDeliveryUpdate(existing, p._id);
         }
         setCurrentStep(getStepFromDeliveryStatus(existing));
@@ -928,6 +972,7 @@ const ProgramadasEntregas = () => {
         };
         const res = await deliveryService.createDelivery(payload);
         const newDelivery = res.data.delivery;
+        await persistDeliveryOfflineLink(newDelivery, p);
         applyDeliveryUpdate(newDelivery, p._id);
         setCurrentProgramacao(p);
         setCurrentStep(getStepFromDeliveryStatus(newDelivery));
