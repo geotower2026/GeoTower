@@ -815,6 +815,11 @@ const ProgramadasEntregas = () => {
         status: normalizeStatus(delivery.status),
         containerReturned: !!delivery.horarioDevolucaoVazio
       });
+      offlineDriverStore.updateCachedProgramacao(programacaoId, {
+        linkedDeliveryId: delivery._id,
+        status: normalizeStatus(delivery.status),
+        containerReturned: !!delivery.horarioDevolucaoVazio
+      });
     }
   };
 
@@ -849,7 +854,7 @@ const ProgramadasEntregas = () => {
         existing = await offlineDriverStore.getCachedDelivery(groupLinkedDeliveryId);
       }
       if (!navigator.onLine && !existing) {
-        existing = await offlineDriverStore.getCachedDeliveryByNumber(deliveryNumber);
+        existing = await offlineDriverStore.getCachedDeliveryByProgramacao(p._id);
       }
       if (groupLinkedDeliveryId) {
         try {

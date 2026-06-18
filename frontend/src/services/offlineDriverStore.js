@@ -94,6 +94,20 @@ export const offlineDriverStore = {
         cachedAt: new Date().toISOString()
       });
     }
+    if (delivery.programacaoId) {
+      store.put({
+        id: `programacao:${String(delivery.programacaoId)}`,
+        delivery,
+        cachedAt: new Date().toISOString()
+      });
+    }
+    if (delivery.linkedProgramacaoId) {
+      store.put({
+        id: `programacao:${String(delivery.linkedProgramacaoId)}`,
+        delivery,
+        cachedAt: new Date().toISOString()
+      });
+    }
     await completeTx(tx);
     db.close();
   }),
@@ -113,6 +127,29 @@ export const offlineDriverStore = {
     const result = await requestToPromise(store.get(`number:${key}`));
     db.close();
     return result?.delivery || null;
+  }),
+
+  getCachedDeliveryByProgramacao: (programacaoId) => safeRun(async () => {
+    if (!programacaoId) return null;
+    const { db, store } = await txStore(STORE_DELIVERIES);
+    const result = await requestToPromise(store.get(`programacao:${String(programacaoId)}`));
+    db.close();
+    return result?.delivery || null;
+  }),
+
+  updateCachedProgramacao: (programacaoId, updates) => safeRun(async () => {
+    if (!programacaoId) return;
+    const { db, tx, store } = await txStore(STORE_PROGRAMACOES, 'readwrite');
+    const result = await requestToPromise(store.get(PROGRAMACOES_KEY));
+    if (result?.programacoes) {
+      result.programacoes = result.programacoes.map((item) =>
+        String(item._id) === String(programacaoId) ? { ...item, ...updates } : item
+      );
+      result.cachedAt = new Date().toISOString();
+      store.put(result);
+    }
+    await completeTx(tx);
+    db.close();
   }),
 
   queueAction: (action) => safeRun(async () => {
@@ -157,17 +194,22 @@ export const offlineDriverStore = {
     let synced = 0;
 
     for (const action of queue) {
+      let deliveryId = action.deliveryId;
+      if (String(deliveryId || '').startsWith('offline:')) {
+        throw new Error('Entrega offline sem ID do servidor. Abra/inicie a entrega com internet antes de trabalhar offline.');
+      }
+
       if (action.type === 'uploadAndUpdate') {
         await deliveryService.uploadDocumentAndUpdate(
-          action.deliveryId,
+          deliveryId,
           action.documentType,
           action.files || [],
           action.statusUpdate || {}
         );
       } else if (action.type === 'updateDelivery') {
-        await deliveryService.updateDelivery(action.deliveryId, action.data || {});
+        await deliveryService.updateDelivery(deliveryId, action.data || {});
       } else if (action.type === 'submitDelivery') {
-        await deliveryService.submitDelivery(action.deliveryId, action.data || {});
+        await deliveryService.submitDelivery(deliveryId, action.data || {});
       }
 
       await offlineDriverStore.removeAction(action.id);
