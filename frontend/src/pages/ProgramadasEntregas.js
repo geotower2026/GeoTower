@@ -19,6 +19,7 @@ import { formatarData, formatarDataApenas, formatarHora, formatarAgendamento } f
 import { getRecebedoresLabel, getDesovaStatusLabel } from '../utils/cityLabels';
 import { getDocumentLabel } from '../utils/documentLabels';
 import { useTheme, THEMES } from '../contexts/ThemeContext';
+import { offlineDriverStore, isNetworkError } from '../services/offlineDriverStore';
 
 // ─────────────────────────────────────────────
 //  HELPERS & SMALL COMPONENTS
@@ -540,6 +541,8 @@ const ProgramadasEntregas = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [driverFilter, setDriverFilter] = useState('');
+  const [offlineQueueCount, setOfflineQueueCount] = useState(0);
+  const [syncingOfflineQueue, setSyncingOfflineQueue] = useState(false);
   const sortBy = 'data';
   const [sortOrder, setSortOrder] = useState('desc');
 
@@ -550,6 +553,46 @@ const ProgramadasEntregas = () => {
   const finalRequiredDocs = finalDocumentFields.map(doc => doc.key);
 
   useEffect(() => { loadProgramacoes(); }, [user]);
+
+  useEffect(() => {
+    const refreshOfflineQueueCount = () => {
+      offlineDriverStore.countQueue().then(setOfflineQueueCount);
+    };
+
+    refreshOfflineQueueCount();
+    window.addEventListener('driver-offline-queue:changed', refreshOfflineQueueCount);
+    return () => window.removeEventListener('driver-offline-queue:changed', refreshOfflineQueueCount);
+  }, []);
+
+  const syncOfflineQueue = async ({ silent = false } = {}) => {
+    if (syncingOfflineQueue || !navigator.onLine) return;
+    const count = await offlineDriverStore.countQueue();
+    if (count === 0) return;
+
+    setSyncingOfflineQueue(true);
+    try {
+      const synced = await offlineDriverStore.syncQueue(deliveryService);
+      setOfflineQueueCount(await offlineDriverStore.countQueue());
+      if (synced > 0) {
+        await loadProgramacoes({ silent: true });
+        if (!silent) setToast({ message: `${synced} registro(s) offline sincronizado(s)`, type: 'success' });
+      }
+    } catch (err) {
+      if (!silent) setToast({ message: 'Ainda nao foi possivel sincronizar registros offline', type: 'warning' });
+    } finally {
+      setSyncingOfflineQueue(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleOnline = () => syncOfflineQueue({ silent: false });
+    window.addEventListener('online', handleOnline);
+    const interval = setInterval(() => syncOfflineQueue({ silent: true }), 30000);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      clearInterval(interval);
+    };
+  }, [syncingOfflineQueue]);
 
   useEffect(() => {
     photosRef.current = photos;
@@ -699,6 +742,7 @@ const ProgramadasEntregas = () => {
     try {
       const res = await deliveryService.getProgramacoesAssigned();
       const todas = res.data.programacoes || [];
+      offlineDriverStore.cacheProgramacoes(todas);
       setAllProgramacoes(todas);
       setDeliveriesMap({});
 
@@ -710,7 +754,19 @@ const ProgramadasEntregas = () => {
       setProgramacoes(visibleProgramacoes);
       setToast(null);
     } catch (err) {
-      setToast({ message: 'Erro ao carregar entregas programadas', type: 'error' });
+      const cached = await offlineDriverStore.getCachedProgramacoes();
+      if (cached?.programacoes?.length) {
+        const todas = cached.programacoes || [];
+        setAllProgramacoes(todas);
+        setDeliveriesMap({});
+        setProgramacoes(todas.filter((p) => {
+          const status = String(p.status || '').toUpperCase();
+          return status !== 'CANCELADO' && status !== 'RECUSADO_CLIENTE' && p.containerReturned !== true && !p.horarioDevolucaoVazio;
+        }));
+        setToast({ message: 'Sem internet: usando entregas salvas no aparelho', type: 'warning' });
+      } else {
+        setToast({ message: 'Erro ao carregar entregas programadas', type: 'error' });
+      }
       setTimeout(() => setToast(null), 5000);
     } finally {
       if (!silent) setLoading(false);
@@ -745,6 +801,7 @@ const ProgramadasEntregas = () => {
 
   const applyDeliveryUpdate = (delivery, programacaoId = currentProgramacao?._id) => {
     if (!delivery) return;
+    offlineDriverStore.cacheDelivery(delivery);
     setCurrentDelivery(delivery);
     if (delivery.deliveryNumber) {
       setDeliveriesMap(prev => ({
@@ -788,6 +845,9 @@ const ProgramadasEntregas = () => {
       setSubmitting(true);
       let existing = null;
       let sourceMountDeliveryId = '';
+      if (!navigator.onLine && groupLinkedDeliveryId) {
+        existing = await offlineDriverStore.getCachedDelivery(groupLinkedDeliveryId);
+      }
       if (groupLinkedDeliveryId) {
         try {
           const linked = await deliveryService.getDelivery(groupLinkedDeliveryId);
@@ -868,7 +928,11 @@ const ProgramadasEntregas = () => {
         await loadProgramacoes();
       }
     } catch (err) {
-      setToast({ message: err.response?.data?.message || 'Erro ao iniciar entrega', type: 'error' });
+      if (isNetworkError(err)) {
+        setToast({ message: 'Sem internet. Abra uma entrega ja iniciada/salva no aparelho para trabalhar offline.', type: 'warning' });
+      } else {
+        setToast({ message: err.response?.data?.message || 'Erro ao iniciar entrega', type: 'error' });
+      }
     } finally {
       setSubmitting(false);
     }
@@ -1116,7 +1180,22 @@ const ProgramadasEntregas = () => {
         // Apenas refaz fetch se for crítico, não em cada mudança de passo
         // Isso evita perder dados locais não salvos
       }
-    } catch (_) {}
+    } catch (err) {
+      if (currentDelivery?._id && isNetworkError(err)) {
+        const localDelivery = {
+          ...currentDelivery,
+          currentStep: step,
+          offlinePending: true,
+          updatedAt: new Date().toISOString()
+        };
+        applyDeliveryUpdate(localDelivery);
+        offlineDriverStore.queueAction({
+          type: 'updateDelivery',
+          deliveryId: currentDelivery._id,
+          data: { currentStep: step }
+        }).then(() => offlineDriverStore.countQueue().then(setOfflineQueueCount));
+      }
+    }
   };
 
   const handleArrivalConfirm = async () => {
@@ -1365,13 +1444,14 @@ const ProgramadasEntregas = () => {
         compressedFiles.push(compressed);
         setUploadProgress(Math.round(((i + 1) / photosToUpload.length) * 60));
       }
-      const updated = await deliveryService.uploadDocumentAndUpdate(currentDelivery._id, docKey, compressedFiles, {
+      const statusUpdate = {
         status,
         currentStep: nextStep,
         programacaoId: currentProgramacao?._id || currentDelivery.programacaoId || currentDelivery.linkedProgramacaoId || '',
         linkedProgramacaoId: currentProgramacao?._id || currentDelivery.linkedProgramacaoId || currentDelivery.programacaoId || '',
         ...timestamps
-      });
+      };
+      const updated = await deliveryService.uploadDocumentAndUpdate(currentDelivery._id, docKey, compressedFiles, statusUpdate);
       applyDeliveryUpdate(updated.data.delivery);
       setUploadProgress(100);
       goToStep(nextStep);
@@ -1379,7 +1459,56 @@ const ProgramadasEntregas = () => {
       // Polling automático (30s) sincroniza lista - não precisa recarregar aqui
     } catch (err) {
       console.error(err);
-      setToast({ message: err.response?.data?.message || 'Erro ao enviar fotos', type: 'error' });
+      if (isNetworkError(err)) {
+        const compressedFiles = [];
+        for (let i = 0; i < photosToUpload.length; i++) {
+          const file = photosToUpload[i].file || dataURLtoFile(photosToUpload[i].data, `foto_${i}.jpg`);
+          if (!file || file.size === 0) throw new Error('Foto capturada sem dados. Tire a foto novamente.');
+          compressedFiles.push(await compressPhotoFile(file));
+        }
+        const statusUpdate = {
+          status,
+          currentStep: nextStep,
+          programacaoId: currentProgramacao?._id || currentDelivery.programacaoId || currentDelivery.linkedProgramacaoId || '',
+          linkedProgramacaoId: currentProgramacao?._id || currentDelivery.linkedProgramacaoId || currentDelivery.programacaoId || '',
+          ...timestamps
+        };
+        await offlineDriverStore.queueAction({
+          type: 'uploadAndUpdate',
+          deliveryId: currentDelivery._id,
+          documentType: docKey,
+          files: compressedFiles,
+          statusUpdate
+        });
+        const localDelivery = {
+          ...currentDelivery,
+          ...timestamps,
+          status,
+          currentStep: nextStep,
+          offlinePending: true,
+          updatedAt: new Date().toISOString(),
+          documents: {
+            ...(currentDelivery.documents || {}),
+            [docKey]: [
+              ...((currentDelivery.documents && currentDelivery.documents[docKey]) || []),
+              ...compressedFiles.map((file) => ({
+                offline: true,
+                originalName: file.name,
+                size: file.size,
+                uploadedAt: new Date().toISOString()
+              }))
+            ]
+          }
+        };
+        applyDeliveryUpdate(localDelivery);
+        setUploadProgress(100);
+        setCurrentStep(nextStep);
+        clearPhotos();
+        setOfflineQueueCount(await offlineDriverStore.countQueue());
+        setToast({ message: 'Sem internet: etapa salva no aparelho para sincronizar depois', type: 'warning' });
+      } else {
+        setToast({ message: err.response?.data?.message || 'Erro ao enviar fotos', type: 'error' });
+      }
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
@@ -1997,6 +2126,33 @@ const ProgramadasEntregas = () => {
       <div className="max-w-2xl mx-auto px-4 py-4 pb-24 space-y-4">
 
         {/* ── SEARCH & FILTERS ── */}
+        {(offlineQueueCount > 0 || syncingOfflineQueue) && (
+          <div className="rounded-2xl border border-amber-300/40 bg-amber-400/15 px-4 py-3 text-amber-50 shadow-lg">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-sm font-bold">
+                <FaExclamationTriangle size={14} />
+                <span>
+                  {syncingOfflineQueue
+                    ? 'Sincronizando registros offline...'
+                    : `${offlineQueueCount} registro(s) salvo(s) offline`}
+                </span>
+              </div>
+              {offlineQueueCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => syncOfflineQueue({ silent: false })}
+                  className="rounded-xl bg-white/15 px-3 py-2 text-xs font-bold text-white hover:bg-white/25 transition"
+                >
+                  Sincronizar
+                </button>
+              )}
+            </div>
+            {!syncingOfflineQueue && (
+              <p className="mt-1 text-xs text-amber-50/80">As fotos e etapas serao enviadas automaticamente quando houver internet.</p>
+            )}
+          </div>
+        )}
+
         <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-3 sm:p-4 border border-white/20 space-y-3">
           {/* Search input */}
           <div className="relative">

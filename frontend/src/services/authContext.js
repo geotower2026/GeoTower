@@ -25,6 +25,35 @@ const redirectToLogin = () => {
   }
 };
 
+const hasDriverOfflineWork = async () => {
+  if (!('indexedDB' in window)) return false;
+
+  return new Promise((resolve) => {
+    const request = indexedDB.open('geo-driver-offline');
+    request.onerror = () => resolve(false);
+    request.onsuccess = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains('programacoes')) {
+        db.close();
+        resolve(false);
+        return;
+      }
+
+      const tx = db.transaction('programacoes', 'readonly');
+      const store = tx.objectStore('programacoes');
+      const getRequest = store.get('assigned');
+      getRequest.onsuccess = () => {
+        db.close();
+        resolve((getRequest.result?.programacoes || []).length > 0);
+      };
+      getRequest.onerror = () => {
+        db.close();
+        resolve(false);
+      };
+    };
+  });
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
@@ -49,7 +78,7 @@ export const AuthProvider = ({ children }) => {
     if (savedToken && savedUser) {
       try {
         const expiresAt = getTokenExpiration(savedToken);
-        if (expiresAt && expiresAt <= Date.now()) {
+        if (expiresAt && expiresAt <= Date.now() && navigator.onLine) {
           clearSession(true);
           setLoading(false);
           return;
@@ -81,11 +110,20 @@ export const AuthProvider = ({ children }) => {
 
     const delay = expiresAt - Date.now();
     if (delay <= 0) {
-      clearSession(true);
+      if (navigator.onLine) clearSession(true);
       return undefined;
     }
 
-    const timer = window.setTimeout(() => clearSession(true), Math.min(delay, 2147483647));
+    const timer = window.setTimeout(async () => {
+      if (navigator.onLine) {
+        clearSession(true);
+        return;
+      }
+
+      if (!(await hasDriverOfflineWork())) {
+        clearSession(false);
+      }
+    }, Math.min(delay, 2147483647));
 
     return () => window.clearTimeout(timer);
   }, [token, clearSession]);
