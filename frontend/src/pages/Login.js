@@ -7,7 +7,7 @@ import { FaUser, FaLock, FaEye, FaEyeSlash, FaMapMarkerAlt } from 'react-icons/f
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const [formData, setFormData] = useState({ username: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
@@ -17,6 +17,11 @@ const Login = () => {
 
   // Carregar credenciais salvas ao montar o componente.
   useEffect(() => {
+    if (!navigator.onLine && isAuthenticated) {
+      navigate('/home', { replace: true });
+      return;
+    }
+
     const queryUsername = new URLSearchParams(window.location.search).get('username') || '';
     const savedCredentials = localStorage.getItem('loginCredentials');
     const savedRememberMe = localStorage.getItem('rememberMe') === 'true';
@@ -38,7 +43,7 @@ const Login = () => {
     } else if (queryUsername) {
       setFormData((current) => ({ ...current, username: queryUsername }));
     }
-  }, []);
+  }, [isAuthenticated, navigate]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -49,6 +54,11 @@ const Login = () => {
     setLoading(true);
 
     try {
+      if (!navigator.onLine && isAuthenticated) {
+        navigate('/home', { replace: true });
+        return;
+      }
+
       const response = await login(formData.username, formData.password);
       const userCity = response?.driver?.city || 'manaus';
 

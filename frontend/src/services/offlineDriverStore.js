@@ -58,6 +58,8 @@ const safeRun = async (fn, fallback = null) => {
   }
 };
 
+const normalizeKey = (value) => String(value || '').trim().toUpperCase();
+
 export const offlineDriverStore = {
   cacheProgramacoes: (programacoes) => safeRun(async () => {
     const { db, tx, store } = await txStore(STORE_PROGRAMACOES, 'readwrite');
@@ -85,6 +87,13 @@ export const offlineDriverStore = {
       delivery,
       cachedAt: new Date().toISOString()
     });
+    if (delivery.deliveryNumber) {
+      store.put({
+        id: `number:${normalizeKey(delivery.deliveryNumber)}`,
+        delivery,
+        cachedAt: new Date().toISOString()
+      });
+    }
     await completeTx(tx);
     db.close();
   }),
@@ -93,6 +102,15 @@ export const offlineDriverStore = {
     if (!id) return null;
     const { db, store } = await txStore(STORE_DELIVERIES);
     const result = await requestToPromise(store.get(String(id)));
+    db.close();
+    return result?.delivery || null;
+  }),
+
+  getCachedDeliveryByNumber: (deliveryNumber) => safeRun(async () => {
+    const key = normalizeKey(deliveryNumber);
+    if (!key) return null;
+    const { db, store } = await txStore(STORE_DELIVERIES);
+    const result = await requestToPromise(store.get(`number:${key}`));
     db.close();
     return result?.delivery || null;
   }),

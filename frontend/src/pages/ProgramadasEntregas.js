@@ -848,6 +848,9 @@ const ProgramadasEntregas = () => {
       if (!navigator.onLine && groupLinkedDeliveryId) {
         existing = await offlineDriverStore.getCachedDelivery(groupLinkedDeliveryId);
       }
+      if (!navigator.onLine && !existing) {
+        existing = await offlineDriverStore.getCachedDeliveryByNumber(deliveryNumber);
+      }
       if (groupLinkedDeliveryId) {
         try {
           const linked = await deliveryService.getDelivery(groupLinkedDeliveryId);
@@ -887,7 +890,7 @@ const ProgramadasEntregas = () => {
       } catch (_) {}
 
       if (existing) {
-        setCurrentDelivery(existing);
+        applyDeliveryUpdate(existing, p._id);
         setCurrentProgramacao(p);
         console.log('🔍 [ProgramadasEntregas] Entrega restaurada:', {
           deliveryNumber: existing.deliveryNumber,

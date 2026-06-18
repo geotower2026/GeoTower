@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authService } from './authService';
+import { isNetworkError } from './offlineDriverStore';
 
 const AuthContext = createContext();
 const LOGIN_PATH = '/login';
@@ -170,7 +171,9 @@ export const AuthProvider = ({ children }) => {
 
     return data;
   } catch (error) {
-    clearSession();
+    if (!isNetworkError(error)) {
+      clearSession();
+    }
     throw error;
   }
 };
