@@ -16,7 +16,7 @@ import {
 import {
   AreaChart, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Cell, ReferenceLine,
+  ResponsiveContainer, Cell, ReferenceLine, LabelList,
   ComposedChart, Line, PieChart, Pie
 } from 'recharts';
 
@@ -1790,6 +1790,14 @@ const AdminDashboard = () => {
                       isAnimationActive
                       animationDuration={700}
                     >
+                      <LabelList
+                        dataKey="count"
+                        position="top"
+                        offset={8}
+                        fill="#e2e8f0"
+                        fontSize={12}
+                        fontWeight={700}
+                      />
                       {dailyVolume.data.map((item, i) => (
                         <Cell key={i} fill={item.color} />
                       ))}
