@@ -60,71 +60,6 @@ const SectionTitle = ({ icon: Icon, title, subtitle }) => (
   </div>
 );
 
-const StatCard = ({ label, value, icon: Icon, tone = 'slate', active = false, onClick }) => {
-  const styles = {
-    slate: {
-      wrap: 'border-slate-200 bg-white',
-      icon: 'bg-slate-100 text-slate-700',
-      label: 'text-slate-400',
-      value: 'text-slate-900',
-    },
-    amber: {
-      wrap: 'border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50',
-      icon: 'bg-amber-100 text-amber-700',
-      label: 'text-amber-700',
-      value: 'text-amber-800',
-    },
-    emerald: {
-      wrap: 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50',
-      icon: 'bg-emerald-100 text-emerald-700',
-      label: 'text-emerald-700',
-      value: 'text-emerald-800',
-    },
-    blue: {
-      wrap: 'border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50',
-      icon: 'bg-blue-100 text-blue-700',
-      label: 'text-blue-700',
-      value: 'text-blue-800',
-    },
-  };
-
-  const current = styles[tone] || styles.slate;
-  const Component = onClick ? 'button' : 'div';
-
-  return (
-    <Component
-      type={onClick ? 'button' : undefined}
-      onClick={onClick}
-      className={cn(
-        'w-full text-left rounded-2xl border px-4 py-3 shadow-sm transition hover:shadow-md',
-        onClick && 'cursor-pointer hover:-translate-y-0.5',
-        active && 'ring-4 ring-slate-300/50 shadow-md',
-        current.wrap
-      )}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className={cn(
-            'text-[9px] uppercase tracking-[0.2em] font-black',
-            current.label
-          )}>
-            {label}
-          </p>
-          <p className={cn('mt-1 text-xl font-black', current.value)}>
-            {value}
-          </p>
-        </div>
-        <div className={cn(
-          'w-10 h-10 rounded-2xl flex items-center justify-center shrink-0',
-          current.icon
-        )}>
-          <Icon size={14} />
-        </div>
-      </div>
-    </Component>
-  );
-};
-
 const formatScheduleValue = (value, city) => {
   if (!value) return '-';
   const text = String(value).trim();
@@ -222,6 +157,11 @@ const isOpenPendencia = (item) => {
     ? item.missingDocumentsAtSubmit
     : [];
   return missingDocs.length > 0 || status === 'AGUARDANDO_GEOLOG' || status === 'AGUARDANDO_GEOMAR';
+};
+
+const isResolvedPendencia = (item) => {
+  const status = String(item?.pendenciaStatus || '').trim().toUpperCase();
+  return status === 'RESOLVIDA' || (!isOpenPendencia(item) && Boolean(item?.retornosPendenciaUpdatedAt));
 };
 
 const getUserPendenciaGroup = (role) => {
@@ -477,6 +417,7 @@ const EntregasCanhotosPendentes = () => {
   }, [items, search]);
 
   const openItems = useMemo(() => items.filter(isOpenPendencia), [items]);
+  const resolvedItems = useMemo(() => items.filter(isResolvedPendencia), [items]);
 
   const searchedOpenItems = useMemo(() => {
     const openIds = new Set(openItems.map((item) => item._id));
@@ -484,8 +425,13 @@ const EntregasCanhotosPendentes = () => {
   }, [openItems, searchedItems]);
 
   const filteredItems = useMemo(() => {
+    if (ownerFilter === 'resolved') {
+      return searchedItems
+        .filter(isResolvedPendencia)
+        .sort((a, b) => new Date(b.retornosPendenciaUpdatedAt || 0) - new Date(a.retornosPendenciaUpdatedAt || 0));
+    }
     return searchedOpenItems.filter((item) => getPendenciaResponsavel(item) === ownerFilter);
-  }, [ownerFilter, searchedOpenItems]);
+  }, [ownerFilter, searchedItems, searchedOpenItems]);
 
   const visibleItems = filteredItems;
 
@@ -501,6 +447,8 @@ const EntregasCanhotosPendentes = () => {
     (item) => getPendenciaResponsavel(item) === 'geolog'
   ).length;
 
+  const totalResolvidas = resolvedItems.length;
+
   const exportListToExcel = () => {
     const headers = [
       'Processo principal',
@@ -514,6 +462,9 @@ const EntregasCanhotosPendentes = () => {
       'Retorno GeoMar',
       'acao',
       'Data da coleta',
+      'Status',
+      'Resolvido em',
+      'Atualizado por',
     ];
 
     const rows = visibleItems.map((item) => {
@@ -531,6 +482,9 @@ const EntregasCanhotosPendentes = () => {
         'Retorno GeoMar': row.retornoGeoMar,
         acao: row.acao,
         'Data da coleta': row.dataColeta,
+        Status: item.pendenciaStatus || '',
+        'Resolvido em': item.retornosPendenciaUpdatedAt ? formatarData(item.retornosPendenciaUpdatedAt, city) : '',
+        'Atualizado por': item.retornosPendenciaUpdatedBy || '',
       };
     });
 
@@ -800,23 +754,38 @@ const EntregasCanhotosPendentes = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-            <StatCard
-              label="Com GeoMar"
-              value={totalComGeoMar}
-              icon={FaUser}
-              tone="emerald"
-              active={ownerFilter === 'geomar'}
-              onClick={() => setOwnerFilter('geomar')}
-            />
-            <StatCard
-              label="Com GeoLog"
-              value={totalComGeoLog}
-              icon={FaTruck}
-              tone="blue"
-              active={ownerFilter === 'geolog'}
-              onClick={() => setOwnerFilter('geolog')}
-            />
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {[
+              { key: 'geomar', label: 'Com GeoMar', value: totalComGeoMar, icon: FaUser, activeClass: 'bg-emerald-600 border-emerald-600 text-white shadow-emerald-100', idleClass: 'bg-white border-emerald-200 text-emerald-700 hover:bg-emerald-50' },
+              { key: 'geolog', label: 'Com GeoLog', value: totalComGeoLog, icon: FaTruck, activeClass: 'bg-blue-600 border-blue-600 text-white shadow-blue-100', idleClass: 'bg-white border-blue-200 text-blue-700 hover:bg-blue-50' },
+              { key: 'resolved', label: 'Histórico', value: totalResolvidas, icon: FaCheckCircle, activeClass: 'bg-slate-900 border-slate-900 text-white shadow-slate-200', idleClass: 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50' },
+            ].map((filter) => {
+              const Icon = filter.icon;
+              const active = ownerFilter === filter.key;
+              return (
+                <button
+                  key={filter.key}
+                  type="button"
+                  onClick={() => {
+                    setOwnerFilter(filter.key);
+                    setExpandedId(null);
+                  }}
+                  className={cn(
+                    'inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-black transition shadow-sm',
+                    active ? filter.activeClass : filter.idleClass
+                  )}
+                >
+                  <Icon size={12} />
+                  <span>{filter.label}</span>
+                  <span className={cn(
+                    'rounded-full px-2 py-0.5 text-[11px]',
+                    active ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'
+                  )}>
+                    {filter.value}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -850,14 +819,18 @@ const EntregasCanhotosPendentes = () => {
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
                 <div>
                   <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400 font-black">
-                    Fila operacional
+                    {ownerFilter === 'resolved' ? 'Histórico operacional' : 'Fila operacional'}
                   </p>
                   <h2 className="text-lg font-black text-slate-900">
-                    {visibleItems.length} processo{visibleItems.length === 1 ? '' : 's'} com pendência
+                    {ownerFilter === 'resolved'
+                      ? `${visibleItems.length} processo${visibleItems.length === 1 ? '' : 's'} resolvido${visibleItems.length === 1 ? '' : 's'}`
+                      : `${visibleItems.length} processo${visibleItems.length === 1 ? '' : 's'} com pendência`}
                   </h2>
                 </div>
                 <p className="text-xs font-semibold text-slate-500">
-                  Abra apenas o processo que precisa tratar. O restante fica recolhido.
+                  {ownerFilter === 'resolved'
+                    ? 'Consulta em formato compacto para auditoria e conferência.'
+                    : 'Abra apenas o processo que precisa tratar. O restante fica recolhido.'}
                 </p>
               </div>
             </div>
@@ -883,6 +856,7 @@ const EntregasCanhotosPendentes = () => {
                   ? item.containerNumero.join(', ')
                   : item.container || item.deliveryNumber;
                 const isExpanded = expandedId === item._id;
+                const isResolvedView = ownerFilter === 'resolved';
 
                 return (
                   <div key={item._id} className="bg-white">
@@ -892,17 +866,26 @@ const EntregasCanhotosPendentes = () => {
                           <p className="text-base font-black text-slate-950">
                             {item.processoCAB || item.deliveryNumber || '-'}
                           </p>
-                          <span className={cn(
-                            'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-black border',
-                            currentConfig.badge
-                          )}>
-                            <CurrentIcon size={10} />
-                            {currentConfig.label}
-                          </span>
-                          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-black text-amber-700">
-                            <FaExclamationTriangle size={10} />
-                            {pendingDocs.length} pend.
-                          </span>
+                          {isResolvedView ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-emerald-700">
+                              <FaCheckCircle size={10} />
+                              Resolvido
+                            </span>
+                          ) : (
+                            <>
+                              <span className={cn(
+                                'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-black border',
+                                currentConfig.badge
+                              )}>
+                                <CurrentIcon size={10} />
+                                {currentConfig.label}
+                              </span>
+                              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-black text-amber-700">
+                                <FaExclamationTriangle size={10} />
+                                {pendingDocs.length} pend.
+                              </span>
+                            </>
+                          )}
                         </div>
                         <div className="mt-1 flex flex-wrap gap-2 text-xs font-semibold text-slate-500">
                           {item.processoLog && <span>Log: {item.processoLog}</span>}
@@ -935,11 +918,16 @@ const EntregasCanhotosPendentes = () => {
 
                       <div className="min-w-0 text-sm">
                         <p className="text-[9px] uppercase tracking-[0.18em] font-black text-slate-400">
-                          Último retorno
+                          {isResolvedView ? 'Resolvido em' : 'Último retorno'}
                         </p>
                         <p className="font-semibold text-slate-600 truncate">
-                          {item[currentConfig.field] || item.submissionObservation || item.documentsJustification || 'Sem retorno'}
+                          {isResolvedView
+                            ? (item.retornosPendenciaUpdatedAt ? formatarData(item.retornosPendenciaUpdatedAt, city) : '-')
+                            : (item[currentConfig.field] || item.submissionObservation || item.documentsJustification || 'Sem retorno')}
                         </p>
+                        {isResolvedView && item.retornosPendenciaUpdatedBy && (
+                          <p className="text-xs text-slate-500 truncate">por {item.retornosPendenciaUpdatedBy}</p>
+                        )}
                       </div>
 
                       <div className="flex xl:justify-end items-center gap-2">
@@ -948,7 +936,7 @@ const EntregasCanhotosPendentes = () => {
                           onClick={() => setExpandedId(isExpanded ? null : item._id)}
                           className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 shadow-sm transition hover:bg-slate-100"
                         >
-                          {isExpanded ? 'Ocultar' : 'Detalhes'}
+                          {isExpanded ? 'Ocultar' : isResolvedView ? 'Ver histórico' : 'Detalhes'}
                         </button>
                       </div>
                     </div>
@@ -987,63 +975,70 @@ const EntregasCanhotosPendentes = () => {
                           </div>
 
                           <div className="space-y-3">
-                            <div className="rounded-2xl border border-slate-200 bg-white p-3.5">
-                              <SectionTitle
-                                icon={FaFileUpload}
-                                title="Documentos pendentes"
-                                subtitle={isMyTurn ? 'Anexe somente quando for tratar este processo' : `Aguardando ${currentConfig.label}`}
-                              />
-                              {pendingDocs.length > 0 ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                                  {pendingDocs.map((doc) => (
-                                    <PendingDocumentControl
-                                      key={doc}
-                                      doc={doc}
-                                      city={city}
-                                      disabled={uploadingDoc === `${item._id}:${doc}` || !isMyTurn}
-                                      disabledLabel={
-                                        !isMyTurn
-                                          ? `Com ${currentConfig.label}`
-                                          : undefined
-                                      }
-                                      onUpload={(files) => uploadDocumento(item, doc, files)}
-                                    />
-                                  ))}
-                                </div>
-                              ) : (
-                                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-700">
-                                  Nenhum documento pendente.
-                                </div>
-                              )}
-                            </div>
+                            {!isResolvedView && (
+                              <div className="rounded-2xl border border-slate-200 bg-white p-3.5">
+                                <SectionTitle
+                                  icon={FaFileUpload}
+                                  title="Documentos pendentes"
+                                  subtitle={isMyTurn ? 'Anexe somente quando for tratar este processo' : `Aguardando ${currentConfig.label}`}
+                                />
+                                {pendingDocs.length > 0 ? (
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                                    {pendingDocs.map((doc) => (
+                                      <PendingDocumentControl
+                                        key={doc}
+                                        doc={doc}
+                                        city={city}
+                                        disabled={uploadingDoc === `${item._id}:${doc}` || !isMyTurn}
+                                        disabledLabel={
+                                          !isMyTurn
+                                            ? `Com ${currentConfig.label}`
+                                            : undefined
+                                        }
+                                        onUpload={(files) => uploadDocumento(item, doc, files)}
+                                      />
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-700">
+                                    Nenhum documento pendente.
+                                  </div>
+                                )}
+                              </div>
+                            )}
 
-                            <div className="grid grid-cols-1 xl:grid-cols-[1.05fr_0.95fr] gap-3">
-                              <ReturnPanel
-                                title={`Responder como ${currentConfig.label}`}
-                                icon={currentConfig.icon}
-                                value={item[currentConfig.field]}
-                                draftValue={draft[currentConfig.field]}
-                                onChange={(e) =>
-                                  updateDraft(item._id, currentConfig.field, e.target.value)
-                                }
-                                placeholder={
-                                  isMyTurn
-                                    ? `Descreva a tratativa e repasse para ${nextConfig.label}...`
-                                    : isManagerViewOnly
-                                      ? 'Modo visualização para gerente.'
-                                      : `Aguardando repasse para ${RESPONSAVEL_CONFIG[userPendenciaGroup]?.label || 'seu perfil'}...`
-                                }
-                                disabled={!isMyTurn || isSaving}
-                                helper={
-                                  isMyTurn
-                                    ? canConclude
-                                      ? 'Revise os anexos e conclua a pendência para remover da tela.'
-                                      : `Ao salvar, esta pendência sai da sua fila e vai para ${nextConfig.label}.`
-                                    : isManagerViewOnly
-                                      ? 'Perfil gerente acompanha sem alterar o fluxo.'
-                                      : `Você responde quando estiver com ${RESPONSAVEL_CONFIG[userPendenciaGroup]?.label || 'seu perfil'}.`
-                                }
-                              />
+                            <div className={cn(
+                              'grid grid-cols-1 gap-3',
+                              isResolvedView ? 'xl:grid-cols-1' : 'xl:grid-cols-[1.05fr_0.95fr]'
+                            )}>
+                              {!isResolvedView && (
+                                <ReturnPanel
+                                  title={`Responder como ${currentConfig.label}`}
+                                  icon={currentConfig.icon}
+                                  value={item[currentConfig.field]}
+                                  draftValue={draft[currentConfig.field]}
+                                  onChange={(e) =>
+                                    updateDraft(item._id, currentConfig.field, e.target.value)
+                                  }
+                                  placeholder={
+                                    isMyTurn
+                                      ? `Descreva a tratativa e repasse para ${nextConfig.label}...`
+                                      : isManagerViewOnly
+                                        ? 'Modo visualização para gerente.'
+                                        : `Aguardando repasse para ${RESPONSAVEL_CONFIG[userPendenciaGroup]?.label || 'seu perfil'}...`
+                                  }
+                                  disabled={!isMyTurn || isSaving}
+                                  helper={
+                                    isMyTurn
+                                      ? canConclude
+                                        ? 'Revise os anexos e conclua a pendência para remover da tela.'
+                                        : `Ao salvar, esta pendência sai da sua fila e vai para ${nextConfig.label}.`
+                                      : isManagerViewOnly
+                                        ? 'Perfil gerente acompanha sem alterar o fluxo.'
+                                        : `Você responde quando estiver com ${RESPONSAVEL_CONFIG[userPendenciaGroup]?.label || 'seu perfil'}.`
+                                  }
+                                />
+                              )}
 
                               <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm">
                                 <SectionTitle
@@ -1079,6 +1074,7 @@ const EntregasCanhotosPendentes = () => {
                               </div>
                             </div>
 
+                            {!isResolvedView && (
                             <div className="rounded-2xl border border-slate-200 bg-white px-3.5 py-3 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
                               <div className="text-[13px] text-slate-500 leading-snug">
                                 {item.retornosPendenciaUpdatedAt ? (
@@ -1127,6 +1123,7 @@ const EntregasCanhotosPendentes = () => {
                                 </button>
                               </div>
                             </div>
+                            )}
                           </div>
                         </div>
                       </div>
