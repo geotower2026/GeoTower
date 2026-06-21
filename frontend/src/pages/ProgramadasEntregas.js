@@ -1399,7 +1399,7 @@ const ProgramadasEntregas = () => {
       const { Camera, CameraResultType, CameraSource } = await import('@capacitor/camera');
 
       const image = await Camera.getPhoto({
-        quality: 70,
+        quality: 90,
         allowEditing: false,
         resultType: CameraResultType.DataUrl,
         source: CameraSource.Camera,
@@ -1452,11 +1452,11 @@ const ProgramadasEntregas = () => {
 
   const compressPhotoFile = async (file) => {
     const options = {
-      maxSizeMB: 0.25,
-      maxWidthOrHeight: 1024,
+      maxSizeMB: 2,
+      maxWidthOrHeight: 2560,
       useWebWorker: true,
       fileType: 'image/jpeg',
-      initialQuality: 0.7,
+      initialQuality: 0.92,
       maxIteration: 10
     };
     try {

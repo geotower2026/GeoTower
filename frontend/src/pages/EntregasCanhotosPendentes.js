@@ -19,9 +19,7 @@ import {
   FaExchangeAlt,
   FaFileExcel,
   FaHistory,
-  FaList,
   FaLock,
-  FaThLarge,
 } from 'react-icons/fa';
 import Toast from '../components/Toast';
 import { adminService } from '../services/authService';
@@ -424,7 +422,8 @@ const EntregasCanhotosPendentes = () => {
   const [toast, setToast] = useState(null);
   const [search, setSearch] = useState('');
   const [ownerFilter, setOwnerFilter] = useState(userPendenciaGroup || 'geomar');
-  const [viewMode, setViewMode] = useState('cards');
+  const [expandedId, setExpandedId] = useState(null);
+  const viewMode = 'professional';
 
   const loadPendencias = async () => {
     setLoading(true);
@@ -488,7 +487,7 @@ const EntregasCanhotosPendentes = () => {
     return searchedOpenItems.filter((item) => getPendenciaResponsavel(item) === ownerFilter);
   }, [ownerFilter, searchedOpenItems]);
 
-  const visibleItems = viewMode === 'list' ? searchedItems : filteredItems;
+  const visibleItems = filteredItems;
 
   useEffect(() => {
     setOwnerFilter(userPendenciaGroup || 'geomar');
@@ -770,37 +769,6 @@ const EntregasCanhotosPendentes = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2">
-              <div className="inline-flex rounded-2xl border border-slate-200 bg-slate-100 p-1 shadow-sm">
-                <button
-                  type="button"
-                  onClick={() => setViewMode('cards')}
-                  className={cn(
-                    'inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-black transition',
-                    viewMode === 'cards'
-                      ? 'bg-white text-slate-900 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-800'
-                  )}
-                  title="Visualizar em cards"
-                >
-                  <FaThLarge size={12} />
-                  Cards
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('list')}
-                  className={cn(
-                    'inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-black transition',
-                    viewMode === 'list'
-                      ? 'bg-white text-slate-900 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-800'
-                  )}
-                  title="Visualizar em lista"
-                >
-                  <FaList size={12} />
-                  Lista
-                </button>
-              </div>
-
               <div className="relative">
                 <FaSearch
                   className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
@@ -820,6 +788,14 @@ const EntregasCanhotosPendentes = () => {
               >
                 <FaSync size={12} />
                 Atualizar
+              </button>
+              <button
+                type="button"
+                onClick={exportListToExcel}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-black transition shadow-sm"
+              >
+                <FaFileExcel size={13} />
+                Excel
               </button>
             </div>
           </div>
@@ -865,6 +841,300 @@ const EntregasCanhotosPendentes = () => {
             <p className="text-sm text-slate-500 mt-2 max-w-xl mx-auto leading-relaxed">
               Não há entregas finalizadas com documentos faltantes para os filtros atuais.
             </p>
+          </div>
+        )}
+
+        {!loading && visibleItems.length > 0 && viewMode === 'professional' && (
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="border-b border-slate-200 bg-white px-4 py-3">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400 font-black">
+                    Fila operacional
+                  </p>
+                  <h2 className="text-lg font-black text-slate-900">
+                    {visibleItems.length} processo{visibleItems.length === 1 ? '' : 's'} com pendência
+                  </h2>
+                </div>
+                <p className="text-xs font-semibold text-slate-500">
+                  Abra apenas o processo que precisa tratar. O restante fica recolhido.
+                </p>
+              </div>
+            </div>
+
+            <div className="divide-y divide-slate-100">
+              {visibleItems.map((item) => {
+                const draft = drafts[item._id] || {};
+                const pendingDocs = item.missingDocumentsAtSubmit || [];
+                const isSaving = savingId === item._id;
+                const scheduleInfo = getScheduleInfo(item, city);
+                const currentOwner = getPendenciaResponsavel(item);
+                const currentConfig = RESPONSAVEL_CONFIG[currentOwner];
+                const CurrentIcon = currentConfig.icon;
+                const nextOwner = getNextResponsavel(currentOwner);
+                const nextConfig = RESPONSAVEL_CONFIG[nextOwner];
+                const isMyTurn = !isManagerViewOnly && currentOwner === userPendenciaGroup;
+                const canConclude = isMyTurn && currentOwner === 'geomar' && pendingDocs.length === 0;
+                const history = Array.isArray(item.pendenciaHistorico)
+                  ? item.pendenciaHistorico
+                  : [];
+                const partyValue = item.recebedor || item.destinatario || item.remetente;
+                const containerValue = Array.isArray(item.containerNumero)
+                  ? item.containerNumero.join(', ')
+                  : item.container || item.deliveryNumber;
+                const isExpanded = expandedId === item._id;
+
+                return (
+                  <div key={item._id} className="bg-white">
+                    <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_1fr_0.9fr_0.7fr_auto] gap-3 px-4 py-3 hover:bg-slate-50/80 transition">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-base font-black text-slate-950">
+                            {item.processoCAB || item.deliveryNumber || '-'}
+                          </p>
+                          <span className={cn(
+                            'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-black border',
+                            currentConfig.badge
+                          )}>
+                            <CurrentIcon size={10} />
+                            {currentConfig.label}
+                          </span>
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-black text-amber-700">
+                            <FaExclamationTriangle size={10} />
+                            {pendingDocs.length} pend.
+                          </span>
+                        </div>
+                        <div className="mt-1 flex flex-wrap gap-2 text-xs font-semibold text-slate-500">
+                          {item.processoLog && <span>Log: {item.processoLog}</span>}
+                          {item.deliveryNumber && <span>Delivery: {item.deliveryNumber}</span>}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div className="min-w-0">
+                          <p className="text-[9px] uppercase tracking-[0.18em] font-black text-slate-400">
+                            Container
+                          </p>
+                          <p className="font-bold text-slate-800 truncate">{containerValue || '-'}</p>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[9px] uppercase tracking-[0.18em] font-black text-slate-400">
+                            {scheduleInfo.label}
+                          </p>
+                          <p className="font-bold text-slate-800 truncate">{scheduleInfo.value}</p>
+                        </div>
+                      </div>
+
+                      <div className="min-w-0 text-sm">
+                        <p className="text-[9px] uppercase tracking-[0.18em] font-black text-slate-400">
+                          {getPartyLabel(item, city)}
+                        </p>
+                        <p className="font-bold text-slate-800 truncate">{partyValue || '-'}</p>
+                        <p className="text-xs text-slate-500 truncate">{item.userName || '-'}</p>
+                      </div>
+
+                      <div className="min-w-0 text-sm">
+                        <p className="text-[9px] uppercase tracking-[0.18em] font-black text-slate-400">
+                          Último retorno
+                        </p>
+                        <p className="font-semibold text-slate-600 truncate">
+                          {item[currentConfig.field] || item.submissionObservation || item.documentsJustification || 'Sem retorno'}
+                        </p>
+                      </div>
+
+                      <div className="flex xl:justify-end items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedId(isExpanded ? null : item._id)}
+                          className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 shadow-sm transition hover:bg-slate-100"
+                        >
+                          {isExpanded ? 'Ocultar' : 'Detalhes'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="border-t border-slate-100 bg-slate-50/70 px-4 py-4">
+                        <div className="grid grid-cols-1 xl:grid-cols-[0.95fr_1.35fr] gap-4">
+                          <div className="space-y-3">
+                            <div className="rounded-2xl border border-slate-200 bg-white p-3.5">
+                              <SectionTitle
+                                icon={FaBoxes}
+                                title="Dados da entrega"
+                                subtitle="Informações principais do processo"
+                              />
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                <Field label="Container" value={containerValue} icon={FaBoxes} />
+                                <Field label={scheduleInfo.label} value={scheduleInfo.value} icon={FaCalendarAlt} />
+                                <Field label="Contratado" value={item.userName} icon={FaBuilding} />
+                                <Field label="Motorista" value={item.driverName} icon={FaTruck} />
+                                <div className="sm:col-span-2">
+                                  <Field label={getPartyLabel(item, city)} value={partyValue} icon={FaUser} />
+                                </div>
+                              </div>
+                            </div>
+
+                            {(item.submissionObservation || item.documentsJustification) && (
+                              <div className="rounded-2xl border border-slate-200 bg-white p-3.5">
+                                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400 font-black">
+                                  Justificativa
+                                </p>
+                                <p className="mt-1 text-sm leading-snug text-slate-700 whitespace-pre-wrap">
+                                  {item.submissionObservation || item.documentsJustification}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="space-y-3">
+                            <div className="rounded-2xl border border-slate-200 bg-white p-3.5">
+                              <SectionTitle
+                                icon={FaFileUpload}
+                                title="Documentos pendentes"
+                                subtitle={isMyTurn ? 'Anexe somente quando for tratar este processo' : `Aguardando ${currentConfig.label}`}
+                              />
+                              {pendingDocs.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                                  {pendingDocs.map((doc) => (
+                                    <PendingDocumentControl
+                                      key={doc}
+                                      doc={doc}
+                                      city={city}
+                                      disabled={uploadingDoc === `${item._id}:${doc}` || !isMyTurn}
+                                      disabledLabel={
+                                        !isMyTurn
+                                          ? `Com ${currentConfig.label}`
+                                          : undefined
+                                      }
+                                      onUpload={(files) => uploadDocumento(item, doc, files)}
+                                    />
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-700">
+                                  Nenhum documento pendente.
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="grid grid-cols-1 xl:grid-cols-[1.05fr_0.95fr] gap-3">
+                              <ReturnPanel
+                                title={`Responder como ${currentConfig.label}`}
+                                icon={currentConfig.icon}
+                                value={item[currentConfig.field]}
+                                draftValue={draft[currentConfig.field]}
+                                onChange={(e) =>
+                                  updateDraft(item._id, currentConfig.field, e.target.value)
+                                }
+                                placeholder={
+                                  isMyTurn
+                                    ? `Descreva a tratativa e repasse para ${nextConfig.label}...`
+                                    : isManagerViewOnly
+                                      ? 'Modo visualização para gerente.'
+                                      : `Aguardando repasse para ${RESPONSAVEL_CONFIG[userPendenciaGroup]?.label || 'seu perfil'}...`
+                                }
+                                disabled={!isMyTurn || isSaving}
+                                helper={
+                                  isMyTurn
+                                    ? canConclude
+                                      ? 'Revise os anexos e conclua a pendência para remover da tela.'
+                                      : `Ao salvar, esta pendência sai da sua fila e vai para ${nextConfig.label}.`
+                                    : isManagerViewOnly
+                                      ? 'Perfil gerente acompanha sem alterar o fluxo.'
+                                      : `Você responde quando estiver com ${RESPONSAVEL_CONFIG[userPendenciaGroup]?.label || 'seu perfil'}.`
+                                }
+                              />
+
+                              <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm">
+                                <SectionTitle
+                                  icon={FaHistory}
+                                  title="Histórico"
+                                  subtitle="Últimos repasses"
+                                />
+                                {history.length === 0 ? (
+                                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[13px] text-slate-500">
+                                    Nenhum repasse registrado ainda.
+                                  </div>
+                                ) : (
+                                  <div className="max-h-40 overflow-y-auto space-y-2 pr-1">
+                                    {history.slice().reverse().slice(0, 4).map((entry, index) => {
+                                      const from = RESPONSAVEL_CONFIG[entry.from]?.label || '-';
+                                      const to = RESPONSAVEL_CONFIG[entry.to]?.label || '-';
+                                      const titleText = entry.action === 'documento_anexado'
+                                        ? 'Documento'
+                                        : `${from} para ${to}`;
+                                      return (
+                                        <div key={`${entry.createdAt || index}-${index}`} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                                          <p className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">
+                                            {titleText}
+                                          </p>
+                                          <p className="mt-1 text-[13px] font-semibold text-slate-700 whitespace-pre-wrap leading-snug">
+                                            {entry.message || '-'}
+                                          </p>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="rounded-2xl border border-slate-200 bg-white px-3.5 py-3 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                              <div className="text-[13px] text-slate-500 leading-snug">
+                                {item.retornosPendenciaUpdatedAt ? (
+                                  <span>
+                                    <span className="font-bold text-slate-700">Última atualização:</span>{' '}
+                                    {formatarData(item.retornosPendenciaUpdatedAt, city)}
+                                    {item.retornosPendenciaUpdatedBy
+                                      ? ` por ${item.retornosPendenciaUpdatedBy}`
+                                      : ''}
+                                  </span>
+                                ) : (
+                                  <span>Nenhum retorno salvo ainda.</span>
+                                )}
+                              </div>
+
+                              <div className="flex flex-col sm:flex-row gap-2">
+                                {canConclude && (
+                                  <button
+                                    onClick={() => saveRetornos(item)}
+                                    disabled={isSaving}
+                                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-800 text-white text-sm font-black transition disabled:opacity-60 shadow-sm"
+                                  >
+                                    <FaExchangeAlt size={12} />
+                                    Repassar para GeoLog
+                                  </button>
+                                )}
+
+                                <button
+                                  onClick={() => canConclude ? concluirPendencia(item) : saveRetornos(item)}
+                                  disabled={isSaving || !isMyTurn}
+                                  className={cn(
+                                    'inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-black transition disabled:opacity-60 shadow-sm',
+                                    canConclude
+                                      ? 'bg-emerald-600 hover:bg-emerald-700'
+                                      : isMyTurn ? currentConfig.button : 'bg-slate-400 cursor-not-allowed'
+                                  )}
+                                >
+                                  {isMyTurn ? (canConclude ? <FaCheckCircle size={12} /> : <FaExchangeAlt size={12} />) : <FaLock size={12} />}
+                                  {isSaving
+                                    ? canConclude ? 'Concluindo...' : 'Repassando...'
+                                    : canConclude
+                                      ? 'Concluir pendência'
+                                      : isMyTurn
+                                      ? `Repassar para ${nextConfig.label}`
+                                      : `Aguardando ${currentConfig.label}`}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
