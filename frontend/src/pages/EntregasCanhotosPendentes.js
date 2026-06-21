@@ -33,29 +33,29 @@ import { formatarData } from '../utils/date';
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 
 const Field = ({ label, value, icon: Icon }) => (
-  <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
-    <div className="flex items-center gap-2 mb-1">
+  <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5">
+    <div className="flex items-center gap-1.5 mb-1">
       {Icon && <Icon size={12} className="text-slate-400" />}
-      <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400 font-black">
+      <p className="text-[9px] uppercase tracking-[0.18em] text-slate-400 font-black">
         {label}
       </p>
     </div>
-    <p className="text-sm font-semibold text-slate-700 break-words leading-relaxed">
+    <p className="text-[13px] font-semibold text-slate-700 break-words leading-snug">
       {value || '-'}
     </p>
   </div>
 );
 
 const SectionTitle = ({ icon: Icon, title, subtitle }) => (
-  <div className="mb-3">
+  <div className="mb-2.5">
     <div className="flex items-center gap-2">
-      <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center">
-        <Icon size={14} />
+      <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
+        <Icon size={12} />
       </div>
       <div>
-        <h3 className="text-sm font-black text-slate-900">{title}</h3>
+        <h3 className="text-[13px] font-black text-slate-900">{title}</h3>
         {subtitle && (
-          <p className="text-xs text-slate-500">{subtitle}</p>
+          <p className="text-[11px] text-slate-500 leading-tight">{subtitle}</p>
         )}
       </div>
     </div>
@@ -98,29 +98,29 @@ const StatCard = ({ label, value, icon: Icon, tone = 'slate', active = false, on
       type={onClick ? 'button' : undefined}
       onClick={onClick}
       className={cn(
-        'w-full text-left rounded-2xl border p-4 shadow-sm transition hover:shadow-md',
+        'w-full text-left rounded-2xl border px-4 py-3 shadow-sm transition hover:shadow-md',
         onClick && 'cursor-pointer hover:-translate-y-0.5',
         active && 'ring-4 ring-slate-300/50 shadow-md',
         current.wrap
       )}
     >
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <p className={cn(
-            'text-[10px] uppercase tracking-[0.22em] font-black',
+            'text-[9px] uppercase tracking-[0.2em] font-black',
             current.label
           )}>
             {label}
           </p>
-          <p className={cn('mt-2 text-2xl font-black', current.value)}>
+          <p className={cn('mt-1 text-xl font-black', current.value)}>
             {value}
           </p>
         </div>
         <div className={cn(
-          'w-11 h-11 rounded-2xl flex items-center justify-center',
+          'w-10 h-10 rounded-2xl flex items-center justify-center shrink-0',
           current.icon
         )}>
-          <Icon size={16} />
+          <Icon size={14} />
         </div>
       </div>
     </Component>
@@ -238,22 +238,22 @@ const PendingDocumentControl = ({ doc, city, disabled, disabledLabel, onUpload }
   const inputId = useId();
 
   return (
-    <div className="group rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-3 transition hover:shadow-sm">
+    <div className="group rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-3 transition hover:shadow-sm">
       <div className="flex items-center gap-2 text-amber-800">
-        <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center">
+        <div className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
           <FaExclamationTriangle size={12} />
         </div>
         <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-[0.18em] font-black text-amber-600">
+          <p className="text-[9px] uppercase tracking-[0.16em] font-black text-amber-600">
             Documento pendente
           </p>
-          <p className="text-sm font-bold truncate">
+          <p className="text-[13px] font-bold truncate">
             {getDocumentLabel(doc, city)}
           </p>
         </div>
       </div>
 
-      <div className="mt-3">
+      <div className="mt-2.5">
         <input
           id={inputId}
           type="file"
@@ -273,7 +273,7 @@ const PendingDocumentControl = ({ doc, city, disabled, disabledLabel, onUpload }
         <label
           htmlFor={inputId}
           className={cn(
-            'inline-flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-black transition',
+            'inline-flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-black transition',
             disabled
               ? 'cursor-wait bg-slate-200 text-slate-400'
               : 'cursor-pointer border border-amber-200 bg-white text-amber-700 hover:bg-amber-100'
@@ -297,25 +297,25 @@ const ReturnPanel = ({
   disabled = false,
   helper,
 }) => (
-  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-    <div className="flex items-center gap-2 mb-3">
-      <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center">
-        <Icon size={14} />
+  <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm">
+    <div className="flex items-center gap-2 mb-2.5">
+      <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center">
+        <Icon size={13} />
       </div>
       <div>
-        <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400 font-black">
+        <p className="text-[9px] uppercase tracking-[0.18em] text-slate-400 font-black">
           Retorno operacional
         </p>
-        <h4 className="text-sm font-black text-slate-900">{title}</h4>
+        <h4 className="text-[13px] font-black text-slate-900">{title}</h4>
       </div>
     </div>
 
     {value && (
-      <div className="mb-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-        <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400 font-black mb-1">
+      <div className="mb-2.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+        <p className="text-[9px] uppercase tracking-[0.16em] text-slate-400 font-black mb-1">
           Último retorno
         </p>
-        <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto">
+        <p className="text-[13px] text-slate-700 whitespace-pre-wrap leading-snug max-h-24 overflow-y-auto">
           {value}
         </p>
       </div>
@@ -325,9 +325,9 @@ const ReturnPanel = ({
       value={draftValue ?? ''}
       onChange={onChange}
       disabled={disabled}
-      rows={5}
+      rows={3}
       className={cn(
-        'w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800 outline-none resize-y transition focus:bg-white focus:ring-4',
+        'w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[13px] text-slate-800 outline-none resize-y transition focus:bg-white focus:ring-4',
         disabled
           ? 'cursor-not-allowed text-slate-400'
           : 'focus:border-amber-300 focus:ring-amber-100'
@@ -335,7 +335,7 @@ const ReturnPanel = ({
       placeholder={placeholder}
     />
     {helper && (
-      <p className="mt-2 text-xs font-semibold text-slate-500 leading-relaxed">
+      <p className="mt-2 text-[11px] font-semibold text-slate-500 leading-snug">
         {helper}
       </p>
     )}
@@ -735,47 +735,47 @@ const EntregasCanhotosPendentes = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-slate-50 to-slate-100">
       <div className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/85 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5">
-          <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
-            <div className="flex items-start gap-4 min-w-0">
+        <div className="max-w-[1500px] mx-auto px-4 sm:px-6 py-3">
+          <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
+            <div className="flex items-start gap-3 min-w-0">
               <button
                 onClick={() => navigate('/home')}
-                className="mt-0.5 w-11 h-11 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition shadow-sm"
+                className="mt-0.5 w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition shadow-sm"
                 title="Voltar"
               >
                 <FaArrowLeft />
               </button>
 
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center shadow-md shadow-amber-200">
-                <FaClipboardList />
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white flex items-center justify-center shadow-md shadow-amber-200">
+                <FaClipboardList size={15} />
               </div>
 
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-1">
-                  <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 border border-slate-200">
+                  <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500 border border-slate-200">
                     Painel administrativo
                   </span>
-                  <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-amber-700 border border-amber-200">
+                  <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-[0.16em] text-amber-700 border border-amber-200">
                     Pendências documentais
                   </span>
                 </div>
 
-                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 leading-tight">
+                <h1 className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
                   Documentos Pendentes
                 </h1>
-                <p className="text-sm sm:text-base text-slate-500 mt-1">
+                <p className="text-sm text-slate-500 mt-0.5 leading-snug max-w-2xl">
                   Acompanhe entregas finalizadas com documentos faltantes e registre retornos operacionais com mais clareza.
                 </p>
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col sm:flex-row gap-2">
               <div className="inline-flex rounded-2xl border border-slate-200 bg-slate-100 p-1 shadow-sm">
                 <button
                   type="button"
                   onClick={() => setViewMode('cards')}
                   className={cn(
-                    'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-black transition',
+                    'inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-black transition',
                     viewMode === 'cards'
                       ? 'bg-white text-slate-900 shadow-sm'
                       : 'text-slate-500 hover:text-slate-800'
@@ -789,7 +789,7 @@ const EntregasCanhotosPendentes = () => {
                   type="button"
                   onClick={() => setViewMode('list')}
                   className={cn(
-                    'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-black transition',
+                    'inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-black transition',
                     viewMode === 'list'
                       ? 'bg-white text-slate-900 shadow-sm'
                       : 'text-slate-500 hover:text-slate-800'
@@ -810,13 +810,13 @@ const EntregasCanhotosPendentes = () => {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Buscar processo, motorista, retorno..."
-                  className="w-full sm:w-96 pl-11 pr-4 py-3 rounded-2xl border border-slate-200 bg-white text-sm text-slate-700 outline-none shadow-sm transition focus:border-amber-300 focus:ring-4 focus:ring-amber-100"
+                  className="w-full sm:w-80 lg:w-96 pl-11 pr-4 py-2.5 rounded-2xl border border-slate-200 bg-white text-sm text-slate-700 outline-none shadow-sm transition focus:border-amber-300 focus:ring-4 focus:ring-amber-100"
                 />
               </div>
 
               <button
                 onClick={loadPendencias}
-                className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-black transition shadow-sm"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-black transition shadow-sm"
               >
                 <FaSync size={12} />
                 Atualizar
@@ -824,7 +824,7 @@ const EntregasCanhotosPendentes = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
             <StatCard
               label="Com GeoMar"
               value={totalComGeoMar}
@@ -845,7 +845,7 @@ const EntregasCanhotosPendentes = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+      <div className="max-w-[1500px] mx-auto px-4 sm:px-6 py-4">
         {loading && (
           <div className="space-y-4">
             {Array.from({ length: 3 }).map((_, index) => (
@@ -1075,7 +1075,7 @@ const EntregasCanhotosPendentes = () => {
         )}
 
         {!loading && filteredItems.length > 0 && viewMode === 'cards' && (
-          <div className="space-y-5">
+          <div className="space-y-4">
             {filteredItems.map((item) => {
               const draft = drafts[item._id] || {};
               const pendingDocs = item.missingDocumentsAtSubmit || [];
@@ -1095,31 +1095,31 @@ const EntregasCanhotosPendentes = () => {
               return (
                 <div
                   key={item._id}
-                  className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:shadow-lg"
+                  className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-lg"
                 >
-                  <div className="h-1.5 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500" />
+                  <div className="h-1 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500" />
 
-                  <div className="p-5 sm:p-6">
-                    <div className="flex flex-col 2xl:flex-row gap-6">
-                      <div className="2xl:w-[42%] min-w-0">
+                  <div className="p-4 sm:p-5">
+                    <div className="flex flex-col xl:flex-row gap-4">
+                      <div className="xl:w-[35%] 2xl:w-[33%] min-w-0">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-400 font-black">
+                            <p className="text-[9px] uppercase tracking-[0.2em] text-slate-400 font-black">
                               Processo principal
                             </p>
-                            <h2 className="text-2xl font-black text-slate-900 break-words mt-1">
+                            <h2 className="text-xl font-black text-slate-900 break-words mt-0.5">
                               {item.processoCAB || item.deliveryNumber || '-'}
                             </h2>
 
                             {(item.processoLog || item.deliveryNumber) && (
-                              <div className="mt-2 flex flex-wrap gap-2">
+                              <div className="mt-1.5 flex flex-wrap gap-1.5">
                                 {item.processoLog && (
-                                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+                                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-600">
                                     Processo Log: {item.processoLog}
                                   </span>
                                 )}
                                 {item.deliveryNumber && (
-                                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+                                  <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-600">
                                     Delivery: {item.deliveryNumber}
                                   </span>
                                 )}
@@ -1128,12 +1128,12 @@ const EntregasCanhotosPendentes = () => {
                           </div>
 
                           <div className="shrink-0 flex flex-col items-end gap-2">
-                            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 text-xs font-black border border-amber-200">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-[11px] font-black border border-amber-200">
                               <FaExclamationTriangle size={11} />
                               {pendingDocs.length} pend.
                             </span>
                             <span className={cn(
-                              'inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-black border',
+                              'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black border',
                               currentConfig.badge
                             )}>
                               <CurrentIcon size={11} />
@@ -1142,14 +1142,14 @@ const EntregasCanhotosPendentes = () => {
                           </div>
                         </div>
 
-                        <div className="mt-5">
+                        <div className="mt-4">
                           <SectionTitle
                             icon={FaBoxes}
                             title="Informações da entrega"
                             subtitle="Dados operacionais principais"
                           />
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2 gap-2.5">
                             <Field
                               label="Container"
                               value={
@@ -1174,7 +1174,7 @@ const EntregasCanhotosPendentes = () => {
                               value={item.driverName}
                               icon={FaTruck}
                             />
-                            <div className="md:col-span-2">
+                            <div className="md:col-span-2 xl:col-span-1 2xl:col-span-2">
                               <Field
                                 label={getPartyLabel(item, city)}
                                 value={item.recebedor || item.destinatario || item.remetente}
@@ -1185,36 +1185,36 @@ const EntregasCanhotosPendentes = () => {
                         </div>
 
                         {(item.submissionObservation || item.documentsJustification) && (
-                          <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                          <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
                             <div className="flex items-center gap-2 mb-2">
-                              <div className="w-8 h-8 rounded-xl bg-slate-200/70 text-slate-600 flex items-center justify-center">
-                                <FaRegCommentDots size={13} />
+                              <div className="w-7 h-7 rounded-lg bg-slate-200/70 text-slate-600 flex items-center justify-center">
+                                <FaRegCommentDots size={12} />
                               </div>
                               <div>
-                                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400 font-black">
+                                <p className="text-[9px] uppercase tracking-[0.18em] text-slate-400 font-black">
                                   Justificativa
                                 </p>
-                                <p className="text-sm font-black text-slate-800">
+                                <p className="text-[13px] font-black text-slate-800">
                                   Observação do motorista
                                 </p>
                               </div>
                             </div>
 
-                            <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+                            <p className="text-[13px] text-slate-700 whitespace-pre-wrap leading-snug">
                               {item.submissionObservation || item.documentsJustification}
                             </p>
                           </div>
                         )}
                       </div>
 
-                      <div className="2xl:flex-1 min-w-0 space-y-5">
+                      <div className="xl:flex-1 min-w-0 space-y-4">
                         <div>
                           <SectionTitle
                             icon={FaFileUpload}
                             title="Documentos pendentes"
                             subtitle="Anexe os arquivos faltantes para concluir a pendência"
                           />
-                          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-2.5">
                             {pendingDocs.map((doc) => (
                               <PendingDocumentControl
                                 key={doc}
@@ -1239,7 +1239,7 @@ const EntregasCanhotosPendentes = () => {
                             subtitle={`A pendência está com ${currentConfig.label}`}
                           />
 
-                          <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_0.9fr] gap-4">
+                          <div className="grid grid-cols-1 xl:grid-cols-[1.05fr_0.95fr] gap-3">
                             <ReturnPanel
                               title={`Responder como ${currentConfig.label}`}
                               icon={currentConfig.icon}
@@ -1267,27 +1267,27 @@ const EntregasCanhotosPendentes = () => {
                               }
                             />
 
-                            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                              <div className="flex items-center gap-2 mb-3">
-                                <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center">
-                                  <FaHistory size={14} />
+                            <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm">
+                              <div className="flex items-center gap-2 mb-2.5">
+                                <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center">
+                                  <FaHistory size={13} />
                                 </div>
                                 <div>
-                                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400 font-black">
+                                  <p className="text-[9px] uppercase tracking-[0.18em] text-slate-400 font-black">
                                     Histórico
                                   </p>
-                                  <h4 className="text-sm font-black text-slate-900">
+                                  <h4 className="text-[13px] font-black text-slate-900">
                                     Últimos repasses
                                   </h4>
                                 </div>
                               </div>
 
                               {history.length === 0 ? (
-                                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-500">
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[13px] text-slate-500">
                                   Nenhum repasse registrado ainda.
                                 </div>
                               ) : (
-                                <div className="max-h-56 overflow-y-auto space-y-3 pr-1">
+                                <div className="max-h-44 overflow-y-auto space-y-2 pr-1">
                                   {history.slice().reverse().slice(0, 5).map((entry, index) => {
                                     const from = RESPONSAVEL_CONFIG[entry.from]?.label || '-';
                                     const to = RESPONSAVEL_CONFIG[entry.to]?.label || '-';
@@ -1300,8 +1300,8 @@ const EntregasCanhotosPendentes = () => {
                                       ? 'Documento'
                                       : `${from} para ${to}`;
                                     return (
-                                      <div key={`${entry.createdAt || index}-${index}`} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-                                        <div className="flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em]">
+                                      <div key={`${entry.createdAt || index}-${index}`} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                                        <div className="flex flex-wrap items-center gap-2 text-[9px] font-black uppercase tracking-[0.14em]">
                                           <span className={titleColor}>{titleText}</span>
                                           {entry.createdAt && (
                                             <span className="text-slate-600 bg-white/80 border border-slate-200 rounded-md px-1.5 py-0.5">
@@ -1309,11 +1309,11 @@ const EntregasCanhotosPendentes = () => {
                                             </span>
                                           )}
                                         </div>
-                                        <p className="mt-1 text-sm font-semibold text-slate-700 whitespace-pre-wrap leading-relaxed">
+                                        <p className="mt-1 text-[13px] font-semibold text-slate-700 whitespace-pre-wrap leading-snug">
                                           {entry.message || '-'}
                                         </p>
                                         {entry.by && (
-                                          <p className="mt-1 text-xs text-slate-400">
+                                          <p className="mt-1 text-[11px] text-slate-400">
                                             por {entry.by}
                                           </p>
                                         )}
@@ -1326,8 +1326,8 @@ const EntregasCanhotosPendentes = () => {
                           </div>
                         </div>
 
-                        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-                          <div className="text-sm text-slate-500 leading-relaxed">
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-3 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                          <div className="text-[13px] text-slate-500 leading-snug">
                             {item.retornosPendenciaUpdatedAt ? (
                               <span>
                                 <span className="font-bold text-slate-700">Última atualização:</span>{' '}
@@ -1346,7 +1346,7 @@ const EntregasCanhotosPendentes = () => {
                               <button
                                 onClick={() => saveRetornos(item)}
                                 disabled={isSaving}
-                                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-slate-700 hover:bg-slate-800 text-white text-sm font-black transition disabled:opacity-60 shadow-sm"
+                                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-800 text-white text-sm font-black transition disabled:opacity-60 shadow-sm"
                               >
                                 <FaExchangeAlt size={12} />
                                 Repassar para GeoLog
@@ -1357,7 +1357,7 @@ const EntregasCanhotosPendentes = () => {
                               onClick={() => canConclude ? concluirPendencia(item) : saveRetornos(item)}
                               disabled={isSaving || !isMyTurn}
                               className={cn(
-                                'inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl text-white text-sm font-black transition disabled:opacity-60 shadow-sm',
+                                'inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-black transition disabled:opacity-60 shadow-sm',
                                 canConclude
                                   ? 'bg-emerald-600 hover:bg-emerald-700'
                                   : isMyTurn ? currentConfig.button : 'bg-slate-400 cursor-not-allowed'
