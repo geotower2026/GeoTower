@@ -1401,16 +1401,20 @@ const ProgramadasEntregas = () => {
       const image = await Camera.getPhoto({
         quality: 90,
         allowEditing: false,
-        resultType: CameraResultType.DataUrl,
+        resultType: CameraResultType.Uri,
         source: CameraSource.Camera,
         correctOrientation: true,
         saveToGallery: false
       });
 
-      if (!image?.dataUrl) return true;
-
-      const extension = image.format ? `.${image.format}` : '.jpg';
-      const file = dataURLtoFile(image.dataUrl, `foto_${Date.now()}${extension}`);
+      const file = await cameraPhotoToFile(image);
+      if (!file || file.size === 0) {
+        setToast({
+          message: 'A foto nao foi carregada. Tente novamente.',
+          type: 'warning'
+        });
+        return true;
+      }
 
       const added = addPhotoFiles([file], { trustCamera: true });
       if (added > 0) {
@@ -1448,6 +1452,34 @@ const ProgramadasEntregas = () => {
     const arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1], bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
     for (let i = 0; i < n; i++) u8arr[i] = bstr.charCodeAt(i);
     return new File([u8arr], filename, { type: mime });
+  }
+
+  async function cameraPhotoToFile(image) {
+    if (!image) return null;
+
+    if (image.webPath) {
+      const response = await fetch(image.webPath);
+      const blob = await response.blob();
+      const rawFormat = String(image.format || blob.type?.split('/')[1] || 'jpg').toLowerCase();
+      const safeFormat = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'].includes(rawFormat)
+        ? rawFormat
+        : 'jpg';
+      const extension = safeFormat === 'jpeg' ? 'jpg' : safeFormat;
+      const type = blob.type?.startsWith('image/')
+        ? blob.type
+        : `image/${extension === 'jpg' ? 'jpeg' : extension}`;
+      return new File([blob], `foto_${Date.now()}.${extension}`, {
+        type,
+        lastModified: Date.now()
+      });
+    }
+
+    if (image.dataUrl) {
+      const extension = image.format ? `.${image.format}` : '.jpg';
+      return dataURLtoFile(image.dataUrl, `foto_${Date.now()}${extension}`);
+    }
+
+    return null;
   }
 
   const compressPhotoFile = async (file) => {
