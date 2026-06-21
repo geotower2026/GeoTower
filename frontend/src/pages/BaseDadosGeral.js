@@ -30,6 +30,9 @@ const getRecordCity = (item) =>
 const fmtDate = (val, recordCity = 'manaus') =>
   val ? formatarData(val, recordCity, { dateStyle: 'short', timeStyle: 'short' }) : '—';
 
+const fmtAgendamento = (val) =>
+  val ? new Date(val).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+
 const toISO = (val) => {
   if (!val) return undefined;
   if (typeof val === 'string' && val.endsWith('Z')) return val;
@@ -127,6 +130,18 @@ const formatExcelDate = (value, recordCity = 'manaus') => {
     hour: '2-digit',
     minute: '2-digit',
   });
+};
+
+const formatExcelAgendamento = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (isNaN(date)) return '';
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${day}/${month}/${year} ${hours}:${minutes}`;
 };
 
 const buildExcelColumnWidths = (headers, rows) => {
@@ -250,7 +265,7 @@ const BaseDadosGeral = () => {
     if (colName === 'Processo') return item.processo || '';
     if (colName === recebedorLabel) return item.recebedor || '';
     if (colName === 'Container') return item.container || '';
-    if (colName === 'Agendamento') return getProgramacaoDate(item, getRecordCity(item)) || null;
+    if (colName === 'Agendamento') return getProgramacaoDate(item, city) || null;
     if (colName === 'Contratado') return item.contratado || '';
     if (colName === 'Motorista') return (item.motorista || item._entrega?.driverName || '').toLowerCase();
     if (colName === 'Status') return formatStatus(item._entrega?.status || item.status, getSentido(item));
@@ -519,7 +534,7 @@ const BaseDadosGeral = () => {
         Processo: item.processo || '',
         Recebedor: item.recebedor || '',
         Container: item.container || '',
-        Agendamento: formatExcelDate(getProgramacaoDate(item, recordCity), recordCity),
+        Agendamento: formatExcelAgendamento(getProgramacaoDate(item, cityName)),
         Contratado: item.contratado || '',
         Motorista: item.motorista || item._entrega?.driverName || '',
         Status: formatStatus(rawStatus, getSentido(item)),
@@ -1006,7 +1021,7 @@ const BaseDadosGeral = () => {
                         <td className="px-5 py-3 whitespace-nowrap text-xs text-gray-600">
                           <span className="flex items-center gap-1">
                             <FaCalendarAlt size={10} className="text-violet-400" />
-                            {getProgramacaoDate(item, recordCity) ? fmtDate(getProgramacaoDate(item, recordCity), recordCity) : '—'}
+                            {getProgramacaoDate(item, city) ? fmtAgendamento(getProgramacaoDate(item, city)) : '—'}
                           </span>
                         </td>
                         {/* Contratado */}
