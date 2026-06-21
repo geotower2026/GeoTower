@@ -380,6 +380,15 @@ STEP_INDEX.leavingClientPhoto = STEP_INDEX.leavingClient;
 STEP_INDEX.arrivingPortPhoto = STEP_INDEX.arrivingPort;
 STEP_INDEX.portReturnPhoto = STEP_INDEX.portReturn;
 
+const PHOTO_CAPTURE_STEPS = new Set([
+  'arrival',
+  'desovaStart',
+  'desovaFinal',
+  'leavingClientPhoto',
+  'arrivingPortPhoto',
+  'portReturnPhoto',
+]);
+
 const FlowStepBar = ({ currentStep, sentido = 'DESTINO' }) => {
   const idx = STEP_INDEX[currentStep] ?? 0;
   const getStepLabel = (step) => {
@@ -508,6 +517,7 @@ const ProgramadasEntregas = () => {
   const [arrivalDelayError, setArrivalDelayError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [processingPhoto, setProcessingPhoto] = useState(false);
+  const [cameraReady, setCameraReady] = useState(true);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
   const photosRef = useRef([]);
@@ -605,6 +615,23 @@ const ProgramadasEntregas = () => {
   useEffect(() => {
     processingPhotoRef.current = processingPhoto;
   }, [processingPhoto]);
+
+  useEffect(() => {
+    if (!showModal || !PHOTO_CAPTURE_STEPS.has(currentStep)) {
+      setCameraReady(true);
+      return undefined;
+    }
+
+    setCameraReady(false);
+    clearPhotos();
+    const timer = setTimeout(() => {
+      if (cameraInputRef.current) cameraInputRef.current.value = null;
+      setCameraReady(true);
+    }, 500);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showModal, currentStep]);
 
   useEffect(() => {
     if (!showModal || !currentDelivery?._id) {
@@ -2072,19 +2099,28 @@ const ProgramadasEntregas = () => {
           Processando foto...
         </div>
       )}
+      {!cameraReady && !processingPhoto && (
+        <div className="flex items-center justify-center gap-2 py-3 rounded-xl bg-violet-50 border border-violet-200 text-violet-700 text-sm font-semibold">
+          <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+          </svg>
+          Preparando câmera...
+        </div>
+      )}
       <input key={`${currentStep}-${cameraInputKey}`} ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleCameraCapture} className="hidden" />
       <button
         onClick={openCamera}
-        disabled={processingPhoto || submitting}
+        disabled={!cameraReady || processingPhoto || submitting}
         className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold text-base shadow-lg hover:shadow-xl active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <FaCamera size={18} />
-        {photos.length === 0 ? 'Tirar Foto' : 'Tirar Mais Fotos'}
+        {!cameraReady ? 'Preparando câmera...' : photos.length === 0 ? 'Tirar Foto' : 'Tirar Mais Fotos'}
       </button>
       <div className="flex gap-3">
         <button
           onClick={onConfirm}
-          disabled={submitting || processingPhoto || photos.length === 0 || confirmDisabled}
+          disabled={submitting || processingPhoto || !cameraReady || photos.length === 0 || confirmDisabled}
           className={`action-btn flex-1 px-3 py-3.5 text-white font-bold text-base shadow-md active:scale-95 transition disabled:opacity-40 disabled:cursor-not-allowed ${buttonColor}`}
         >
           {submitting ? (
