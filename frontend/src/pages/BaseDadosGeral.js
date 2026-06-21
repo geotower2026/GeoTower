@@ -18,13 +18,17 @@ import {
   getDesovaStepLabel
 } from '../utils/cityLabels';
 import { getDocumentLabel } from '../utils/documentLabels';
+import { formatarData } from '../utils/date';
 import Toast from '../components/Toast';
 
 /* ─────────────────────────────────────────
    Helpers
 ───────────────────────────────────────── */
-const fmtDate = (val) =>
-  val ? new Date(val).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+const getRecordCity = (item) =>
+  String(item?._entrega?.cityCode || item?._entrega?.city || item?.cityCode || item?.city || 'manaus').toLowerCase();
+
+const fmtDate = (val, recordCity = 'manaus') =>
+  val ? formatarData(val, recordCity, { dateStyle: 'short', timeStyle: 'short' }) : '—';
 
 const toISO = (val) => {
   if (!val) return undefined;
@@ -114,16 +118,15 @@ const statusBadge = (raw, sentido = 'DESTINO') => {
   return STATUS_COLOR[label] ?? 'bg-gray-100 text-gray-700 ring-gray-300';
 };
 
-const formatExcelDate = (value) => {
+const formatExcelDate = (value, recordCity = 'manaus') => {
   if (!value) return '';
-  const date = new Date(value);
-  if (isNaN(date)) return '';
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const year = date.getFullYear();
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${day}/${month}/${year} ${hours}:${minutes}`;
+  return formatarData(value, recordCity, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 };
 
 const buildExcelColumnWidths = (headers, rows) => {
@@ -247,7 +250,7 @@ const BaseDadosGeral = () => {
     if (colName === 'Processo') return item.processo || '';
     if (colName === recebedorLabel) return item.recebedor || '';
     if (colName === 'Container') return item.container || '';
-    if (colName === 'Agendamento') return getProgramacaoDate(item, city) || null;
+    if (colName === 'Agendamento') return getProgramacaoDate(item, getRecordCity(item)) || null;
     if (colName === 'Contratado') return item.contratado || '';
     if (colName === 'Motorista') return (item.motorista || item._entrega?.driverName || '').toLowerCase();
     if (colName === 'Status') return formatStatus(item._entrega?.status || item.status, getSentido(item));
@@ -511,21 +514,22 @@ const BaseDadosGeral = () => {
     const rows = data.map((item) => {
       const docStatus = getDocumentsStatus(item._entrega);
       const rawStatus = item._entrega?.status || item.status;
+      const recordCity = getRecordCity(item);
       return {
         Processo: item.processo || '',
         Recebedor: item.recebedor || '',
         Container: item.container || '',
-        Agendamento: formatExcelDate(getProgramacaoDate(item, cityName)),
+        Agendamento: formatExcelDate(getProgramacaoDate(item, recordCity), recordCity),
         Contratado: item.contratado || '',
         Motorista: item.motorista || item._entrega?.driverName || '',
         Status: formatStatus(rawStatus, getSentido(item)),
-        'Retirada Cheio': formatExcelDate(item._entrega?.containerMontadoAt),
-        Chegada: formatExcelDate(item._entrega?.horarioChegada || item._entrega?.arrivedAt),
-        [`Início ${desovaLabel}`]: formatExcelDate(item._entrega?.horarioInicioDesova || item._entrega?.desovaStartAt),
-        [`Fim ${desovaLabel}`]: formatExcelDate(item._entrega?.horarioFimDesova || item._entrega?.desovaEndAt),
-        'Saindo do Cliente': formatExcelDate(item._entrega?.horarioSaidaCliente || item._entrega?.saidaClienteAt),
-        'Chegada no Porto': formatExcelDate(item._entrega?.horarioChegadaPorto || item._entrega?.chegadaPortoAt),
-        'Entrega CNTR Porto': formatExcelDate(item._entrega?.horarioDevolucaoVazio || item._entrega?.dtDevolucaoCNTR),
+        'Retirada Cheio': formatExcelDate(item._entrega?.containerMontadoAt, recordCity),
+        Chegada: formatExcelDate(item._entrega?.horarioChegada || item._entrega?.arrivedAt, recordCity),
+        [`Início ${desovaLabel}`]: formatExcelDate(item._entrega?.horarioInicioDesova || item._entrega?.desovaStartAt, recordCity),
+        [`Fim ${desovaLabel}`]: formatExcelDate(item._entrega?.horarioFimDesova || item._entrega?.desovaEndAt, recordCity),
+        'Saindo do Cliente': formatExcelDate(item._entrega?.horarioSaidaCliente || item._entrega?.saidaClienteAt, recordCity),
+        'Chegada no Porto': formatExcelDate(item._entrega?.horarioChegadaPorto || item._entrega?.chegadaPortoAt, recordCity),
+        'Entrega CNTR Porto': formatExcelDate(item._entrega?.horarioDevolucaoVazio || item._entrega?.dtDevolucaoCNTR, recordCity),
         Documentos: docStatus.label || '',
         Observações: item._entrega?.observations || '',
       };
@@ -961,6 +965,7 @@ const BaseDadosGeral = () => {
                     const docStatus = getDocumentsStatus(item._entrega);
                     const rawStatus = item._entrega?.status || item.status;
                     const sentido = getSentido(item);
+                    const recordCity = getRecordCity(item);
                     return (
                       <tr
                         key={item._id}
@@ -1001,7 +1006,7 @@ const BaseDadosGeral = () => {
                         <td className="px-5 py-3 whitespace-nowrap text-xs text-gray-600">
                           <span className="flex items-center gap-1">
                             <FaCalendarAlt size={10} className="text-violet-400" />
-                            {getProgramacaoDate(item, city) ? fmtDate(getProgramacaoDate(item, city)) : '—'}
+                            {getProgramacaoDate(item, recordCity) ? fmtDate(getProgramacaoDate(item, recordCity), recordCity) : '—'}
                           </span>
                         </td>
                         {/* Contratado */}
@@ -1020,28 +1025,28 @@ const BaseDadosGeral = () => {
                           </span>
                         </td>
                         {/* Retirada */}
-                        <td className="px-5 py-3 whitespace-nowrap text-xs text-gray-600">{fmtDate(item._entrega?.containerMontadoAt)}</td>
+                        <td className="px-5 py-3 whitespace-nowrap text-xs text-gray-600">{fmtDate(item._entrega?.containerMontadoAt, recordCity)}</td>
                         {/* Chegada */}
                         <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600">
-                          {fmtDate(item._entrega?.horarioChegada || item._entrega?.arrivedAt)}
+                          {fmtDate(item._entrega?.horarioChegada || item._entrega?.arrivedAt, recordCity)}
                         </td>
                         {/* Início Desova */}
                         <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600">
-                          {fmtDate(item._entrega?.horarioInicioDesova || item._entrega?.desovaStartAt)}
+                          {fmtDate(item._entrega?.horarioInicioDesova || item._entrega?.desovaStartAt, recordCity)}
                         </td>
                         {/* Fim Desova */}
                         <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600">
-                          {fmtDate(item._entrega?.horarioFimDesova || item._entrega?.desovaEndAt)}
+                          {fmtDate(item._entrega?.horarioFimDesova || item._entrega?.desovaEndAt, recordCity)}
                         </td>
                         {/* Devolução */}
                         <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600">
-                          {fmtDate(item._entrega?.horarioSaidaCliente || item._entrega?.saidaClienteAt)}
+                          {fmtDate(item._entrega?.horarioSaidaCliente || item._entrega?.saidaClienteAt, recordCity)}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600">
-                          {fmtDate(item._entrega?.horarioChegadaPorto || item._entrega?.chegadaPortoAt)}
+                          {fmtDate(item._entrega?.horarioChegadaPorto || item._entrega?.chegadaPortoAt, recordCity)}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600">
-                          {fmtDate(item._entrega?.horarioDevolucaoVazio || item._entrega?.dtDevolucaoCNTR)}
+                          {fmtDate(item._entrega?.horarioDevolucaoVazio || item._entrega?.dtDevolucaoCNTR, recordCity)}
                         </td>
                         {/* Docs */}
                         <td className="px-5 py-3 whitespace-nowrap text-center overflow-hidden">
