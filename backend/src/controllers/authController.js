@@ -31,6 +31,33 @@ const hashPasswordForStorage = async (plainPassword) => {
     : hashPassword(plainPassword);
 };
 
+const passwordMatchesStoredValue = async (plainPassword, driver) => {
+  if (!plainPassword || !driver) return false;
+
+  const hashedSha256 = hashPassword(plainPassword);
+
+  if (driver.legacyPasswordSha256 && driver.legacyPasswordSha256 === hashedSha256) {
+    return true;
+  }
+
+  const storedPassword = driver.password || '';
+
+  if (typeof storedPassword === 'string' && /^[0-9a-f]{64}$/i.test(storedPassword)) {
+    return storedPassword === hashedSha256;
+  }
+
+  try {
+    if (await bcrypt.compare(plainPassword, storedPassword)) return true;
+    if (await bcrypt.compare(hashedSha256, storedPassword)) return true;
+  } catch (e) {
+    console.error('Error comparing stored password:', e);
+  }
+
+  const isBcryptHash = typeof storedPassword === 'string' && storedPassword.startsWith('$2');
+  const isLegacySha = typeof storedPassword === 'string' && /^[0-9a-f]{64}$/i.test(storedPassword);
+  return !isBcryptHash && !isLegacySha && storedPassword === plainPassword;
+};
+
 
 // Register a new driver
 exports.register = async (req, res) => {
@@ -363,9 +390,19 @@ exports.changePassword = async (req, res) => {
 
     if (!ok) return res.status(401).json({ success: false, message: 'Senha atual incorreta' });
 
+    if (!newPassword || String(newPassword).length < 6) {
+      return res.status(400).json({ success: false, message: 'A nova senha deve ter pelo menos 6 caracteres' });
+    }
+
     // updateOne does not trigger mongoose pre-save hooks, so hash explicitly.
     const newToStore = await hashPasswordForStorage(newPassword);
-    await db.updateOne('drivers', { _id: req.user.id }, { password: newToStore, legacyPasswordSha256: null });
+    const updatedDriver = await db.updateOne('drivers', { _id: req.user.id }, { password: newToStore, legacyPasswordSha256: null });
+
+    const savedOk = await passwordMatchesStoredValue(newPassword, updatedDriver || { password: newToStore });
+    if (!savedOk) {
+      console.error('Password changed but validation failed after save:', { userId: req.user.id });
+      return res.status(500).json({ success: false, message: 'Erro ao validar a nova senha. Tente novamente.' });
+    }
 
     res.json({ success: true, message: 'Senha alterada com sucesso' });
   } catch (error) {
@@ -433,7 +470,13 @@ exports.resetPassword = async (req, res) => {
     }
 
     const newToStore = await hashPasswordForStorage(newPassword);
-    await db.updateOne('drivers', { _id: driver._id }, { password: newToStore, legacyPasswordSha256: null, resetPasswordToken: null, resetPasswordExpires: null });
+    const updatedDriver = await db.updateOne('drivers', { _id: driver._id }, { password: newToStore, legacyPasswordSha256: null, resetPasswordToken: null, resetPasswordExpires: null });
+
+    const savedOk = await passwordMatchesStoredValue(newPassword, updatedDriver || { password: newToStore });
+    if (!savedOk) {
+      console.error('Password reset but validation failed after save:', { userId: driver._id });
+      return res.status(500).json({ success: false, message: 'Erro ao validar a nova senha. Tente novamente.' });
+    }
 
     return res.json({ success: true, message: 'Senha redefinida com sucesso' });
   } catch (err) {

@@ -58,6 +58,8 @@ const Profile = () => {
     try {
       setSavingPwd(true);
       const resp = await authService.changePassword({ oldPassword: pwd.oldPassword, newPassword: pwd.newPassword });
+      localStorage.removeItem('loginCredentials');
+      localStorage.removeItem('rememberMe');
       setToast({ message: resp.data.message || 'Senha alterada com sucesso', type: 'success' });
       setPwd({ oldPassword: '', newPassword: '', confirm: '' });
     } catch (err) {
@@ -276,6 +278,7 @@ const Profile = () => {
                       style={{ ...inputStyle, paddingRight: 44 }}
                     />
                     <button
+                      type="button"
                       onClick={() => setShowPwd({...showPwd, old: !showPwd.old})}
                       style={{ position: 'absolute', right: 14, background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: 0 }}
                     >
@@ -297,6 +300,7 @@ const Profile = () => {
                       style={{ ...inputStyle, paddingRight: 44 }}
                     />
                     <button
+                      type="button"
                       onClick={() => setShowPwd({...showPwd, new: !showPwd.new})}
                       style={{ position: 'absolute', right: 14, background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: 0 }}
                     >
@@ -332,6 +336,7 @@ const Profile = () => {
                       }}
                     />
                     <button
+                      type="button"
                       onClick={() => setShowPwd({...showPwd, confirm: !showPwd.confirm})}
                       style={{ position: 'absolute', right: 14, background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: 0 }}
                     >
@@ -349,6 +354,7 @@ const Profile = () => {
 
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <button
+                  type="button"
                   onClick={handleChangePassword}
                   disabled={savingPwd}
                   style={{
