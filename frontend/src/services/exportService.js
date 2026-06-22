@@ -66,7 +66,7 @@ const CONTENT_W      = PAGE_W - MARGIN * 2;
  * @param {number} pageNumber
  * @param {number} totalPages  (use 0 quando ainda não souber)
  */
-const drawPageHeader = (doc, pageNumber, title = 'Dashboard de Indicadores') => {
+const drawPageHeader = (doc, pageNumber, title = 'Relatório Operacional') => {
   // Faixa de cor
   doc.setFillColor(...hexToRgb(BRAND_DARK));
   doc.rect(0, 0, PAGE_W, 16, 'F');
@@ -77,7 +77,7 @@ const drawPageHeader = (doc, pageNumber, title = 'Dashboard de Indicadores') => 
 
   // Título
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
+  doc.setFontSize(10);
   doc.setTextColor(255, 255, 255);
   doc.text(title, MARGIN, 10.5);
 
@@ -100,7 +100,7 @@ const drawPageFooter = (doc, generatedAt) => {
   doc.setFontSize(7.5);
   doc.setTextColor(...hexToRgb(TEXT_SECONDARY));
   doc.text(`Gerado em ${generatedAt}`, MARGIN, y + 4);
-  doc.text('Relatório Confidencial — Uso Interno', PAGE_W - MARGIN, y + 4, { align: 'right' });
+  doc.text('GeoTower • Relatório interno', PAGE_W - MARGIN, y + 4, { align: 'right' });
 };
 
 /**
@@ -126,40 +126,39 @@ const ensureSpace = (doc, y, needed, pageRef, title, generatedAt) => {
 
 /** Desenha um card KPI simples no PDF */
 const drawKpiCard = (doc, x, y, w, h, label, value, color) => {
-  // Fundo branco com borda
   doc.setFillColor(255, 255, 255);
   doc.setDrawColor(...hexToRgb(GRAY_BORDER));
-  doc.setLineWidth(0.3);
-  doc.roundedRect(x, y, w, h, 2, 2, 'FD');
+  doc.setLineWidth(0.25);
+  doc.roundedRect(x, y, w, h, 3, 3, 'FD');
 
-  // Barra lateral colorida
   doc.setFillColor(...hexToRgb(color));
-  doc.roundedRect(x, y, 2.5, h, 1, 1, 'F');
+  doc.roundedRect(x, y, 3, h, 2, 2, 'F');
+  doc.setFillColor(...hexToRgb(color));
+  doc.circle(x + w - 8, y + 8, 5, 'F');
 
-  // Label
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
+  doc.setFontSize(6.7);
   doc.setTextColor(...hexToRgb(TEXT_SECONDARY));
   doc.text(label.toUpperCase(), x + 6, y + 7);
 
-  // Valor
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
+  doc.setFontSize(15);
   doc.setTextColor(...hexToRgb(color));
   doc.text(String(value), x + 6, y + h - 5);
 };
 
 /** Título de seção */
 const drawSectionTitle = (doc, y, text) => {
-  doc.setFillColor(...hexToRgb(GRAY_LIGHT));
-  doc.rect(MARGIN, y, CONTENT_W, 8, 'F');
+  doc.setFillColor(255, 255, 255);
+  doc.setDrawColor(...hexToRgb(GRAY_BORDER));
+  doc.roundedRect(MARGIN, y, CONTENT_W, 10, 2, 2, 'FD');
   doc.setFillColor(...hexToRgb(BRAND_COLOR));
-  doc.rect(MARGIN, y, 3, 8, 'F');
+  doc.roundedRect(MARGIN, y, 3, 10, 2, 2, 'F');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
+  doc.setFontSize(10);
   doc.setTextColor(...hexToRgb(TEXT_PRIMARY));
-  doc.text(text, MARGIN + 6, y + 5.5);
-  return y + 12;
+  doc.text(text, MARGIN + 7, y + 6.7);
+  return y + 15;
 };
 
 /* ─────────────────────────────────────────
@@ -221,24 +220,24 @@ export const exportToPDF = async (payload) => {
 
   // Logo / ícone placeholder
   doc.setFillColor(255, 255, 255);
-  doc.roundedRect(MARGIN, 20, 14, 14, 2, 2, 'F');
+  doc.roundedRect(MARGIN, 20, 16, 16, 3, 3, 'F');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
   doc.setTextColor(...hexToRgb(BRAND_COLOR));
-  doc.text('DB', MARGIN + 3.2, 30);
+  doc.text('GEO', MARGIN + 2.6, 30.5);
 
   // Título principal
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(26);
+  doc.setFontSize(28);
   doc.setTextColor(255, 255, 255);
-  doc.text('Dashboard de', MARGIN, 50);
-  doc.text('Indicadores', MARGIN, 62);
+  doc.text('Relatório', MARGIN, 50);
+  doc.text('Operacional', MARGIN, 63);
 
   // Subtítulo
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   doc.setTextColor(180, 190, 230);
-  doc.text('Relatório de Análise Operacional', MARGIN, 72);
+  doc.text('Visão executiva das entregas, produtividade e recebedores', MARGIN, 73);
 
   // Metadados da capa
   const metaY = 92;
@@ -274,10 +273,10 @@ export const exportToPDF = async (payload) => {
   /* ══════════════════════════════════════
      PÁGINA 2 — KPIs + GRÁFICO DE ÁREA
   ══════════════════════════════════════ */
-  let page2Y = addPage(doc, pageRef, 'Dashboard de Indicadores', generatedAt);
+  let page2Y = addPage(doc, pageRef, 'Relatório Operacional', generatedAt);
 
   // Seção KPIs
-  page2Y = drawSectionTitle(doc, page2Y, 'Indicadores-Chave de Desempenho (KPIs)');
+  page2Y = drawSectionTitle(doc, page2Y, 'Resumo executivo');
 
   const kpiCards = [
     { label: 'Total de Entregas', value: statistics?.totalDeliveries ?? 0, color: BRAND_COLOR },
@@ -294,20 +293,21 @@ export const exportToPDF = async (payload) => {
 
   // Gráfico de área — Evolução Diária
   if (imgArea) {
-    page2Y = ensureSpace(doc, page2Y, 12, pageRef, 'Dashboard de Indicadores', generatedAt);
+    page2Y = ensureSpace(doc, page2Y, 12, pageRef, 'Relatório Operacional', generatedAt);
     page2Y = drawSectionTitle(doc, page2Y, 'Evolução Diária de Entregas');
     const chartH = 70;
-    page2Y = ensureSpace(doc, page2Y, chartH, pageRef, 'Dashboard de Indicadores', generatedAt);
+    page2Y = ensureSpace(doc, page2Y, chartH, pageRef, 'Relatório Operacional', generatedAt);
+    doc.setFillColor(255, 255, 255);
     doc.setDrawColor(...hexToRgb(GRAY_BORDER));
-    doc.setLineWidth(0.3);
-    doc.roundedRect(MARGIN, page2Y, CONTENT_W, chartH, 2, 2, 'D');
-    doc.addImage(imgArea, 'PNG', MARGIN + 1, page2Y + 1, CONTENT_W - 2, chartH - 2);
+    doc.setLineWidth(0.25);
+    doc.roundedRect(MARGIN, page2Y, CONTENT_W, chartH, 3, 3, 'FD');
+    doc.addImage(imgArea, 'PNG', MARGIN + 3, page2Y + 3, CONTENT_W - 6, chartH - 6);
     page2Y += chartH + 6;
   }
 
   // Tabela — Entregas por Dia
   if (statistics?.dailyDeliveries?.length) {
-    page2Y = ensureSpace(doc, page2Y, 12, pageRef, 'Dashboard de Indicadores', generatedAt);
+    page2Y = ensureSpace(doc, page2Y, 12, pageRef, 'Relatório Operacional', generatedAt);
     page2Y = drawSectionTitle(doc, page2Y, 'Dados — Entregas por Dia');
 
     autoTable(doc, {
@@ -326,15 +326,16 @@ export const exportToPDF = async (payload) => {
         textColor: [255, 255, 255],
         fontStyle: 'bold',
         fontSize: 8,
+        cellPadding: 3,
       },
-      bodyStyles: { fontSize: 8, textColor: hexToRgb(TEXT_PRIMARY) },
+      bodyStyles: { fontSize: 8, textColor: hexToRgb(TEXT_PRIMARY), cellPadding: 2.5 },
       alternateRowStyles: { fillColor: hexToRgb(GRAY_LIGHT) },
       columnStyles: { 1: { halign: 'center' } },
       margin: { left: MARGIN, right: MARGIN },
       tableLineColor: hexToRgb(GRAY_BORDER),
-      tableLineWidth: 0.2,
+      tableLineWidth: 0.15,
       didDrawPage: () => {
-        drawPageHeader(doc, ++pageRef.current);
+        drawPageHeader(doc, ++pageRef.current, 'Relatório Operacional');
         drawPageFooter(doc, generatedAt);
       },
     });
@@ -345,20 +346,21 @@ export const exportToPDF = async (payload) => {
   /* ══════════════════════════════════════
      PÁGINA 3 — ENTREGAS POR CONTRATADO
   ══════════════════════════════════════ */
-  let page3Y = addPage(doc, pageRef, 'Dashboard de Indicadores', generatedAt);
+  let page3Y = addPage(doc, pageRef, 'Relatório Operacional', generatedAt);
 
   if (imgBarDriver) {
     page3Y = drawSectionTitle(doc, page3Y, 'Entregas por Contratado');
     const chartH = 80;
+    doc.setFillColor(255, 255, 255);
     doc.setDrawColor(...hexToRgb(GRAY_BORDER));
-    doc.setLineWidth(0.3);
-    doc.roundedRect(MARGIN, page3Y, CONTENT_W, chartH, 2, 2, 'D');
-    doc.addImage(imgBarDriver, 'PNG', MARGIN + 1, page3Y + 1, CONTENT_W - 2, chartH - 2);
+    doc.setLineWidth(0.25);
+    doc.roundedRect(MARGIN, page3Y, CONTENT_W, chartH, 3, 3, 'FD');
+    doc.addImage(imgBarDriver, 'PNG', MARGIN + 3, page3Y + 3, CONTENT_W - 6, chartH - 6);
     page3Y += chartH + 8;
   }
 
   if (statistics?.deliveriesByDriver?.length) {
-    page3Y = ensureSpace(doc, page3Y, 12, pageRef, 'Dashboard de Indicadores', generatedAt);
+    page3Y = ensureSpace(doc, page3Y, 12, pageRef, 'Relatório Operacional', generatedAt);
     page3Y = drawSectionTitle(doc, page3Y, 'Dados — Entregas por Contratado');
 
     autoTable(doc, {
@@ -376,15 +378,16 @@ export const exportToPDF = async (payload) => {
         textColor: [255, 255, 255],
         fontStyle: 'bold',
         fontSize: 8,
+        cellPadding: 3,
       },
-      bodyStyles: { fontSize: 8, textColor: hexToRgb(TEXT_PRIMARY) },
+      bodyStyles: { fontSize: 8, textColor: hexToRgb(TEXT_PRIMARY), cellPadding: 2.5 },
       alternateRowStyles: { fillColor: hexToRgb(GRAY_LIGHT) },
       columnStyles: { 1: { halign: 'center' }, 2: { halign: 'center' } },
       margin: { left: MARGIN, right: MARGIN },
       tableLineColor: hexToRgb(GRAY_BORDER),
-      tableLineWidth: 0.2,
+      tableLineWidth: 0.15,
       didDrawPage: () => {
-        drawPageHeader(doc, ++pageRef.current);
+        drawPageHeader(doc, ++pageRef.current, 'Relatório Operacional');
         drawPageFooter(doc, generatedAt);
       },
     });
@@ -395,7 +398,7 @@ export const exportToPDF = async (payload) => {
   /* ══════════════════════════════════════
      PÁGINA 4 — RECEBEDORES + CLI
   ══════════════════════════════════════ */
-  let page4Y = addPage(doc, pageRef, 'Dashboard de Indicadores', generatedAt);
+  let page4Y = addPage(doc, pageRef, 'Relatório Operacional', generatedAt);
 
   // Gráficos lado a lado
   const halfW = (CONTENT_W - 4) / 2;
@@ -403,23 +406,25 @@ export const exportToPDF = async (payload) => {
 
   if (imgBarReceiver) {
     page4Y = drawSectionTitle(doc, page4Y, 'Recebedores & Tempo Médio CLI');
+    doc.setFillColor(255, 255, 255);
     doc.setDrawColor(...hexToRgb(GRAY_BORDER));
-    doc.setLineWidth(0.3);
-    doc.roundedRect(MARGIN, page4Y, halfW, chartH4, 2, 2, 'D');
-    doc.addImage(imgBarReceiver, 'PNG', MARGIN + 1, page4Y + 1, halfW - 2, chartH4 - 2);
+    doc.setLineWidth(0.25);
+    doc.roundedRect(MARGIN, page4Y, halfW, chartH4, 3, 3, 'FD');
+    doc.addImage(imgBarReceiver, 'PNG', MARGIN + 3, page4Y + 3, halfW - 6, chartH4 - 6);
   }
   if (imgBarCli) {
+    doc.setFillColor(255, 255, 255);
     doc.setDrawColor(...hexToRgb(GRAY_BORDER));
-    doc.setLineWidth(0.3);
-    doc.roundedRect(MARGIN + halfW + 4, page4Y, halfW, chartH4, 2, 2, 'D');
-    doc.addImage(imgBarCli, 'PNG', MARGIN + halfW + 5, page4Y + 1, halfW - 2, chartH4 - 2);
+    doc.setLineWidth(0.25);
+    doc.roundedRect(MARGIN + halfW + 4, page4Y, halfW, chartH4, 3, 3, 'FD');
+    doc.addImage(imgBarCli, 'PNG', MARGIN + halfW + 7, page4Y + 3, halfW - 6, chartH4 - 6);
   }
 
   if (imgBarReceiver || imgBarCli) page4Y += chartH4 + 8;
 
   // Tabela de Ranking
   if (topRecebedores.length > 0) {
-    page4Y = ensureSpace(doc, page4Y, 12, pageRef, 'Dashboard de Indicadores', generatedAt);
+    page4Y = ensureSpace(doc, page4Y, 12, pageRef, 'Relatório Operacional', generatedAt);
     page4Y = drawSectionTitle(doc, page4Y, 'Ranking de Recebedores');
 
     const total = topRecebedores.reduce((s, r) => s + r.count, 0);
@@ -437,8 +442,9 @@ export const exportToPDF = async (payload) => {
         textColor: [255, 255, 255],
         fontStyle: 'bold',
         fontSize: 8,
+        cellPadding: 3,
       },
-      bodyStyles: { fontSize: 8, textColor: hexToRgb(TEXT_PRIMARY) },
+      bodyStyles: { fontSize: 8, textColor: hexToRgb(TEXT_PRIMARY), cellPadding: 2.5 },
       alternateRowStyles: { fillColor: hexToRgb(GRAY_LIGHT) },
       columnStyles: {
         0: { halign: 'center', cellWidth: 12 },
@@ -470,16 +476,16 @@ export const exportToPDF = async (payload) => {
       },
       margin: { left: MARGIN, right: MARGIN },
       tableLineColor: hexToRgb(GRAY_BORDER),
-      tableLineWidth: 0.2,
+      tableLineWidth: 0.15,
       didDrawPage: () => {
-        drawPageHeader(doc, ++pageRef.current);
+        drawPageHeader(doc, ++pageRef.current, 'Relatório Operacional');
         drawPageFooter(doc, generatedAt);
       },
     });
   }
 
   /* ── Salva ── */
-  const fileName = `dashboard_${period || 'custom'}_${new Date().toISOString().slice(0, 10)}.pdf`;
+  const fileName = `relatorio_operacional_${period || 'custom'}_${new Date().toISOString().slice(0, 10)}.pdf`;
   doc.save(fileName);
   return fileName;
 };

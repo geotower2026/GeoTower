@@ -1197,29 +1197,24 @@ const AdminDashboard = () => {
               </div>
             </div>
 
-            <div className="flex flex-col items-start gap-1 rounded-2xl border border-white/10 bg-white/[0.04] p-2 sm:items-end">
-              <span className="px-1 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
-                Exportar relatório
-              </span>
-              <div className="flex items-center gap-2">
-                <ExportButton
-                  onClick={handleExportPDF}
-                  loading={exporting.pdf}
-                  icon={FiDownload}
-                  label="PDF"
-                  colorClass="bg-red-500/15 border-red-500/25 text-red-300 hover:bg-red-500/25 hover:text-red-200"
-                  disabled={!statistics}
-                />
+            <div className="flex items-center gap-2 flex-wrap">
+              <ExportButton
+                onClick={handleExportPDF}
+                loading={exporting.pdf}
+                icon={FiDownload}
+                label="PDF"
+                colorClass="bg-red-500/15 border-red-500/25 text-red-300 hover:bg-red-500/25 hover:text-red-200"
+                disabled={!statistics}
+              />
 
-                <ExportButton
-                  onClick={handleExportExcel}
-                  loading={exporting.excel}
-                  icon={FiFileText}
-                  label="Excel"
-                  colorClass="bg-emerald-500/15 border-emerald-500/25 text-emerald-300 hover:bg-emerald-500/25 hover:text-emerald-200"
-                  disabled={!statistics}
-                />
-              </div>
+              <ExportButton
+                onClick={handleExportExcel}
+                loading={exporting.excel}
+                icon={FiFileText}
+                label="Excel"
+                colorClass="bg-emerald-500/15 border-emerald-500/25 text-emerald-300 hover:bg-emerald-500/25 hover:text-emerald-200"
+                disabled={!statistics}
+              />
             </div>
           </div>
         </div>
