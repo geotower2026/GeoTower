@@ -25,6 +25,12 @@ const hashPassword = (pwd) => {
   return crypto.createHash('sha256').update(pwd).digest('hex');
 };
 
+const hashPasswordForStorage = async (plainPassword) => {
+  return process.env.MONGODB_URI
+    ? bcrypt.hash(plainPassword, 10)
+    : hashPassword(plainPassword);
+};
+
 
 // Register a new driver
 exports.register = async (req, res) => {
@@ -334,8 +340,8 @@ exports.changePassword = async (req, res) => {
 
     if (!ok) return res.status(401).json({ success: false, message: 'Senha atual incorreta' });
 
-    // Store new password: plain for Mongo (mongoose will hash), sha256 for MockDB
-    const newToStore = process.env.MONGODB_URI ? newPassword : hashPassword(newPassword);
+    // updateOne does not trigger mongoose pre-save hooks, so hash explicitly.
+    const newToStore = await hashPasswordForStorage(newPassword);
     await db.updateOne('drivers', { _id: req.user.id }, { password: newToStore, legacyPasswordSha256: null });
 
     res.json({ success: true, message: 'Senha alterada com sucesso' });
@@ -403,7 +409,7 @@ exports.resetPassword = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Token inválido ou expirado' });
     }
 
-    const newToStore = process.env.MONGODB_URI ? newPassword : hashPassword(newPassword);
+    const newToStore = await hashPasswordForStorage(newPassword);
     await db.updateOne('drivers', { _id: driver._id }, { password: newToStore, legacyPasswordSha256: null, resetPasswordToken: null, resetPasswordExpires: null });
 
     return res.json({ success: true, message: 'Senha redefinida com sucesso' });
