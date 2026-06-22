@@ -4,6 +4,16 @@ import Toast from '../components/Toast';
 import { FaSave, FaKey, FaUser, FaArrowLeft, FaEnvelope, FaPhone, FaLock, FaEye, FaEyeSlash, FaCheckCircle } from 'react-icons/fa';
 import { authService } from '../services/authService';
 
+const Card = ({ children, style }) => (
+  <div style={{
+    background: '#fff', borderRadius: 16, padding: '28px 32px',
+    border: '1px solid #e5e7eb', boxShadow: '0 2px 16px rgba(0,0,0,.06)',
+    ...style
+  }}>
+    {children}
+  </div>
+);
+
 const Profile = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -82,16 +92,6 @@ const Profile = () => {
   const iconStyle = {
     position: 'absolute', left: 14, color: '#9ca3af', fontSize: 15, zIndex: 1
   };
-  const Card = ({ children, style }) => (
-    <div style={{
-      background: '#fff', borderRadius: 16, padding: '28px 32px',
-      border: '1px solid #e5e7eb', boxShadow: '0 2px 16px rgba(0,0,0,.06)',
-      ...style
-    }}>
-      {children}
-    </div>
-  );
-
   const initials = form.name
     ? form.name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase()
     : 'U';
