@@ -984,6 +984,16 @@ const AdminDashboard = () => {
   const exportPayload = () => ({
     statistics, deliveries: dashboardDeliveries, topRecebedores, avgCliByRecebedor,
     recebedorCountData, recebedorAvgData, fmtMin,
+    otdMetrics,
+    delayReasonMetrics: {
+      data: delayReasonMetrics.data,
+      totalCategorized: delayReasonMetrics.totalCategorized,
+      withoutCategory: delayReasonMetrics.withoutCategory
+    },
+    paretoTransportadores,
+    productivityByHours,
+    clientesByImpact,
+    dailyVolume,
     period: filters.startDate || filters.endDate ? `${filters.startDate || '...'} a ${filters.endDate || '...'}` : 'all',
   });
 

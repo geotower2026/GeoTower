@@ -185,6 +185,12 @@ export const exportToPDF = async (payload) => {
     avgCliByRecebedor,
     recebedorCountData,
     recebedorAvgData,
+    otdMetrics,
+    delayReasonMetrics,
+    paretoTransportadores,
+    productivityByHours,
+    clientesByImpact,
+    dailyVolume,
     period = 'custom',
     chartRefs,
     fmtMin,
@@ -194,6 +200,34 @@ export const exportToPDF = async (payload) => {
   const generatedAt = formatarDataLocal(new Date());
   const period_label = periodLabel(period);
   const pageRef = { current: 1 };
+  const reportTitle = 'Relatório Operacional';
+
+  const pdfTable = (startY, head, body, columnStyles = {}) => {
+    if (!body?.length) return startY;
+    autoTable(doc, {
+      startY,
+      head: [head],
+      body,
+      headStyles: {
+        fillColor: hexToRgb(BRAND_DARK),
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 8,
+        cellPadding: 3,
+      },
+      bodyStyles: { fontSize: 8, textColor: hexToRgb(TEXT_PRIMARY), cellPadding: 2.4 },
+      alternateRowStyles: { fillColor: hexToRgb(GRAY_LIGHT) },
+      margin: { left: MARGIN, right: MARGIN },
+      tableLineColor: hexToRgb(GRAY_BORDER),
+      tableLineWidth: 0.15,
+      columnStyles,
+      didDrawPage: () => {
+        drawPageHeader(doc, ++pageRef.current, reportTitle);
+        drawPageFooter(doc, generatedAt);
+      },
+    });
+    return doc.lastAutoTable.finalY + 8;
+  };
 
   /* ── Captura gráficos em paralelo ── */
   const [imgArea, imgBarDriver, imgBarReceiver, imgBarCli] = await Promise.all([
@@ -485,6 +519,109 @@ export const exportToPDF = async (payload) => {
   }
 
   /* ── Salva ── */
+  if (otdMetrics?.total > 0 || delayReasonMetrics?.data?.length) {
+    let y = addPage(doc, pageRef, reportTitle, generatedAt);
+    y = drawSectionTitle(doc, y, 'Pontualidade e atrasos operacionais');
+
+    if (otdMetrics?.total > 0) {
+      y = pdfTable(y, ['Indicador', 'Resultado'], [
+        ['Total avaliado', otdMetrics.total],
+        ['No prazo', `${otdMetrics.onTime} (${((otdMetrics.onTime / otdMetrics.total) * 100).toFixed(1)}%)`],
+        ['Atrasadas', `${otdMetrics.late} (${((otdMetrics.late / otdMetrics.total) * 100).toFixed(1)}%)`],
+        ['OTD', `${otdMetrics.otdPercentage?.toFixed ? otdMetrics.otdPercentage.toFixed(1) : otdMetrics.otdPercentage}%`],
+        ['Classificação', otdMetrics.classification || '-'],
+      ], { 1: { halign: 'center' } });
+    }
+
+    if (delayReasonMetrics?.data?.length) {
+      y = ensureSpace(doc, y, 45, pageRef, reportTitle, generatedAt);
+      y = drawSectionTitle(doc, y, 'Motivos de atraso');
+      const rows = delayReasonMetrics.data.map((item) => [item.name, item.count, `${item.percentage ?? 0}%`]);
+      if (delayReasonMetrics.withoutCategory > 0) rows.push(['Sem categoria na observação', delayReasonMetrics.withoutCategory, '-']);
+      pdfTable(y, ['Motivo', 'Atrasos', 'Participação'], rows, {
+        1: { halign: 'center' },
+        2: { halign: 'center' },
+      });
+    }
+  }
+
+  if (paretoTransportadores?.data?.length || productivityByHours?.data?.length) {
+    let y = addPage(doc, pageRef, reportTitle, generatedAt);
+    y = drawSectionTitle(doc, y, 'Concentração e produtividade');
+
+    if (paretoTransportadores?.data?.length) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(...hexToRgb(TEXT_SECONDARY));
+      doc.text(doc.splitTextToSize(paretoTransportadores.summary || 'Concentração operacional por contratado.', CONTENT_W), MARGIN, y);
+      y += 10;
+      if (paretoTransportadores.risk) {
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...hexToRgb(TEXT_PRIMARY));
+        doc.text(`Classificação: ${paretoTransportadores.risk}`, MARGIN, y);
+        y += 8;
+      }
+      y = pdfTable(y, ['Contratado', 'Entregas', '%', '% acum.'], paretoTransportadores.data.map((item) => [
+        item.name,
+        item.count,
+        `${item.percentage}%`,
+        `${item.cumulative}%`
+      ]), {
+        1: { halign: 'center' },
+        2: { halign: 'center' },
+        3: { halign: 'center' },
+      });
+    }
+
+    if (productivityByHours?.data?.length) {
+      y = ensureSpace(doc, y, 55, pageRef, reportTitle, generatedAt);
+      y = drawSectionTitle(doc, y, 'Produtividade por faixa de horas');
+      pdfTable(y, ['Faixa', 'Entregas', 'Participação'], productivityByHours.data.map((item) => [
+        item.name,
+        item.count,
+        `${item.percentage}%`
+      ]), {
+        1: { halign: 'center' },
+        2: { halign: 'center' },
+      });
+    }
+  }
+
+  if (clientesByImpact?.data?.length || dailyVolume?.data?.length) {
+    let y = addPage(doc, pageRef, reportTitle, generatedAt);
+    y = drawSectionTitle(doc, y, 'Impacto operacional e volume diário');
+
+    if (clientesByImpact?.data?.length) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(...hexToRgb(TEXT_SECONDARY));
+      doc.text(doc.splitTextToSize(clientesByImpact.summary || 'Clientes ordenados por impacto operacional.', CONTENT_W), MARGIN, y);
+      y += 10;
+      y = pdfTable(y, ['Cliente', 'Entregas', 'Tempo médio', 'Impacto'], clientesByImpact.data.map((item) => [
+        item.cliente,
+        item.count,
+        `${item.avgTime}h`,
+        item.impactIndex
+      ]), {
+        1: { halign: 'center' },
+        2: { halign: 'center' },
+        3: { halign: 'center' },
+      });
+    }
+
+    if (dailyVolume?.data?.length) {
+      y = ensureSpace(doc, y, 70, pageRef, reportTitle, generatedAt);
+      y = drawSectionTitle(doc, y, 'Volume de entregas diárias');
+      pdfTable(y, ['Data', 'Entregas', 'Leitura'], dailyVolume.data.map((item) => [
+        item.date,
+        item.count,
+        item.isAboveAverage ? 'Acima da média' : 'Abaixo da média'
+      ]), {
+        1: { halign: 'center' },
+      });
+    }
+  }
+
   const fileName = `relatorio_operacional_${period || 'custom'}_${new Date().toISOString().slice(0, 10)}.pdf`;
   doc.save(fileName);
   return fileName;
