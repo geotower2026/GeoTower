@@ -1,7 +1,6 @@
 ﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Toast from '../components/Toast';
-import KPIAnalytics from './KPIAnalytics';
 import { adminService } from '../services/authService';
 import { useAuth } from '../services/authContext';
 import { useCity } from '../contexts/CityContext';
@@ -11,7 +10,7 @@ import { getRecebedorLabel } from '../utils/cityLabels';
 import { exportToPDF, exportToExcel, formatMinutes as fmtMin } from '../services/exportService';
 import {
   FiArrowLeft, FiPackage, FiTruck, FiAward, FiClock,
-  FiTrendingUp, FiBarChart2, FiDownload, FiFileText, FiActivity
+  FiTrendingUp, FiBarChart2, FiDownload, FiFileText
 } from 'react-icons/fi';
 import {
   AreaChart, Area, BarChart, Bar,
@@ -209,7 +208,7 @@ const ExportButton = ({ onClick, loading, icon: Icon, label, colorClass, disable
   <button
     onClick={onClick}
     disabled={loading || disabled}
-    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 border 
+    className={`inline-flex min-w-[88px] items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold shadow-lg shadow-black/10 transition-all duration-200
       ${loading || disabled
         ? 'opacity-50 cursor-not-allowed bg-white/5 border-white/10 text-slate-500'
         : colorClass
@@ -272,7 +271,6 @@ const AdminDashboard = () => {
   const [exporting,   setExporting]   = useState({ pdf: false, excel: false });
   const [toast,       setToast]       = useState(null);
   const [activeBar,   setActiveBar]   = useState(null);
-  const [viewMode,    setViewMode]    = useState('dashboard'); // 'dashboard' ou 'kpi'
   const [detailModal, setDetailModal] = useState(null);
   // Filtros de data
   const [filters, setFilters] = useState(() => getCurrentMonthFilters());
@@ -1107,11 +1105,6 @@ const AdminDashboard = () => {
     }
   };
 
-  // Se modo KPI está ativo, renderizar componente KPI
-  if (viewMode === 'kpi') {
-    return <KPIAnalytics onToggle={() => setViewMode('dashboard')} />;
-  }
-
   /* ── Skeleton loading ── */
   if (loading) {
     return (
@@ -1204,33 +1197,29 @@ const AdminDashboard = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                onClick={() => setViewMode('kpi')}
-                className="inline-flex items-center gap-2 rounded-lg border border-indigo-500/30 bg-indigo-500/20 px-3 py-2 text-sm font-medium text-indigo-300 hover:bg-indigo-500/30 transition-all"
-                title="Análise de KPIs"
-              >
-                <FiActivity size={16} />
-                <span className="hidden sm:inline">KPI</span>
-              </button>
+            <div className="flex flex-col items-start gap-1 rounded-2xl border border-white/10 bg-white/[0.04] p-2 sm:items-end">
+              <span className="px-1 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                Exportar relatório
+              </span>
+              <div className="flex items-center gap-2">
+                <ExportButton
+                  onClick={handleExportPDF}
+                  loading={exporting.pdf}
+                  icon={FiDownload}
+                  label="PDF"
+                  colorClass="bg-red-500/15 border-red-500/25 text-red-300 hover:bg-red-500/25 hover:text-red-200"
+                  disabled={!statistics}
+                />
 
-              <ExportButton
-                onClick={handleExportPDF}
-                loading={exporting.pdf}
-                icon={FiDownload}
-                label="PDF"
-                colorClass="bg-red-500/20 border-red-500/30 text-red-400 hover:bg-red-500/30"
-                disabled={!statistics}
-              />
-
-              <ExportButton
-                onClick={handleExportExcel}
-                loading={exporting.excel}
-                icon={FiFileText}
-                label="Excel"
-                colorClass="bg-emerald-500/20 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/30"
-                disabled={!statistics}
-              />
+                <ExportButton
+                  onClick={handleExportExcel}
+                  loading={exporting.excel}
+                  icon={FiFileText}
+                  label="Excel"
+                  colorClass="bg-emerald-500/15 border-emerald-500/25 text-emerald-300 hover:bg-emerald-500/25 hover:text-emerald-200"
+                  disabled={!statistics}
+                />
+              </div>
             </div>
           </div>
         </div>
