@@ -181,6 +181,23 @@ exports.login = async (req, res) => {
       }
     }
 
+    // 4) Recovery for passwords accidentally stored as plain text by old updateOne flow.
+    // If matched, immediately migrate to bcrypt so the plain value does not remain stored.
+    if (!passwordMatch && typeof driver.password === 'string') {
+      const storedPassword = driver.password;
+      const isBcryptHash = storedPassword.startsWith('$2');
+      const isLegacySha = /^[0-9a-f]{64}$/i.test(storedPassword);
+      if (!isBcryptHash && !isLegacySha && storedPassword === password) {
+        passwordMatch = true;
+        try {
+          const bcryptHash = await bcrypt.hash(password, 10);
+          await db.updateOne('drivers', { _id: driver._id }, { password: bcryptHash, legacyPasswordSha256: null });
+        } catch (e) {
+          console.warn('⚠️ Failed to migrate plain password to bcrypt:', e && e.message ? e.message : e);
+        }
+      }
+    }
+
     // Additional attempt: some records were saved as bcrypt(sha256(password)) when
     // registration used sha256 before mongoose hashing. Try matching hashedSha256 against bcrypt hash.
     if (!passwordMatch) {
@@ -336,6 +353,12 @@ exports.changePassword = async (req, res) => {
       } catch (e) {
         console.error('Error comparing passwords in changePassword:', e);
       }
+    }
+    if (!ok && typeof driver.password === 'string') {
+      const storedPassword = driver.password;
+      const isBcryptHash = storedPassword.startsWith('$2');
+      const isLegacySha = /^[0-9a-f]{64}$/i.test(storedPassword);
+      if (!isBcryptHash && !isLegacySha && storedPassword === oldPassword) ok = true;
     }
 
     if (!ok) return res.status(401).json({ success: false, message: 'Senha atual incorreta' });
