@@ -21,6 +21,8 @@ import {
 
 /* ─── Paleta ─── */
 const PALETTE = ['#818cf8', '#22d3ee', '#34d399', '#fbbf24', '#fb7185'];
+const OTD_TOLERANCE_MINUTES = 30;
+const OTD_TOLERANCE_MS = OTD_TOLERANCE_MINUTES * 60 * 1000;
 
 const DELAY_REASON_CATEGORIES = [
   { label: 'SOLICITAÇÃO <18HS', color: '#f97316', aliases: ['SOLICITACAO <18HS', 'SOLICITACAO 18HS', 'MENOS DE 18HS', 'MENOS DE 18 HORAS'] },
@@ -762,7 +764,7 @@ const AdminDashboard = () => {
       
       if (!isNaN(scheduled) && !isNaN(arrived)) {
         total++;
-        if (arrived <= scheduled) {
+        if (arrived <= scheduled + OTD_TOLERANCE_MS) {
           onTime++;
         } else {
           late++;
@@ -801,7 +803,7 @@ const AdminDashboard = () => {
       if (!delivery.dataAgendamento || !delivery.horarioChegada) return;
       const scheduled = new Date(delivery.dataAgendamento).getTime();
       const arrived = new Date(delivery.horarioChegada).getTime();
-      if (isNaN(scheduled) || isNaN(arrived) || arrived <= scheduled) return;
+      if (isNaN(scheduled) || isNaN(arrived) || arrived <= scheduled + OTD_TOLERANCE_MS) return;
 
       const reason = getDelayReasonCategory(delivery);
       if (!reason) return;
@@ -1035,7 +1037,7 @@ const AdminDashboard = () => {
     const scheduled = new Date(d.dataAgendamento).getTime();
     const arrived = new Date(d.horarioChegada).getTime();
     if (isNaN(scheduled) || isNaN(arrived)) return false;
-    return type === 'late' ? arrived > scheduled : arrived <= scheduled;
+    return type === 'late' ? arrived > scheduled + OTD_TOLERANCE_MS : arrived <= scheduled + OTD_TOLERANCE_MS;
   });
 
   const getDelayReasonRows = (reason) =>
