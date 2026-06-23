@@ -389,21 +389,47 @@ const AdminDashboard = () => {
     return destinatarioValue || remetenteValue;
   };
 
+  const getDashboardScheduleValue = (record) => (
+    record?.agendamentoDescarga ||
+    record?.dataAgendamento ||
+    record?.dtAgendamentoDescarga ||
+    record?.dtColeta ||
+    record?.['Dt. agendamento descarga'] ||
+    record?.['Dt. Agendamento Descarga'] ||
+    record?.['Dt. coleta'] ||
+    record?.['Dt. Coleta']
+  );
+
+  const normalizeScheduleKey = (value) => {
+    if (!value) return 'SEM_AGENDAMENTO';
+    const parsed = new Date(value);
+    if (!isNaN(parsed.getTime())) return parsed.toISOString();
+    return String(value).replace(/\s+/g, ' ').trim().toUpperCase() || 'SEM_AGENDAMENTO';
+  };
+
+  const getDashboardUniqueKey = (record) => {
+    const processKey = getIcompanyProcessNumber(record);
+    if (!processKey) return '';
+    return `${processKey}::${normalizeScheduleKey(getDashboardScheduleValue(record))}`;
+  };
+
   const groupByNrProcesso = (items) => {
     const grouped = new Map();
 
     (items || []).forEach((item) => {
-      const key = getIcompanyProcessNumber(item);
-      if (!key) {
+      const processKey = getIcompanyProcessNumber(item);
+      const key = getDashboardUniqueKey(item);
+      if (!processKey || !key) {
         return;
       }
 
       if (!grouped.has(key)) {
         grouped.set(key, {
           ...item,
-          nrProcesso: item.nrProcesso || item.nr_processo || key,
-          processoLog: item.processoLog || item.processolog || item.processo_log || key,
-          deliveryNumber: item.deliveryNumber || key
+          nrProcesso: item.nrProcesso || item.nr_processo || processKey,
+          processoLog: item.processoLog || item.processolog || item.processo_log || processKey,
+          deliveryNumber: item.deliveryNumber || processKey,
+          _dashboardUniqueKey: key
         });
         return;
       }
@@ -432,12 +458,6 @@ const AdminDashboard = () => {
     const parsed = new Date(dateValue);
     if (isNaN(parsed)) return '';
     return `${parsed.getFullYear()}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`;
-  };
-
-  const getDashboardUniqueKey = (delivery) => {
-    const processKey = getIcompanyProcessNumber(delivery);
-    if (processKey) return processKey;
-    return '';
   };
 
   const loadData = useCallback(async (silent = false, customFilters = null) => {
@@ -531,14 +551,15 @@ const AdminDashboard = () => {
 
     filteredDeliveries.forEach((delivery) => {
       const key = getDashboardUniqueKey(delivery);
+      const processKey = getIcompanyProcessNumber(delivery);
       if (!key) return;
 
       if (!grouped.has(key)) {
         grouped.set(key, {
           ...delivery,
-          nrProcesso: delivery.nrProcesso || key,
-          processoLog: delivery.processoLog || key,
-          deliveryNumber: delivery.deliveryNumber || key,
+          nrProcesso: delivery.nrProcesso || processKey,
+          processoLog: delivery.processoLog || processKey,
+          deliveryNumber: delivery.deliveryNumber || processKey,
           _dashboardUniqueKey: key
         });
       }
