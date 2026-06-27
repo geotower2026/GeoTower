@@ -3,7 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/authContext';
 import { useCity } from '../contexts/CityContext';
 import Toast from '../components/Toast';
-import { FaUser, FaLock, FaEye, FaEyeSlash, FaMapMarkerAlt } from 'react-icons/fa';
+import {
+  FaUser,
+  FaLock,
+  FaEye,
+  FaEyeSlash,
+  FaFutbol,
+  FaTrophy,
+  FaFlagCheckered,
+  FaTruck,
+} from 'react-icons/fa';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -13,9 +22,8 @@ const Login = () => {
   const [toast, setToast] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const { city, setCity } = useCity();
+  const { setCity } = useCity();
 
-  // Carregar credenciais salvas ao montar o componente.
   useEffect(() => {
     if (!navigator.onLine && isAuthenticated) {
       navigate('/home', { replace: true });
@@ -32,11 +40,10 @@ const Login = () => {
         setFormData((current) => ({
           ...current,
           username: credentials.username || '',
-          password: credentials.password || ''
+          password: credentials.password || '',
         }));
         setRememberMe(true);
       } catch (e) {
-        // Se houver erro ao parsear, limpa
         localStorage.removeItem('loginCredentials');
         localStorage.removeItem('rememberMe');
       }
@@ -69,12 +76,14 @@ const Login = () => {
         setCity(currentCity);
       }
 
-      // Salvar credenciais se "Manter conectado" estiver marcado.
       if (rememberMe) {
-        localStorage.setItem('loginCredentials', JSON.stringify({
-          username: formData.username,
-          password: formData.password
-        }));
+        localStorage.setItem(
+          'loginCredentials',
+          JSON.stringify({
+            username: formData.username,
+            password: formData.password,
+          })
+        );
         localStorage.setItem('rememberMe', 'true');
       } else {
         localStorage.removeItem('loginCredentials');
@@ -86,132 +95,124 @@ const Login = () => {
     } catch (error) {
       console.error('Login error (Login.js):', error);
       const serverMsg = error?.response?.data || error?.message || 'Erro ao fazer login';
-      const toastMsg = typeof serverMsg === 'string' ? serverMsg : (serverMsg.message || JSON.stringify(serverMsg));
+      const toastMsg =
+        typeof serverMsg === 'string' ? serverMsg : serverMsg.message || JSON.stringify(serverMsg);
       setToast({ message: toastMsg, type: 'error' });
     } finally {
       setLoading(false);
     }
   };
 
+  const highlights = [
+    { icon: <FaTruck />, text: 'Operação em campo' },
+    { icon: <FaFutbol />, text: 'Ritmo de Copa' },
+    { icon: <FaTrophy />, text: 'Entrega campeã' },
+  ];
+
   return (
     <div
-      className="fixed inset-0 w-full overflow-hidden overscroll-none flex"
+      className="fixed inset-0 flex w-full overflow-hidden overscroll-none bg-slate-50"
       style={{ height: '100svh' }}
     >
-      {/* ═══════════════════════════════════════════
-          PAINEL ESQUERDO — Hero com Logo em destaque
-          ═══════════════════════════════════════════ */}
-      <div className="hidden lg:flex flex-col items-center justify-center w-1/2 relative overflow-hidden bg-gradient-to-br from-purple-900 via-purple-700 to-blue-700">
-
-        {/* Orbs decorativos de fundo */}
-        <div className="absolute -top-32 -left-32 w-96 h-96 bg-purple-500/30 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-blue-500/30 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-white/5 rounded-full blur-3xl pointer-events-none" />
-
-        {/* Grade de pontos decorativa */}
+      <div className="relative hidden w-1/2 overflow-hidden bg-[#075f36] lg:flex">
         <div
-          className="absolute inset-0 opacity-10 pointer-events-none"
+          className="absolute inset-0"
           style={{
-            backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
-            backgroundSize: '32px 32px',
+            backgroundImage:
+              'linear-gradient(90deg, rgba(255,255,255,0.12) 1px, transparent 1px), linear-gradient(0deg, rgba(255,255,255,0.12) 1px, transparent 1px), linear-gradient(135deg, #08723f 0%, #0a8a4f 42%, #f9d923 42%, #f9d923 49%, #0b5fbb 49%, #073f8f 100%)',
+            backgroundSize: '56px 56px, 56px 56px, 100% 100%',
           }}
         />
 
-        {/* Conteúdo Hero */}
-        <div className="relative z-10 flex flex-col items-center text-center px-12">
-          {/* Halo brilhante atrás do logo */}
-          <div className="relative mb-6">
-            <div className="absolute inset-0 rounded-full bg-white/20 blur-2xl scale-110 pointer-events-none" />
-            <div className="relative bg-white/10 backdrop-blur-sm border border-white/20 rounded-3xl p-6 shadow-2xl">
-              <img
-                src="/logo.png"
-                alt="GeoTower Logo"
-                className="h-36 w-auto drop-shadow-[0_8px_24px_rgba(255,255,255,0.5)]"
-              />
-            </div>
+        <div className="absolute left-10 right-10 top-10 bottom-10 rounded-lg border-2 border-white/35" />
+        <div className="absolute left-1/2 top-10 bottom-10 w-px bg-white/35" />
+        <div className="absolute left-1/2 top-1/2 h-36 w-36 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white/35" />
+        <div className="absolute -left-16 top-1/2 h-40 w-28 -translate-y-1/2 rounded-r-full border-2 border-white/35" />
+        <div className="absolute -right-16 top-1/2 h-40 w-28 -translate-y-1/2 rounded-l-full border-2 border-white/35" />
+
+        <div className="relative z-10 flex h-full w-full flex-col items-center justify-center px-12 text-center text-white">
+          <div className="mb-5 inline-flex items-center gap-2 rounded-lg border border-white/30 bg-black/20 px-4 py-2 text-sm font-black uppercase tracking-wide shadow-lg">
+            <FaFlagCheckered className="text-yellow-300" />
+            Modo Copa
           </div>
 
-          <h1 className="text-5xl font-black text-white tracking-tight mb-3 drop-shadow-lg">
-            GeoTower
-          </h1>
-          <p className="text-blue-200 text-lg font-medium mb-8 max-w-xs leading-relaxed">
-            Logística Rodoviária com Excelência
+          <div className="mb-6 rounded-lg border border-white/30 bg-white/15 p-6 shadow-2xl backdrop-blur-sm">
+            <img
+              src="/logo.png"
+              alt="GeoTower Logo"
+              className="h-32 w-auto drop-shadow-[0_10px_24px_rgba(0,0,0,0.35)]"
+            />
+          </div>
+
+          <h1 className="mb-3 text-5xl font-black tracking-tight drop-shadow-lg">GeoTower</h1>
+          <p className="mb-8 max-w-sm text-lg font-semibold leading-relaxed text-white/90">
+            Logística rodoviária em clima de torcida, sem sair da identidade da empresa.
           </p>
 
-          {/* Badges / pills de destaque */}
-          <div className="flex flex-col gap-3 w-full max-w-xs">
-            {[
-              { icon: '🚛', text: 'Rastreamento em tempo real' },
-              { icon: '📍', text: 'Gestão de frotas inteligente' },
-              { icon: '📊', text: 'Relatórios e analytics' },
-            ].map((item) => (
+          <div className="grid w-full max-w-md grid-cols-3 gap-3">
+            {highlights.map((item) => (
               <div
                 key={item.text}
-                className="flex items-center gap-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-3 text-white text-sm font-medium"
+                className="rounded-lg border border-white/25 bg-white/15 px-3 py-4 text-center shadow-lg backdrop-blur-sm"
               >
-                <span className="text-lg">{item.icon}</span>
-                {item.text}
+                <div className="mb-2 flex justify-center text-2xl text-yellow-300">{item.icon}</div>
+                <p className="text-xs font-extrabold uppercase leading-snug tracking-wide">
+                  {item.text}
+                </p>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* ═══════════════════════════════════════
-          PAINEL DIREITO — Formulário de Login
-          ═══════════════════════════════════════ */}
-      <div className="flex-1 flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 via-white to-blue-50 overflow-auto px-4 py-10"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 2rem)' }}
+      <div
+        className="relative flex flex-1 flex-col items-center justify-center overflow-auto px-4 py-8"
+        style={{
+          paddingBottom: 'calc(env(safe-area-inset-bottom) + 2rem)',
+          background:
+            'linear-gradient(135deg, #f8fafc 0%, #ffffff 42%, #eef7f1 42%, #eef7f1 63%, #eef5ff 100%)',
+        }}
       >
-        {/* Orbs sutis no fundo do formulário */}
-        <div className="absolute top-0 right-0 w-72 h-72 bg-purple-200/30 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-72 h-72 bg-emerald-200/30 rounded-full blur-3xl pointer-events-none" />
+        <div className="pointer-events-none absolute left-0 top-0 h-1.5 w-full bg-gradient-to-r from-[#079447] via-[#f7d21e] to-[#1455c0]" />
 
-        <div className="w-full max-w-md relative z-10">
-
-          {/* Logo + título visível somente em mobile */}
-          <div className="flex flex-col items-center mb-8 lg:hidden">
-            <div className="relative mb-4">
-              <div className="absolute inset-0 rounded-2xl bg-purple-200/60 blur-xl scale-110 pointer-events-none" />
-              <div className="relative bg-white rounded-2xl shadow-xl p-4 border border-purple-100">
-                <img
-                  src="/logo.png"
-                  alt="GeoTower Logo"
-                  className="h-24 w-auto drop-shadow-md"
-                />
-              </div>
+        <div className="relative z-10 w-full max-w-md">
+          <div className="mb-6 flex flex-col items-center lg:hidden">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-white px-3 py-1.5 text-xs font-black uppercase tracking-wide text-emerald-800 shadow-sm">
+              <FaFlagCheckered className="text-yellow-500" />
+              Modo Copa
             </div>
-            <h1 className="text-3xl font-black tracking-tight bg-gradient-to-r from-purple-700 to-blue-600 bg-clip-text text-transparent">
-              GeoTower
-            </h1>
-            <p className="text-gray-500 text-sm font-medium mt-1">
-              Logística Rodoviária com Excelência
+            <div className="rounded-lg border border-emerald-100 bg-white p-4 shadow-lg">
+              <img src="/logo.png" alt="GeoTower Logo" className="h-24 w-auto" />
+            </div>
+            <h1 className="mt-4 text-3xl font-black tracking-tight text-emerald-900">GeoTower</h1>
+            <p className="mt-1 text-sm font-semibold text-slate-500">
+              Logística rodoviária com excelência
             </p>
           </div>
 
-          {/* Card do formulário */}
-          <div className="bg-white/90 backdrop-blur-md rounded-3xl shadow-2xl border border-gray-100/80 p-8">
-
+          <div className="rounded-lg border border-slate-200 bg-white/95 p-8 shadow-2xl backdrop-blur">
             <div className="mb-7">
-              <h2 className="text-2xl font-black text-gray-800">Bem-vindo de volta 👋</h2>
-              <p className="text-gray-500 text-sm mt-1">Faça login para acessar o sistema</p>
+              <div className="mb-3 inline-flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-black uppercase tracking-wide text-emerald-800">
+                <FaFutbol className="text-emerald-600" />
+                Temporada especial
+              </div>
+              <h2 className="text-2xl font-black text-slate-900">Bem-vindo de volta</h2>
+              <p className="mt-1 text-sm text-slate-500">Faça login para acessar o sistema</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
-
-              {/* Campo Usuário */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700">
                   Usuário ou Email
                 </label>
                 <div className="relative">
-                  <FaUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none" />
+                  <FaUser className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400" />
                   <input
                     type="text"
                     name="username"
                     value={formData.username}
                     onChange={handleChange}
-                    className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200 text-base transition shadow-sm placeholder:text-gray-400"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 py-3 pl-11 pr-4 text-base shadow-sm transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-100"
                     placeholder="seu.usuario ou email@example.com"
                     disabled={loading}
                     required
@@ -220,19 +221,16 @@ const Login = () => {
                 </div>
               </div>
 
-              {/* Campo Senha */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                  Senha
-                </label>
+                <label className="mb-1.5 block text-sm font-semibold text-slate-700">Senha</label>
                 <div className="relative">
-                  <FaLock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none" />
+                  <FaLock className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
-                    className="w-full pl-11 pr-12 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200 text-base transition shadow-sm placeholder:text-gray-400"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 py-3 pl-11 pr-12 text-base shadow-sm transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-100"
                     placeholder="Digite sua senha"
                     disabled={loading}
                     required
@@ -241,7 +239,7 @@ const Login = () => {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 p-2 rounded-lg transition"
+                    className="absolute right-3 top-1/2 rounded-lg p-2 -translate-y-1/2 text-slate-400 transition hover:text-slate-700"
                     aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
                   >
                     {showPassword ? <FaEyeSlash /> : <FaEye />}
@@ -249,73 +247,62 @@ const Login = () => {
                 </div>
               </div>
 
-              {/* Checkbox Manter Conectado */}
               <div className="flex items-center">
                 <input
                   type="checkbox"
                   id="rememberMe"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 focus:ring-2"
+                  className="h-4 w-4 rounded border-slate-300 bg-slate-100 text-emerald-600 focus:ring-2 focus:ring-emerald-500"
                 />
-                <label htmlFor="rememberMe" className="ml-2 text-sm font-medium text-gray-700">
+                <label htmlFor="rememberMe" className="ml-2 text-sm font-medium text-slate-700">
                   Manter conectado
                 </label>
               </div>
 
-
-              {/* Botão Entrar */}
               <button
                 type="submit"
                 disabled={loading}
-                className={`
-                  w-full py-3.5 px-4 rounded-xl font-extrabold text-base text-white
-                  transition-all duration-200 shadow-lg active:scale-[0.98]
-                  ${loading
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-purple-700 to-blue-600 hover:from-purple-800 hover:to-blue-700 shadow-purple-200 hover:shadow-purple-300 hover:shadow-xl'
-                  }
-                `}
+                className={`w-full rounded-lg px-4 py-3.5 text-base font-extrabold text-white shadow-lg transition-all duration-200 active:scale-[0.98] ${
+                  loading
+                    ? 'cursor-not-allowed bg-slate-400'
+                    : 'bg-gradient-to-r from-emerald-700 via-green-600 to-blue-700 shadow-emerald-100 hover:from-emerald-800 hover:via-green-700 hover:to-blue-800 hover:shadow-xl'
+                }`}
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
-                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v8H4z"
+                      />
                     </svg>
                     Entrando...
                   </span>
                 ) : (
-                  'Entrar →'
+                  'Entrar'
                 )}
               </button>
             </form>
-
-            {/* Rodapé do card */}
-            <div className="hidden">
-              <p className="text-gray-500 text-sm mb-2">Ainda não tem cadastro?</p>
-              <button
-                onClick={() => navigate('/register')}
-                className="text-purple-700 hover:text-purple-900 font-bold text-sm transition underline underline-offset-2"
-              >
-                Criar novo usuário
-              </button>
-            </div>
           </div>
 
-          {/* Rodapé da página */}
-          <p className="text-center text-gray-400 text-xs mt-6">
+          <p className="mt-6 text-center text-xs text-slate-400">
             © {new Date().getFullYear()} GeoTower · Todos os direitos reservados
           </p>
         </div>
       </div>
 
       {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
+        <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}
     </div>
   );
